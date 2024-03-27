@@ -1,117 +1,151 @@
+/*
+Copyright 2024.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package main
 
 import (
-	"context"
+	"crypto/tls"
+	"flag"
+	"os"
 
-	"github.com/giantswarm/microerror"
-	"github.com/giantswarm/microkit/command"
-	microserver "github.com/giantswarm/microkit/server"
-	"github.com/giantswarm/micrologger"
-	"github.com/spf13/viper"
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	// to ensure that exec-entrypoint and run can make use of them.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"github.com/giantswarm/template-operator/flag"
-	"github.com/giantswarm/template-operator/pkg/project"
-	"github.com/giantswarm/template-operator/server"
-	"github.com/giantswarm/template-operator/service"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	"github.com/giantswarm/observability-operator/internal/controller"
+	//+kubebuilder:scaffold:imports
 )
 
 var (
-	f *flag.Flag = flag.New()
+	scheme   = runtime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
 )
 
-func main() {
-	err := mainE(context.Background())
-	if err != nil {
-		panic(microerror.JSON(err))
-	}
+func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+
+	//+kubebuilder:scaffold:scheme
 }
 
-func mainE(ctx context.Context) error {
-	var err error
+func main() {
+	var metricsAddr string
+	var enableLeaderElection bool
+	var probeAddr string
+	var secureMetrics bool
+	var enableHTTP2 bool
+	var managementClusterName string
+	var monitoringEnabled bool
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+		"Enable leader election for controller manager. "+
+			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&secureMetrics, "metrics-secure", false,
+		"If set the metrics endpoint is served securely")
+	flag.BoolVar(&enableHTTP2, "enable-http2", false,
+		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&managementClusterName, "management-cluster-name", "", "The name of the management cluster.")
+	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
+		"Enable monitoring at the management cluster level.")
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
 
-	var logger micrologger.Logger
-	{
-		c := micrologger.Config{}
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-		logger, err = micrologger.New(c)
-		if err != nil {
-			return microerror.Mask(err)
-		}
+	// if the enable-http2 flag is false (the default), http/2 should be disabled
+	// due to its vulnerabilities. More specifically, disabling http/2 will
+	// prevent from being vulnerable to the HTTP/2 Stream Cancelation and
+	// Rapid Reset CVEs. For more information see:
+	// - https://github.com/advisories/GHSA-qppj-fm5r-hxr3
+	// - https://github.com/advisories/GHSA-4374-p667-p6c8
+	disableHTTP2 := func(c *tls.Config) {
+		setupLog.Info("disabling http/2")
+		c.NextProtos = []string{"http/1.1"}
 	}
 
-	// We define a server factory to create the custom server once all command
-	// line flags are parsed and all microservice configuration is storted out.
-	serverFactory := func(v *viper.Viper) microserver.Server {
-		// Create a new custom service which implements business logic.
-		var newService *service.Service
-		{
-			c := service.Config{
-				Logger: logger,
-
-				Flag:  f,
-				Viper: v,
-			}
-
-			newService, err = service.New(c)
-			if err != nil {
-				panic(microerror.JSON(err))
-			}
-
-			go newService.Boot(ctx)
-		}
-
-		// Create a new custom server which bundles our endpoints.
-		var newServer microserver.Server
-		{
-			c := server.Config{
-				Logger:  logger,
-				Service: newService,
-
-				Viper: v,
-			}
-
-			newServer, err = server.New(c)
-			if err != nil {
-				panic(microerror.JSON(err))
-			}
-		}
-
-		return newServer
+	tlsOpts := []func(*tls.Config){}
+	if !enableHTTP2 {
+		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
-	// Create a new microkit command which manages our custom microservice.
-	var newCommand command.Command
-	{
-		c := command.Config{
-			Logger:        logger,
-			ServerFactory: serverFactory,
+	webhookServer := webhook.NewServer(webhook.Options{
+		TLSOpts: tlsOpts,
+	})
 
-			Description: project.Description(),
-			GitCommit:   project.GitSHA(),
-			Name:        project.Name(),
-			Source:      project.Source(),
-			Version:     project.Version(),
-		}
-
-		newCommand, err = command.New(c)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
-	daemonCommand := newCommand.DaemonCommand().CobraCommand()
-
-	daemonCommand.PersistentFlags().String(f.Service.Kubernetes.Address, "http://127.0.0.1:6443", "Address used to connect to Kubernetes. When empty in-cluster config is created.")
-	daemonCommand.PersistentFlags().Bool(f.Service.Kubernetes.InCluster, false, "Whether to use the in-cluster config to authenticate with Kubernetes.")
-	daemonCommand.PersistentFlags().String(f.Service.Kubernetes.KubeConfig, "", "KubeConfig used to connect to Kubernetes. When empty other settings are used.")
-	daemonCommand.PersistentFlags().String(f.Service.Kubernetes.TLS.CAFile, "", "Certificate authority file path to use to authenticate with Kubernetes.")
-	daemonCommand.PersistentFlags().String(f.Service.Kubernetes.TLS.CrtFile, "", "Certificate file path to use to authenticate with Kubernetes.")
-	daemonCommand.PersistentFlags().String(f.Service.Kubernetes.TLS.KeyFile, "", "Key file path to use to authenticate with Kubernetes.")
-
-	err = newCommand.CobraCommand().Execute()
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress:   metricsAddr,
+			SecureServing: secureMetrics,
+			TLSOpts:       tlsOpts,
+		},
+		WebhookServer:          webhookServer,
+		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "5c99b45b.giantswarm.io",
+		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
+		// when the Manager ends. This requires the binary to immediately end when the
+		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
+		// speeds up voluntary leader transitions as the new leader don't have to wait
+		// LeaseDuration time first.
+		//
+		// In the default scaffold provided, the program ends immediately after
+		// the manager stops, so would be fine to enable this option. However,
+		// if you are doing or is intended to do any operation such as perform cleanups
+		// after the manager stops then its usage might be unsafe.
+		// LeaderElectionReleaseOnCancel: true,
+	})
 	if err != nil {
-		return microerror.Mask(err)
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
 	}
 
-	return nil
+	if err = (&controller.ClusterReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
+		os.Exit(1)
+	}
+	//+kubebuilder:scaffold:builder
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+
+	setupLog.Info("starting manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
 }

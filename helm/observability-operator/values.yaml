@@ -1,0 +1,39 @@
+global:
+  podSecurityStandards:
+    enforced: false
+
+image:
+  registry: gsoci.azurecr.io
+  name: "giantswarm/observability-operator"
+  tag: ""
+
+managementCluster:
+  name: unknown
+
+monitoring:
+  enabled: false
+
+operator:
+  # -- Configures the resources for the operator deployment
+  resources:
+    requests:
+      cpu: 100m
+      memory: 200Mi
+    limits:
+      cpu: 100m
+      memory: 500Mi
+  # -- Configures the container security context
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop:
+        - ALL
+  # -- Configures the pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault

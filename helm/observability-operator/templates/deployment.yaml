@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  name: {{ include "resource.default.name" . }}
+  namespace: {{ include "resource.default.namespace" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "labels.selector" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        releaseRevision: {{ .Release.Revision | quote }}
+      labels:
+        {{- include "labels.common" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ include "name" . }}
+        image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ default .Chart.Version .Values.image.tag }}"
+        args:
+        - --leader-elect
+        - --management-cluster-name={{ $.Values.managementCluster.name }}
+        - --monitoring-enabled={{ $.Values.monitoring.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
+        securityContext:
+          {{- with .Values.operator.containerSecurityContext }}
+            {{- . | toYaml | nindent 10 }}
+          {{- end }}
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        resources: {{ toYaml .Values.operator.resources | nindent 10 }}
+        volumeMounts:
+          - name: {{ include "name" . }}-configmap
+            mountPath: /var/run/{{ include "name" . }}/configmap/
+      serviceAccountName: {{ include "resource.default.name"  . }}
+      securityContext:
+        {{- with .Values.operator.podSecurityContext }}
+          {{- . | toYaml | nindent 8 }}
+        {{- end }}
+    volumes:
+      - name: {{ include "name" . }}
+        configMap:
+          name: {{ include "resource.default.name"  . }}
+          items:
+          - key: config.yml
+            path: config.yml
