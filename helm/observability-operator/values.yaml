@@ -9,9 +9,11 @@ image:
 
 managementCluster:
   name: unknown
+  pipeline: unknown
 
 monitoring:
   enabled: false
+  opsgenieApiKey: ""
 
 operator:
   # -- Configures the resources for the operator deployment

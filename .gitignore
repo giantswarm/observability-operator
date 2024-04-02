@@ -25,4 +25,4 @@ Dockerfile.cross
 *.swo
 *~
 
-observability-operator*
+/observability-operator*
