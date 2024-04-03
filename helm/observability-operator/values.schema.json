@@ -32,10 +32,16 @@
         "managementCluster": {
             "type": "object",
             "properties": {
+                "customer": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
                 "pipeline": {
+                    "type": "string"
+                },
+                "region": {
                     "type": "string"
                 }
             }

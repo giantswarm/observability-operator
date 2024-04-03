@@ -8,8 +8,10 @@ image:
   tag: ""
 
 managementCluster:
-  name: unknown
-  pipeline: unknown
+  customer: customer
+  name: name
+  pipeline: pipeline
+  region: region
 
 monitoring:
   enabled: false
@@ -24,6 +26,7 @@ operator:
     limits:
       cpu: 100m
       memory: 500Mi
+
   # -- Configures the container security context
   containerSecurityContext:
     allowPrivilegeEscalation: false

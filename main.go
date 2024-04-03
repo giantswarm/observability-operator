@@ -52,8 +52,10 @@ var (
 	probeAddr                 string
 	secureMetrics             bool
 	enableHTTP2               bool
+	managementClusterCustomer string
 	managementClusterName     string
 	managementClusterPipeline string
+	managementClusterRegion   string
 	monitoringEnabled         bool
 )
 
@@ -80,10 +82,14 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&managementClusterCustomer, "management-cluster-customer", "",
+		"The customer of the management cluster.")
 	flag.StringVar(&managementClusterName, "management-cluster-name", "",
 		"The name of the management cluster.")
 	flag.StringVar(&managementClusterPipeline, "management-cluster-pipeline", "",
 		"The pipeline of the management cluster.")
+	flag.StringVar(&managementClusterRegion, "management-cluster-region", "",
+		"The region of the management cluster.")
 	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
 	opts := zap.Options{
@@ -146,8 +152,10 @@ func main() {
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
 	var managementCluster common.ManagementCluster = common.ManagementCluster{
+		Customer: managementClusterCustomer,
 		Name:     managementClusterName,
 		Pipeline: managementClusterPipeline,
+		Region:   managementClusterRegion,
 	}
 
 	var opsgenieApiKey = os.Getenv(OpsgenieApiKey)
