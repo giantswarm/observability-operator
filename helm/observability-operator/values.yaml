@@ -16,6 +16,7 @@ managementCluster:
 monitoring:
   enabled: false
   opsgenieApiKey: ""
+  prometheusVersion: ""
 
 operator:
   # -- Configures the resources for the operator deployment

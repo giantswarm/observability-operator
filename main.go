@@ -39,7 +39,9 @@ import (
 
 	"github.com/giantswarm/observability-operator/internal/controller"
 	"github.com/giantswarm/observability-operator/pkg/common"
+	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -57,6 +59,7 @@ var (
 	managementClusterPipeline string
 	managementClusterRegion   string
 	monitoringEnabled         bool
+	prometheusVersion         string
 )
 
 const (
@@ -92,6 +95,8 @@ func main() {
 		"The region of the management cluster.")
 	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
+	flag.StringVar(&prometheusVersion, "prometheus-version", "",
+		"The version of Prometheus Agents to deploy.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -170,11 +175,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.ClusterMonitoringReconciler{
-		Client:              mgr.GetClient(),
-		ManagementCluster:   managementCluster,
-		HeartbeatRepository: heartbeatRepository,
-		MonitoringEnabled:   monitoringEnabled,
+	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
+
+	// TODO(atlas): validate prometheus version
+	prometheusAgentService := prometheusagent.PrometheusAgentService{
+		Client:                 mgr.GetClient(),
+		OrganizationRepository: organizationRepository,
+		ManagementCluster:      managementCluster,
+		PrometheusVersion:      prometheusVersion,
+	}
+
+	if err = (&controller.ClusterMonitoringReconciler{ 
+		Client:                 mgr.GetClient(),
+		ManagementCluster:      managementCluster,
+		HeartbeatRepository:    heartbeatRepository,
+		PrometheusAgentService: prometheusAgentService,
+		MonitoringEnabled:      monitoringEnabled,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
 		os.Exit(1)

@@ -31,6 +31,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
 // ClusterMonitoringReconciler reconciles a Cluster object
@@ -38,6 +39,8 @@ type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
 	client.Client
 	common.ManagementCluster
+	// PrometheusAgentService is the service for managing PrometheusAgent resources.
+	prometheusagent.PrometheusAgentService
 	// HeartbeatRepository is the repository for managing heartbeats.
 	heartbeat.HeartbeatRepository
 	// MonitoringEnabled defines whether monitoring is enabled at the installation level.
@@ -113,6 +116,13 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 	}
 
+	// Create or update PrometheusAgent remote write configuration.
+	err := r.PrometheusAgentService.ReconcilePrometheusAgentRemoteWriteConfig(ctx, cluster)
+	if err != nil {
+		logger.Error(err, "failed to create or update prometheus agent remote write config")
+		return ctrl.Result{Requeue: true}, errors.WithStack(err)
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -120,7 +130,6 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) (reconcile.Result, error) {
 	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
 	if controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
-
 		if cluster.Name == r.ManagementCluster.Name {
 			err := r.HeartbeatRepository.Delete(ctx)
 			if err != nil {
@@ -129,11 +138,17 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			}
 		}
 
+		err := r.PrometheusAgentService.DeletePrometheusAgentRemoteWriteConfig(ctx, cluster)
+		if err != nil {
+			logger.Error(err, "failed to delete prometheus agent remote write config")
+			return ctrl.Result{Requeue: true}, errors.WithStack(err)
+		}
+
 		// We get the latest state of the object to avoid race conditions.
 		// Finalizer handling needs to come last.
 		logger.Info("removing finalizer", "finalizer", monitoring.MonitoringFinalizer)
 		controllerutil.RemoveFinalizer(cluster, monitoring.MonitoringFinalizer)
-		err := r.Client.Update(ctx, cluster)
+		err = r.Client.Update(ctx, cluster)
 		if err != nil {
 			// We need to requeue if we fail to remove the finalizer because of race conditions between multiple operators.
 			// This will be eventually consistent.

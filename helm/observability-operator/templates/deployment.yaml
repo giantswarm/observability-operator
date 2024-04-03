@@ -29,6 +29,9 @@ spec:
         - --management-cluster-pipeline={{ $.Values.managementCluster.pipeline }}
         - --management-cluster-region={{ $.Values.managementCluster.region }}
         - --monitoring-enabled={{ $.Values.monitoring.enabled }}
+        {{- if .Values.monitoring.prometheusVersion }}
+        - --prometheus-version={{ $.Values.monitoring.prometheusVersion | quote }}
+        {{- end }}
         env:
         - name: OPSGENIE_API_KEY
           valueFrom:
