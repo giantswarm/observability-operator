@@ -33,8 +33,12 @@ const (
 )
 
 type ManagementCluster struct {
+	// BaseDomain is the base domain of the management cluster.
+	BaseDomain string
 	// Customer is the customer name of the management cluster.
 	Customer string
+	// InsecureCA is a flag to indicate if the management cluster has an insecure CA that should be truster
+	InsecureCA bool
 	// Name is the name of the management cluster.
 	Name string
 	// Pipeline is the pipeline name of the management cluster.

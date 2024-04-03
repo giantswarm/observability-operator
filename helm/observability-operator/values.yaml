@@ -8,7 +8,9 @@ image:
   tag: ""
 
 managementCluster:
+  baseDomain: domain
   customer: customer
+  insecureCA: false
   name: name
   pipeline: pipeline
   region: region

@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -112,15 +113,15 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		err := r.HeartbeatRepository.CreateOrUpdate(ctx)
 		if err != nil {
 			logger.Error(err, "failed to create or update heartbeat")
-			return ctrl.Result{Requeue: true}, errors.WithStack(err)
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 		}
 	}
 
 	// Create or update PrometheusAgent remote write configuration.
-	err := r.PrometheusAgentService.ReconcilePrometheusAgentRemoteWriteConfig(ctx, cluster)
+	err := r.PrometheusAgentService.ReconcileRemoteWriteConfig(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to create or update prometheus agent remote write config")
-		return ctrl.Result{Requeue: true}, errors.WithStack(err)
+		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 	}
 
 	return ctrl.Result{}, nil
@@ -134,14 +135,14 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			err := r.HeartbeatRepository.Delete(ctx)
 			if err != nil {
 				logger.Error(err, "failed to delete heartbeat")
-				return ctrl.Result{Requeue: true}, errors.WithStack(err)
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 			}
 		}
 
-		err := r.PrometheusAgentService.DeletePrometheusAgentRemoteWriteConfig(ctx, cluster)
+		err := r.PrometheusAgentService.DeleteRemoteWriteConfig(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete prometheus agent remote write config")
-			return ctrl.Result{Requeue: true}, errors.WithStack(err)
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 		}
 
 		// We get the latest state of the object to avoid race conditions.
@@ -153,7 +154,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			// We need to requeue if we fail to remove the finalizer because of race conditions between multiple operators.
 			// This will be eventually consistent.
 			logger.Error(err, "failed to remove finalizer, requeuing", "finalizer", monitoring.MonitoringFinalizer)
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 		logger.Info("removed finalizer", "finalizer", monitoring.MonitoringFinalizer)
 	}

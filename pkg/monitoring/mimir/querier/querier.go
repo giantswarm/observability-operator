@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/prometheus/client_golang/api"
@@ -12,33 +11,10 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-// headerAdder is an http.RoundTripper that adds additional headers to the request
-type headerAdder struct {
-	headers map[string][]string
-
-	rt http.RoundTripper
-}
-
-func (h *headerAdder) RoundTrip(req *http.Request) (*http.Response, error) {
-	for k, vv := range h.headers {
-		for _, v := range vv {
-			req.Header.Add(k, v)
-		}
-	}
-	return h.rt.RoundTrip(req)
-}
-
 // QueryTSDBHeadSeries performs an instant query against Mimir.
 func QueryTSDBHeadSeries(ctx context.Context, clusterName string) (float64, error) {
-	headerAdder := &headerAdder{
-		headers: map[string][]string{
-			"X-Org-Id": {"anonynous"},
-		},
-		rt: http.DefaultTransport,
-	}
 	config := api.Config{
-		Address:      "http://mimir-gateway.mimir.svc/prometheus",
-		RoundTripper: headerAdder,
+		Address: "http://mimir-gateway.mimir.svc/prometheus",
 	}
 
 	// Create new client.
@@ -51,7 +27,8 @@ func QueryTSDBHeadSeries(ctx context.Context, clusterName string) (float64, erro
 	api := v1.NewAPI(c)
 
 	queryContext, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	val, _, err := api.Query(queryContext, fmt.Sprintf("max_over_time(count({cluster_id=\"%s\"})[6h])", clusterName), time.Now())
+	query := fmt.Sprintf("sum(max_over_time(prometheus_agent_active_series{cluster_id=\"%s\"}[6h]))", clusterName)
+	val, _, err := api.Query(queryContext, query, time.Now())
 	cancel()
 	if err != nil {
 		return 0, err
@@ -59,7 +36,16 @@ func QueryTSDBHeadSeries(ctx context.Context, clusterName string) (float64, erro
 
 	switch val.Type() {
 	case model.ValVector:
-		vector := val.(model.Vector)
+		vector, ok := val.(model.Vector)
+		if !ok {
+			return 0, errors.New("failed to convert value to vector")
+		}
+		if len(vector) == 0 {
+			return 0, errors.New("no time series found")
+		}
+		if len(vector) > 1 {
+			return 0, errors.New("more than one time series found")
+		}
 		return float64(vector[0].Value), nil
 	default:
 		return 0, errors.New("failed to get current number of time series")

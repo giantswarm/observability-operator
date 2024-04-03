@@ -40,6 +40,7 @@ import (
 	"github.com/giantswarm/observability-operator/internal/controller"
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
+	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 	//+kubebuilder:scaffold:imports
@@ -49,17 +50,19 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	metricsAddr               string
-	enableLeaderElection      bool
-	probeAddr                 string
-	secureMetrics             bool
-	enableHTTP2               bool
-	managementClusterCustomer string
-	managementClusterName     string
-	managementClusterPipeline string
-	managementClusterRegion   string
-	monitoringEnabled         bool
-	prometheusVersion         string
+	metricsAddr                 string
+	enableLeaderElection        bool
+	probeAddr                   string
+	secureMetrics               bool
+	enableHTTP2                 bool
+	managementClusterBaseDomain string
+	managementClusterCustomer   string
+	managementClusterInsecureCA bool
+	managementClusterName       string
+	managementClusterPipeline   string
+	managementClusterRegion     string
+	monitoringEnabled           bool
+	prometheusVersion           string
 )
 
 const (
@@ -85,8 +88,12 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&managementClusterBaseDomain, "management-cluster-base-domain", "",
+		"The base domain of the management cluster.")
 	flag.StringVar(&managementClusterCustomer, "management-cluster-customer", "",
 		"The customer of the management cluster.")
+	flag.BoolVar(&managementClusterInsecureCA, "management-cluster-insecure-ca", false,
+		"Flag to indicate if the management cluster has an insecure CA that should be trusted")
 	flag.StringVar(&managementClusterName, "management-cluster-name", "",
 		"The name of the management cluster.")
 	flag.StringVar(&managementClusterPipeline, "management-cluster-pipeline", "",
@@ -157,10 +164,12 @@ func main() {
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
 	var managementCluster common.ManagementCluster = common.ManagementCluster{
-		Customer: managementClusterCustomer,
-		Name:     managementClusterName,
-		Pipeline: managementClusterPipeline,
-		Region:   managementClusterRegion,
+		BaseDomain: managementClusterBaseDomain,
+		Customer:   managementClusterCustomer,
+		InsecureCA: managementClusterInsecureCA,
+		Name:       managementClusterName,
+		Pipeline:   managementClusterPipeline,
+		Region:     managementClusterRegion,
 	}
 
 	var opsgenieApiKey = os.Getenv(OpsgenieApiKey)
@@ -181,11 +190,12 @@ func main() {
 	prometheusAgentService := prometheusagent.PrometheusAgentService{
 		Client:                 mgr.GetClient(),
 		OrganizationRepository: organizationRepository,
+		PasswordManager:        password.SimpleManager{},
 		ManagementCluster:      managementCluster,
 		PrometheusVersion:      prometheusVersion,
 	}
 
-	if err = (&controller.ClusterMonitoringReconciler{ 
+	if err = (&controller.ClusterMonitoringReconciler{
 		Client:                 mgr.GetClient(),
 		ManagementCluster:      managementCluster,
 		HeartbeatRepository:    heartbeatRepository,

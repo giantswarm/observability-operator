@@ -8,16 +8,16 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - secrets
-      - configmaps
+      - namespaces
     verbs:
-      - create
-      - update
-      - delete
-      - deletecollection
-      - get
       - list
       - watch
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+      - configmaps
+    verbs: ["*"]
   - apiGroups:
       - cluster.x-k8s.io
     resources:
