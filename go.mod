@@ -7,7 +7,7 @@ require (
 	github.com/onsi/gomega v1.32.0
 	github.com/opsgenie/opsgenie-go-sdk-v2 v1.2.22
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.3
 	k8s.io/apimachinery v0.29.3
 	k8s.io/client-go v0.29.3
 	sigs.k8s.io/cluster-api v1.6.3
