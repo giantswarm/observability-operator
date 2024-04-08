@@ -11,7 +11,9 @@ spec:
       {{- include "labels.selector" . | nindent 6 }}
   egress:
     - toEntities:
-        - kube-apiserver
+      - kube-apiserver
+      - cluster # Allow dns traffic
+      - world # Allow access to cloud
   ingress:
     - fromEntities:
         - cluster

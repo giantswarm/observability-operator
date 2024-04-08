@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix `CiliumNetworkPolicy` to allow cluster and world access (opsgenie)
+
 ## [0.0.1] - 2024-04-08
 
 ### Added
