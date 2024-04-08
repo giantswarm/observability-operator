@@ -121,6 +121,7 @@ func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
 		apiErr, ok := err.(*client.ApiError)
 		if ok && apiErr.StatusCode == http.StatusNotFound {
 			logger.Info("heartbeat does not exist, skipping")
+			return nil
 		} else {
 			return errors.WithStack(err)
 		}
