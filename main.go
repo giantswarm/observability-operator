@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -28,6 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -35,30 +38,43 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/giantswarm/observability-operator/internal/controller"
+	"github.com/giantswarm/observability-operator/pkg/common"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	//+kubebuilder:scaffold:imports
 )
 
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
+
+	metricsAddr               string
+	enableLeaderElection      bool
+	probeAddr                 string
+	secureMetrics             bool
+	enableHTTP2               bool
+	managementClusterCustomer string
+	managementClusterName     string
+	managementClusterPipeline string
+	managementClusterRegion   string
+	monitoringEnabled         bool
+)
+
+const (
+	OpsgenieApiKey = "OPSGENIE_API_KEY" // #nosec G101
 )
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
 
 	//+kubebuilder:scaffold:scheme
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
-	var secureMetrics bool
-	var enableHTTP2 bool
-	var managementClusterName string
-	var monitoringEnabled bool
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080",
+		"The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081",
+		"The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -66,7 +82,14 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	flag.StringVar(&managementClusterName, "management-cluster-name", "", "The name of the management cluster.")
+	flag.StringVar(&managementClusterCustomer, "management-cluster-customer", "",
+		"The customer of the management cluster.")
+	flag.StringVar(&managementClusterName, "management-cluster-name", "",
+		"The name of the management cluster.")
+	flag.StringVar(&managementClusterPipeline, "management-cluster-pipeline", "",
+		"The pipeline of the management cluster.")
+	flag.StringVar(&managementClusterRegion, "management-cluster-region", "",
+		"The region of the management cluster.")
 	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
 	opts := zap.Options{
@@ -125,9 +148,33 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.ClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+	// Initialize event recorder.
+	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
+
+	var managementCluster common.ManagementCluster = common.ManagementCluster{
+		Customer: managementClusterCustomer,
+		Name:     managementClusterName,
+		Pipeline: managementClusterPipeline,
+		Region:   managementClusterRegion,
+	}
+
+	var opsgenieApiKey = os.Getenv(OpsgenieApiKey)
+	if opsgenieApiKey == "" {
+		setupLog.Error(nil, fmt.Sprintf("environment variable %s not set", OpsgenieApiKey))
+		os.Exit(1)
+	}
+
+	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(opsgenieApiKey, managementCluster)
+	if err != nil {
+		setupLog.Error(err, "unable to create heartbeat repository")
+		os.Exit(1)
+	}
+
+	if err = (&controller.ClusterMonitoringReconciler{
+		Client:              mgr.GetClient(),
+		ManagementCluster:   managementCluster,
+		HeartbeatRepository: heartbeatRepository,
+		MonitoringEnabled:   monitoringEnabled,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
 		os.Exit(1)

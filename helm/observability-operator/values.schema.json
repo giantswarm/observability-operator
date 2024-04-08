@@ -32,7 +32,16 @@
         "managementCluster": {
             "type": "object",
             "properties": {
+                "customer": {
+                    "type": "string"
+                },
                 "name": {
+                    "type": "string"
+                },
+                "pipeline": {
+                    "type": "string"
+                },
+                "region": {
                     "type": "string"
                 }
             }
@@ -42,6 +51,9 @@
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                },
+                "opsgenieApiKey": {
+                    "type": "string"
                 }
             }
         },

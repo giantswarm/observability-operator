@@ -24,8 +24,17 @@ spec:
         image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ default .Chart.Version .Values.image.tag }}"
         args:
         - --leader-elect
+        - --management-cluster-customer={{ $.Values.managementCluster.customer }}
         - --management-cluster-name={{ $.Values.managementCluster.name }}
+        - --management-cluster-pipeline={{ $.Values.managementCluster.pipeline }}
+        - --management-cluster-region={{ $.Values.managementCluster.region }}
         - --monitoring-enabled={{ $.Values.monitoring.enabled }}
+        env:
+        - name: OPSGENIE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "resource.default.name" . }}-credentials
+              key: opsgenieApiKey
         livenessProbe:
           httpGet:
             path: /healthz
@@ -41,9 +50,6 @@ spec:
           name: http
           protocol: TCP
         resources: {{ toYaml .Values.operator.resources | nindent 10 }}
-        volumeMounts:
-          - name: {{ include "name" . }}-configmap
-            mountPath: /var/run/{{ include "name" . }}/configmap/
       serviceAccountName: {{ include "resource.default.name"  . }}
       securityContext:
         {{- with .Values.operator.podSecurityContext }}

@@ -8,10 +8,14 @@ image:
   tag: ""
 
 managementCluster:
-  name: unknown
+  customer: customer
+  name: name
+  pipeline: pipeline
+  region: region
 
 monitoring:
   enabled: false
+  opsgenieApiKey: ""
 
 operator:
   # -- Configures the resources for the operator deployment
@@ -22,6 +26,7 @@ operator:
     limits:
       cpu: 100m
       memory: 500Mi
+
   # -- Configures the container security context
   containerSecurityContext:
     allowPrivilegeEscalation: false

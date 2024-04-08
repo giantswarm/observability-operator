@@ -7,4 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Initialize project and create heartbeat for the installation.
+
 [Unreleased]: https://github.com/giantswarm/observability-operator/tree/master
