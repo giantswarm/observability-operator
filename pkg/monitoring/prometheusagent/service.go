@@ -166,7 +166,7 @@ func (pas *PrometheusAgentService) DeleteRemoteWriteConfig(ctx context.Context, 
 		return errors.WithStack(err)
 	}
 
-	logger.Info("deleted prometheus agent remote write configuration")
+	logger.Info("deleted prometheus agent remote write configmap and secret")
 
 	return nil
 }
