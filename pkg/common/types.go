@@ -47,6 +47,13 @@ type ManagementCluster struct {
 	Region string
 }
 
+func GetClusterType(cluster *clusterv1.Cluster, mc ManagementCluster) string {
+	if cluster.Name == mc.Name {
+		return "management_cluster"
+	}
+	return "workload_cluster"
+}
+
 func GetClusterProvider(cluster *clusterv1.Cluster) (string, error) {
 	switch cluster.Spec.InfrastructureRef.Kind {
 	case AWSClusterKind:

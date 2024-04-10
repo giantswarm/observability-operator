@@ -118,7 +118,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Create or update PrometheusAgent remote write configuration.
-	err := r.PrometheusAgentService.ReconcileRemoteWriteConfig(ctx, cluster)
+	err := r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to create or update prometheus agent remote write config")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
@@ -139,7 +139,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			}
 		}
 
-		err := r.PrometheusAgentService.DeleteRemoteWriteConfig(ctx, cluster)
+		err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete prometheus agent remote write config")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)

@@ -27,14 +27,14 @@ type PrometheusAgentService struct {
 	PrometheusVersion string
 }
 
-// ReconcileRemoteWriteConfig ensures that the prometheus remote write config is present in the cluster.
-func (pas *PrometheusAgentService) ReconcileRemoteWriteConfig(
+// ReconcileRemoteWriteConfiguration ensures that the prometheus remote write config is present in the cluster.
+func (pas *PrometheusAgentService) ReconcileRemoteWriteConfiguration(
 	ctx context.Context, cluster *clusterv1.Cluster) error {
 
 	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
 	logger.Info("ensuring prometheus agent remote write configmap and secret")
 
-	err := pas.createOrUpdateConfig(ctx, cluster, logger)
+	err := pas.createOrUpdateConfigMap(ctx, cluster, logger)
 	if err != nil {
 		logger.Error(err, "failed to create or update prometheus agent remote write configmap")
 		return errors.WithStack(err)
@@ -51,7 +51,7 @@ func (pas *PrometheusAgentService) ReconcileRemoteWriteConfig(
 	return nil
 }
 
-func (pas PrometheusAgentService) createOrUpdateConfig(ctx context.Context,
+func (pas PrometheusAgentService) createOrUpdateConfigMap(ctx context.Context,
 	cluster *clusterv1.Cluster, logger logr.Logger) error {
 
 	objectKey := client.ObjectKey{
@@ -150,7 +150,9 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 	return nil
 }
 
-func (pas *PrometheusAgentService) DeleteRemoteWriteConfig(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (pas *PrometheusAgentService) DeleteRemoteWriteConfiguration(
+	ctx context.Context, cluster *clusterv1.Cluster) error {
+
 	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
 	logger.Info("deleting prometheus agent remote write configmap and secret")
 

@@ -33,14 +33,9 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		return nil, errors.WithStack(err)
 	}
 
-	clusterType := "workload_cluster"
-	if val, ok := cluster.Labels["cluster.x-k8s.io/cluster-name"]; ok && val == pas.ManagementCluster.Name {
-		clusterType = "management_cluster"
-	}
-
 	externalLabels := map[string]string{
 		"cluster_id":       cluster.Name,
-		"cluster_type":     clusterType,
+		"cluster_type":     common.GetClusterType(cluster, pas.ManagementCluster),
 		"customer":         pas.ManagementCluster.Customer,
 		"installation":     pas.ManagementCluster.Name,
 		"organization":     organization,
@@ -67,6 +62,12 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 	})
 	if err != nil {
 		return nil, errors.WithStack(err)
+	}
+
+	if currentShards < shards {
+		logger.Info("scaling up shards", "old", currentShards, "new", shards)
+	} else if currentShards > shards {
+		logger.Info("scaling down shards", "old", currentShards, "new", shards)
 	}
 
 	return &corev1.ConfigMap{

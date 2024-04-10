@@ -76,9 +76,9 @@ func readRemoteWritePasswordFromSecret(secret corev1.Secret) (string, error) {
 	}
 
 	for _, rw := range remoteWriteConfig.PrometheusAgentConfig.RemoteWrite {
-                // We read the secret from the remote write configuration named `prometheus-meta-operator` only
-                // as this secret is generated per cluster. 
-                // This will eventually be taken care of by the multi-tenancy contoller
+		// We read the secret from the remote write configuration named `prometheus-meta-operator` only
+		// as this secret is generated per cluster.
+		// This will eventually be taken care of by the multi-tenancy contoller
 		if rw.Name == remoteWriteName {
 			return rw.Password, nil
 		}
