@@ -156,7 +156,7 @@ func (pas *PrometheusAgentService) DeleteRemoteWriteConfig(ctx context.Context, 
 
 	err := pas.deleteConfigMap(ctx, cluster)
 	if err != nil {
-		logger.Error(err, "failed to delete prometheus agent remote write config")
+		logger.Error(err, "failed to delete prometheus agent remote write configmap")
 		return errors.WithStack(err)
 	}
 
