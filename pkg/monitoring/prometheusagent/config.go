@@ -94,7 +94,7 @@ func getServicePriority(cluster *clusterv1.Cluster) string {
 	return defaultServicePriority
 }
 
-// We want to compute the number of shards based on the number of nodes.
+// We want to compute the number of shards based on the number of series.
 func getShardsCountForCluster(ctx context.Context, cluster *clusterv1.Cluster, currentShardCount int) (int, error) {
 	headSeries, err := querier.QueryTSDBHeadSeries(ctx, cluster.Name)
 	if err != nil {
