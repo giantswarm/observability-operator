@@ -152,7 +152,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 
 func (pas *PrometheusAgentService) DeleteRemoteWriteConfig(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
-	logger.Info("deleting prometheus agent remote write configuration")
+	logger.Info("deleting prometheus agent remote write configmap and secret")
 
 	err := pas.deleteConfigMap(ctx, cluster)
 	if err != nil {
