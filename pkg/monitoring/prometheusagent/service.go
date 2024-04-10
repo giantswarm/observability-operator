@@ -90,7 +90,7 @@ func (pas PrometheusAgentService) createOrUpdateConfig(ctx context.Context,
 	if !reflect.DeepEqual(current.Data, desired.Data) || !reflect.DeepEqual(current.Finalizers, desired.Finalizers) {
 		err = pas.Client.Update(ctx, desired)
 		if err != nil {
-			logger.Info("could not update prometheus agent remote write configuration")
+			logger.Info("could not update prometheus agent remote write configmap")
 			return errors.WithStack(err)
 		}
 	}
