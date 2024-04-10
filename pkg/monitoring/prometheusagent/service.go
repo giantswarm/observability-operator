@@ -32,7 +32,7 @@ func (pas *PrometheusAgentService) ReconcileRemoteWriteConfig(
 	ctx context.Context, cluster *clusterv1.Cluster) error {
 
 	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
-	logger.Info("ensuring prometheus agent remote write configuration")
+	logger.Info("ensuring prometheus agent remote write configmap and secret")
 
 	err := pas.createOrUpdateConfig(ctx, cluster, logger)
 	if err != nil {
