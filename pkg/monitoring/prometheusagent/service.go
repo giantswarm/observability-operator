@@ -46,7 +46,7 @@ func (pas *PrometheusAgentService) ReconcileRemoteWriteConfig(
 		return errors.WithStack(err)
 	}
 
-	logger.Info("ensured prometheus agent remote write configuration")
+	logger.Info("ensured prometheus agent remote write configmap and secret")
 
 	return nil
 }
