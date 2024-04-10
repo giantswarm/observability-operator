@@ -36,7 +36,7 @@ func (pas *PrometheusAgentService) ReconcileRemoteWriteConfig(
 
 	err := pas.createOrUpdateConfig(ctx, cluster, logger)
 	if err != nil {
-		logger.Error(err, "failed to create or update prometheus agent remote write config")
+		logger.Error(err, "failed to create or update prometheus agent remote write configmap")
 		return errors.WithStack(err)
 	}
 
