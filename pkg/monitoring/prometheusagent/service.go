@@ -27,7 +27,7 @@ type PrometheusAgentService struct {
 	PrometheusVersion string
 }
 
-// ensurePrometheusAgentRemoteWriteConfig ensures that the prometheus remote write config is present in the cluster.
+// ReconcileRemoteWriteConfig ensures that the prometheus remote write config is present in the cluster.
 func (pas *PrometheusAgentService) ReconcileRemoteWriteConfig(
 	ctx context.Context, cluster *clusterv1.Cluster) error {
 
