@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/onsi/ginkgo/v2 v2.17.2
-	github.com/onsi/gomega v1.33.0
+	github.com/onsi/gomega v1.33.1
 	github.com/opsgenie/opsgenie-go-sdk-v2 v1.2.22
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
