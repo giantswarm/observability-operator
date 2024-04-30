@@ -39,7 +39,10 @@ import (
 
 	"github.com/giantswarm/observability-operator/internal/controller"
 	"github.com/giantswarm/observability-operator/pkg/common"
+	"github.com/giantswarm/observability-operator/pkg/common/organization"
+	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -47,16 +50,19 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	metricsAddr               string
-	enableLeaderElection      bool
-	probeAddr                 string
-	secureMetrics             bool
-	enableHTTP2               bool
-	managementClusterCustomer string
-	managementClusterName     string
-	managementClusterPipeline string
-	managementClusterRegion   string
-	monitoringEnabled         bool
+	metricsAddr                 string
+	enableLeaderElection        bool
+	probeAddr                   string
+	secureMetrics               bool
+	enableHTTP2                 bool
+	managementClusterBaseDomain string
+	managementClusterCustomer   string
+	managementClusterInsecureCA bool
+	managementClusterName       string
+	managementClusterPipeline   string
+	managementClusterRegion     string
+	monitoringEnabled           bool
+	prometheusVersion           string
 )
 
 const (
@@ -82,8 +88,12 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&managementClusterBaseDomain, "management-cluster-base-domain", "",
+		"The base domain of the management cluster.")
 	flag.StringVar(&managementClusterCustomer, "management-cluster-customer", "",
 		"The customer of the management cluster.")
+	flag.BoolVar(&managementClusterInsecureCA, "management-cluster-insecure-ca", false,
+		"Flag to indicate if the management cluster has an insecure CA that should be trusted")
 	flag.StringVar(&managementClusterName, "management-cluster-name", "",
 		"The name of the management cluster.")
 	flag.StringVar(&managementClusterPipeline, "management-cluster-pipeline", "",
@@ -92,6 +102,8 @@ func main() {
 		"The region of the management cluster.")
 	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
+	flag.StringVar(&prometheusVersion, "prometheus-version", "",
+		"The version of Prometheus Agents to deploy.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -152,10 +164,12 @@ func main() {
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
 	var managementCluster common.ManagementCluster = common.ManagementCluster{
-		Customer: managementClusterCustomer,
-		Name:     managementClusterName,
-		Pipeline: managementClusterPipeline,
-		Region:   managementClusterRegion,
+		BaseDomain: managementClusterBaseDomain,
+		Customer:   managementClusterCustomer,
+		InsecureCA: managementClusterInsecureCA,
+		Name:       managementClusterName,
+		Pipeline:   managementClusterPipeline,
+		Region:     managementClusterRegion,
 	}
 
 	var opsgenieApiKey = os.Getenv(OpsgenieApiKey)
@@ -170,11 +184,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
+
+	// TODO(atlas): validate prometheus version
+	prometheusAgentService := prometheusagent.PrometheusAgentService{
+		Client:                 mgr.GetClient(),
+		OrganizationRepository: organizationRepository,
+		PasswordManager:        password.SimpleManager{},
+		ManagementCluster:      managementCluster,
+		PrometheusVersion:      prometheusVersion,
+	}
+
 	if err = (&controller.ClusterMonitoringReconciler{
-		Client:              mgr.GetClient(),
-		ManagementCluster:   managementCluster,
-		HeartbeatRepository: heartbeatRepository,
-		MonitoringEnabled:   monitoringEnabled,
+		Client:                 mgr.GetClient(),
+		ManagementCluster:      managementCluster,
+		HeartbeatRepository:    heartbeatRepository,
+		PrometheusAgentService: prometheusAgentService,
+		MonitoringEnabled:      monitoringEnabled,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
 		os.Exit(1)

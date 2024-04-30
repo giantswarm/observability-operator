@@ -1,4 +1,4 @@
 package monitoring
 
 // MonitoringFinalizer is the finalizer for monitoring resources.
-const MonitoringFinalizer = "monitoring.giantswarm.io"
+const MonitoringFinalizer = "observability.giantswarm.io/monitoring"

@@ -33,14 +33,25 @@ const (
 )
 
 type ManagementCluster struct {
+	// BaseDomain is the base domain of the management cluster.
+	BaseDomain string
 	// Customer is the customer name of the management cluster.
 	Customer string
+	// InsecureCA is a flag to indicate if the management cluster has an insecure CA that should be truster
+	InsecureCA bool
 	// Name is the name of the management cluster.
 	Name string
 	// Pipeline is the pipeline name of the management cluster.
 	Pipeline string
 	// Region is the region of the management cluster.
 	Region string
+}
+
+func GetClusterType(cluster *clusterv1.Cluster, mc ManagementCluster) string {
+	if cluster.Name == mc.Name {
+		return "management_cluster"
+	}
+	return "workload_cluster"
 }
 
 func GetClusterProvider(cluster *clusterv1.Cluster) (string, error) {

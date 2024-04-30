@@ -8,7 +8,9 @@ image:
   tag: ""
 
 managementCluster:
+  baseDomain: domain
   customer: customer
+  insecureCA: false
   name: name
   pipeline: pipeline
   region: region
@@ -16,6 +18,7 @@ managementCluster:
 monitoring:
   enabled: false
   opsgenieApiKey: ""
+  prometheusVersion: ""
 
 operator:
   # -- Configures the resources for the operator deployment
