@@ -8,7 +8,7 @@ require (
 	github.com/onsi/gomega v1.33.1
 	github.com/opsgenie/opsgenie-go-sdk-v2 v1.2.22
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.72.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.73.2
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/common v0.51.1
 	github.com/sirupsen/logrus v1.9.3
