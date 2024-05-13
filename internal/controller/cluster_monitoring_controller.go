@@ -48,8 +48,8 @@ type ClusterMonitoringReconciler struct {
 	heartbeat.HeartbeatRepository
 	// MimirService is the service for managing mimir configuration.
 	mimir.MimirService
-	// MonitoringEnabled defines whether monitoring is enabled at the installation level.
-	MonitoringEnabled bool
+	// MonitoringConfig is the configuration for the monitoring package.
+	MonitoringConfig monitoring.Config
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -84,10 +84,10 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Linting is disabled for the 2 following lines as otherwise it fails with the following error:
 	// "should not use built-in type string as key for value"
-	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name).WithValues("installation", r.ManagementCluster.Name) // nolint
+	logger := log.FromContext(ctx).WithValues("installation", r.ManagementCluster.Name) // nolint
 	ctx = log.IntoContext(ctx, logger)
 
-	if !r.MonitoringEnabled {
+	if !r.MonitoringConfig.Enabled {
 		logger.Info("Monitoring is disabled at the installation level")
 		return ctrl.Result{}, nil
 	}

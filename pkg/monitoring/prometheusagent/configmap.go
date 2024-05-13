@@ -3,6 +3,7 @@ package prometheusagent
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -14,7 +15,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/shards"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
 )
 
 func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
@@ -50,16 +51,27 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		logger.Error(err, "failed to query head series")
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
 	}
-	shards := shards.ComputeShards(currentShards, headSeries)
+
+	clusterShardingStrategy, err := getClusterShardingStrategy(cluster)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	shardingStrategy := sharding.ShardingStrategy{
+		ScaleUpSeriesCount:  pas.MonitoringConfig.ShardingScaleUpSeriesCount,
+		ScaleDownPercentage: pas.MonitoringConfig.ShardingScaleDownPercentage,
+	}.Merge(clusterShardingStrategy)
+
+	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
 	config, err := yaml.Marshal(RemoteWriteConfig{
 		PrometheusAgentConfig: &PrometheusAgentConfig{
 			ExternalLabels: externalLabels,
 			Image: &PrometheusAgentImage{
-				Tag: pas.PrometheusVersion,
+				Tag: pas.MonitoringConfig.PrometheusVersion,
 			},
 			Shards:  shards,
-			Version: pas.PrometheusVersion,
+			Version: pas.MonitoringConfig.PrometheusVersion,
 		},
 	})
 	if err != nil {
@@ -92,6 +104,25 @@ func getServicePriority(cluster *clusterv1.Cluster) string {
 		return servicePriority
 	}
 	return defaultServicePriority
+}
+
+func getClusterShardingStrategy(cluster metav1.Object) (*sharding.ShardingStrategy, error) {
+	var err error
+	var scaleUpSeriesCount, scaleDownPercentage float64
+	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-up-series-count"]; ok {
+		if scaleUpSeriesCount, err = strconv.ParseFloat(value, 64); err != nil {
+			return nil, err
+		}
+	}
+	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-down-percentage"]; ok {
+		if scaleDownPercentage, err = strconv.ParseFloat(value, 64); err != nil {
+			return nil, err
+		}
+	}
+	return &sharding.ShardingStrategy{
+		ScaleUpSeriesCount:  scaleUpSeriesCount,
+		ScaleDownPercentage: scaleDownPercentage,
+	}, nil
 }
 
 func readCurrentShardsFromConfig(configMap corev1.ConfigMap) (int, error) {

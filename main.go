@@ -41,6 +41,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
+	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
@@ -51,19 +52,23 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	metricsAddr                 string
-	enableLeaderElection        bool
-	probeAddr                   string
-	secureMetrics               bool
-	enableHTTP2                 bool
+	metricsAddr          string
+	enableLeaderElection bool
+	probeAddr            string
+	secureMetrics        bool
+	enableHTTP2          bool
+
 	managementClusterBaseDomain string
 	managementClusterCustomer   string
 	managementClusterInsecureCA bool
 	managementClusterName       string
 	managementClusterPipeline   string
 	managementClusterRegion     string
-	monitoringEnabled           bool
-	prometheusVersion           string
+
+	monitoringEnabled                     bool
+	monitoringShardingScaleUpSeriesCount  float64
+	monitoringShardingScaleDownPercentage float64
+	prometheusVersion                     string
 )
 
 const (
@@ -103,6 +108,10 @@ func main() {
 		"The region of the management cluster.")
 	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
+	flag.Float64Var(&monitoringShardingScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
+		"Configures the number of time series needed to add an extra prometheus agent shard.")
+	flag.Float64Var(&monitoringShardingScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
+		"Configures the percentage of removed series to scale down the number of prometheus agent shards.")
 	flag.StringVar(&prometheusVersion, "prometheus-version", "",
 		"The version of Prometheus Agents to deploy.")
 	opts := zap.Options{
@@ -187,13 +196,19 @@ func main() {
 
 	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
 
-	// TODO(atlas): validate prometheus version
+	monitoringConfig := monitoring.Config{
+		Enabled:                     monitoringEnabled,
+		ShardingScaleUpSeriesCount:  monitoringShardingScaleUpSeriesCount,
+		ShardingScaleDownPercentage: monitoringShardingScaleDownPercentage,
+		PrometheusVersion:           prometheusVersion,
+	}
+
 	prometheusAgentService := prometheusagent.PrometheusAgentService{
 		Client:                 mgr.GetClient(),
 		OrganizationRepository: organizationRepository,
 		PasswordManager:        password.SimpleManager{},
 		ManagementCluster:      managementCluster,
-		PrometheusVersion:      prometheusVersion,
+		MonitoringConfig:       monitoringConfig,
 	}
 
 	mimirService := mimir.MimirService{
@@ -208,7 +223,7 @@ func main() {
 		HeartbeatRepository:    heartbeatRepository,
 		PrometheusAgentService: prometheusAgentService,
 		MimirService:           mimirService,
-		MonitoringEnabled:      monitoringEnabled,
+		MonitoringConfig:       monitoringConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
 		os.Exit(1)

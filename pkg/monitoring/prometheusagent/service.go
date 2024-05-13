@@ -15,6 +15,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
+	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
 type PrometheusAgentService struct {
@@ -22,14 +23,14 @@ type PrometheusAgentService struct {
 	organization.OrganizationRepository
 	PasswordManager password.Manager
 	common.ManagementCluster
-	PrometheusVersion string
+	MonitoringConfig monitoring.Config
 }
 
 // ReconcileRemoteWriteConfiguration ensures that the prometheus remote write config is present in the cluster.
 func (pas *PrometheusAgentService) ReconcileRemoteWriteConfiguration(
 	ctx context.Context, cluster *clusterv1.Cluster) error {
 
-	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
+	logger := log.FromContext(ctx)
 	logger.Info("ensuring prometheus agent remote write configmap and secret")
 
 	err := pas.createOrUpdateConfigMap(ctx, cluster, logger)
@@ -140,7 +141,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 func (pas *PrometheusAgentService) DeleteRemoteWriteConfiguration(
 	ctx context.Context, cluster *clusterv1.Cluster) error {
 
-	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
+	logger := log.FromContext(ctx)
 	logger.Info("deleting prometheus agent remote write configmap and secret")
 
 	err := pas.deleteConfigMap(ctx, cluster)

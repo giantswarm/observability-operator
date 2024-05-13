@@ -19,6 +19,9 @@ monitoring:
   enabled: false
   opsgenieApiKey: ""
   prometheusVersion: ""
+  sharding:
+    scaleUpSeriesCount: 1000000
+    scaleDownPercentage: 0.20
 
 operator:
   # -- Configures the resources for the operator deployment
