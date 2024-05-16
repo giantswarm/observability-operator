@@ -32,6 +32,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
@@ -44,6 +45,8 @@ type ClusterMonitoringReconciler struct {
 	prometheusagent.PrometheusAgentService
 	// HeartbeatRepository is the repository for managing heartbeats.
 	heartbeat.HeartbeatRepository
+	// MimirService is the repository for managing mimir config.
+	mimir.MimirService
 	// MonitoringEnabled defines whether monitoring is enabled at the installation level.
 	MonitoringEnabled bool
 }
@@ -124,6 +127,12 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 	}
 
+	err = r.MimirService.ReconcileMimirConfig(ctx, r.ManagementCluster.Name)
+	if err != nil {
+		logger.Error(err, "failed to create or updatemimir config")
+		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -140,6 +149,12 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 
 		err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
+		if err != nil {
+			logger.Error(err, "failed to delete prometheus agent remote write config")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+		}
+
+		err = r.MimirService.DeleteIngressSecret(ctx)
 		if err != nil {
 			logger.Error(err, "failed to delete prometheus agent remote write config")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)

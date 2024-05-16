@@ -103,6 +103,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
 		Namespace: cluster.GetNamespace(),
 	}
+	mimirEnabled := isMimirEnabled(ctx)
 
 	current := &corev1.Secret{}
 	// Get the current secret if it exists.
@@ -116,7 +117,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		}
 		logger.Info("generated password for the prometheus agent")
 
-		secret, err := pas.buildRemoteWriteSecret(cluster, password)
+		secret, err := pas.buildRemoteWriteSecret(cluster, password, mimirEnabled)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -128,7 +129,6 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 	} else if err != nil {
 		return errors.WithStack(err)
 	}
-
 	// As it takes a long time to apply the new password to the agent due to a built-in delay in the app-platform,
 	// we keep the already generated remote write password.
 	password, err := readRemoteWritePasswordFromSecret(*current)
@@ -136,7 +136,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	desired, err := pas.buildRemoteWriteSecret(cluster, password)
+	desired, err := pas.buildRemoteWriteSecret(cluster, password, mimirEnabled)
 	if err != nil {
 		return errors.WithStack(err)
 	}

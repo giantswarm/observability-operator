@@ -13,8 +13,7 @@ const (
 	// servicePriorityLabel is the label used to determine the priority of a service.
 	servicePriorityLabel string = "giantswarm.io/service-priority"
 
-	remoteWriteEndpointTemplateURL = "https://prometheus.%s/%s/api/v1/write"
-	remoteWriteName                = "prometheus-meta-operator"
+	remoteWriteEndpointTemplateURL = "https://%s.%s/%s/api/v1/%s"
 )
 
 type RemoteWriteConfig struct {

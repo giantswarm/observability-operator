@@ -19,9 +19,18 @@ func getPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string 
 
 // buildRemoteWriteSecret builds the secret that contains the remote write configuration for the Prometheus agent.
 func (pas PrometheusAgentService) buildRemoteWriteSecret(
-	cluster *clusterv1.Cluster, password string) (*corev1.Secret, error) {
+	cluster *clusterv1.Cluster, password string, mimirEnabled bool) (*corev1.Secret, error) {
+	var url string
+	var remoteWriteName string
 
-	url := fmt.Sprintf(remoteWriteEndpointTemplateURL, pas.ManagementCluster.BaseDomain, cluster.Name)
+	if mimirEnabled {
+		url = fmt.Sprintf(remoteWriteEndpointTemplateURL, "mimir", pas.ManagementCluster.BaseDomain, cluster.Name, "push")
+		remoteWriteName = "mimir"
+	} else {
+		url = fmt.Sprintf(remoteWriteEndpointTemplateURL, "prometheus", pas.ManagementCluster.BaseDomain, cluster.Name, "write")
+		remoteWriteName = "prometheus-meta-operator"
+	}
+
 	config := RemoteWriteConfig{
 		PrometheusAgentConfig: &PrometheusAgentConfig{
 			RemoteWrite: []*RemoteWrite{
