@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/ingress"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -49,7 +50,7 @@ func (ms *MimirService) CreateOrUpdateIngressSecret(ctx context.Context, mc stri
 			return errors.WithStack(err)
 		}
 
-		secret, err := BuildIngressSecret(mc, password)
+		secret, err := ingress.BuildIngressSecret(mc, password)
 		if err != nil {
 			return errors.WithStack(err)
 		}
