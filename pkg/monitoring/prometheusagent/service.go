@@ -131,7 +131,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 	}
 	// As it takes a long time to apply the new password to the agent due to a built-in delay in the app-platform,
 	// we keep the already generated remote write password.
-	password, err := readRemoteWritePasswordFromSecret(*current)
+	password, err := readRemoteWritePasswordFromSecret(*current, mimirEnabled)
 	if err != nil {
 		return errors.WithStack(err)
 	}

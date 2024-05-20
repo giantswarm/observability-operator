@@ -56,7 +56,7 @@ func GetMimirIngressPassword(ctx context.Context, mc string) (string, error) {
 		return "", err
 	}
 
-	mimirPassword, err := readRemoteWritePasswordFromSecret(*secret)
+	mimirPassword, err := readRemoteWritePasswordFromSecret(*secret, true)
 
 	return mimirPassword, err
 }

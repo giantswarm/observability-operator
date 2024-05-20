@@ -77,11 +77,19 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(
 	}, nil
 }
 
-func readRemoteWritePasswordFromSecret(secret corev1.Secret) (string, error) {
+func readRemoteWritePasswordFromSecret(secret corev1.Secret, mimirEnabled bool) (string, error) {
 	remoteWriteConfig := RemoteWriteConfig{}
 	err := yaml.Unmarshal(secret.Data["values"], &remoteWriteConfig)
 	if err != nil {
 		return "", errors.WithStack(err)
+	}
+
+	var remoteWriteName string
+
+	if mimirEnabled {
+		remoteWriteName = "mimir"
+	} else {
+		remoteWriteName = "prometheus-meta-operator"
 	}
 
 	for _, rw := range remoteWriteConfig.PrometheusAgentConfig.RemoteWrite {
