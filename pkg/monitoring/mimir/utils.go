@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
 func GetMimirIngressPassword(ctx context.Context, mc string) (string, error) {

@@ -3,8 +3,6 @@ package mimir
 import (
 	"context"
 
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/ingress"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -12,6 +10,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/ingress"
 )
 
 type MimirService struct {
