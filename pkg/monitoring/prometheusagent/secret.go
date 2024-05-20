@@ -13,23 +13,16 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
+const remoteWriteName = "mimir"
+
 func getPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string {
 	return fmt.Sprintf("%s-remote-write-secret", cluster.Name)
 }
 
 // buildRemoteWriteSecret builds the secret that contains the remote write configuration for the Prometheus agent.
 func (pas PrometheusAgentService) buildRemoteWriteSecret(
-	cluster *clusterv1.Cluster, password string, mimirEnabled bool) (*corev1.Secret, error) {
-	var url string
-	var remoteWriteName string
-
-	if mimirEnabled {
-		url = fmt.Sprintf(remoteWriteEndpointTemplateURL, "mimir", pas.ManagementCluster.BaseDomain, cluster.Name, "push")
-		remoteWriteName = "mimir"
-	} else {
-		url = fmt.Sprintf(remoteWriteEndpointTemplateURL, "prometheus", pas.ManagementCluster.BaseDomain, cluster.Name, "write")
-		remoteWriteName = "prometheus-meta-operator"
-	}
+	cluster *clusterv1.Cluster, password string) (*corev1.Secret, error) {
+	url := fmt.Sprintf(remoteWriteEndpointTemplateURL, pas.ManagementCluster.BaseDomain, cluster.Name)
 
 	config := RemoteWriteConfig{
 		PrometheusAgentConfig: &PrometheusAgentConfig{
@@ -77,19 +70,11 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(
 	}, nil
 }
 
-func readRemoteWritePasswordFromSecret(secret corev1.Secret, mimirEnabled bool) (string, error) {
+func ReadRemoteWritePasswordFromSecret(secret corev1.Secret) (string, error) {
 	remoteWriteConfig := RemoteWriteConfig{}
 	err := yaml.Unmarshal(secret.Data["values"], &remoteWriteConfig)
 	if err != nil {
 		return "", errors.WithStack(err)
-	}
-
-	var remoteWriteName string
-
-	if mimirEnabled {
-		remoteWriteName = "mimir"
-	} else {
-		remoteWriteName = "prometheus-meta-operator"
 	}
 
 	for _, rw := range remoteWriteConfig.PrometheusAgentConfig.RemoteWrite {

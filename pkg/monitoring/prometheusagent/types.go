@@ -13,7 +13,7 @@ const (
 	// servicePriorityLabel is the label used to determine the priority of a service.
 	servicePriorityLabel string = "giantswarm.io/service-priority"
 
-	remoteWriteEndpointTemplateURL = "https://%s.%s/%s/api/v1/%s"
+	remoteWriteEndpointTemplateURL = "https://mimir.%s/%s/api/v1/push"
 )
 
 type RemoteWriteConfig struct {

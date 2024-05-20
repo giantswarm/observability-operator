@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
 // Checks whether Mimir is enabled in the cluster by listing the pods in the Mimir namespace.
@@ -56,7 +55,7 @@ func GetMimirIngressPassword(ctx context.Context, mc string) (string, error) {
 		return "", err
 	}
 
-	mimirPassword, err := readRemoteWritePasswordFromSecret(*secret, true)
+	mimirPassword, err := prometheusagent.ReadRemoteWritePasswordFromSecret(*secret)
 
 	return mimirPassword, err
 }

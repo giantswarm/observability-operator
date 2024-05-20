@@ -49,7 +49,7 @@ func (ms *MimirService) CreateOrUpdateIngressSecret(ctx context.Context, mc stri
 			return errors.WithStack(err)
 		}
 
-		secret, err := ms.BuildIngressSecret(mc, password)
+		secret, err := BuildIngressSecret(mc, password)
 		if err != nil {
 			return errors.WithStack(err)
 		}
