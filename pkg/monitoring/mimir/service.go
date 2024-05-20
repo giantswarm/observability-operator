@@ -21,7 +21,7 @@ func (ms *MimirService) ReconcileMimirConfig(ctx context.Context, mc string) err
 	logger := log.FromContext(ctx).WithValues("cluster", mc)
 	logger.Info("ensuring mimir config")
 
-	err := ms.createOrUpdateIngressSecret(ctx, mc, logger)
+	err := ms.CreateOrUpdateIngressSecret(ctx, mc, logger)
 	if err != nil {
 		logger.Error(err, "failed to create or update mimir config")
 		return errors.WithStack(err)
@@ -32,7 +32,7 @@ func (ms *MimirService) ReconcileMimirConfig(ctx context.Context, mc string) err
 	return nil
 }
 
-func (ms *MimirService) createOrUpdateIngressSecret(ctx context.Context, mc string, logger logr.Logger) error {
+func (ms *MimirService) CreateOrUpdateIngressSecret(ctx context.Context, mc string, logger logr.Logger) error {
 	objectKey := client.ObjectKey{
 		Name:      "mimir-gateway-ingress",
 		Namespace: "mimir",
@@ -44,12 +44,12 @@ func (ms *MimirService) createOrUpdateIngressSecret(ctx context.Context, mc stri
 		// CREATE SECRET
 		logger.Info("building ingress secret")
 
-		password, err := getMimirIngressPassword(ctx, mc)
+		password, err := GetMimirIngressPassword(ctx, mc)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		secret, err := ms.buildIngressSecret(mc, password)
+		secret, err := ms.BuildIngressSecret(mc, password)
 		if err != nil {
 			return errors.WithStack(err)
 		}

@@ -103,7 +103,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
 		Namespace: cluster.GetNamespace(),
 	}
-	mimirEnabled := isMimirEnabled(ctx)
+	mimirEnabled := IsMimirEnabled(ctx)
 
 	current := &corev1.Secret{}
 	// Get the current secret if it exists.

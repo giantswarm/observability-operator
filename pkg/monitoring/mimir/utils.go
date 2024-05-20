@@ -13,7 +13,7 @@ import (
 )
 
 // Checks whether Mimir is enabled in the cluster by listing the pods in the Mimir namespace.
-func isMimirEnabled(ctx context.Context) bool {
+func IsMimirEnabled(ctx context.Context) bool {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -35,7 +35,7 @@ func isMimirEnabled(ctx context.Context) bool {
 	return len(mimirPods.Items) > 0
 }
 
-func getMimirIngressPassword(ctx context.Context, mc string) (string, error) {
+func GetMimirIngressPassword(ctx context.Context, mc string) (string, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return "", err

@@ -10,7 +10,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 )
 
-func (ms *MimirService) buildIngressSecret(username string, password string) (*corev1.Secret, error) {
+func (ms *MimirService) BuildIngressSecret(username string, password string) (*corev1.Secret, error) {
 	// Uses htpasswd to generate the password hash.
 	secretData, err := exec.Command("htpasswd", "-bn", username, password).Output()
 	if err != nil {
