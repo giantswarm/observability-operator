@@ -42,6 +42,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 	//+kubebuilder:scaffold:imports
 )
@@ -195,11 +196,16 @@ func main() {
 		PrometheusVersion:      prometheusVersion,
 	}
 
+	mimirService := mimir.MimirService{
+		Client: mgr.GetClient(),
+	}
+
 	if err = (&controller.ClusterMonitoringReconciler{
 		Client:                 mgr.GetClient(),
 		ManagementCluster:      managementCluster,
 		HeartbeatRepository:    heartbeatRepository,
 		PrometheusAgentService: prometheusAgentService,
+		MimirService:           mimirService,
 		MonitoringEnabled:      monitoringEnabled,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Cluster")

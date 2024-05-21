@@ -31,7 +31,7 @@ func GetMimirIngressPassword(ctx context.Context, mc string) (string, error) {
 
 	err = c.Get(ctx, client.ObjectKey{
 		Name:      fmt.Sprintf("%s-remote-write-secret", mc),
-		Namespace: "org-gintswarm",
+		Namespace: "org-giantswarm",
 	}, secret)
 	if err != nil {
 		return "", err

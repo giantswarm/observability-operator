@@ -2,6 +2,7 @@ package mimir
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -23,7 +24,7 @@ func (ms *MimirService) ConfigureMimir(ctx context.Context, mc string) error {
 	logger := log.FromContext(ctx).WithValues("cluster", mc)
 	logger.Info("ensuring mimir config")
 
-	err := ms.CreateOrUpdateIngressSecret(ctx, mc, logger)
+	err := ms.CreateIngressSecret(ctx, mc, logger)
 	if err != nil {
 		logger.Error(err, "failed to create or update mimir config")
 		return errors.WithStack(err)
@@ -34,7 +35,7 @@ func (ms *MimirService) ConfigureMimir(ctx context.Context, mc string) error {
 	return nil
 }
 
-func (ms *MimirService) CreateOrUpdateIngressSecret(ctx context.Context, mc string, logger logr.Logger) error {
+func (ms *MimirService) CreateIngressSecret(ctx context.Context, mc string, logger logr.Logger) error {
 	objectKey := client.ObjectKey{
 		Name:      ingressSecretName,
 		Namespace: ingressSecretNamespace,
@@ -67,23 +68,6 @@ func (ms *MimirService) CreateOrUpdateIngressSecret(ctx context.Context, mc stri
 		return errors.WithStack(err)
 	}
 
-	// UPDATE SECRET
-	/* password, err := readRemoteWritePasswordFromSecret(*current)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	desired, err := pas.buildRemoteWriteSecret(cluster, password, mimirEnabled)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if !reflect.DeepEqual(current.Data, desired.Data) || !reflect.DeepEqual(current.Finalizers, desired.Finalizers) {
-		err = pas.Client.Update(ctx, desired)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-	} */
-
 	return nil
 }
 
@@ -94,11 +78,13 @@ func (ms *MimirService) DeleteIngressSecret(ctx context.Context) error {
 	}
 	current := &corev1.Secret{}
 	// Get the current secret if it exists.
+	fmt.Println("GETTING SECRET")
 	err := ms.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
 		return nil
 	} else if err != nil {
+		fmt.Println("ERROR FINDING SECRET")
 		return errors.WithStack(err)
 	}
 
@@ -107,11 +93,13 @@ func (ms *MimirService) DeleteIngressSecret(ctx context.Context) error {
 	controllerutil.RemoveFinalizer(desired, monitoring.MonitoringFinalizer)
 	err = ms.Client.Patch(ctx, current, client.MergeFrom(desired))
 	if err != nil {
+		fmt.Println("ERROR REMOVING FINALIZER")
 		return errors.WithStack(err)
 	}
 
 	err = ms.Client.Delete(ctx, desired)
 	if err != nil {
+		fmt.Println("ERROR DELETING SECRET")
 		return errors.WithStack(err)
 	}
 
