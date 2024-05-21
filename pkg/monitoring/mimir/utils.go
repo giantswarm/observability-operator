@@ -11,6 +11,11 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
+const (
+	ingressSecretName      = "mimir-gateway-ingress"
+	ingressSecretNamespace = "mimir"
+)
+
 func GetMimirIngressPassword(ctx context.Context, mc string) (string, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {

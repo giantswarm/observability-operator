@@ -45,7 +45,7 @@ type ClusterMonitoringReconciler struct {
 	prometheusagent.PrometheusAgentService
 	// HeartbeatRepository is the repository for managing heartbeats.
 	heartbeat.HeartbeatRepository
-	// MimirService is the repository for managing mimir config.
+	// MimirService is the service for managing mimir configuration.
 	mimir.MimirService
 	// MonitoringEnabled defines whether monitoring is enabled at the installation level.
 	MonitoringEnabled bool
@@ -127,9 +127,9 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 	}
 
-	err = r.MimirService.ReconcileMimirConfig(ctx, r.ManagementCluster.Name)
+	err = r.MimirService.ConfigureMimir(ctx, r.ManagementCluster.Name)
 	if err != nil {
-		logger.Error(err, "failed to create or updatemimir config")
+		logger.Error(err, "failed to configure mimir")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 	}
 
@@ -156,7 +156,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		err = r.MimirService.DeleteIngressSecret(ctx)
 		if err != nil {
-			logger.Error(err, "failed to delete prometheus agent remote write config")
+			logger.Error(err, "failed to delete mimir ingress secret")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 		}
 

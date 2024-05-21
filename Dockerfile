@@ -23,8 +23,7 @@ COPY internal/controller/ internal/controller/
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager main.go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
+# Use alpine to have the smallest image possible while being able to use a required package for the code 
 FROM alpine:3.19.1
 RUN apk add --no-cache ca-certificates
 RUN apk add apache2-utils

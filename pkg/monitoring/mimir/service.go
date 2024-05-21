@@ -19,12 +19,7 @@ type MimirService struct {
 	client.Client
 }
 
-const (
-	ingressSecretName      = "mimir-gateway-ingress"
-	ingressSecretNamespace = "mimir"
-)
-
-func (ms *MimirService) ReconcileMimirConfig(ctx context.Context, mc string) error {
+func (ms *MimirService) ConfigureMimir(ctx context.Context, mc string) error {
 	logger := log.FromContext(ctx).WithValues("cluster", mc)
 	logger.Info("ensuring mimir config")
 
