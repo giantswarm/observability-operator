@@ -19,6 +19,11 @@ type MimirService struct {
 	client.Client
 }
 
+const (
+	ingressSecretName      = "mimir-gateway-ingress"
+	ingressSecretNamespace = "mimir"
+)
+
 func (ms *MimirService) ReconcileMimirConfig(ctx context.Context, mc string) error {
 	logger := log.FromContext(ctx).WithValues("cluster", mc)
 	logger.Info("ensuring mimir config")
@@ -36,8 +41,8 @@ func (ms *MimirService) ReconcileMimirConfig(ctx context.Context, mc string) err
 
 func (ms *MimirService) CreateOrUpdateIngressSecret(ctx context.Context, mc string, logger logr.Logger) error {
 	objectKey := client.ObjectKey{
-		Name:      "mimir-gateway-ingress",
-		Namespace: "mimir",
+		Name:      ingressSecretName,
+		Namespace: ingressSecretNamespace,
 	}
 
 	current := &corev1.Secret{}
@@ -89,8 +94,8 @@ func (ms *MimirService) CreateOrUpdateIngressSecret(ctx context.Context, mc stri
 
 func (ms *MimirService) DeleteIngressSecret(ctx context.Context) error {
 	objectKey := client.ObjectKey{
-		Name:      "mimir-gateway-ingress",
-		Namespace: "mimir",
+		Name:      ingressSecretName,
+		Namespace: ingressSecretNamespace,
 	}
 	current := &corev1.Secret{}
 	// Get the current secret if it exists.
