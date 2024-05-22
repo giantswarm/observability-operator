@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	mimirSpecificSecretName      = "mimir-basic-auth"
-	mimirSpecificSecretNamespace = "mimir"
-	remoteWriteName              = "mimir"
+	authSecretName      = "mimir-basic-auth"
+	authSecretNamespace = "mimir"
+	remoteWriteName     = "mimir"
 )
 
 func GetMimirIngressPassword(ctx context.Context) (string, error) {
@@ -37,8 +37,8 @@ func GetMimirIngressPassword(ctx context.Context) (string, error) {
 	secret := &corev1.Secret{}
 
 	err = c.Get(ctx, client.ObjectKey{
-		Name:      mimirSpecificSecretName,
-		Namespace: mimirSpecificSecretNamespace,
+		Name:      authSecretName,
+		Namespace: authSecretNamespace,
 	}, secret)
 	if err != nil {
 		return "", err

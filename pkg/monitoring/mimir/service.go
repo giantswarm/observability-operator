@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	ingressSecretName            = "mimir-gateway-ingress"
-	ingressSecretNamespace       = "mimir"
+	authSecretName               = "mimir-gateway-ingress"
+	authSecretNamespace          = "mimir"
 	mimirSpecificSecretName      = "mimir-basic-auth"
 	mimirSpecificSecretNamespace = "mimir"
 )
@@ -93,8 +93,8 @@ func (ms *MimirService) CreateAuthSecret(ctx context.Context, logger logr.Logger
 
 func (ms *MimirService) CreateIngressSecret(ctx context.Context, mc string, logger logr.Logger) error {
 	objectKey := client.ObjectKey{
-		Name:      ingressSecretName,
-		Namespace: ingressSecretNamespace,
+		Name:      authSecretName,
+		Namespace: authSecretNamespace,
 	}
 
 	current := &corev1.Secret{}
@@ -113,7 +113,7 @@ func (ms *MimirService) CreateIngressSecret(ctx context.Context, mc string, logg
 			return errors.WithStack(err)
 		}
 
-		secret, err := ms.SecretManager.GenerateGenericSecret(ingressSecretName, ingressSecretNamespace, "auth", htpasswd)
+		secret, err := ms.SecretManager.GenerateGenericSecret(authSecretName, authSecretNamespace, "auth", htpasswd)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -135,8 +135,8 @@ func (ms *MimirService) CreateIngressSecret(ctx context.Context, mc string, logg
 
 func (ms *MimirService) DeleteIngressSecret(ctx context.Context) error {
 	objectKey := client.ObjectKey{
-		Name:      ingressSecretName,
-		Namespace: ingressSecretNamespace,
+		Name:      authSecretName,
+		Namespace: authSecretNamespace,
 	}
 	current := &corev1.Secret{}
 	// Get the current secret if it exists.
