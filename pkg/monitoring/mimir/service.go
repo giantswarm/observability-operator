@@ -2,7 +2,6 @@ package mimir
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -140,13 +139,11 @@ func (ms *MimirService) DeleteIngressSecret(ctx context.Context) error {
 	}
 	current := &corev1.Secret{}
 	// Get the current secret if it exists.
-	fmt.Println("GETTING SECRET")
 	err := ms.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
 		return nil
 	} else if err != nil {
-		fmt.Println("ERROR FINDING SECRET")
 		return errors.WithStack(err)
 	}
 
@@ -160,7 +157,6 @@ func (ms *MimirService) DeleteIngressSecret(ctx context.Context) error {
 
 	err = ms.Client.Delete(ctx, desired)
 	if err != nil {
-		fmt.Println("ERROR DELETING SECRET")
 		return errors.WithStack(err)
 	}
 
