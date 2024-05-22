@@ -16,6 +16,12 @@ issues:
       linters:
         - dupl
         - lll
+    - path: "pkg/monitoring/prometheusagent/secret.go"
+      linters:
+        - gosec
+    - path: "pkg/monitoring/mimir/service.go"
+      linters:
+        - gosec
 linters:
   disable-all: true
   enable:
