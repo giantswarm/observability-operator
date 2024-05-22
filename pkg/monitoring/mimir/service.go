@@ -107,7 +107,7 @@ func (ms *MimirService) CreateIngressSecret(ctx context.Context, mc string, logg
 			return errors.WithStack(err)
 		}
 
-		htpasswd, err := ms.PasswordManager.GenerateHtpasswd("whatever", password)
+		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(mc, password)
 		if err != nil {
 			return errors.WithStack(err)
 		}
