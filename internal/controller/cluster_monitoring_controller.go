@@ -120,16 +120,16 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 	}
 
-	// Create or update PrometheusAgent remote write configuration.
-	err := r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
+	err := r.MimirService.ConfigureMimir(ctx, r.ManagementCluster.Name)
 	if err != nil {
-		logger.Error(err, "failed to create or update prometheus agent remote write config")
+		logger.Error(err, "failed to configure mimir")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 	}
 
-	err = r.MimirService.ConfigureMimir(ctx, r.ManagementCluster.Name)
+	// Create or update PrometheusAgent remote write configuration.
+	err = r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
 	if err != nil {
-		logger.Error(err, "failed to configure mimir")
+		logger.Error(err, "failed to create or update prometheus agent remote write config")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 	}
 
@@ -148,15 +148,15 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			}
 		}
 
-		err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
+		err := r.MimirService.DeleteIngressSecret(ctx)
 		if err != nil {
-			logger.Error(err, "failed to delete prometheus agent remote write config")
+			logger.Error(err, "failed to delete mimir ingress secret")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 		}
 
-		err = r.MimirService.DeleteIngressSecret(ctx)
+		err = r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 		if err != nil {
-			logger.Error(err, "failed to delete mimir ingress secret")
+			logger.Error(err, "failed to delete prometheus agent remote write config")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 		}
 

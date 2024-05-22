@@ -41,6 +41,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
+	"github.com/giantswarm/observability-operator/pkg/common/secret"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
@@ -197,7 +198,9 @@ func main() {
 	}
 
 	mimirService := mimir.MimirService{
-		Client: mgr.GetClient(),
+		Client:          mgr.GetClient(),
+		PasswordManager: password.SimpleManager{},
+		SecretManager:   secret.SimpleManager{},
 	}
 
 	if err = (&controller.ClusterMonitoringReconciler{
