@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"os/exec"
+	"strings"
 )
 
 type Manager interface {
@@ -27,5 +28,6 @@ func (m SimpleManager) GenerateHtpasswd(username string, password string) (strin
 	if err != nil {
 		return "", err
 	}
-	return string(htpasswd), nil
+	formattedHtpasswd := strings.TrimSpace(string(htpasswd))
+	return formattedHtpasswd, nil
 }
