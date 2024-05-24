@@ -11,6 +11,13 @@ import (
 	"github.com/prometheus/common/model"
 )
 
+var (
+	ErrorNoTimeSeries                 = errors.New("no time series found")
+	ErrorFailedToConvertValueToVector = errors.New("failed to convert value to vector")
+	ErrorMoreThanOneTimeSeriesFound   = errors.New("more than one time series found")
+	ErrorFailedToGetTimeSeries        = errors.New("failed to get time series")
+)
+
 // QueryTSDBHeadSeries performs an instant query against Mimir.
 func QueryTSDBHeadSeries(ctx context.Context, clusterName string) (float64, error) {
 	config := api.Config{
@@ -38,16 +45,16 @@ func QueryTSDBHeadSeries(ctx context.Context, clusterName string) (float64, erro
 	case model.ValVector:
 		vector, ok := val.(model.Vector)
 		if !ok {
-			return 0, errors.New("failed to convert value to vector")
+			return 0, ErrorFailedToConvertValueToVector
 		}
 		if len(vector) == 0 {
-			return 0, errors.New("no time series found")
+			return 0, ErrorNoTimeSeries
 		}
 		if len(vector) > 1 {
-			return 0, errors.New("more than one time series found")
+			return 0, ErrorMoreThanOneTimeSeriesFound
 		}
 		return float64(vector[0].Value), nil
 	default:
-		return 0, errors.New("failed to get current number of time series")
+		return 0, ErrorFailedToGetTimeSeries
 	}
 }
