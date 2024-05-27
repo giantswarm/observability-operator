@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add support for mimir in remoteWrite secret creation.
 - Add mimir ingress secret for basic auth creation.
 
+## [0.0.3] - 2024-05-24
+
+### Changed
+
+- Manage prometheus-agent configs
+
 ## [0.0.2] - 2024-04-08
 
 ### Fixed
@@ -24,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/giantswarm/observability-operator/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/giantswarm/observability-operator/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/giantswarm/observability-operator/releases/tag/v0.0.1

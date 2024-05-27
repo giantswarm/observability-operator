@@ -99,9 +99,10 @@ func getServicePriority(cluster *clusterv1.Cluster) string {
 func getShardsCountForCluster(ctx context.Context, cluster *clusterv1.Cluster, currentShardCount int) (int, error) {
 	headSeries, err := querier.QueryTSDBHeadSeries(ctx, cluster.Name)
 	if err != nil {
-		// Verify that Prometheus is accessible. If not, return the default number of shards.
+		// If Prometheus is not accessible (DNSError), or if we don't have any data yet (ErrNoTimeSeries)
+		// Then, return the default number of shards.
 		var dnsError *net.DNSError
-		if errors.As(err, &dnsError) {
+		if errors.As(err, &dnsError) || errors.Is(err, querier.ErrorNoTimeSeries) {
 			return shards.ComputeShards(currentShardCount, defaultShards), nil
 		}
 		return 0, errors.WithStack(err)
