@@ -178,9 +178,9 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 		Name:      getPrometheusAgentRemoteWriteConfigName(cluster),
 		Namespace: cluster.GetNamespace(),
 	}
-	current := &corev1.ConfigMap{}
+	configMap := &corev1.ConfigMap{}
 	// Get the current configmap if it exists.
-	err := pas.Client.Get(ctx, objectKey, current)
+	err := pas.Client.Get(ctx, objectKey, configMap)
 	if apierrors.IsNotFound(err) {
 		// Ignore cases where the configmap is not found (if it was manually deleted, for instance).
 		return nil
@@ -189,14 +189,13 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 	}
 
 	// Delete the finalizer
-	desired := current.DeepCopy()
-	controllerutil.RemoveFinalizer(desired, monitoring.MonitoringFinalizer)
-	err = pas.Client.Patch(ctx, desired, client.MergeFrom(current))
+	controllerutil.RemoveFinalizer(configMap, monitoring.MonitoringFinalizer)
+	err = pas.Client.Update(ctx, configMap)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = pas.Client.Delete(ctx, desired)
+	err = pas.Client.Delete(ctx, configMap)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -208,9 +207,9 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 		Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
 		Namespace: cluster.GetNamespace(),
 	}
-	current := &corev1.Secret{}
+	secret := &corev1.Secret{}
 	// Get the current secret if it exists.
-	err := pas.Client.Get(ctx, objectKey, current)
+	err := pas.Client.Get(ctx, objectKey, secret)
 	if apierrors.IsNotFound(err) {
 		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
 		return nil
@@ -219,14 +218,13 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 	}
 
 	// Delete the finalizer
-	desired := current.DeepCopy()
-	controllerutil.RemoveFinalizer(desired, monitoring.MonitoringFinalizer)
-	err = pas.Client.Patch(ctx, current, client.MergeFrom(desired))
+	controllerutil.RemoveFinalizer(secret, monitoring.MonitoringFinalizer)
+	err = pas.Client.Update(ctx, secret)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = pas.Client.Delete(ctx, desired)
+	err = pas.Client.Delete(ctx, secret)
 	if err != nil {
 		return errors.WithStack(err)
 	}
