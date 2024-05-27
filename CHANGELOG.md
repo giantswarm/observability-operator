@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix mimir heartbeat priority.
+
 ### Changed
 
 - Do nothing if mimir is disabled to avoid deleting prometheus-meta-operator managed resources.
