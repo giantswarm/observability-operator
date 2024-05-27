@@ -178,9 +178,9 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 		Name:      getPrometheusAgentRemoteWriteConfigName(cluster),
 		Namespace: cluster.GetNamespace(),
 	}
-	configMap := &corev1.ConfigMap{}
+	current := &corev1.ConfigMap{}
 	// Get the current configmap if it exists.
-	err := pas.Client.Get(ctx, objectKey, configMap)
+	err := pas.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		// Ignore cases where the configmap is not found (if it was manually deleted, for instance).
 		return nil
@@ -188,14 +188,15 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 		return errors.WithStack(err)
 	}
 
-	// Delete the finalizer
-	controllerutil.RemoveFinalizer(configMap, monitoring.MonitoringFinalizer)
-	err = pas.Client.Update(ctx, configMap)
+	err = pas.Client.Delete(ctx, current)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = pas.Client.Delete(ctx, configMap)
+	// Delete the finalizer
+	desired := current.DeepCopy()
+	controllerutil.RemoveFinalizer(desired, monitoring.MonitoringFinalizer)
+	err = pas.Client.Patch(ctx, desired, client.MergeFrom(current))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -207,9 +208,10 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 		Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
 		Namespace: cluster.GetNamespace(),
 	}
-	secret := &corev1.Secret{}
+
+	current := &corev1.Secret{}
 	// Get the current secret if it exists.
-	err := pas.Client.Get(ctx, objectKey, secret)
+	err := pas.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
 		return nil
@@ -217,16 +219,18 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 		return errors.WithStack(err)
 	}
 
-	// Delete the finalizer
-	controllerutil.RemoveFinalizer(secret, monitoring.MonitoringFinalizer)
-	err = pas.Client.Update(ctx, secret)
+	err = pas.Client.Delete(ctx, current)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = pas.Client.Delete(ctx, secret)
+	// Delete the finalizer
+	desired := current.DeepCopy()
+	controllerutil.RemoveFinalizer(desired, monitoring.MonitoringFinalizer)
+	err = pas.Client.Patch(ctx, current, client.MergeFrom(desired))
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
 	return nil
 }
