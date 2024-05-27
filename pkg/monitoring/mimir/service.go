@@ -2,6 +2,7 @@ package mimir
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -106,6 +107,7 @@ func (ms *MimirService) CreateIngressSecret(ctx context.Context, mc string, logg
 		if err != nil {
 			return errors.WithStack(err)
 		}
+		fmt.Printf("PASSWORD : %s\n", password)
 
 		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(mc, password)
 		if err != nil {
