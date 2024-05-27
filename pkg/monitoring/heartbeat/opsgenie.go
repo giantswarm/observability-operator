@@ -58,7 +58,7 @@ func (r OpsgenieHeartbeatRepository) makeHeartbeat() *heartbeat.Heartbeat {
 			Name: "alerts_router_team",
 		},
 		AlertTags:     tags,
-		AlertPriority: "P1",
+		AlertPriority: "P3",
 		AlertMessage:  fmt.Sprintf("Heartbeat [%s] is expired.", r.ManagementCluster.Name),
 	}
 }

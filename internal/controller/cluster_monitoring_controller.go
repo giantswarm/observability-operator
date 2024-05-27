@@ -83,8 +83,13 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	if !r.MonitoringEnabled {
+		logger.Info("Monitoring is disabled at the installation level")
+		return ctrl.Result{}, nil
+	}
+
 	// Handle deletion reconciliation loop.
-	if !cluster.ObjectMeta.DeletionTimestamp.IsZero() || !r.MonitoringEnabled {
+	if !cluster.ObjectMeta.DeletionTimestamp.IsZero() {
 		logger.Info("Handling deletion for Cluster", "cluster", cluster.Name)
 		return r.reconcileDelete(ctx, cluster)
 	}
@@ -173,6 +178,5 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 		logger.Info("removed finalizer", "finalizer", monitoring.MonitoringFinalizer)
 	}
-	controllerutil.RemoveFinalizer(cluster, monitoring.MonitoringFinalizer)
 	return ctrl.Result{}, nil
 }
