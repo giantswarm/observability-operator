@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2024-05-28
+
 ### Changed
 
 - Do nothing if mimir is disabled to avoid deleting prometheus-meta-operator managed resources.
@@ -37,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/giantswarm/observability-operator/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/giantswarm/observability-operator/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/giantswarm/observability-operator/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/giantswarm/observability-operator/releases/tag/v0.0.1
