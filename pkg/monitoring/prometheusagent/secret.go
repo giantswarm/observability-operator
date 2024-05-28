@@ -9,8 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/yaml"
-
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
 func getPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string {
@@ -57,9 +55,6 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
 			Namespace: cluster.Namespace,
-			Finalizers: []string{
-				monitoring.MonitoringFinalizer,
-			},
 		},
 		Data: map[string][]byte{
 			"values": marshalledValues,

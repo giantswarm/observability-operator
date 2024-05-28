@@ -7,13 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Do nothing if mimir is disabled to avoid deleting prometheus-meta-operator managed resources.
+
 ### Fixed
 
 - Fix mimir heartbeat priority.
 
-### Changed
+### Removed
 
-- Do nothing if mimir is disabled to avoid deleting prometheus-meta-operator managed resources.
+- Finalizer on operator managed resources (configmap and secrets) as no other operator is touching them.
 
 ## [0.0.3] - 2024-05-24
 

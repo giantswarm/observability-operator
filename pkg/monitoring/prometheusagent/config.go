@@ -13,7 +13,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/shards"
 )
@@ -74,9 +73,6 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getPrometheusAgentRemoteWriteConfigName(cluster),
 			Namespace: cluster.Namespace,
-			Finalizers: []string{
-				monitoring.MonitoringFinalizer,
-			},
 		},
 		Data: map[string]string{
 			"values": string(config),

@@ -10,13 +10,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
 type PrometheusAgentService struct {
@@ -188,13 +186,6 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 		return errors.WithStack(err)
 	}
 
-	// Delete the finalizer
-	controllerutil.RemoveFinalizer(configMap, monitoring.MonitoringFinalizer)
-	err = pas.Client.Update(ctx, configMap)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
 	err = pas.Client.Delete(ctx, configMap)
 	if err != nil {
 		return errors.WithStack(err)
@@ -214,13 +205,6 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
 		return nil
 	} else if err != nil {
-		return errors.WithStack(err)
-	}
-
-	// Delete the finalizer
-	controllerutil.RemoveFinalizer(secret, monitoring.MonitoringFinalizer)
-	err = pas.Client.Update(ctx, secret)
-	if err != nil {
 		return errors.WithStack(err)
 	}
 
