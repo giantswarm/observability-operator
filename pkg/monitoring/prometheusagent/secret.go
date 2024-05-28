@@ -13,8 +13,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/yaml"
-
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
 const (
@@ -97,9 +95,6 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
 			Namespace: cluster.Namespace,
-			Finalizers: []string{
-				monitoring.MonitoringFinalizer,
-			},
 		},
 		Data: map[string][]byte{
 			"values": marshalledValues,

@@ -8,12 +8,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/common/secret"
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
@@ -149,7 +147,6 @@ func (ms *MimirService) DeleteIngressSecret(ctx context.Context) error {
 
 	// Delete the finalizer
 	desired := current.DeepCopy()
-	controllerutil.RemoveFinalizer(desired, monitoring.MonitoringFinalizer)
 	err = ms.Client.Patch(ctx, current, client.MergeFrom(desired))
 	if err != nil {
 		return errors.WithStack(err)
