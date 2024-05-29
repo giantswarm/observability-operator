@@ -28,13 +28,14 @@ type MimirService struct {
 	SecretManager   secret.Manager
 }
 
+// ConfigureMimir configures the ingress and its authentication (basic auth) to allow prometheus agents to send their data to Mimir
 func (ms *MimirService) ConfigureMimir(ctx context.Context, mc string) error {
 	logger := log.FromContext(ctx).WithValues("cluster", mc)
-	logger.Info("ensuring mimir config")
+	logger.Info("configuring mimir ingress")
 
 	err := ms.CreateAuthSecret(ctx, logger, mc)
 	if err != nil {
-		logger.Error(err, "failed to create mimit auth secret")
+		logger.Error(err, "failed to create mimir auth secret")
 		return errors.WithStack(err)
 	}
 
@@ -44,7 +45,7 @@ func (ms *MimirService) ConfigureMimir(ctx context.Context, mc string) error {
 		return errors.WithStack(err)
 	}
 
-	logger.Info("ensured mimir config")
+	logger.Info("configured mimir ingress")
 
 	return nil
 }
@@ -97,7 +98,6 @@ func (ms *MimirService) CreateIngressSecret(ctx context.Context, mc string, logg
 	current := &corev1.Secret{}
 	err := ms.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
-		// CREATE SECRET
 		logger.Info("building ingress secret")
 
 		password, err := prometheusagent.GetMimirIngressPassword(ctx)
