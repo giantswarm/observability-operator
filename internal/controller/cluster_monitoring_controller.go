@@ -123,16 +123,16 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			logger.Error(err, "failed to create or update heartbeat")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 		}
-	}
 
-	err := r.MimirService.ConfigureMimir(ctx, r.ManagementCluster.Name)
-	if err != nil {
-		logger.Error(err, "failed to configure mimir")
-		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+		err = r.MimirService.ConfigureMimir(ctx, r.ManagementCluster.Name)
+		if err != nil {
+			logger.Error(err, "failed to configure mimir")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+		}
 	}
 
 	// Create or update PrometheusAgent remote write configuration.
-	err = r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
+	err := r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to create or update prometheus agent remote write config")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
