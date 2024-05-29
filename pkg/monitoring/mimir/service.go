@@ -28,7 +28,8 @@ type MimirService struct {
 	SecretManager   secret.Manager
 }
 
-// ConfigureMimir configures the ingress and its authentication (basic auth) to allow prometheus agents to send their data to Mimir
+// ConfigureMimir configures the ingress and its authentication (basic auth)
+// to allow prometheus agents to send their data to Mimir
 func (ms *MimirService) ConfigureMimir(ctx context.Context, mc string) error {
 	logger := log.FromContext(ctx).WithValues("cluster", mc)
 	logger.Info("configuring mimir ingress")
