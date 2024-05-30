@@ -73,7 +73,7 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 						},
 						TLSConfig: &promv1.TLSConfig{
 							SafeTLSConfig: promv1.SafeTLSConfig{
-								InsecureSkipVerify: pas.ManagementCluster.InsecureCA,
+								InsecureSkipVerify: &pas.ManagementCluster.InsecureCA,
 							},
 						},
 					},
