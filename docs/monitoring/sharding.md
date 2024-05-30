@@ -1,4 +1,3 @@
-
 # Prometheus Agent Sharding
 
 To be able to ingest metrics without disrupting the workload running in the clusters, the observability operator decides on the number of running __prometheus agent shards__ for each workload cluster based . The number of shards depends on the __total number of time series__ stored for a given cluster.
