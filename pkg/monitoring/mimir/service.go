@@ -10,37 +10,37 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/common/secret"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
 const (
-	authSecretName               = "mimir-gateway-ingress"
-	authSecretNamespace          = "mimir"
-	mimirSpecificSecretName      = "mimir-basic-auth"
-	mimirSpecificSecretNamespace = "mimir"
+	ingressAuthSecretName = "mimir-gateway-ingress-auth"
+	mimirApiKey           = "mimir-basic-auth"
+	mimirNamespace        = "mimir"
 )
 
 type MimirService struct {
 	client.Client
 	PasswordManager password.Manager
-	SecretManager   secret.Manager
+	common.ManagementCluster
 }
 
 // ConfigureMimir configures the ingress and its authentication (basic auth)
 // to allow prometheus agents to send their data to Mimir
-func (ms *MimirService) ConfigureMimir(ctx context.Context, mc string) error {
-	logger := log.FromContext(ctx).WithValues("cluster", mc)
+func (ms *MimirService) ConfigureMimir(ctx context.Context) error {
+	logger := log.FromContext(ctx).WithValues("cluster", ms.ManagementCluster.Name)
 	logger.Info("configuring mimir ingress")
 
-	err := ms.CreateAuthSecret(ctx, logger, mc)
+	err := ms.CreateApiKey(ctx, logger)
 	if err != nil {
 		logger.Error(err, "failed to create mimir auth secret")
 		return errors.WithStack(err)
 	}
 
-	err = ms.CreateIngressSecret(ctx, mc, logger)
+	err = ms.CreateIngressAuthenticationSecret(ctx, logger)
 	if err != nil {
 		logger.Error(err, "failed to create mimir ingress secret")
 		return errors.WithStack(err)
@@ -51,10 +51,10 @@ func (ms *MimirService) ConfigureMimir(ctx context.Context, mc string) error {
 	return nil
 }
 
-func (ms *MimirService) CreateAuthSecret(ctx context.Context, logger logr.Logger, mc string) error {
+func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) error {
 	objectKey := client.ObjectKey{
-		Name:      mimirSpecificSecretName,
-		Namespace: mimirSpecificSecretNamespace,
+		Name:      mimirApiKey,
+		Namespace: mimirNamespace,
 	}
 
 	current := &corev1.Secret{}
@@ -67,13 +67,8 @@ func (ms *MimirService) CreateAuthSecret(ctx context.Context, logger logr.Logger
 			return errors.WithStack(err)
 		}
 
-		secretdata := mc + ":" + password
-
-		secret, err := ms.SecretManager.GenerateGenericSecret(
-			mimirSpecificSecretName, mimirSpecificSecretNamespace, "credentials", secretdata)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+		secret := secret.GenerateGenericSecret(
+			mimirApiKey, mimirNamespace, "credentials", password)
 
 		err = ms.Client.Create(ctx, secret)
 		if err != nil {
@@ -90,10 +85,10 @@ func (ms *MimirService) CreateAuthSecret(ctx context.Context, logger logr.Logger
 	return nil
 }
 
-func (ms *MimirService) CreateIngressSecret(ctx context.Context, mc string, logger logr.Logger) error {
+func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, logger logr.Logger) error {
 	objectKey := client.ObjectKey{
-		Name:      authSecretName,
-		Namespace: authSecretNamespace,
+		Name:      ingressAuthSecretName,
+		Namespace: mimirNamespace,
 	}
 
 	current := &corev1.Secret{}
@@ -106,15 +101,12 @@ func (ms *MimirService) CreateIngressSecret(ctx context.Context, mc string, logg
 			return errors.WithStack(err)
 		}
 
-		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(mc, password)
+		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(ms.ManagementCluster.Name, password)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		secret, err := ms.SecretManager.GenerateGenericSecret(authSecretName, authSecretNamespace, "auth", htpasswd)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+		secret := secret.GenerateGenericSecret(ingressAuthSecretName, mimirNamespace, "auth", htpasswd)
 
 		err = ms.Client.Create(ctx, secret)
 		if err != nil {
@@ -131,29 +123,13 @@ func (ms *MimirService) CreateIngressSecret(ctx context.Context, mc string, logg
 	return nil
 }
 
-func (ms *MimirService) DeleteIngressSecret(ctx context.Context) error {
-	objectKey := client.ObjectKey{
-		Name:      authSecretName,
-		Namespace: authSecretNamespace,
-	}
-	current := &corev1.Secret{}
-	// Get the current secret if it exists.
-	err := ms.Client.Get(ctx, objectKey, current)
-	if apierrors.IsNotFound(err) {
-		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
-		return nil
-	} else if err != nil {
-		return errors.WithStack(err)
-	}
-
-	// Delete the finalizer
-	desired := current.DeepCopy()
-	err = ms.Client.Patch(ctx, current, client.MergeFrom(desired))
+func (ms *MimirService) DeleteMimirSecrets(ctx context.Context) error {
+	err := secret.DeleteSecret(ingressAuthSecretName, mimirNamespace, ctx, ms.Client)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = ms.Client.Delete(ctx, desired)
+	err = secret.DeleteSecret(mimirApiKey, mimirNamespace, ctx, ms.Client)
 	if err != nil {
 		return errors.WithStack(err)
 	}

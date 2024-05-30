@@ -3,7 +3,6 @@ package prometheusagent
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/pkg/errors"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -16,9 +15,8 @@ import (
 )
 
 const (
-	authSecretName      = "mimir-basic-auth"
-	authSecretNamespace = "mimir"
-	remoteWriteName     = "mimir"
+	mimirApiKey    = "mimir-basic-auth"
+	mimirNamespace = "mimir"
 )
 
 func GetMimirIngressPassword(ctx context.Context) (string, error) {
@@ -35,8 +33,8 @@ func GetMimirIngressPassword(ctx context.Context) (string, error) {
 	secret := &corev1.Secret{}
 
 	err = c.Get(ctx, client.ObjectKey{
-		Name:      authSecretName,
-		Namespace: authSecretNamespace,
+		Name:      mimirApiKey,
+		Namespace: mimirNamespace,
 	}, secret)
 	if err != nil {
 		return "", err
@@ -111,7 +109,5 @@ func readMimirAuthPasswordFromSecret(secret corev1.Secret) (string, error) {
 		return "", errors.WithStack(err)
 	}
 
-	password := strings.Split(secretData, ":")[1]
-
-	return password, nil
+	return secretData, nil
 }
