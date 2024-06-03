@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -60,6 +61,30 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 	current := &corev1.Secret{}
 	err := ms.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
+		// First all secrets using the password from the mimirApiKey secret are deleted
+		// to ensure that they won't use an outdated password.
+		logger.Info("Deleting old secrets")
+
+		err := secret.DeleteSecret(ingressAuthSecretName, mimirNamespace, ctx, ms.Client)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		clusterList := &clusterv1.ClusterList{}
+		err = ms.Client.List(ctx, clusterList)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		for _, cluster := range clusterList.Items {
+			secretName := prometheusagent.GetPrometheusAgentRemoteWriteSecretName(&cluster)
+			err = secret.DeleteSecret(secretName, cluster.Namespace, ctx, ms.Client)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+		}
+
+		// Once all secrets are deleted,the mimirApiKey one may be created.
 		logger.Info("Building auth secret")
 
 		password, err := ms.PasswordManager.GeneratePassword(32)

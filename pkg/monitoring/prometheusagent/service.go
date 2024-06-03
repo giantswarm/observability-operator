@@ -98,7 +98,7 @@ func (pas PrometheusAgentService) createOrUpdateConfigMap(ctx context.Context,
 func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 	cluster *clusterv1.Cluster, logger logr.Logger) error {
 	objectKey := client.ObjectKey{
-		Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
+		Name:      GetPrometheusAgentRemoteWriteSecretName(cluster),
 		Namespace: cluster.GetNamespace(),
 	}
 
@@ -184,7 +184,7 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 
 func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clusterv1.Cluster) error {
 	objectKey := client.ObjectKey{
-		Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
+		Name:      GetPrometheusAgentRemoteWriteSecretName(cluster),
 		Namespace: cluster.GetNamespace(),
 	}
 	secret := &corev1.Secret{}

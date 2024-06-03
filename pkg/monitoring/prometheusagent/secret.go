@@ -45,7 +45,7 @@ func GetMimirIngressPassword(ctx context.Context) (string, error) {
 	return mimirPassword, err
 }
 
-func getPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string {
+func GetPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string {
 	return fmt.Sprintf("%s-remote-write-secret", cluster.Name)
 }
 
@@ -91,7 +91,7 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
+			Name:      GetPrometheusAgentRemoteWriteSecretName(cluster),
 			Namespace: cluster.Namespace,
 		},
 		Data: map[string][]byte{
