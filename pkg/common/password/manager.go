@@ -3,8 +3,9 @@ package password
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"os/exec"
-	"strings"
+	"fmt"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Manager interface {
@@ -24,10 +25,10 @@ func (m SimpleManager) GeneratePassword(length int) (string, error) {
 }
 
 func (m SimpleManager) GenerateHtpasswd(username string, password string) (string, error) {
-	htpasswd, err := exec.Command("htpasswd", "-bn", username, password).Output()
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
 	}
-	formattedHtpasswd := strings.TrimSpace(string(htpasswd))
+	formattedHtpasswd := fmt.Sprintf("%s:%s", username, string(encryptedPassword))
 	return formattedHtpasswd, nil
 }
