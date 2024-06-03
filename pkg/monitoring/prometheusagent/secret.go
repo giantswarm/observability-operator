@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	mimirApiKey    = "mimir-basic-auth"
+	mimirApiKey    = "mimir-basic-auth" // #nosec G101
 	mimirNamespace = "mimir"
 )
 

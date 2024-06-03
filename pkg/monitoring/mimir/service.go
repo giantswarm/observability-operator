@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	ingressAuthSecretName = "mimir-gateway-ingress-auth"
-	mimirApiKey           = "mimir-basic-auth"
+	ingressAuthSecretName = "mimir-gateway-ingress-auth" // #nosec G101
+	mimirApiKey           = "mimir-basic-auth"           // #nosec G101
 	mimirNamespace        = "mimir"
 )
 
