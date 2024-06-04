@@ -81,6 +81,8 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	// Linting is disabled for the 2 following lines as otherwise it fails with the following error:
+	// "should not use built-in type string as key for value"
 	ctx = context.WithValue(ctx, "cluster", cluster.Name)                  // nolint
 	ctx = context.WithValue(ctx, "installation", r.ManagementCluster.Name) // nolint
 	logger := log.FromContext(ctx)
