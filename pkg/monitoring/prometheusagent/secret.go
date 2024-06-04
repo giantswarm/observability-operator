@@ -102,12 +102,15 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 }
 
 func readMimirAuthPasswordFromSecret(secret corev1.Secret) (string, error) {
-	var secretData string
+	if credentials, ok := secret.Data["credentials"]; !ok {
+		return "", errors.New("credentials key not found in secret")
+	} else {
+		var secretData string
 
-	err := yaml.Unmarshal(secret.Data["credentials"], &secretData)
-	if err != nil {
-		return "", errors.WithStack(err)
+		err := yaml.Unmarshal(credentials, &secretData)
+		if err != nil {
+			return "", errors.WithStack(err)
+		}
+		return secretData, nil
 	}
-
-	return secretData, nil
 }

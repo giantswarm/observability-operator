@@ -68,8 +68,6 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-
 	// Fetch the Cluster instance.
 	cluster := &clusterv1.Cluster{}
 	if err := r.Client.Get(ctx, req.NamespacedName, cluster); err != nil {
@@ -83,6 +81,10 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	ctx = context.WithValue(ctx, "cluster", cluster.Name)                  // nolint
+	ctx = context.WithValue(ctx, "installation", r.ManagementCluster.Name) // nolint
+	logger := log.FromContext(ctx)
+
 	if !r.MonitoringEnabled {
 		logger.Info("Monitoring is disabled at the installation level")
 		return ctrl.Result{}, nil
@@ -90,18 +92,18 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Handle deletion reconciliation loop.
 	if !cluster.ObjectMeta.DeletionTimestamp.IsZero() {
-		logger.Info("Handling deletion for Cluster", "cluster", cluster.Name)
+		logger.Info("Handling deletion for Cluster")
 		return r.reconcileDelete(ctx, cluster)
 	}
 
-	logger.Info("Reconciling Cluster", "cluster", cluster.Name)
+	logger.Info("Reconciling Cluster")
 	// Handle normal reconciliation loop.
 	return r.reconcile(ctx, cluster)
 }
 
 // reconcile handles cluster reconciliation.
 func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *clusterv1.Cluster) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
+	logger := log.FromContext(ctx)
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	// Note: Finalizers in general can only be added when the deletionTimestamp is not set.
@@ -143,7 +145,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 // reconcileDelete handles cluster deletion.
 func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) (reconcile.Result, error) {
-	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
+	logger := log.FromContext(ctx)
 	if controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
 		if cluster.Name == r.ManagementCluster.Name {
 			err := r.HeartbeatRepository.Delete(ctx)

@@ -34,8 +34,7 @@ func DeleteSecret(secretName string, secretNamespace string,
 		},
 	}
 
-	err := providedClient.Delete(ctx, current)
-	if err != nil {
+	if err := providedClient.Delete(ctx, current); client.IgnoreNotFound(err) != nil {
 		return errors.WithStack(err)
 	}
 
