@@ -23,11 +23,9 @@ COPY internal/controller/ internal/controller/
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager main.go
 
-# Use alpine instead of distroless to have the smallest image possible while being able to use a required package for the code (htpasswd)
-# TODO(atlas): Move back to gcr.io/distroless/static:nonroot once we do not need htpasswd
-FROM alpine:3.19.1
-RUN apk add --no-cache ca-certificates
-RUN apk add apache2-utils
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/manager .
 USER 65532:65532
