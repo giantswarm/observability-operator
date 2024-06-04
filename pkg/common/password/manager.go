@@ -24,7 +24,7 @@ func (m SimpleManager) GeneratePassword(length int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func (m SimpleManager) GenerateHtpasswd(username string, password string) (string, error) {
+func (m SimpleManager) GenerateHtpasswd(username, password string) (string, error) {
 	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err

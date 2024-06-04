@@ -77,7 +77,7 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 		}
 
 		for _, cluster := range clusterList.Items {
-			secretName := prometheusagent.GetPrometheusAgentRemoteWriteSecretName(&cluster)
+			secretName := prometheusagent.GetPrometheusAgentRemoteWriteSecretName(&cluster) // #nosec G601
 			err = secret.DeleteSecret(secretName, cluster.Namespace, ctx, ms.Client)
 			if err != nil {
 				return errors.WithStack(err)
