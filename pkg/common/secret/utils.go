@@ -5,7 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -28,21 +27,14 @@ func GenerateGenericSecret(secretName string, secretNamespace string,
 
 func DeleteSecret(secretName string, secretNamespace string,
 	ctx context.Context, providedClient client.Client) error {
-	objectKey := client.ObjectKey{
-		Name:      secretName,
-		Namespace: secretNamespace,
-	}
-	current := &corev1.Secret{}
-	// Get the current secret if it exists.
-	err := providedClient.Get(ctx, objectKey, current)
-	if apierrors.IsNotFound(err) {
-		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
-		return nil
-	} else if err != nil {
-		return errors.WithStack(err)
+	current := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: secretNamespace,
+		},
 	}
 
-	err = providedClient.Delete(ctx, current)
+	err := providedClient.Delete(ctx, current)
 	if err != nil {
 		return errors.WithStack(err)
 	}
