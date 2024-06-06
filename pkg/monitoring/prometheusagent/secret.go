@@ -1,6 +1,7 @@
 package prometheusagent
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -8,18 +9,55 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/yaml"
 )
 
-func getPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string {
+const (
+	mimirApiKey    = "mimir-basic-auth" // #nosec G101
+	mimirNamespace = "mimir"
+)
+
+func GetMimirIngressPassword(ctx context.Context) (string, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return "", err
+	}
+
+	c, err := client.New(cfg, client.Options{})
+	if err != nil {
+		return "", err
+	}
+
+	secret := &corev1.Secret{}
+
+	err = c.Get(ctx, client.ObjectKey{
+		Name:      mimirApiKey,
+		Namespace: mimirNamespace,
+	}, secret)
+	if err != nil {
+		return "", err
+	}
+
+	mimirPassword, err := readMimirAuthPasswordFromSecret(*secret)
+
+	return mimirPassword, err
+}
+
+func GetPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string {
 	return fmt.Sprintf("%s-remote-write-secret", cluster.Name)
 }
 
 // buildRemoteWriteSecret builds the secret that contains the remote write configuration for the Prometheus agent.
-func (pas PrometheusAgentService) buildRemoteWriteSecret(
-	cluster *clusterv1.Cluster, password string) (*corev1.Secret, error) {
+func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
+	cluster *clusterv1.Cluster) (*corev1.Secret, error) {
+	url := fmt.Sprintf(remoteWriteEndpointTemplateURL, pas.ManagementCluster.BaseDomain)
+	password, err := GetMimirIngressPassword(ctx)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 
-	url := fmt.Sprintf(remoteWriteEndpointTemplateURL, pas.ManagementCluster.BaseDomain, cluster.Name)
 	config := RemoteWriteConfig{
 		PrometheusAgentConfig: &PrometheusAgentConfig{
 			RemoteWrite: []*RemoteWrite{
@@ -39,7 +77,7 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(
 							},
 						},
 					},
-					Username: cluster.Name,
+					Username: pas.ManagementCluster.Name,
 					Password: password,
 				},
 			},
@@ -53,7 +91,7 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
+			Name:      GetPrometheusAgentRemoteWriteSecretName(cluster),
 			Namespace: cluster.Namespace,
 		},
 		Data: map[string][]byte{
@@ -63,21 +101,16 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(
 	}, nil
 }
 
-func readRemoteWritePasswordFromSecret(secret corev1.Secret) (string, error) {
-	remoteWriteConfig := RemoteWriteConfig{}
-	err := yaml.Unmarshal(secret.Data["values"], &remoteWriteConfig)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
+func readMimirAuthPasswordFromSecret(secret corev1.Secret) (string, error) {
+	if credentials, ok := secret.Data["credentials"]; !ok {
+		return "", errors.New("credentials key not found in secret")
+	} else {
+		var secretData string
 
-	for _, rw := range remoteWriteConfig.PrometheusAgentConfig.RemoteWrite {
-		// We read the secret from the remote write configuration named `prometheus-meta-operator` only
-		// as this secret is generated per cluster.
-		// This will eventually be taken care of by the multi-tenancy contoller
-		if rw.Name == remoteWriteName {
-			return rw.Password, nil
+		err := yaml.Unmarshal(credentials, &secretData)
+		if err != nil {
+			return "", errors.WithStack(err)
 		}
+		return secretData, nil
 	}
-
-	return "", errors.New("remote write password not found in secret")
 }

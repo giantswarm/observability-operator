@@ -98,7 +98,7 @@ func (pas PrometheusAgentService) createOrUpdateConfigMap(ctx context.Context,
 func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 	cluster *clusterv1.Cluster, logger logr.Logger) error {
 	objectKey := client.ObjectKey{
-		Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
+		Name:      GetPrometheusAgentRemoteWriteSecretName(cluster),
 		Namespace: cluster.GetNamespace(),
 	}
 
@@ -106,18 +106,14 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 	// Get the current secret if it exists.
 	err := pas.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
-		logger.Info("generating password for the prometheus agent")
-		password, err := pas.PasswordManager.GeneratePassword(32)
+		logger.Info("generating remote write secret for the prometheus agent")
+		secret, err := pas.buildRemoteWriteSecret(ctx, cluster)
 		if err != nil {
-			logger.Error(err, "failed to generate the prometheus agent password")
+			logger.Error(err, "failed to generate the remote write secret for the prometheus agent")
 			return errors.WithStack(err)
 		}
-		logger.Info("generated password for the prometheus agent")
+		logger.Info("generated the remote write secret for the prometheus agent")
 
-		secret, err := pas.buildRemoteWriteSecret(cluster, password)
-		if err != nil {
-			return errors.WithStack(err)
-		}
 		err = pas.Client.Create(ctx, secret)
 		if err != nil {
 			return errors.WithStack(err)
@@ -127,14 +123,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	// As it takes a long time to apply the new password to the agent due to a built-in delay in the app-platform,
-	// we keep the already generated remote write password.
-	password, err := readRemoteWritePasswordFromSecret(*current)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	desired, err := pas.buildRemoteWriteSecret(cluster, password)
+	desired, err := pas.buildRemoteWriteSecret(ctx, cluster)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -195,7 +184,7 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 
 func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clusterv1.Cluster) error {
 	objectKey := client.ObjectKey{
-		Name:      getPrometheusAgentRemoteWriteSecretName(cluster),
+		Name:      GetPrometheusAgentRemoteWriteSecretName(cluster),
 		Namespace: cluster.GetNamespace(),
 	}
 	secret := &corev1.Secret{}

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Add
+
+- Add support for mimir in remoteWrite secret creation.
+- Add mimir ingress secret for basic auth creation.
+
 ## [0.0.4] - 2024-05-28
 
 ### Changed

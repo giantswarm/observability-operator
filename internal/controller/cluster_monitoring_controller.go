@@ -32,6 +32,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
@@ -44,6 +45,8 @@ type ClusterMonitoringReconciler struct {
 	prometheusagent.PrometheusAgentService
 	// HeartbeatRepository is the repository for managing heartbeats.
 	heartbeat.HeartbeatRepository
+	// MimirService is the service for managing mimir configuration.
+	mimir.MimirService
 	// MonitoringEnabled defines whether monitoring is enabled at the installation level.
 	MonitoringEnabled bool
 }
@@ -65,8 +68,6 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-
 	// Fetch the Cluster instance.
 	cluster := &clusterv1.Cluster{}
 	if err := r.Client.Get(ctx, req.NamespacedName, cluster); err != nil {
@@ -80,6 +81,11 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	// Linting is disabled for the 2 following lines as otherwise it fails with the following error:
+	// "should not use built-in type string as key for value"
+	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name).WithValues("installation", r.ManagementCluster.Name) // nolint
+	ctx = log.IntoContext(ctx, logger)
+
 	if !r.MonitoringEnabled {
 		logger.Info("Monitoring is disabled at the installation level")
 		return ctrl.Result{}, nil
@@ -87,18 +93,18 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Handle deletion reconciliation loop.
 	if !cluster.ObjectMeta.DeletionTimestamp.IsZero() {
-		logger.Info("Handling deletion for Cluster", "cluster", cluster.Name)
+		logger.Info("Handling deletion for Cluster")
 		return r.reconcileDelete(ctx, cluster)
 	}
 
-	logger.Info("Reconciling Cluster", "cluster", cluster.Name)
+	logger.Info("Reconciling Cluster")
 	// Handle normal reconciliation loop.
 	return r.reconcile(ctx, cluster)
 }
 
 // reconcile handles cluster reconciliation.
 func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *clusterv1.Cluster) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
+	logger := log.FromContext(ctx)
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	// Note: Finalizers in general can only be added when the deletionTimestamp is not set.
@@ -120,6 +126,12 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			logger.Error(err, "failed to create or update heartbeat")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 		}
+
+		err = r.MimirService.ConfigureMimir(ctx)
+		if err != nil {
+			logger.Error(err, "failed to configure mimir")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+		}
 	}
 
 	// Create or update PrometheusAgent remote write configuration.
@@ -134,12 +146,18 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 // reconcileDelete handles cluster deletion.
 func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) (reconcile.Result, error) {
-	logger := log.FromContext(ctx).WithValues("cluster", cluster.Name)
+	logger := log.FromContext(ctx)
 	if controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
 		if cluster.Name == r.ManagementCluster.Name {
 			err := r.HeartbeatRepository.Delete(ctx)
 			if err != nil {
 				logger.Error(err, "failed to delete heartbeat")
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+			}
+
+			err = r.MimirService.DeleteMimirSecrets(ctx)
+			if err != nil {
+				logger.Error(err, "failed to delete mimir ingress secret")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 			}
 		}
