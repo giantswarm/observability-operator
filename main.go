@@ -45,6 +45,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -197,10 +198,12 @@ func main() {
 	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
 
 	monitoringConfig := monitoring.Config{
-		Enabled:                     monitoringEnabled,
-		ShardingScaleUpSeriesCount:  monitoringShardingScaleUpSeriesCount,
-		ShardingScaleDownPercentage: monitoringShardingScaleDownPercentage,
-		PrometheusVersion:           prometheusVersion,
+		Enabled: monitoringEnabled,
+		DefaultShardingStrategy: sharding.Strategy{
+			ScaleUpSeriesCount:  monitoringShardingScaleUpSeriesCount,
+			ScaleDownPercentage: monitoringShardingScaleDownPercentage,
+		},
+		PrometheusVersion: prometheusVersion,
 	}
 
 	prometheusAgentService := prometheusagent.PrometheusAgentService{

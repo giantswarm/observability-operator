@@ -57,11 +57,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		return nil, errors.WithStack(err)
 	}
 
-	shardingStrategy := sharding.ShardingStrategy{
-		ScaleUpSeriesCount:  pas.MonitoringConfig.ShardingScaleUpSeriesCount,
-		ScaleDownPercentage: pas.MonitoringConfig.ShardingScaleDownPercentage,
-	}.Merge(clusterShardingStrategy)
-
+	shardingStrategy := pas.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
 	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
 	config, err := yaml.Marshal(RemoteWriteConfig{
@@ -106,7 +102,7 @@ func getServicePriority(cluster *clusterv1.Cluster) string {
 	return defaultServicePriority
 }
 
-func getClusterShardingStrategy(cluster metav1.Object) (*sharding.ShardingStrategy, error) {
+func getClusterShardingStrategy(cluster metav1.Object) (*sharding.Strategy, error) {
 	var err error
 	var scaleUpSeriesCount, scaleDownPercentage float64
 	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-up-series-count"]; ok {
@@ -119,7 +115,7 @@ func getClusterShardingStrategy(cluster metav1.Object) (*sharding.ShardingStrate
 			return nil, err
 		}
 	}
-	return &sharding.ShardingStrategy{
+	return &sharding.Strategy{
 		ScaleUpSeriesCount:  scaleUpSeriesCount,
 		ScaleDownPercentage: scaleDownPercentage,
 	}, nil

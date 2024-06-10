@@ -2,31 +2,31 @@ package sharding
 
 import "math"
 
-type ShardingStrategy struct {
+type Strategy struct {
 	// Configures the number of series needed to add a new shard. Computation is number of series / ScaleUpSeriesCount
 	ScaleUpSeriesCount float64
 	// Percentage of needed series based on ScaleUpSeriesCount to scale down agents
 	ScaleDownPercentage float64
 }
 
-func (pass1 ShardingStrategy) Merge(pass2 *ShardingStrategy) ShardingStrategy {
-	strategy := ShardingStrategy{
-		pass1.ScaleUpSeriesCount,
-		pass1.ScaleDownPercentage,
+func (s Strategy) Merge(newStrategy *Strategy) Strategy {
+	strategy := Strategy{
+		s.ScaleUpSeriesCount,
+		s.ScaleDownPercentage,
 	}
-	if pass2 != nil {
-		if pass2.ScaleUpSeriesCount > 0 {
-			strategy.ScaleUpSeriesCount = pass2.ScaleUpSeriesCount
+	if newStrategy != nil {
+		if newStrategy.ScaleUpSeriesCount > 0 {
+			strategy.ScaleUpSeriesCount = newStrategy.ScaleUpSeriesCount
 		}
-		if pass2.ScaleDownPercentage > 0 {
-			strategy.ScaleDownPercentage = pass2.ScaleDownPercentage
+		if newStrategy.ScaleDownPercentage > 0 {
+			strategy.ScaleDownPercentage = newStrategy.ScaleDownPercentage
 		}
 	}
 	return strategy
 }
 
 // We want to start with 1 prometheus-agent for each 1M time series with a scale down 20% threshold.
-func (pass ShardingStrategy) ComputeShards(currentShardCount int, timeSeries float64) int {
+func (pass Strategy) ComputeShards(currentShardCount int, timeSeries float64) int {
 	shardScaleDownThreshold := pass.ScaleDownPercentage * pass.ScaleUpSeriesCount
 	desiredShardCount := int(math.Ceil(timeSeries / pass.ScaleUpSeriesCount))
 

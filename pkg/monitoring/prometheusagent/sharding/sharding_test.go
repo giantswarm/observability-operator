@@ -5,7 +5,7 @@ import (
 )
 
 func TestShardComputationScaleUp(t *testing.T) {
-	pass := ShardingStrategy{ScaleUpSeriesCount: float64(1_000_000), ScaleDownPercentage: float64(0.20)}
+	pass := Strategy{ScaleUpSeriesCount: float64(1_000_000), ScaleDownPercentage: float64(0.20)}
 
 	expected := 1
 	result := pass.ComputeShards(0, float64(1_000_000))
@@ -27,7 +27,7 @@ func TestShardComputationScaleUp(t *testing.T) {
 }
 
 func TestShardComputationReturnsAtLeast1Shart(t *testing.T) {
-	pass := ShardingStrategy{ScaleUpSeriesCount: float64(1_000_000), ScaleDownPercentage: float64(0.20)}
+	pass := Strategy{ScaleUpSeriesCount: float64(1_000_000), ScaleDownPercentage: float64(0.20)}
 
 	expected := 1
 	result := pass.ComputeShards(0, 0)
@@ -43,7 +43,7 @@ func TestShardComputationReturnsAtLeast1Shart(t *testing.T) {
 }
 
 func TestShardComputationScaleDown(t *testing.T) {
-	pass := ShardingStrategy{ScaleUpSeriesCount: float64(1_000_000), ScaleDownPercentage: float64(0.20)}
+	pass := Strategy{ScaleUpSeriesCount: float64(1_000_000), ScaleDownPercentage: float64(0.20)}
 	expected := 2
 	result := pass.ComputeShards(1, 1_000_001)
 	if result != expected {
