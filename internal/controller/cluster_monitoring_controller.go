@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -109,10 +110,15 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	// Note: Finalizers in general can only be added when the deletionTimestamp is not set.
 	if !controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
+		// We use a patch rather than an update to avoid conflicts when multiple controllers are adding their finalizer to the ClusterCR
+		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
 		logger.Info("adding finalizer", "finalizer", monitoring.MonitoringFinalizer)
-		controllerutil.AddFinalizer(cluster, monitoring.MonitoringFinalizer)
-		err := r.Client.Update(ctx, cluster)
+		patchHelper, err := patch.NewHelper(cluster, r.Client)
 		if err != nil {
+			return ctrl.Result{}, errors.WithStack(err)
+		}
+		controllerutil.AddFinalizer(cluster, monitoring.MonitoringFinalizer)
+		if err := patchHelper.Patch(ctx, cluster); err != nil {
 			logger.Error(err, "failed to add finalizer", "finalizer", monitoring.MonitoringFinalizer)
 			return ctrl.Result{}, errors.WithStack(err)
 		}
@@ -170,14 +176,17 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// We get the latest state of the object to avoid race conditions.
 		// Finalizer handling needs to come last.
+		// We use a patch rather than an update to avoid conflicts when multiple controllers are removing their finalizer from the ClusterCR
+		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
 		logger.Info("removing finalizer", "finalizer", monitoring.MonitoringFinalizer)
-		controllerutil.RemoveFinalizer(cluster, monitoring.MonitoringFinalizer)
-		err = r.Client.Update(ctx, cluster)
+		patchHelper, err := patch.NewHelper(cluster, r.Client)
 		if err != nil {
-			// We need to requeue if we fail to remove the finalizer because of race conditions between multiple operators.
-			// This will be eventually consistent.
+			return ctrl.Result{}, errors.WithStack(err)
+		}
+		controllerutil.RemoveFinalizer(cluster, monitoring.MonitoringFinalizer)
+		if err := patchHelper.Patch(ctx, cluster); err != nil {
 			logger.Error(err, "failed to remove finalizer, requeuing", "finalizer", monitoring.MonitoringFinalizer)
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			return ctrl.Result{}, errors.WithStack(err)
 		}
 		logger.Info("removed finalizer", "finalizer", monitoring.MonitoringFinalizer)
 	}
