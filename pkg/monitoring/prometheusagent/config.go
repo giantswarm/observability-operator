@@ -3,7 +3,6 @@ package prometheusagent
 import (
 	"context"
 	"fmt"
-	"net"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -44,10 +43,12 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		"service_priority": getServicePriority(cluster),
 	}
 
-	shards, err := getShardsCountForCluster(ctx, cluster, currentShards)
+	// Compute the number of shards based on the number of series.
+	headSeries, err := querier.QueryTSDBHeadSeries(ctx, cluster.Name)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		logger.Error(err, "failed to query head series")
 	}
+	shards.ComputeShards(currentShards, headSeries)
 
 	config, err := yaml.Marshal(RemoteWriteConfig{
 		PrometheusAgentConfig: &PrometheusAgentConfig{
@@ -89,21 +90,6 @@ func getServicePriority(cluster *clusterv1.Cluster) string {
 		return servicePriority
 	}
 	return defaultServicePriority
-}
-
-// We want to compute the number of shards based on the number of series.
-func getShardsCountForCluster(ctx context.Context, cluster *clusterv1.Cluster, currentShardCount int) (int, error) {
-	headSeries, err := querier.QueryTSDBHeadSeries(ctx, cluster.Name)
-	if err != nil {
-		// If Prometheus is not accessible (DNSError), or if we don't have any data yet (ErrNoTimeSeries)
-		// Then, return the default number of shards.
-		var dnsError *net.DNSError
-		if errors.As(err, &dnsError) || errors.Is(err, querier.ErrorNoTimeSeries) {
-			return shards.ComputeShards(currentShardCount, defaultShards), nil
-		}
-		return 0, errors.WithStack(err)
-	}
-	return shards.ComputeShards(currentShardCount, headSeries), nil
 }
 
 func readCurrentShardsFromConfig(configMap corev1.ConfigMap) (int, error) {
