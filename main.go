@@ -41,6 +41,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
+	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
@@ -224,6 +225,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Debug
+	metrics.ReconcileError.WithLabelValues().Add(42)
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")

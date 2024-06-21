@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
+	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/shards"
 )
@@ -47,6 +48,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 	headSeries, err := querier.QueryTSDBHeadSeries(ctx, cluster.Name)
 	if err != nil {
 		logger.Error(err, "failed to query head series")
+		metrics.ReconcileError.WithLabelValues().Inc()
 	}
 	shards := shards.ComputeShards(currentShards, headSeries)
 
