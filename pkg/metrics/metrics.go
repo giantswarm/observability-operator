@@ -7,7 +7,7 @@ import (
 
 var (
 	ReconcileError = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "observability_operator_reconcile_error_total",
+		Name: "observability_operator_mimir_head_series_query_errors_total",
 		Help: "Total number of reconciliations error",
 	}, nil)
 )
