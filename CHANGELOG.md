@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix an issue where remote-write secret was not being created when head series query fails.
+
 ## [0.1.1] - 2024-06-14
 
 ### Fixed
