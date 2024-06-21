@@ -226,7 +226,7 @@ func main() {
 	}
 
 	// Debug
-	metrics.ReconcileError.WithLabelValues("cluster", "error").Add(42)
+	metrics.ReconcileError.WithLabelValues("cluster").Add(42)
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
