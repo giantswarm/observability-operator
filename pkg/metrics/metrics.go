@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	ReconcileError = prometheus.NewCounterVec(prometheus.CounterOpts{
+	MimirQueryErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "observability_operator_mimir_head_series_query_errors_total",
 		Help: "Total number of reconciliations error",
 	}, nil)
@@ -14,6 +14,6 @@ var (
 
 func init() {
 	metrics.Registry.MustRegister(
-		ReconcileError,
+		MimirQueryErrors,
 	)
 }

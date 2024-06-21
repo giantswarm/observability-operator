@@ -48,7 +48,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 	headSeries, err := querier.QueryTSDBHeadSeries(ctx, cluster.Name)
 	if err != nil {
 		logger.Error(err, "failed to query head series")
-		metrics.ReconcileError.WithLabelValues().Inc()
+		metrics.MimirQueryErrors.WithLabelValues().Inc()
 	}
 	shards := shards.ComputeShards(currentShards, headSeries)
 
