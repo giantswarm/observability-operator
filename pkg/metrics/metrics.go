@@ -9,7 +9,7 @@ var (
 	ReconcileError = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "observability_operator_reconcile_error_total",
 		Help: "Total number of reconciliations error",
-	}, []string{"controller", "result"})
+	})
 )
 
 func init() {
