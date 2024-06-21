@@ -48,7 +48,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 	if err != nil {
 		logger.Error(err, "failed to query head series")
 	}
-	shards.ComputeShards(currentShards, headSeries)
+	shards := shards.ComputeShards(currentShards, headSeries)
 
 	config, err := yaml.Marshal(RemoteWriteConfig{
 		PrometheusAgentConfig: &PrometheusAgentConfig{
