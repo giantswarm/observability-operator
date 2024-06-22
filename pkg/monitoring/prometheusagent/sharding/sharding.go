@@ -32,7 +32,7 @@ func (pass Strategy) ComputeShards(currentShardCount int, timeSeries float64) in
 
 	// Compute Scale Down
 	if currentShardCount > desiredShardCount {
-		// Check if the remaining time series from ( timeSeries mod ScaleupSeriesCount ) is bigger than the scale down threshold.
+		// Check if the remainder of (timeSeries mod ScaleupSeriesCount) is bigger than the scale down threshold.
 		if math.Mod(timeSeries, pass.ScaleUpSeriesCount) > pass.ScaleUpSeriesCount-shardScaleDownThreshold {
 			desiredShardCount = currentShardCount
 		}

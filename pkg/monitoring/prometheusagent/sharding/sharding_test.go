@@ -4,68 +4,99 @@ import (
 	"testing"
 )
 
-func TestShardComputationScaleUp(t *testing.T) {
-	pass := Strategy{ScaleUpSeriesCount: float64(1_000_000), ScaleDownPercentage: float64(0.20)}
-
-	expected := 1
-	result := pass.ComputeShards(0, float64(1_000_000))
-	if result != expected {
-		t.Errorf(`expected computeShards(0, 1_000_000) to be %d, got %d`, expected, result)
-	}
-
-	expected = 2
-	result = pass.ComputeShards(0, float64(1_000_001))
-	if result != expected {
-		t.Errorf(`expected computeShards(0, 1_000_001) to be %d, got %d`, expected, result)
-	}
-
-	expected = 3
-	result = pass.ComputeShards(0, float64(2_000_001))
-	if result != expected {
-		t.Errorf(`expected computeShards(0, 2_000_001) to be %d, got %d`, expected, result)
-	}
+type testCase struct {
+	currentShardCount int
+	timeSeries        float64
+	expected          int
 }
 
-func TestShardComputationReturnsAtLeast1Shart(t *testing.T) {
-	pass := Strategy{ScaleUpSeriesCount: float64(1_000_000), ScaleDownPercentage: float64(0.20)}
+var defaultShardingStrategy = Strategy{ScaleUpSeriesCount: float64(1_000_000), ScaleDownPercentage: float64(0.20)}
 
-	expected := 1
-	result := pass.ComputeShards(0, 0)
-	if result != expected {
-		t.Errorf(`expected computeShards(0, 0) to be %d, got %d`, expected, result)
-	}
-
-	expected = 1
-	result = pass.ComputeShards(0, -5)
-	if result != expected {
-		t.Errorf(`expected computeShards(0, -5) to be %d, got %d`, expected, result)
-	}
+var tests = []struct {
+	name     string
+	strategy Strategy
+	cases    []testCase
+}{
+	{
+		name:     "scale up",
+		strategy: defaultShardingStrategy,
+		cases: []testCase{
+			{
+				currentShardCount: 0,
+				timeSeries:        float64(1_000_000),
+				expected:          1,
+			},
+			{
+				currentShardCount: 0,
+				timeSeries:        float64(1_000_001),
+				expected:          2,
+			},
+			{
+				currentShardCount: 0,
+				timeSeries:        float64(2_000_001),
+				expected:          3,
+			},
+		},
+	},
+	{
+		name:     "scale down",
+		strategy: defaultShardingStrategy,
+		cases: []testCase{
+			{
+				currentShardCount: 1,
+				timeSeries:        float64(1_000_001),
+				expected:          2,
+			},
+			{
+				currentShardCount: 2,
+				timeSeries:        float64(999_999),
+				expected:          2,
+			},
+			{
+				currentShardCount: 2,
+				timeSeries:        float64(800_001),
+				expected:          2,
+			},
+			{
+				currentShardCount: 2,
+				// 20% default threshold hit
+				timeSeries: float64(800_000),
+				expected:   1,
+			},
+		},
+	},
+	{
+		name:     "always defaults to 1",
+		strategy: defaultShardingStrategy,
+		cases: []testCase{
+			{
+				currentShardCount: 0,
+				timeSeries:        float64(0),
+				expected:          1,
+			},
+			{
+				currentShardCount: 0,
+				timeSeries:        float64(-5),
+				expected:          1,
+			},
+		},
+	},
 }
 
-func TestShardComputationScaleDown(t *testing.T) {
-	pass := Strategy{ScaleUpSeriesCount: float64(1_000_000), ScaleDownPercentage: float64(0.20)}
-	expected := 2
-	result := pass.ComputeShards(1, 1_000_001)
-	if result != expected {
-		t.Errorf(`expected computeShards(1, 1_000_001) to be %d, got %d`, expected, result)
-	}
-
-	expected = 2
-	result = pass.ComputeShards(2, 999_999)
-	if result != expected {
-		t.Errorf(`expected computeShards(2, 999_999) to be %d, got %d`, expected, result)
-	}
-
-	expected = 2
-	result = pass.ComputeShards(2, 800_001)
-	if result != expected {
-		t.Errorf(`expected computeShards(2, 800_001) to be %d, got %d`, expected, result)
-	}
-
-	// threshold hit
-	expected = 1
-	result = pass.ComputeShards(2, 800_000)
-	if result != expected {
-		t.Errorf(`expected computeShards(2, 800_000) to be %d, got %d`, expected, result)
+func TestShardComputationLogic(t *testing.T) {
+	t.Parallel()
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			for _, c := range tt.cases {
+				c := c
+				result := tt.strategy.ComputeShards(c.currentShardCount, c.timeSeries)
+				if result != c.expected {
+					t.Errorf(`expected computeShards(%d, %f) to be %d, got %d`, c.currentShardCount, c.timeSeries, c.expected, result)
+				}
+				t.Logf(`computeShards(%d, %f) = %d`, c.currentShardCount, c.timeSeries, result)
+			}
+		})
 	}
 }
