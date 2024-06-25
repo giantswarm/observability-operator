@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add per cluster and installation overridable sharding strategy support for mimir-backed installations.
+
 ### Fixed
 
 - Fix an issue where remote-write secret was not being created when head series query fails.
@@ -19,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2024-06-06
 
-### Add
+### Added
 
 - Add support for mimir in remoteWrite secret creation.
 - Add mimir ingress secret for basic auth creation.
