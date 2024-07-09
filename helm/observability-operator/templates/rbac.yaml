@@ -39,6 +39,7 @@ rules:
       - events
     verbs:
       - create
+  # Needed to be able to configure the observability bundle app
   - apiGroups:
       - application.giantswarm.io
     resources:
