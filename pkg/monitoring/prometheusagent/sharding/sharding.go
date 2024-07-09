@@ -26,14 +26,14 @@ func (s Strategy) Merge(newStrategy *Strategy) Strategy {
 }
 
 // We want to start with 1 prometheus-agent for each 1M time series with a scale down 20% threshold.
-func (pass Strategy) ComputeShards(currentShardCount int, timeSeries float64) int {
-	shardScaleDownThreshold := pass.ScaleDownPercentage * pass.ScaleUpSeriesCount
-	desiredShardCount := int(math.Ceil(timeSeries / pass.ScaleUpSeriesCount))
+func (s Strategy) ComputeShards(currentShardCount int, timeSeries float64) int {
+	shardScaleDownThreshold := s.ScaleDownPercentage * s.ScaleUpSeriesCount
+	desiredShardCount := int(math.Ceil(timeSeries / s.ScaleUpSeriesCount))
 
 	// Compute Scale Down
 	if currentShardCount > desiredShardCount {
 		// Check if the remainder of (timeSeries mod ScaleupSeriesCount) is bigger than the scale down threshold.
-		if math.Mod(timeSeries, pass.ScaleUpSeriesCount) > pass.ScaleUpSeriesCount-shardScaleDownThreshold {
+		if math.Mod(timeSeries, s.ScaleUpSeriesCount) > s.ScaleUpSeriesCount-shardScaleDownThreshold {
 			desiredShardCount = currentShardCount
 		}
 	}
