@@ -91,7 +91,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	ctx = log.IntoContext(ctx, logger)
 
 	if !r.MonitoringConfig.Enabled {
-		logger.Info("Monitoring is disabled at the installation level.")
+		logger.Info("monitoring is disabled at the installation level.")
 	}
 
 	if !r.MonitoringConfig.IsMonitored(cluster) {
