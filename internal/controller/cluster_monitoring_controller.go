@@ -104,7 +104,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return r.reconcileDelete(ctx, cluster)
 	}
 
-	logger.Info("Reconciling cluster")
+	logger.Info("reconciling cluster")
 	// Handle normal reconciliation loop.
 	return r.reconcile(ctx, cluster)
 }
