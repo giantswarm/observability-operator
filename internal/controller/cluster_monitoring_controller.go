@@ -100,7 +100,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Handle deletion reconciliation loop.
 	if !cluster.ObjectMeta.DeletionTimestamp.IsZero() {
-		logger.Info("Handling deletion for cluster")
+		logger.Info("handling deletion for cluster")
 		return r.reconcileDelete(ctx, cluster)
 	}
 
