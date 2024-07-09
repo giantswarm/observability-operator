@@ -172,6 +172,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 		}
 	} else {
+                // clean up any existing prometheus agent configuration
 		err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete prometheus agent remote write config")
