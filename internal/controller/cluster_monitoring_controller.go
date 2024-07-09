@@ -95,7 +95,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	if !r.MonitoringConfig.IsMonitored(cluster) {
-		logger.Info("Monitoring is disabled for this cluster.")
+		logger.Info("monitoring is disabled for this cluster.")
 	}
 
 	// Handle deletion reconciliation loop.
