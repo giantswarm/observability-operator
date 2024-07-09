@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Disable prometheus agents if monitoring is disabled at the installation or cluster level.
+- Delete monitoring resources if monitoring is disabled at the installation or cluster level using the giantswarm.io/monitoring label.
 
 ## [0.2.0] - 2024-06-25
 
