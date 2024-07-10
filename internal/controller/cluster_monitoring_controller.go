@@ -172,7 +172,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
 		}
 	} else {
-                // clean up any existing prometheus agent configuration
+		// clean up any existing prometheus agent configuration
 		err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete prometheus agent remote write config")
@@ -189,7 +189,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 	// We do not need to delete anything if there is no finalizer on the cluster
 	if controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
-		// We always remote the bundle configure, even if monitoring is disabled for the cluster.
+		// We always remove the bundle configure, even if monitoring is disabled for the cluster.
 		err := r.BundleConfigurationService.RemoveConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to remove the observability-bundle configuration")
