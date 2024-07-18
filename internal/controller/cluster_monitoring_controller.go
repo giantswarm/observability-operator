@@ -151,6 +151,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		} else {
 			err = r.tearDown(ctx)
 			if err != nil {
+				logger.Error(err, "failed to tear down the monitoring stack")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		}
@@ -209,6 +210,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		if cluster.Name == r.ManagementCluster.Name {
 			err := r.tearDown(ctx)
 			if err != nil {
+				logger.Error(err, "failed to tear down the monitoring stack")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		}
