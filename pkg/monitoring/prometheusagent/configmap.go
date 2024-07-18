@@ -48,7 +48,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 	// Compute the number of shards based on the number of series.
 	headSeries, err := querier.QueryTSDBHeadSeries(ctx, cluster.Name)
 	if err != nil {
-		logger.Error(err, "failed to query head series")
+		logger.Info(fmt.Sprintf("Warning, failed to query head series - %s", err.Error()))
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
 	}
 
