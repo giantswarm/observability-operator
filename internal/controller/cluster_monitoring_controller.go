@@ -140,18 +140,19 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			err = r.HeartbeatRepository.CreateOrUpdate(ctx)
 			if err != nil {
 				logger.Error(err, "failed to create or update heartbeat")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 
 			err = r.MimirService.ConfigureMimir(ctx)
 			if err != nil {
 				logger.Error(err, "failed to configure mimir")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		} else {
 			err = r.tearDown(ctx)
 			if err != nil {
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+				logger.Error(err, "failed to tear down the monitoring stack")
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		}
 	}
@@ -160,7 +161,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	err = r.BundleConfigurationService.Configure(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to configure the observability-bundle")
-		return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 	}
 
 	// Cluster specific configuration
@@ -169,14 +170,14 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		err = r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to create or update prometheus agent remote write config")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 	} else {
 		// clean up any existing prometheus agent configuration
 		err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete prometheus agent remote write config")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 	}
 
@@ -193,7 +194,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		err := r.BundleConfigurationService.RemoveConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to remove the observability-bundle configuration")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 
 		// Cluster specific configuration
@@ -201,7 +202,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete prometheus agent remote write config")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		}
 
@@ -209,7 +210,8 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		if cluster.Name == r.ManagementCluster.Name {
 			err := r.tearDown(ctx)
 			if err != nil {
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, errors.WithStack(err)
+				logger.Error(err, "failed to tear down the monitoring stack")
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		}
 
