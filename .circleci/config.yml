@@ -49,7 +49,7 @@ workflows:
           context: architect
           name: push-to-registries
           requires:
-            - go-build
+            - template-chart
           filters:
             tags:
               only: /^v.*/
