@@ -68,6 +68,7 @@ var (
 	managementClusterPipeline   string
 	managementClusterRegion     string
 
+	monitoringAgent                       string
 	monitoringEnabled                     bool
 	monitoringShardingScaleUpSeriesCount  float64
 	monitoringShardingScaleDownPercentage float64
@@ -110,6 +111,8 @@ func main() {
 		"The pipeline of the management cluster.")
 	flag.StringVar(&managementClusterRegion, "management-cluster-region", "",
 		"The region of the management cluster.")
+	flag.StringVar(&monitoringAgent, "monitoring-agent", common.MonitoringAgentPrometheus,
+		fmt.Sprintf("select monitoring agent to use (%s or %s)", common.MonitoringAgentPrometheus, common.MonitoringAgentAlloy))
 	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
 	flag.Float64Var(&monitoringShardingScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
@@ -201,7 +204,8 @@ func main() {
 	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
 
 	monitoringConfig := monitoring.Config{
-		Enabled: monitoringEnabled,
+		Enabled:         monitoringEnabled,
+		MonitoringAgent: monitoringAgent,
 		DefaultShardingStrategy: sharding.Strategy{
 			ScaleUpSeriesCount:  monitoringShardingScaleUpSeriesCount,
 			ScaleDownPercentage: monitoringShardingScaleDownPercentage,

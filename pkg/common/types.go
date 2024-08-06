@@ -30,6 +30,12 @@ const (
 
 	GCPManagedClusterKind         = "GCPManagedCluster"
 	GCPManagedClusterKindProvider = "gke"
+
+	MonitoringAgentPrometheus = "prometheus-agent"
+	MonitoringAgentAlloy      = "alloy"
+
+	MonitoringPrometheusAgentAppName = "prometheusAgent"
+	MonitoringAlloyAppName           = "alloyMetrics"
 )
 
 type ManagementCluster struct {
