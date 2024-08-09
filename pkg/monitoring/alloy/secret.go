@@ -22,7 +22,7 @@ const (
 	AlloyRemoteWriteBasicAuthPasswordEnvVarName = "BASIC_AUTH_PASSWORD" // #nosec G101
 )
 
-func (a *AlloyService) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string][]byte, error) {
+func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string][]byte, error) {
 	url := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointTemplateURL, a.ManagementCluster.BaseDomain)
 	password, err := commonmonitoring.GetMimirIngressPassword(ctx)
 	if err != nil {
