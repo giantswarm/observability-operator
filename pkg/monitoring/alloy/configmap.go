@@ -34,7 +34,7 @@ func init() {
 	alloyMonitoringConfigTemplate = template.Must(template.New("monitoring-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringConfig))
 }
 
-func (a *AlloyService) GenerateAlloyMonitoringConfigMapData(ctx context.Context, cluster *clusterv1.Cluster) (map[string]string, error) {
+func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, cluster *clusterv1.Cluster) (map[string]string, error) {
 	var values bytes.Buffer
 
 	alloyConfig, err := a.generateAlloyConfig(ctx, cluster)
@@ -63,7 +63,7 @@ func (a *AlloyService) GenerateAlloyMonitoringConfigMapData(ctx context.Context,
 	return configMapData, nil
 }
 
-func (a *AlloyService) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
+func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
 	var values bytes.Buffer
 
 	organization, err := a.OrganizationRepository.Read(ctx, cluster)

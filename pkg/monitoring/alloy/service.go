@@ -23,7 +23,7 @@ const (
 	SecretName    = "monitoring"
 )
 
-type AlloyService struct {
+type Service struct {
 	client.Client
 	organization.OrganizationRepository
 	PasswordManager password.Manager
@@ -31,7 +31,7 @@ type AlloyService struct {
 	MonitoringConfig monitoring.Config
 }
 
-func (a *AlloyService) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-service - ensuring alloy is configured")
 
@@ -72,7 +72,7 @@ func (a *AlloyService) ReconcileCreate(ctx context.Context, cluster *clusterv1.C
 	return nil
 }
 
-func (a *AlloyService) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-service - ensuring alloy is removed")
 
