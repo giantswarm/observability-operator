@@ -1,0 +1,68 @@
+prometheus.operator.servicemonitors "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+  selector {
+    match_expression {
+      key = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.operator.podmonitors "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+  selector {
+    match_expression {
+      key = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+		url = env("{{ .RemoteWriteURLEnvVarName }}")
+    name = env("{{ .RemoteWriteNameEnvVarName }}")
+    enable_http2 = false
+    remote_timeout = "{{ .RemoteWriteTimeout }}"
+    basic_auth {
+      username = env("{{ .RemoteWriteBasicAuthUsernameEnvVarName }}")
+      password = env("{{ .RemoteWriteBasicAuthPasswordEnvVarName }}")
+    }
+    tls_config {
+      insecure_skip_verify = {{ .RemoteWriteTLSInsecureSkipVerify }}
+    }
+    queue_config {
+      capacity = {{ .QueueConfigCapacity }}
+      max_samples_per_send = {{ .QueueConfigMaxSamplesPerSend }}
+      max_shards = {{ .QueueConfigMaxShards }}
+    }
+  }
+  external_labels = {
+    "cluster_id" = "{{ .ExternalLabelsClusterID }}",
+    "cluster_type" = "{{ .ExternalLabelsClusterType }}",
+    "customer" = "{{ .ExternalLabelsCustomer }}",
+    "installation" = "{{ .ExternalLabelsInstallation }}",
+    "organization" = "{{ .ExternalLabelsOrganization }}",
+    "pipeline" = "{{ .ExternalLabelsPipeline }}",
+    "provider" = "{{ .ExternalLabelsProvider }}",
+    "region" = "{{ .ExternalLabelsRegion }}",
+    "service_priority" = "{{ .ExternalLabelsServicePriority }}",
+  }
+}
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
