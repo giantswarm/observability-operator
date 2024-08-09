@@ -32,6 +32,7 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common"
+	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
@@ -170,14 +171,14 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	// Cluster specific configuration
 	if r.MonitoringConfig.IsMonitored(cluster) {
 		switch r.MonitoringConfig.MonitoringAgent {
-		case common.MonitoringAgentPrometheus:
+		case commonmonitoring.MonitoringAgentPrometheus:
 			// Create or update PrometheusAgent remote write configuration.
 			err = r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to create or update prometheus agent remote write config")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
-		case common.MonitoringAgentAlloy:
+		case commonmonitoring.MonitoringAgentAlloy:
 			// Create or update Alloy monitoring configuration.
 			err = r.AlloyService.ReconcileCreate(ctx, cluster)
 			if err != nil {
