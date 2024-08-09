@@ -9,41 +9,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/yaml"
+
+	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 )
-
-const (
-	mimirApiKey    = "mimir-basic-auth" // #nosec G101
-	mimirNamespace = "mimir"
-)
-
-func GetMimirIngressPassword(ctx context.Context) (string, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return "", err
-	}
-
-	c, err := client.New(cfg, client.Options{})
-	if err != nil {
-		return "", err
-	}
-
-	secret := &corev1.Secret{}
-
-	err = c.Get(ctx, client.ObjectKey{
-		Name:      mimirApiKey,
-		Namespace: mimirNamespace,
-	}, secret)
-	if err != nil {
-		return "", err
-	}
-
-	mimirPassword, err := readMimirAuthPasswordFromSecret(*secret)
-
-	return mimirPassword, err
-}
 
 func GetPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string {
 	return fmt.Sprintf("%s-remote-write-secret", cluster.Name)
@@ -52,8 +21,8 @@ func GetPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string 
 // buildRemoteWriteSecret builds the secret that contains the remote write configuration for the Prometheus agent.
 func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 	cluster *clusterv1.Cluster) (*corev1.Secret, error) {
-	url := fmt.Sprintf(remoteWriteEndpointTemplateURL, pas.ManagementCluster.BaseDomain)
-	password, err := GetMimirIngressPassword(ctx)
+	url := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointTemplateURL, pas.ManagementCluster.BaseDomain)
+	password, err := commonmonitoring.GetMimirIngressPassword(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -64,12 +33,12 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 				{
 					RemoteWriteSpec: promv1.RemoteWriteSpec{
 						URL:           url,
-						Name:          remoteWriteName,
-						RemoteTimeout: "60s",
+						Name:          commonmonitoring.RemoteWriteName,
+						RemoteTimeout: commonmonitoring.RemoteWriteTimeout,
 						QueueConfig: &promv1.QueueConfig{
-							Capacity:          30000,
-							MaxSamplesPerSend: 150000,
-							MaxShards:         10,
+							Capacity:          commonmonitoring.QueueConfigCapacity,
+							MaxSamplesPerSend: commonmonitoring.QueueConfigMaxSamplesPerSend,
+							MaxShards:         commonmonitoring.QueueConfigMaxShards,
 						},
 						TLSConfig: &promv1.TLSConfig{
 							SafeTLSConfig: promv1.SafeTLSConfig{
@@ -99,18 +68,4 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 		},
 		Type: "Opaque",
 	}, nil
-}
-
-func readMimirAuthPasswordFromSecret(secret corev1.Secret) (string, error) {
-	if credentials, ok := secret.Data["credentials"]; !ok {
-		return "", errors.New("credentials key not found in secret")
-	} else {
-		var secretData string
-
-		err := yaml.Unmarshal(credentials, &secretData)
-		if err != nil {
-			return "", errors.WithStack(err)
-		}
-		return secretData, nil
-	}
 }

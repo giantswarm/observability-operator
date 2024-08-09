@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
+	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/common/secret"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
@@ -121,7 +122,7 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 	if apierrors.IsNotFound(err) {
 		logger.Info("building ingress secret")
 
-		password, err := prometheusagent.GetMimirIngressPassword(ctx)
+		password, err := commonmonitoring.GetMimirIngressPassword(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
