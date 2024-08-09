@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/giantswarm/observability-operator/pkg/common"
+	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
@@ -51,18 +51,18 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 	}
 
 	switch s.config.MonitoringAgent {
-	case common.MonitoringAgentPrometheus:
-		bundleConfiguration.Apps[common.MonitoringPrometheusAgentAppName] = app{
+	case commonmonitoring.MonitoringAgentPrometheus:
+		bundleConfiguration.Apps[commonmonitoring.MonitoringPrometheusAgentAppName] = app{
 			Enabled: s.config.IsMonitored(cluster),
 		}
-		bundleConfiguration.Apps[common.MonitoringAlloyAppName] = app{
+		bundleConfiguration.Apps[commonmonitoring.MonitoringAlloyAppName] = app{
 			Enabled: false,
 		}
-	case common.MonitoringAgentAlloy:
-		bundleConfiguration.Apps[common.MonitoringPrometheusAgentAppName] = app{
+	case commonmonitoring.MonitoringAgentAlloy:
+		bundleConfiguration.Apps[commonmonitoring.MonitoringPrometheusAgentAppName] = app{
 			Enabled: false,
 		}
-		bundleConfiguration.Apps[common.MonitoringAlloyAppName] = app{
+		bundleConfiguration.Apps[commonmonitoring.MonitoringAlloyAppName] = app{
 			Enabled: s.config.IsMonitored(cluster),
 		}
 	default:
