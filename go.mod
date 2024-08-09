@@ -3,6 +3,7 @@ module github.com/giantswarm/observability-operator
 go 1.22.0
 
 require (
+	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/giantswarm/apiextensions-application v0.6.2
 	github.com/go-logr/logr v1.4.2
 	github.com/onsi/ginkgo/v2 v2.19.1
@@ -79,7 +80,14 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
 
-require gopkg.in/yaml.v2 v2.4.0 // indirect
+require (
+	github.com/Masterminds/goutils v1.1.1 // indirect
+	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/huandu/xstrings v1.3.3 // indirect
+	github.com/mitchellh/copystructure v1.2.0 // indirect
+	github.com/mitchellh/reflectwalk v1.0.2 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+)
 
 replace (
 	github.com/hashicorp/go-cleanhttp => github.com/hashicorp/go-cleanhttp v0.5.2
