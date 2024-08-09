@@ -13,11 +13,11 @@ import (
 
 const (
 	// DefaultServicePriority is the default service priority if not set.
-	defaultServicePriority string = "highest"
-	mimirApiKey                   = "mimir-basic-auth" // #nosec G101
-	mimirNamespace                = "mimir"
+	defaultServicePriority = "highest"
+	mimirApiKey            = "mimir-basic-auth" // #nosec G101
+	mimirNamespace         = "mimir"
 	// ServicePriorityLabel is the label used to determine the priority of a service.
-	servicePriorityLabel string = "giantswarm.io/service-priority"
+	servicePriorityLabel = "giantswarm.io/service-priority"
 
 	// DefaultShards is the default number of shards to use.
 	DefaultShards = 1
