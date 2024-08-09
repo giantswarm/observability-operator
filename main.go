@@ -41,6 +41,7 @@ import (
 	"github.com/giantswarm/observability-operator/internal/controller"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common"
+	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
@@ -68,6 +69,7 @@ var (
 	managementClusterPipeline   string
 	managementClusterRegion     string
 
+	monitoringAgent                       string
 	monitoringEnabled                     bool
 	monitoringShardingScaleUpSeriesCount  float64
 	monitoringShardingScaleDownPercentage float64
@@ -110,6 +112,8 @@ func main() {
 		"The pipeline of the management cluster.")
 	flag.StringVar(&managementClusterRegion, "management-cluster-region", "",
 		"The region of the management cluster.")
+	flag.StringVar(&monitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentPrometheus,
+		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy)) //nolint:lll
 	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
 	flag.Float64Var(&monitoringShardingScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
@@ -201,7 +205,8 @@ func main() {
 	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
 
 	monitoringConfig := monitoring.Config{
-		Enabled: monitoringEnabled,
+		Enabled:         monitoringEnabled,
+		MonitoringAgent: monitoringAgent,
 		DefaultShardingStrategy: sharding.Strategy{
 			ScaleUpSeriesCount:  monitoringShardingScaleUpSeriesCount,
 			ScaleDownPercentage: monitoringShardingScaleDownPercentage,

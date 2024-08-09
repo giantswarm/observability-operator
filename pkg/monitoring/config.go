@@ -13,6 +13,7 @@ const MonitoringLabel = "giantswarm.io/monitoring"
 // Config represents the configuration used by the monitoring package.
 type Config struct {
 	Enabled                 bool
+	MonitoringAgent         string
 	DefaultShardingStrategy sharding.Strategy
 	// TODO(atlas): validate prometheus version using SemVer
 	PrometheusVersion string
