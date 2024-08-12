@@ -54,8 +54,9 @@ alloy:
         name: {{ .SecretName }}
   controller:
     type: statefulset
-    replicas: 2
     priorityClassName: {{ .PriorityClassName }}
+    autoscaling:
+      enabled: true
   affinity:
     nodeAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
