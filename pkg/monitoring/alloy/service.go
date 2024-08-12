@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	ConfigMapName = "monitoring"
-	SecretName    = "monitoring"
+	ConfigMapName = "monitoring-config"
+	SecretName    = "monitoring-secret"
 )
 
 type Service struct {
