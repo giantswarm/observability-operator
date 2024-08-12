@@ -45,11 +45,13 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, clus
 	secret := Secret(cluster)
 
 	data := struct {
-		AlloyConfig string
-		SecretName  string
+		AlloyConfig       string
+		SecretName        string
+		PriorityClassName string
 	}{
-		AlloyConfig: alloyConfig,
-		SecretName:  secret.GetName(),
+		AlloyConfig:       alloyConfig,
+		SecretName:        secret.GetName(),
+		PriorityClassName: commonmonitoring.PriorityClassName,
 	}
 
 	err = alloyMonitoringConfigTemplate.Execute(&values, data)

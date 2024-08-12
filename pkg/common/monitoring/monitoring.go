@@ -29,6 +29,8 @@ const (
 	MonitoringPrometheusAgentAppName = "prometheusAgent"
 	MonitoringAlloyAppName           = "alloyMetrics"
 
+	PriorityClassName = "giantswarm-critical"
+
 	QueueConfigCapacity          = 30000
 	QueueConfigMaxSamplesPerSend = 150000
 	QueueConfigMaxShards         = 10
