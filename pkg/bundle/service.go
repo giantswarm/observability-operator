@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/blang/semver"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -19,6 +20,11 @@ import (
 
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
+)
+
+var (
+	// TODO: change this to 1.6.0
+	observabilityBundleVersionSupportAlloyMetrics = semver.MustParse("1.5.0")
 )
 
 type BundleConfigurationService struct {
@@ -46,11 +52,24 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 	logger := log.FromContext(ctx)
 	logger.Info("configuring observability-bundle")
 
+	monitoringAgent := s.config.MonitoringAgent
+
+	observabilityBundleVersion, err := commonmonitoring.GetObservabilityBundleAppVersion(cluster, s.client, ctx)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	// Enforce prometheus-agent as monitoring agent when observability-bundle version < 1.6.0
+	if observabilityBundleVersion.LT(observabilityBundleVersionSupportAlloyMetrics) && monitoringAgent != commonmonitoring.MonitoringAgentPrometheus {
+		logger.Info("Monitoring agent is not supported by observability bundle, using prometheus-agent instead.", "observability-bundle-version", observabilityBundleVersion, "monitoring-agent", monitoringAgent)
+		monitoringAgent = commonmonitoring.MonitoringAgentPrometheus
+	}
+
 	bundleConfiguration := bundleConfiguration{
 		Apps: map[string]app{},
 	}
 
-	switch s.config.MonitoringAgent {
+	switch monitoringAgent {
 	case commonmonitoring.MonitoringAgentPrometheus:
 		bundleConfiguration.Apps[commonmonitoring.MonitoringPrometheusAgentAppName] = app{
 			Enabled: s.config.IsMonitored(cluster),
@@ -66,11 +85,11 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 			Enabled: s.config.IsMonitored(cluster),
 		}
 	default:
-		return errors.Errorf("unsupported monitoring agent %q", s.config.MonitoringAgent)
+		return errors.Errorf("unsupported monitoring agent %q", monitoringAgent)
 	}
 
 	logger.Info("creating or updating observability-bundle configmap")
-	err := s.createOrUpdateObservabilityBundleConfigMap(ctx, cluster, bundleConfiguration)
+	err = s.createOrUpdateObservabilityBundleConfigMap(ctx, cluster, bundleConfiguration)
 	if err != nil {
 		return errors.WithStack(err)
 	}
