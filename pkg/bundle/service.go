@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
@@ -46,11 +47,26 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 	logger.Info("configuring observability-bundle")
 
 	bundleConfiguration := bundleConfiguration{
-		Apps: map[string]app{
-			"prometheusAgent": {
-				Enabled: s.config.IsMonitored(cluster),
-			},
-		},
+		Apps: map[string]app{},
+	}
+
+	switch s.config.MonitoringAgent {
+	case commonmonitoring.MonitoringAgentPrometheus:
+		bundleConfiguration.Apps[commonmonitoring.MonitoringPrometheusAgentAppName] = app{
+			Enabled: s.config.IsMonitored(cluster),
+		}
+		bundleConfiguration.Apps[commonmonitoring.MonitoringAlloyAppName] = app{
+			Enabled: false,
+		}
+	case commonmonitoring.MonitoringAgentAlloy:
+		bundleConfiguration.Apps[commonmonitoring.MonitoringPrometheusAgentAppName] = app{
+			Enabled: false,
+		}
+		bundleConfiguration.Apps[commonmonitoring.MonitoringAlloyAppName] = app{
+			Enabled: s.config.IsMonitored(cluster),
+		}
+	default:
+		return errors.Errorf("unsupported monitoring agent %q", s.config.MonitoringAgent)
 	}
 
 	logger.Info("creating or updating observability-bundle configmap")
