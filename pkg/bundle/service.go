@@ -82,7 +82,8 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 			Enabled: false,
 		}
 		bundleConfiguration.Apps[commonmonitoring.MonitoringAlloyAppName] = app{
-			Enabled: s.config.IsMonitored(cluster),
+			Enabled:   s.config.IsMonitored(cluster),
+			Namespace: commonmonitoring.AlloyMonitoringAgentAppNamespace,
 		}
 	default:
 		return errors.Errorf("unsupported monitoring agent %q", monitoringAgent)

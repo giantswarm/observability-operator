@@ -42,7 +42,7 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", cluster.Name, SecretName),
-			Namespace: cluster.Namespace,
+			Namespace: commonmonitoring.AlloyMonitoringAgentAppNamespace,
 			Labels:    labels.Common(),
 		},
 	}
