@@ -63,7 +63,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 		return nil
 	})
 	if err != nil {
-		logger.Error(err, "alloy-service - failed to create or update alloy monitoring configmap")
+		logger.Error(err, "alloy-service - failed to create or update alloy monitoring secret")
 		return errors.WithStack(err)
 	}
 
