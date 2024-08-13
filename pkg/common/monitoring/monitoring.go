@@ -19,6 +19,7 @@ const (
 	// ServicePriorityLabel is the label used to determine the priority of a service.
 	servicePriorityLabel = "giantswarm.io/service-priority"
 
+	AlloyMonitoringAgentAppName      = "alloy-metrics"
 	AlloyMonitoringAgentAppNamespace = "kube-system"
 
 	// DefaultShards is the default number of shards to use.
