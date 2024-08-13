@@ -52,15 +52,15 @@ alloy:
     envFrom:
     - secretRef:
         name: {{ .SecretName }}
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
   controller:
     type: statefulset
     priorityClassName: {{ .PriorityClassName }}
     autoscaling:
       enabled: true
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
   affinity:
     nodeAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
