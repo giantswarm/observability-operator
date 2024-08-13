@@ -32,7 +32,7 @@ prometheus.operator.podmonitors "default" {
 
 prometheus.remote_write "default" {
   endpoint {
-		url = env("{{ .RemoteWriteURLEnvVarName }}")
+    url = env("{{ .RemoteWriteURLEnvVarName }}")
     name = env("{{ .RemoteWriteNameEnvVarName }}")
     enable_http2 = false
     remote_timeout = "{{ .RemoteWriteTimeout }}"
