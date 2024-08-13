@@ -20,9 +20,9 @@ import (
 )
 
 var (
-	//go:embed templates/monitoring.alloy.template
-	alloyMonitoring         string
-	alloyMonitoringTemplate *template.Template
+	//go:embed templates/alloy-config.alloy.template
+	alloyConfig         string
+	alloyConfigTemplate *template.Template
 
 	//go:embed templates/monitoring-config.yaml.template
 	alloyMonitoringConfig         string
@@ -30,7 +30,7 @@ var (
 )
 
 func init() {
-	alloyMonitoringTemplate = template.Must(template.New("monitoring.alloy").Funcs(sprig.FuncMap()).Parse(alloyMonitoring))
+	alloyConfigTemplate = template.Must(template.New("alloy-config.alloy").Funcs(sprig.FuncMap()).Parse(alloyConfig))
 	alloyMonitoringConfigTemplate = template.Must(template.New("monitoring-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringConfig))
 }
 
@@ -122,7 +122,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		ExternalLabelsServicePriority: commonmonitoring.GetServicePriority(cluster),
 	}
 
-	err = alloyMonitoringTemplate.Execute(&values, data)
+	err = alloyConfigTemplate.Execute(&values, data)
 	if err != nil {
 		return "", err
 	}
