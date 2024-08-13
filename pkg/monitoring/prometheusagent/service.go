@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
+	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
@@ -62,7 +63,7 @@ func (pas PrometheusAgentService) createOrUpdateConfigMap(ctx context.Context,
 	// Get the current configmap if it exists.
 	err := pas.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
-		configMap, err := pas.buildRemoteWriteConfig(ctx, cluster, logger, defaultShards)
+		configMap, err := pas.buildRemoteWriteConfig(ctx, cluster, logger, commonmonitoring.DefaultShards)
 		if err != nil {
 			return errors.WithStack(err)
 		}
