@@ -42,15 +42,13 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, clus
 		return nil, err
 	}
 
-	secret := Secret(cluster)
-
 	data := struct {
 		AlloyConfig       string
 		SecretName        string
 		PriorityClassName string
 	}{
 		AlloyConfig:       alloyConfig,
-		SecretName:        secret.GetName(),
+		SecretName:        commonmonitoring.AlloyMonitoringAgentAppName,
 		PriorityClassName: commonmonitoring.PriorityClassName,
 	}
 
