@@ -3,7 +3,6 @@ package querier
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/api"
@@ -19,7 +18,7 @@ var (
 )
 
 // QueryTSDBHeadSeries performs an instant query against Mimir.
-func QueryTSDBHeadSeries(ctx context.Context, clusterName string) (float64, error) {
+func QueryTSDBHeadSeries(ctx context.Context, query string) (float64, error) {
 	config := api.Config{
 		Address: "http://mimir-gateway.mimir.svc/prometheus",
 	}
@@ -34,7 +33,6 @@ func QueryTSDBHeadSeries(ctx context.Context, clusterName string) (float64, erro
 	api := v1.NewAPI(c)
 
 	queryContext, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	query := fmt.Sprintf("sum(max_over_time(prometheus_agent_active_series{cluster_id=\"%s\"}[6h]))", clusterName)
 	val, _, err := api.Query(queryContext, query, time.Now())
 	cancel()
 	if err != nil {

@@ -57,7 +57,8 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	}
 
 	// Compute the number of shards based on the number of series.
-	headSeries, err := querier.QueryTSDBHeadSeries(ctx, cluster.Name)
+	query := fmt.Sprintf(`sum(max_over_time(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", component_id="prometheus.remote_write.default", service="%s"}[6h]))`, cluster.Name, commonmonitoring.AlloyMonitoringAgentAppName)
+	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to query head series")
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
