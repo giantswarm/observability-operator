@@ -58,10 +58,8 @@ alloy:
         memory: {{ .RequestsMemory }}
   controller:
     type: statefulset
+    replicas: {{ .Replicas }}
     priorityClassName: {{ .PriorityClassName }}
-    autoscaling:
-      enabled: true
-      maxReplicas: 10
   affinity:
     nodeAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:

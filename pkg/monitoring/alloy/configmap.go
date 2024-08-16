@@ -10,6 +10,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 
 	"github.com/Masterminds/sprig"
 	"github.com/pkg/errors"
@@ -17,6 +19,8 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/metrics"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 )
 
 var (
@@ -34,8 +38,37 @@ func init() {
 	alloyMonitoringConfigTemplate = template.Must(template.New("monitoring-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringConfig))
 }
 
-func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, cluster *clusterv1.Cluster) (map[string]string, error) {
-	var values bytes.Buffer
+func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, currentState v1.ConfigMap, cluster *clusterv1.Cluster) (map[string]string, error) {
+	logger := log.FromContext(ctx)
+
+	// Get current number of shards from Alloy's config.
+	// Shards here is equivalent to replicas in the Alloy controller deployment.
+	var currentShards int
+	if currentState.Data != nil && currentState.Data["values"] != "" {
+		var monitoringConfig MonitoringConfig
+		err := yaml.Unmarshal([]byte(currentState.Data["values"]), &monitoringConfig)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		currentShards = monitoringConfig.Alloy.Alloy.Controller.Replicas
+	} else {
+		currentShards = commonmonitoring.DefaultShards
+	}
+
+	// Compute the number of shards based on the number of series.
+	headSeries, err := querier.QueryTSDBHeadSeries(ctx, cluster.Name)
+	if err != nil {
+		logger.Error(err, "alloy-service - failed to query head series")
+		metrics.MimirQueryErrors.WithLabelValues().Inc()
+	}
+
+	clusterShardingStrategy, err := commonmonitoring.GetClusterShardingStrategy(cluster)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	shardingStrategy := a.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
+	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
 	alloyConfig, err := a.generateAlloyConfig(ctx, cluster)
 	if err != nil {
@@ -43,21 +76,22 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, clus
 	}
 
 	data := struct {
-		AlloyConfig            string
-		AutoscalingMaxReplicas int
-		PriorityClassName      string
-		RequestsCPU            string
-		RequestsMemory         string
-		SecretName             string
+		AlloyConfig       string
+		PriorityClassName string
+		Replicas          int
+		RequestsCPU       string
+		RequestsMemory    string
+		SecretName        string
 	}{
-		AlloyConfig:            alloyConfig,
-		AutoscalingMaxReplicas: commonmonitoring.AlloyAutoscalingMaxReplicas,
-		PriorityClassName:      commonmonitoring.PriorityClassName,
-		RequestsCPU:            commonmonitoring.AlloyRequestsCPU,
-		RequestsMemory:         commonmonitoring.AlloyRequestsMemory,
-		SecretName:             commonmonitoring.AlloyMonitoringAgentAppName,
+		AlloyConfig:       alloyConfig,
+		PriorityClassName: commonmonitoring.PriorityClassName,
+		Replicas:          shards,
+		RequestsCPU:       commonmonitoring.AlloyRequestsCPU,
+		RequestsMemory:    commonmonitoring.AlloyRequestsMemory,
+		SecretName:        commonmonitoring.AlloyMonitoringAgentAppName,
 	}
 
+	var values bytes.Buffer
 	err = alloyMonitoringConfigTemplate.Execute(&values, data)
 	if err != nil {
 		return nil, err

@@ -37,7 +37,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 
 	configmap := ConfigMap(cluster)
 	_, err := controllerutil.CreateOrUpdate(ctx, a.Client, configmap, func() error {
-		data, err := a.GenerateAlloyMonitoringConfigMapData(ctx, cluster)
+		data, err := a.GenerateAlloyMonitoringConfigMapData(ctx, configmap, cluster)
 		if err != nil {
 			logger.Error(err, "alloy-service - failed to generate alloy monitoring configmap")
 			return errors.WithStack(err)

@@ -3,7 +3,6 @@ package prometheusagent
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -16,7 +15,6 @@ import (
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
 )
 
 func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
@@ -53,7 +51,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
 	}
 
-	clusterShardingStrategy, err := getClusterShardingStrategy(cluster)
+	clusterShardingStrategy, err := commonmonitoring.GetClusterShardingStrategy(cluster)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -94,25 +92,6 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 
 func getPrometheusAgentRemoteWriteConfigName(cluster *clusterv1.Cluster) string {
 	return fmt.Sprintf("%s-remote-write-config", cluster.Name)
-}
-
-func getClusterShardingStrategy(cluster metav1.Object) (*sharding.Strategy, error) {
-	var err error
-	var scaleUpSeriesCount, scaleDownPercentage float64
-	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-up-series-count"]; ok {
-		if scaleUpSeriesCount, err = strconv.ParseFloat(value, 64); err != nil {
-			return nil, err
-		}
-	}
-	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-down-percentage"]; ok {
-		if scaleDownPercentage, err = strconv.ParseFloat(value, 64); err != nil {
-			return nil, err
-		}
-	}
-	return &sharding.Strategy{
-		ScaleUpSeriesCount:  scaleUpSeriesCount,
-		ScaleDownPercentage: scaleDownPercentage,
-	}, nil
 }
 
 func readCurrentShardsFromConfig(configMap corev1.ConfigMap) (int, error) {
