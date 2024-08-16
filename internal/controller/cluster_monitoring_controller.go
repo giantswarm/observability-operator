@@ -167,19 +167,17 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 	}
 
+	// Enforce prometheus-agent as monitoring agent when observability-bundle version < 1.6.0
 	monitoringAgent := r.MonitoringConfig.MonitoringAgent
-
 	observabilityBundleVersion, err := commonmonitoring.GetObservabilityBundleAppVersion(cluster, r.Client, ctx)
 	if err != nil {
 		logger.Error(err, "failed to configure get observability-bundle version")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 	}
-	// Enforce prometheus-agent as monitoring agent when observability-bundle version < 1.6.0
 	if observabilityBundleVersion.LT(observabilityBundleVersionSupportAlloyMetrics) && monitoringAgent != commonmonitoring.MonitoringAgentPrometheus {
 		logger.Info("Monitoring agent is not supported by observability bundle, using prometheus-agent instead.", "observability-bundle-version", observabilityBundleVersion, "monitoring-agent", monitoringAgent)
 		monitoringAgent = commonmonitoring.MonitoringAgentPrometheus
 	}
-
 	r.MonitoringConfig.MonitoringAgent = monitoringAgent
 	r.BundleConfigurationService.SetMonitoringAgent(monitoringAgent)
 	r.AlloyService.SetMonitoringAgent(monitoringAgent)
