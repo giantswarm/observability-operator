@@ -38,13 +38,13 @@ func init() {
 	alloyMonitoringConfigTemplate = template.Must(template.New("monitoring-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringConfig))
 }
 
-func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, currentState v1.ConfigMap, cluster *clusterv1.Cluster) (map[string]string, error) {
+func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, currentState *v1.ConfigMap, cluster *clusterv1.Cluster) (map[string]string, error) {
 	logger := log.FromContext(ctx)
 
 	// Get current number of shards from Alloy's config.
 	// Shards here is equivalent to replicas in the Alloy controller deployment.
 	var currentShards int
-	if currentState.Data != nil && currentState.Data["values"] != "" {
+	if currentState != nil && currentState.Data != nil && currentState.Data["values"] != "" {
 		var monitoringConfig MonitoringConfig
 		err := yaml.Unmarshal([]byte(currentState.Data["values"]), &monitoringConfig)
 		if err != nil {
