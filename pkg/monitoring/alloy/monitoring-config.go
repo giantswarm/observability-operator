@@ -5,13 +5,9 @@ type MonitoringConfig struct {
 }
 
 type MonitoringConfigAlloy struct {
-	Alloy MonitoringConfigAlloyAlloy `json:"alloy"`
+	Controller MonitoringConfigAlloyController `json:"controller"`
 }
 
-type MonitoringConfigAlloyAlloy struct {
-	Controller MonitoringConfigAlloyAlloyController `json:"controller"`
-}
-
-type MonitoringConfigAlloyAlloyController struct {
+type MonitoringConfigAlloyController struct {
 	Replicas int `json:"replicas"`
 }

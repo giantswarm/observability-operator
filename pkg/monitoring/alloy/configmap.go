@@ -50,7 +50,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		currentShards = monitoringConfig.Alloy.Alloy.Controller.Replicas
+		currentShards = monitoringConfig.Alloy.Controller.Replicas
 		logger.Info("alloy-service - current number of shards", "shards", currentShards)
 	} else {
 		currentShards = commonmonitoring.DefaultShards
