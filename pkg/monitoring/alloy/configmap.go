@@ -43,12 +43,12 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, clus
 	}
 
 	data := struct {
-		AlloyAutoscalingMaxReplicas int
-		AlloyConfig                 string
-		PriorityClassName           string
-		RequestsCPU                 string
-		RequestsMemory              string
-		SecretName                  string
+		AlloyConfig            string
+		AutoscalingMaxReplicas int
+		PriorityClassName      string
+		RequestsCPU            string
+		RequestsMemory         string
+		SecretName             string
 	}{
 		AlloyConfig:            alloyConfig,
 		AutoscalingMaxReplicas: commonmonitoring.AlloyAutoscalingMaxReplicas,
