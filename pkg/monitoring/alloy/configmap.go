@@ -43,13 +43,19 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, clus
 	}
 
 	data := struct {
-		AlloyConfig       string
-		SecretName        string
-		PriorityClassName string
+		AlloyAutoscalingMaxReplicas int
+		AlloyConfig                 string
+		PriorityClassName           string
+		RequestsCPU                 string
+		RequestsMemory              string
+		SecretName                  string
 	}{
-		AlloyConfig:       alloyConfig,
-		SecretName:        commonmonitoring.AlloyMonitoringAgentAppName,
-		PriorityClassName: commonmonitoring.PriorityClassName,
+		AlloyConfig:            alloyConfig,
+		AutoscalingMaxReplicas: commonmonitoring.AlloyAutoscalingMaxReplicas,
+		PriorityClassName:      commonmonitoring.PriorityClassName,
+		RequestsCPU:            commonmonitoring.AlloyRequestsCPU,
+		RequestsMemory:         commonmonitoring.AlloyRequestsMemory,
+		SecretName:             commonmonitoring.AlloyMonitoringAgentAppName,
 	}
 
 	err = alloyMonitoringConfigTemplate.Execute(&values, data)

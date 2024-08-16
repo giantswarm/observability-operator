@@ -20,6 +20,9 @@ const (
 	servicePriorityLabel = "giantswarm.io/service-priority"
 
 	AlloyMonitoringAgentAppName = "alloy-metrics"
+	AlloyAutoscalingMaxReplicas = 20
+	AlloyRequestsCPU            = "100m"
+	AlloyRequestsMemory         = "8192Mi"
 
 	// DefaultShards is the default number of shards to use.
 	DefaultShards = 1

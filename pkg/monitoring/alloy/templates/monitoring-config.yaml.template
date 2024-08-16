@@ -54,8 +54,8 @@ alloy:
         name: {{ .SecretName }}
     resources:
       requests:
-        cpu: 100m
-        memory: 3072Mi
+        cpu: {{ .RequestsCPU }}
+        memory: {{ .RequestsMemory }}
   controller:
     type: statefulset
     priorityClassName: {{ .PriorityClassName }}
