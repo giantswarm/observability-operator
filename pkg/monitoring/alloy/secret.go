@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/base64"
 	"fmt"
 	"text/template"
 
@@ -46,10 +47,10 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		Name  string
 		Value string
 	}{
-		{Name: AlloyRemoteWriteURLEnvVarName, Value: url},
-		{Name: AlloyRemoteWriteNameEnvVarName, Value: commonmonitoring.RemoteWriteName},
-		{Name: AlloyRemoteWriteBasicAuthUsernameEnvVarName, Value: a.ManagementCluster.Name},
-		{Name: AlloyRemoteWriteBasicAuthPasswordEnvVarName, Value: password},
+		{Name: AlloyRemoteWriteURLEnvVarName, Value: base64Encode(url)},
+		{Name: AlloyRemoteWriteNameEnvVarName, Value: base64Encode(commonmonitoring.RemoteWriteName)},
+		{Name: AlloyRemoteWriteBasicAuthUsernameEnvVarName, Value: base64Encode(a.ManagementCluster.Name)},
+		{Name: AlloyRemoteWriteBasicAuthPasswordEnvVarName, Value: base64Encode(password)},
 	}
 
 	var values bytes.Buffer
@@ -74,4 +75,11 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 
 	return secret
+}
+
+func base64Encode(value string) string {
+	v := []byte(value)
+	dst := make([]byte, base64.StdEncoding.EncodedLen(len(v)))
+	base64.StdEncoding.Encode(dst, v)
+	return string(dst)
 }
