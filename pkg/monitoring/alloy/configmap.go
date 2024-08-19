@@ -83,12 +83,14 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		Replicas          int
 		RequestsCPU       string
 		RequestsMemory    string
+		SecretName        string
 	}{
 		AlloyConfig:       alloyConfig,
 		PriorityClassName: commonmonitoring.PriorityClassName,
 		Replicas:          shards,
 		RequestsCPU:       commonmonitoring.AlloyRequestsCPU,
 		RequestsMemory:    commonmonitoring.AlloyRequestsMemory,
+		SecretName:        commonmonitoring.AlloyMonitoringAgentAppName,
 	}
 
 	var values bytes.Buffer

@@ -49,6 +49,9 @@ alloy:
       create: true
       content: |-
 {{ .AlloyConfig | indent 8 }}
+    envFrom:
+    - secretRef:
+        name: {{ .SecretName }}
     resources:
       requests:
         cpu: {{ .RequestsCPU }}
