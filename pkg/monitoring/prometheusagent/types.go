@@ -4,19 +4,6 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 )
 
-const (
-	// defaultServicePriority is the default service priority if not set.
-	defaultServicePriority string = "highest"
-	// defaultShards is the default number of shards to use.
-	defaultShards = 1
-
-	// servicePriorityLabel is the label used to determine the priority of a service.
-	servicePriorityLabel string = "giantswarm.io/service-priority"
-
-	remoteWriteName                = "mimir"
-	remoteWriteEndpointTemplateURL = "https://mimir.%s/api/v1/push"
-)
-
 type RemoteWriteConfig struct {
 	PrometheusAgentConfig *PrometheusAgentConfig `yaml:"prometheus-agent,omitempty" json:"prometheus-agent,omitempty"`
 }

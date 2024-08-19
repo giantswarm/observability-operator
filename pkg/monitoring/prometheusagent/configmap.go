@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
+	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
@@ -42,7 +43,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		"pipeline":         pas.ManagementCluster.Pipeline,
 		"provider":         provider,
 		"region":           pas.ManagementCluster.Region,
-		"service_priority": getServicePriority(cluster),
+		"service_priority": commonmonitoring.GetServicePriority(cluster),
 	}
 
 	// Compute the number of shards based on the number of series.
@@ -93,13 +94,6 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 
 func getPrometheusAgentRemoteWriteConfigName(cluster *clusterv1.Cluster) string {
 	return fmt.Sprintf("%s-remote-write-config", cluster.Name)
-}
-
-func getServicePriority(cluster *clusterv1.Cluster) string {
-	if servicePriority, ok := cluster.GetLabels()[servicePriorityLabel]; ok && servicePriority != "" {
-		return servicePriority
-	}
-	return defaultServicePriority
 }
 
 func getClusterShardingStrategy(cluster metav1.Object) (*sharding.Strategy, error) {
