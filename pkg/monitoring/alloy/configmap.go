@@ -43,17 +43,16 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	// Get current number of shards from Alloy's config.
 	// Shards here is equivalent to replicas in the Alloy controller deployment.
-	var currentShards int
+	var currentShards = commonmonitoring.DefaultShards
 	if currentState != nil && currentState.Data != nil && currentState.Data["values"] != "" {
 		var monitoringConfig MonitoringConfig
 		err := yaml.Unmarshal([]byte(currentState.Data["values"]), &monitoringConfig)
 		if err != nil {
-			return nil, errors.WithStack(err)
+			logger.Warn("alloy-service - failed to unmarshal current monitoring config", "error", err)
+		} else {
+			currentShards = monitoringConfig.Alloy.Controller.Replicas
+			logger.Info("alloy-service - current number of shards", "shards", currentShards)
 		}
-		currentShards = monitoringConfig.Alloy.Controller.Replicas
-		logger.Info("alloy-service - current number of shards", "shards", currentShards)
-	} else {
-		currentShards = commonmonitoring.DefaultShards
 	}
 
 	// Compute the number of shards based on the number of series.
