@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Move GetClusterShardingStrategy to common/monitoring package
+- Add query argument to QueryTSDBHeadSeries
 - Removed lll golangci linter
 
 ## [0.3.1] - 2024-07-22
