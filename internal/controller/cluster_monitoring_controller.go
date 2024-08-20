@@ -42,8 +42,7 @@ import (
 )
 
 var (
-	// TODO: change this to 1.6.0
-	observabilityBundleVersionSupportAlloyMetrics = semver.MustParse("1.5.0")
+	observabilityBundleVersionSupportAlloyMetrics = semver.MustParse("1.6.0")
 )
 
 // ClusterMonitoringReconciler reconciles a Cluster object
