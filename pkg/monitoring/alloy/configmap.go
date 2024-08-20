@@ -129,15 +129,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		QueueConfigMaxSamplesPerSend int
 		QueueConfigMaxShards         int
 
-		ExternalLabelsClusterID       string
-		ExternalLabelsClusterType     string
-		ExternalLabelsCustomer        string
-		ExternalLabelsInstallation    string
-		ExternalLabelsOrganization    string
-		ExternalLabelsPipeline        string
-		ExternalLabelsProvider        string
-		ExternalLabelsRegion          string
-		ExternalLabelsServicePriority string
+		ExternalLabels map[string]string
 	}{
 		RemoteWriteURLEnvVarName:               AlloyRemoteWriteURLEnvVarName,
 		RemoteWriteNameEnvVarName:              AlloyRemoteWriteNameEnvVarName,
@@ -150,15 +142,17 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		QueueConfigMaxSamplesPerSend: commonmonitoring.QueueConfigMaxSamplesPerSend,
 		QueueConfigMaxShards:         commonmonitoring.QueueConfigMaxShards,
 
-		ExternalLabelsClusterID:       cluster.Name,
-		ExternalLabelsClusterType:     common.GetClusterType(cluster, a.ManagementCluster),
-		ExternalLabelsCustomer:        a.ManagementCluster.Customer,
-		ExternalLabelsInstallation:    a.ManagementCluster.Name,
-		ExternalLabelsOrganization:    organization,
-		ExternalLabelsPipeline:        a.ManagementCluster.Pipeline,
-		ExternalLabelsProvider:        provider,
-		ExternalLabelsRegion:          a.ManagementCluster.Region,
-		ExternalLabelsServicePriority: commonmonitoring.GetServicePriority(cluster),
+		ExternalLabels: map[string]string{
+			"cluster_id":       cluster.Name,
+			"cluster_type":     common.GetClusterType(cluster, a.ManagementCluster),
+			"customer":         a.ManagementCluster.Customer,
+			"installation":     a.ManagementCluster.Name,
+			"organization":     organization,
+			"pipeline":         a.ManagementCluster.Pipeline,
+			"provider":         provider,
+			"region":           a.ManagementCluster.Region,
+			"service_priority": commonmonitoring.GetServicePriority(cluster),
+		},
 	}
 
 	err = alloyConfigTemplate.Execute(&values, data)
