@@ -48,7 +48,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		var monitoringConfig MonitoringConfig
 		err := yaml.Unmarshal([]byte(currentState.Data["values"]), &monitoringConfig)
 		if err != nil {
-			logger.Warn("alloy-service - failed to unmarshal current monitoring config", "error", err)
+			logger.Info("alloy-service - failed to unmarshal current monitoring config", "error", err)
 		} else {
 			currentShards = monitoringConfig.Alloy.Controller.Replicas
 			logger.Info("alloy-service - current number of shards", "shards", currentShards)
