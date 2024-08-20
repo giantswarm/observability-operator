@@ -33,6 +33,10 @@ func NewBundleConfigurationService(client client.Client, config monitoring.Confi
 	}
 }
 
+func (s *BundleConfigurationService) SetMonitoringAgent(monitoringAgent string) {
+	s.config.MonitoringAgent = monitoringAgent
+}
+
 func getConfigMapObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 	return types.NamespacedName{
 		Name:      fmt.Sprintf("%s-observability-platform-configuration", cluster.Name),
@@ -63,6 +67,7 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 			Enabled: false,
 		}
 		bundleConfiguration.Apps[commonmonitoring.MonitoringAlloyAppName] = app{
+			AppName: commonmonitoring.AlloyMonitoringAgentAppName,
 			Enabled: s.config.IsMonitored(cluster),
 		}
 	default:

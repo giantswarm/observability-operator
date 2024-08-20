@@ -30,6 +30,7 @@ spec:
         - --management-cluster-name={{ $.Values.managementCluster.name }}
         - --management-cluster-pipeline={{ $.Values.managementCluster.pipeline }}
         - --management-cluster-region={{ $.Values.managementCluster.region }}
+        - --monitoring-agent={{ $.Values.monitoring.agent }}
         - --monitoring-enabled={{ $.Values.monitoring.enabled }}
         - --monitoring-sharding-scale-up-series-count={{ $.Values.monitoring.sharding.scaleUpSeriesCount }}
         - --monitoring-sharding-scale-down-percentage={{ $.Values.monitoring.sharding.scaleDownPercentage }}
