@@ -23,6 +23,10 @@ const (
 	// ServicePriorityLabel is the label used to determine the priority of a service.
 	servicePriorityLabel = "giantswarm.io/service-priority"
 
+	AlloyMonitoringAgentAppName = "alloy-metrics"
+	AlloyRequestsCPU            = "100m"
+	AlloyRequestsMemory         = "2048Mi"
+
 	// DefaultShards is the default number of shards to use.
 	DefaultShards = 1
 
@@ -32,6 +36,8 @@ const (
 	// Applications name in the observability-bundle
 	MonitoringPrometheusAgentAppName = "prometheusAgent"
 	MonitoringAlloyAppName           = "alloyMetrics"
+
+	PriorityClassName = "giantswarm-critical"
 
 	QueueConfigCapacity          = 30000
 	QueueConfigMaxSamplesPerSend = 150000
