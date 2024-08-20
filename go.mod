@@ -4,6 +4,7 @@ go 1.22.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/giantswarm/apiextensions-application v0.6.2
 	github.com/go-logr/logr v1.4.2
 	github.com/onsi/ginkgo/v2 v2.20.0
