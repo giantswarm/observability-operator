@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"text/template"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 )
 
 const (
@@ -16,10 +16,9 @@ const (
 
 var (
 	//go:embed templates/monitoring-secret.yaml.template
-	alloyMonitoringSecret         string
-	alloyMonitoringSecretTemplate *template.Template
+	alloyMonitoringSecret string
 )
 
 func init() {
-	alloyMonitoringSecretTemplate = template.Must(template.New("monitoring-secret.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringSecret))
+	template.Must(template.New("monitoring-secret.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringSecret))
 }

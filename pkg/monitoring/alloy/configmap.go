@@ -4,20 +4,18 @@ import (
 	_ "embed"
 	"text/template"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 )
 
 var (
 	//go:embed templates/alloy-config.alloy.template
-	alloyConfig         string
-	alloyConfigTemplate *template.Template
+	alloyConfig string
 
 	//go:embed templates/monitoring-config.yaml.template
-	alloyMonitoringConfig         string
-	alloyMonitoringConfigTemplate *template.Template
+	alloyMonitoringConfig string
 )
 
 func init() {
-	alloyConfigTemplate = template.Must(template.New("alloy-config.alloy").Funcs(sprig.FuncMap()).Parse(alloyConfig))
-	alloyMonitoringConfigTemplate = template.Must(template.New("monitoring-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringConfig))
+	template.Must(template.New("alloy-config.alloy").Funcs(sprig.FuncMap()).Parse(alloyConfig))
+	template.Must(template.New("monitoring-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringConfig))
 }
