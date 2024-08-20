@@ -45,6 +45,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
@@ -222,6 +223,14 @@ func main() {
 		MonitoringConfig:       monitoringConfig,
 	}
 
+	alloyService := alloy.Service{
+		Client:                 mgr.GetClient(),
+		OrganizationRepository: organizationRepository,
+		PasswordManager:        password.SimpleManager{},
+		ManagementCluster:      managementCluster,
+		MonitoringConfig:       monitoringConfig,
+	}
+
 	mimirService := mimir.MimirService{
 		Client:            mgr.GetClient(),
 		PasswordManager:   password.SimpleManager{},
@@ -233,6 +242,7 @@ func main() {
 		ManagementCluster:          managementCluster,
 		HeartbeatRepository:        heartbeatRepository,
 		PrometheusAgentService:     prometheusAgentService,
+		AlloyService:               alloyService,
 		MimirService:               mimirService,
 		MonitoringConfig:           monitoringConfig,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(mgr.GetClient(), monitoringConfig),
