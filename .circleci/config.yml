@@ -43,7 +43,7 @@ workflows:
               ignore:
                 - main
           requires:
-          - "go-build"
+            - "go-build"
 
       - architect/push-to-registries:
           context: architect
