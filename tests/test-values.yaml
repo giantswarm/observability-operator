@@ -1,0 +1,5 @@
+global:
+  podSecurityStandards:
+    enforced: true
+monitoring:
+  enabled: true
