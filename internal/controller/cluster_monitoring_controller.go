@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -38,6 +39,11 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
+)
+
+var (
+	// TODO: change this to 1.6.0
+	observabilityBundleVersionSupportAlloyMetrics = semver.MustParse("1.5.0")
 )
 
 // ClusterMonitoringReconciler reconciles a Cluster object
@@ -160,6 +166,21 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			}
 		}
 	}
+
+	// Enforce prometheus-agent as monitoring agent when observability-bundle version < 1.6.0
+	monitoringAgent := r.MonitoringConfig.MonitoringAgent
+	observabilityBundleVersion, err := commonmonitoring.GetObservabilityBundleAppVersion(cluster, r.Client, ctx)
+	if err != nil {
+		logger.Error(err, "failed to configure get observability-bundle version")
+		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	}
+	if observabilityBundleVersion.LT(observabilityBundleVersionSupportAlloyMetrics) && monitoringAgent != commonmonitoring.MonitoringAgentPrometheus {
+		logger.Info("Monitoring agent is not supported by observability bundle, using prometheus-agent instead.", "observability-bundle-version", observabilityBundleVersion, "monitoring-agent", monitoringAgent)
+		monitoringAgent = commonmonitoring.MonitoringAgentPrometheus
+	}
+	r.MonitoringConfig.MonitoringAgent = monitoringAgent
+	r.BundleConfigurationService.SetMonitoringAgent(monitoringAgent)
+	r.AlloyService.SetMonitoringAgent(monitoringAgent)
 
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
 	err = r.BundleConfigurationService.Configure(ctx, cluster)
