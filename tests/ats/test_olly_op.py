@@ -24,16 +24,16 @@ def test_api_working(kube_cluster: Cluster) -> None:
 # scope "module" means this is run only once, for the first test case requesting! It might be tricky
 # if you want to assert this multiple times
 @pytest.fixture(scope="module")
-def ic_deployment(kube_cluster: Cluster) -> List[pykube.Deployment]:
+def deployment(kube_cluster: Cluster) -> List[pykube.Deployment]:
     logger.info("Waiting for observability-operator deployment..")
 
-    deployment_ready = wait_for_ic_deployment(kube_cluster)
+    deployment_ready = wait_for_deployment(kube_cluster)
 
     logger.info("observability-operator deployment looks satisfied..")
 
     return deployment_ready
 
-def wait_for_ic_deployment(kube_cluster: Cluster) -> List[pykube.Deployment]:
+def wait_for_deployment(kube_cluster: Cluster) -> List[pykube.Deployment]:
     deployments = wait_for_deployments_to_run(
         kube_cluster.kube_client,
         [deployment_name],
@@ -57,7 +57,7 @@ def pods(kube_cluster: Cluster) -> List[pykube.Pod]:
 @pytest.mark.smoke
 @pytest.mark.upgrade
 @pytest.mark.flaky(reruns=5, reruns_delay=10)
-def test_pods_available(ic_deployment: List[pykube.Deployment]):
-    for s in ic_deployment:
+def test_pods_available(deployment: List[pykube.Deployment]):
+    for s in deployment:
         assert int(s.obj["status"]["readyReplicas"]) == int(
             s.obj["spec"]["replicas"])
