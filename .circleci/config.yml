@@ -41,9 +41,9 @@ workflows:
           filters:
             branches:
               ignore:
-                - master
+                - main
           requires:
-          - "go-build"
+            - "go-build"
 
       - architect/push-to-registries:
           context: architect
@@ -74,7 +74,7 @@ workflows:
             # Do not trigger the job on merge to master.
             branches:
               ignore:
-                - master
+                - main
           requires:
             - push-to-app-catalog
 
