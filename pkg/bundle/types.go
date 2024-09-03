@@ -5,5 +5,6 @@ type bundleConfiguration struct {
 }
 
 type app struct {
-	Enabled bool `yaml:"enabled" json:"enabled"`
+	AppName string `yaml:"appName,omitempty" json:"appName,omitempty"`
+	Enabled bool   `yaml:"enabled" json:"enabled"`
 }

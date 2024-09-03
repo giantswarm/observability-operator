@@ -2,13 +2,17 @@ package monitoring
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/yaml"
+
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
 )
 
 const (
@@ -19,6 +23,10 @@ const (
 	// ServicePriorityLabel is the label used to determine the priority of a service.
 	servicePriorityLabel = "giantswarm.io/service-priority"
 
+	AlloyMonitoringAgentAppName = "alloy-metrics"
+	AlloyRequestsCPU            = "100m"
+	AlloyRequestsMemory         = "2048Mi"
+
 	// DefaultShards is the default number of shards to use.
 	DefaultShards = 1
 
@@ -28,6 +36,8 @@ const (
 	// Applications name in the observability-bundle
 	MonitoringPrometheusAgentAppName = "prometheusAgent"
 	MonitoringAlloyAppName           = "alloyMetrics"
+
+	PriorityClassName = "giantswarm-critical"
 
 	QueueConfigCapacity          = 30000
 	QueueConfigMaxSamplesPerSend = 150000
@@ -83,4 +93,23 @@ func readMimirAuthPasswordFromSecret(secret corev1.Secret) (string, error) {
 		}
 		return secretData, nil
 	}
+}
+
+func GetClusterShardingStrategy(cluster metav1.Object) (*sharding.Strategy, error) {
+	var err error
+	var scaleUpSeriesCount, scaleDownPercentage float64
+	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-up-series-count"]; ok {
+		if scaleUpSeriesCount, err = strconv.ParseFloat(value, 64); err != nil {
+			return nil, err
+		}
+	}
+	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-down-percentage"]; ok {
+		if scaleDownPercentage, err = strconv.ParseFloat(value, 64); err != nil {
+			return nil, err
+		}
+	}
+	return &sharding.Strategy{
+		ScaleUpSeriesCount:  scaleUpSeriesCount,
+		ScaleDownPercentage: scaleDownPercentage,
+	}, nil
 }

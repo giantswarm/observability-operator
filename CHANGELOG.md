@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2024-08-20
+
 ### Added
 
 - Add tests with ats in ci pipeline.
 - Add helm chart templating test in ci pipeline.
 - Add support for Alloy to be used as monitoring agent in-place of Prometheus Agent. This is configurable via the `--monitoring-agent` flag.
+- Add Alloy service to manage Alloy monitoring agent configuration
+- Add Alloy configuration templates
+
+### Changed
+
+- Move GetClusterShardingStrategy to common/monitoring package
+- Add query argument to QueryTSDBHeadSeries
+- Removed lll golangci linter
 
 ## [0.3.1] - 2024-07-22
 
@@ -80,7 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/giantswarm/observability-operator/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/giantswarm/observability-operator/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/giantswarm/observability-operator/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/giantswarm/observability-operator/compare/v0.1.1...v0.2.0
