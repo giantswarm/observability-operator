@@ -1,7 +1,0 @@
-appName: "observability-operator"
-repoName: "observability-operator"
-appCatalog: "control-plane"
-
-# CAPI providers to test against when triggering `/run app-test-suites` from a PR
-providers:
-- capa
