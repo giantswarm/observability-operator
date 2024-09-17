@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Disable logger development mode to avoid panicking, use zap as logger
+- Fix CircleCI release pipeline
 
 ## [0.4.0] - 2024-08-20
 
