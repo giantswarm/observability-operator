@@ -51,7 +51,7 @@ prometheus.remote_write "default" {
   }
   external_labels = {
     {{- range $key, $value := .ExternalLabels }}
-    "{{ $key }}" = "{{ $value }}"
+    "{{ $key }}" = "{{ $value }}",
     {{- end }}
   }
 }
