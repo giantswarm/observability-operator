@@ -6,7 +6,7 @@ As of now, the [apptest-framework](https://github.com/giantswarm/apptest-framewo
 
 Before proceeding to any kind of test, you'll first have to deploy your custom branch app's version into a testing installation. Don't forget to suspend flux reconciliation for this app during the whole testing process. See [here](https://intranet.giantswarm.io/docs/dev-and-releng/flux/suspending-flux/#how-to-be-more-granular--subtle-with-suspending-resources-and-why-be-careful-with-this) for details on how to evict an app from flux's reconciliation.
 
-Then, run the `basic_test.sh` file which will check that everything is working as expected. Note that you have to specify the installation's name on which you want to execute the checks, so if you deployed your app on `grizzly` for example, run the following command (assuming you're in a terminal at the repo's root) : `tests/manual_e2e/basic_test.sh grizzly`  
+Then, run the `basic_test.sh` file which will check that everything is working as expected. Note that you have to specify the installation's name on which you want to execute the checks, so if you deployed your app on `grizzly` for example, run the following command from repo's root : `tests/manual_e2e/basic_test.sh grizzly`  
 
 Once that's done, there are additional things you should do :
 

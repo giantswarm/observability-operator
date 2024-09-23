@@ -22,7 +22,8 @@ main() {
 
   deployed=$(kubectl get app -n giantswarm observability-operator -o yaml | yq .status.release.status)
 
-  [[ "$deployed" != "deployed" ]] && exit_error "observability-operator app is not in deployed state. Please fix the app before retrying" || echo "observability-operator app is indeed in deployed state"
+  [[ "$deployed" != "deployed" ]] \
+    && exit_error "observability-operator app is not in deployed state. Please fix the app before retrying" || echo "observability-operator app is indeed in deployed state"
 
   echo "Creating WC"
 
@@ -36,7 +37,7 @@ main() {
 
   echo "WC named 'ollyoptest' created. Waiting for it to be ready"
 
-  sleep 300
+  sleep 600
 
   echo "Checking if the metrics agent is up and running on the WC"
 
@@ -70,3 +71,4 @@ main() {
   clean_wc
 }
 
+main "$@"
