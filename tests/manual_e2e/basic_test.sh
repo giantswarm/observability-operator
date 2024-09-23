@@ -50,7 +50,7 @@ main() {
   if [[ ! -z "$agent" ]]; then
     local podStatus=$(kubectl get pods -n kube-system --context teleport.giantswarm.io-$1-ollyoptest prometheus-prometheus-agent-0 -o yaml | yq .status.phase)
     [[ "$podStatus" != "Running" ]] && echo "prometheus-agent app deployed but pod isn't in a running state" || echo "prometheus-agent app is deployed and pod is running"
-  else if [[ ! -z "$alloy" ]]; then
+  elif [[ ! -z "$alloy" ]]; then
     local podStatus=$(kubectl get pods -n kube-system --context teleport.giantswarm.io-$1-ollyoptest alloy-metrics-0 -o yaml | yq .status.phase)
     [[ "$podStatus" != "Running" ]] && echo "alloy app deployed but pod isn't in a running state" || echo "alloy app is deployed and pods are running"
   else

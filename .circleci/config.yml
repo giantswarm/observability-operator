@@ -35,15 +35,17 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      
+
       - template-chart:
-          name: "template-chart"
+          name: template-chart
+          requires:
+            - go-build
           filters:
             branches:
               ignore:
                 - main
-          requires:
-            - "go-build"
+            tags:
+              only: /^v.*/
 
       - architect/push-to-registries:
           context: architect
@@ -67,11 +69,11 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      
+
       - architect/run-tests-with-ats:
           name: run-chart-tests-with-ats
           filters:
-            # Do not trigger the job on merge to master.
+            # Do not trigger the job on merge to main.
             branches:
               ignore:
                 - main
