@@ -10,9 +10,8 @@ Then, run the `tests/manual_e2e/basic_test.sh <installation>` command from the r
 
 Once that's done, there are additional things you should do :
 
-- Let it run for a bit, like 10min or more.
-- Inspect the `TODO : find continuous-test dashboard` dasboard which will give information mimir's overall health. This is made possible through the use of the `mimir-continuous-test` component that is deployed by default in our mimir setup. For more information on it if you feel the need to tune it for your tests, head over to the [official documentation page](https://grafana.com/docs/mimir/latest/manage/tools/mimir-continuous-test/).
-- Also inspect any other dashboard and make sure that you can see data from all WCs, including the one from the `basic_test.sh` file.
+- Wait for ~ 10min after running the above command.
+- Inspect any dashboard on the installation's grafana and make sure that you can see data from all WCs, especially the`ollyoptest` one.
 - If everything appears to be fine, then you can revert the flux's evicting procedure that you did and let it reconcile to its original version.
 
 Congratulations, you have completed the manual e2e testing procedure ! Your PR is now ready to be merged.
