@@ -12,6 +12,15 @@ clean_wc() {
   rm grizzly-e2e-wc.yaml
 }
 
+# Helper function - checks the existence of the cm and secret for either alloy or prometheus-agent
+check_configs() {
+  echo "Checking if the corresponding $1-$2 has been created"
+
+  config=$(kubectl get $2 -n org-giantswarm ollyoptest-$1-$2)
+
+  [[ -z "$config" ]] && echo "$1-$2 not found" || echo "$1-$2 found. Test succeeded"
+}
+
 main() {
   [[ -z "$1" ]] && exit_error "Please provide the installation name as an argument"
 
@@ -37,7 +46,7 @@ main() {
 
   echo "WC named 'ollyoptest' created. Waiting for it to be ready"
 
-  sleep 600
+  sleep 1200
 
   echo "Checking if the metrics agent is up and running on the WC"
 
@@ -50,21 +59,23 @@ main() {
 
   if [[ ! -z "$agent" ]]; then
     local podStatus=$(kubectl get pods -n kube-system --context teleport.giantswarm.io-$1-ollyoptest prometheus-prometheus-agent-0 -o yaml | yq .status.phase)
+    
     [[ "$podStatus" != "Running" ]] && echo "prometheus-agent app deployed but pod isn't in a running state" || echo "prometheus-agent app is deployed and pod is running"
+    
+    check_configs "remote-write" "cm"
+    check_configs "remote-write" "secret"
   elif [[ ! -z "$alloy" ]]; then
     local podStatus=$(kubectl get pods -n kube-system --context teleport.giantswarm.io-$1-ollyoptest alloy-metrics-0 -o yaml | yq .status.phase)
+
     [[ "$podStatus" != "Running" ]] && echo "alloy app deployed but pod isn't in a running state" || echo "alloy app is deployed and pods are running"
+
+    check_configs "monitoring" "cm"
+    check_configs "monitoring" "secret"
   else
     echo "No metrics agent app found. Cleaning the WC"
     clean_wc
     exit 1
   fi
-
-  echo "Checking if the corresponding remote-write-secret has been created"
-
-  secret=$(kubectl get secret -n org-giantswarm | grep remote-write-secret)
-
-  [[ -z "$secret" ]] && echo "remote-write-secret not found" || echo "remote-write-secret found. Test succeeded"
 
   echo "cleaning WC"
 
