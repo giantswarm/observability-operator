@@ -55,7 +55,7 @@ main() {
   tsh kube login $1
 
   agent=$(kubectl get apps -n org-giantswarm | grep ollyoptest-prometheus-agent)
-  alloy=$(kubectl get apps -n org-giantswarm | grep ollyoptest-alloy)
+  alloy=$(kubectl get apps -n org-giantswarm | grep ollyoptest-alloy-metrics)
 
   if [[ ! -z "$agent" ]]; then
     local podStatus=$(kubectl get pods -n kube-system --context teleport.giantswarm.io-$1-ollyoptest prometheus-prometheus-agent-0 -o yaml | yq .status.phase)
