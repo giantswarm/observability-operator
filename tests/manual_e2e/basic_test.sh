@@ -20,7 +20,7 @@ check_configs() {
   [[ "$2" == "config" ]] \
     && config=$(kubectl get configmap -n org-giantswarm ollyoptest-$1-$2) || config=$(kubectl get secret -n org-giantswarm ollyoptest-$1-$2)
 
-  [[ -z "$config" ]] && echo "$1-$2 not found" || echo "$1-$2 found. Test succeeded"
+  [[ -z "$config" ]] && echo "$1-$2 not found" || echo "$1-$2 found"
 }
 
 main() {
@@ -46,9 +46,16 @@ main() {
   kubectl gs template cluster --provider capa --name ollyoptest --organization giantswarm --description "observability-operator e2e tests" --release $toUseRelease > grizzly-e2e-wc.yaml
   kubectl create -f grizzly-e2e-wc.yaml
 
-  echo "WC named 'ollyoptest' created. Waiting for it to be ready"
+  echo "WC named 'ollyoptest' created. Waiting for it and its apps to be ready"
+  
+  # Waiting for 1min for the cluster resource to be created
+  sleep 60
 
-  sleep 1200
+  kubectl wait -n org-giantswarm --for=condition=Ready cluster/ollyoptest --timeout=10m
+  kubectl wait -n org-giantswarm --for=jsonpath='{.status.release.status}'=deployed app/ollyoptest-observability-bundle --timeout=20m
+
+  # Giving extra time to either Alloy or the prometheus-agent app to be created
+  sleep 60
 
   echo "Checking if the metrics agent is up and running on the WC"
 
@@ -79,7 +86,7 @@ main() {
     exit 1
   fi
 
-  echo "cleaning WC"
+  echo "Test succeeded, cleaning WC"
 
   clean_wc
 }
