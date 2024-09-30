@@ -32,6 +32,14 @@ validationJob:
     pullPolicy: IfNotPresent
     registry: docker.io
     tag: 1.28.4
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop:
+        - ALL
 
 operator:
   # -- Configures the resources for the operator deployment
