@@ -1,0 +1,29 @@
+{{- if .Values.validationJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "resource.default.name" . }}-resources-validation
+  namespace: {{ .Release.Namespace }}
+  labels:
+     {{- include "labels.common" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "labels.common" . | nindent 12 }}
+    spec:
+      serviceAccountName: {{ include "resource.default.name" . }}
+      restartPolicy: OnFailure      
+      containers:
+      - name: {{ include "resource.default.name" . }}-resources-validation
+        image: "{{ .Values.validationJob.image.registry }}/{{ .Values.validationJob.image.name }}:{{ .Values.validationJob.image.tag }}"
+        imagePullPolicy: {{ .Values.validationJob.image.pullPolicy }}
+        args:
+        - "-n={{ include "resource.default.name" . }}"
+        - "get"
+        - "pods"
+        - "-l=app.kubernetes.io/name=observability-operator"
+        - "--field-selector=status.phase=Running"
+{{- end }}
