@@ -28,10 +28,10 @@ monitoring:
 validationJob:
   enabled: false
   image:
-    name: giantswarm/kubectl
+    name: giantswarm/docker-kubectl
     pullPolicy: IfNotPresent
-    registry: docker.io
-    tag: 1.28.4
+    registry: quay.io
+    tag: 1.31.1
   containerSecurityContext:
     allowPrivilegeEscalation: false
     runAsNonRoot: true

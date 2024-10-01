@@ -1,4 +1,5 @@
 {{- if .Values.validationJob.enabled }}
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -21,14 +22,32 @@ spec:
       - name: {{ include "resource.default.name" . }}-resources-validation
         image: "{{ .Values.validationJob.image.registry }}/{{ .Values.validationJob.image.name }}:{{ .Values.validationJob.image.tag }}"
         imagePullPolicy: {{ .Values.validationJob.image.pullPolicy }}
-        args:
-        - "-n={{ include "resource.default.name" . }}"
-        - "get"
-        - "pods"
-        - "-l=app.kubernetes.io/name=observability-operator"
-        - "--field-selector=status.phase=Running"
+        command:
+        - /bin/bash
+        - -c
+        - chmod +x /tmp/validating-script.sh && /tmp/validating-script.sh
         securityContext:
           {{- with .Values.validationJob.containerSecurityContext }}
             {{- . | toYaml | nindent 10 }}
           {{- end }}
+        volumeMounts:
+        - mountPath: /tmp
+          name: validating-script
+      volumes:
+      - name: validating-script
+        configMap:
+          name: {{ include "resource.default.name" . }}-resources-validation-script
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "resource.default.name" . }}-resources-validation-script
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+data:
+  validating-script.sh: |-
+    #!/bin/bash
+    isPodReady="$(kubectl get pods -n {{ include "resource.default.name" . }} -l app.kubernetes.io/name=observability-operator --field-selector=status.phase=Running -o jsonpath='{.items[].status.containerStatuses[0].ready}')"
+    [[ "$isPodReady" == "true" ]] || exit 1
 {{- end }}
