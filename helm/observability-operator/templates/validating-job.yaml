@@ -50,4 +50,36 @@ data:
     #!/bin/bash
     isPodReady="$(kubectl get pods -n {{ include "resource.default.name" . }} -l app.kubernetes.io/name=observability-operator --field-selector=status.phase=Running -o jsonpath='{.items[].status.containerStatuses[0].ready}')"
     [[ "$isPodReady" == "true" ]] || exit 1
+---
+{{- if .Capabilities.APIVersions.Has "kyverno.io/v2alpha1/PolicyException" -}}
+apiVersion: kyverno.io/v2alpha1
+kind: PolicyException
+metadata:
+  annotations:
+    "helm.sh/hook": "pre-install,pre-upgrade"
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  name: {{ include "resource.default.name" . }}-resources-validation-exceptions
+  namespace: giantswarm
+spec:
+  exceptions:
+  - policyName: require-run-as-non-root-user
+    ruleNames:
+    - run-as-non-root-user
+    - autogen-run-as-non-root-user
+  - policyName: require-run-as-nonroot
+    ruleNames:
+    - run-as-non-root
+    - autogen-run-as-non-root
+  match:
+    any:
+    - resources:
+        kinds:
+        - Pod
+        - Job
+        namespaces:
+        - {{ .Release.Namespace }}
+        names:
+        - observability-operator-resources-validation*
+{{- end -}}
 {{- end }}

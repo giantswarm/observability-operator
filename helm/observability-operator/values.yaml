@@ -34,7 +34,6 @@ validationJob:
     tag: 1.31.1
   containerSecurityContext:
     allowPrivilegeEscalation: false
-    runAsNonRoot: true
     seccompProfile:
       type: RuntimeDefault
     capabilities:
