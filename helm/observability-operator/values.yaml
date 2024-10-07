@@ -31,7 +31,7 @@ validationJob:
     name: giantswarm/docker-kubectl
     pullPolicy: IfNotPresent
     registry: quay.io
-    tag: 1.31.1
+    tag: 1.31.0
   containerSecurityContext:
     allowPrivilegeEscalation: false
     seccompProfile:
