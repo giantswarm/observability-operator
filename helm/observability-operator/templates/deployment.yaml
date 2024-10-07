@@ -37,6 +37,7 @@ spec:
         {{- if .Values.monitoring.prometheusVersion }}
         - --prometheus-version={{ $.Values.monitoring.prometheusVersion }}
         {{- end }}
+        - --hello-there=general-kenobi
         env:
         - name: OPSGENIE_API_KEY
           valueFrom:
