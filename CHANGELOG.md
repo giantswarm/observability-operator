@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add org CRD in helm chart.
+
 ## [0.6.0] - 2024-09-24
 
 ### Added
