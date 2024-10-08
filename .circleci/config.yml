@@ -41,9 +41,6 @@ workflows:
           requires:
             - go-build
           filters:
-            branches:
-              ignore:
-                - main
             tags:
               only: /^v.*/
 

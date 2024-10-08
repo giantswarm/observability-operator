@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add org CRD in helm chart.
 
+## [0.6.1] - 2024-10-08
+
+### Fixed
+
+- Fix CI jobs generating new releases
+
 ## [0.6.0] - 2024-09-24
 
 ### Added
@@ -117,7 +123,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/giantswarm/observability-operator/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/giantswarm/observability-operator/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/giantswarm/observability-operator/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/giantswarm/observability-operator/compare/v0.4.0...v0.4.1
