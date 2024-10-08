@@ -1,0 +1,26 @@
+apiVersion: organization.giantswarm.io/v1alpha1
+kind: Org
+metadata:
+  labels:
+    app.kubernetes.io/name: org
+    app.kubernetes.io/instance: org-sample
+    app.kubernetes.io/part-of: observability-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: observability-operator
+  name: org-sample
+spec:
+  displayName: Giant Swarm
+  rbac:
+    admins:
+    - my-awesome-admins
+    editors:
+    - my-awesome-editors
+    viewers:
+    - my-awesome-viewers
+status:
+  ordID: "2"
+  dataSources:
+  - name: "mimir"
+    id: "1"
+  - name: "loki"
+    id: "2"
