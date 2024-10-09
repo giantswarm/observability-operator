@@ -53,7 +53,7 @@ alloy:
     - secretRef:
         name: {{ .SecretName }}
     resources:
-      limits: {}
+      limits: null
       requests:
         cpu: {{ .RequestsCPU }}
         memory: {{ .RequestsMemory }}
