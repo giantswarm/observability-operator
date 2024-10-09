@@ -42,7 +42,7 @@ import (
 )
 
 var (
-	observabilityBundleVersionSupportAlloyMetrics = semver.MustParse("1.6.2")
+	observabilityBundleVersionSupportAlloyMetrics = semver.MustParse("1.6.2-78a2a259625c45011008de8dd09ac109557cec5e")
 )
 
 // ClusterMonitoringReconciler reconciles a Cluster object
@@ -173,7 +173,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		logger.Error(err, "failed to configure get observability-bundle version")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 	}
-	if observabilityBundleVersion.LT(observabilityBundleVersionSupportAlloyMetrics) && monitoringAgent != commonmonitoring.MonitoringAgentPrometheus {
+	if observabilityBundleVersion.NE(observabilityBundleVersionSupportAlloyMetrics) && monitoringAgent != commonmonitoring.MonitoringAgentPrometheus {
 		logger.Info("Monitoring agent is not supported by observability bundle, using prometheus-agent instead.", "observability-bundle-version", observabilityBundleVersion, "monitoring-agent", monitoringAgent)
 		monitoringAgent = commonmonitoring.MonitoringAgentPrometheus
 	}
