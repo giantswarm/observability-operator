@@ -40,6 +40,9 @@ func (s Strategy) ComputeShards(currentShardCount int, timeSeries float64) int {
 
 	// We always have a minimum of 1 agent, even if there is no worker node
 	if desiredShardCount <= 0 {
+		if currentShardCount <= 0 {
+			return 1
+		}
 		return currentShardCount
 	}
 	return desiredShardCount
