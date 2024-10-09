@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- [Alloy] Fix invalid resources limits which should be equal or greater than the resources requests
+- [Alloy] Fix an issue where monitoring agent is the configured to be the same for all clusters
+
 ## [0.6.1] - 2024-10-08
 
 ### Fixed
