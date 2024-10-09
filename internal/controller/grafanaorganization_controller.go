@@ -24,18 +24,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	organizationv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
-// OrgReconciler reconciles a Org object
-type OrgReconciler struct {
+// GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
+type GrafanaOrganizationReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=organization.giantswarm.io,resources=orgs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=organization.giantswarm.io,resources=orgs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=organization.giantswarm.io,resources=orgs/finalizers,verbs=update
+//+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -57,6 +57,6 @@ func (r *OrgReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 // SetupWithManager sets up the controller with the Manager.
 func (r *OrgReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&organizationv1alpha1.Org{}).
+		For(&observabilityv1alpha1.Org{}).
 		Complete(r)
 }

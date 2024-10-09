@@ -20,8 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// OrgSpec defines the desired state of Org
-type OrgSpec struct {
+// GrafanaOrganizationSpec defines the desired state of GrafanaOrganization
+type GrafanaOrganizationSpec struct {
 	// DisplayName is the displayed name of the organization. It can be different from the actual org's name.
 	DisplayName string `json:"displayName"`
 
@@ -43,8 +43,8 @@ type Rbac struct {
 	Viewers []string `json:"viewers"`
 }
 
-// OrgStatus defines the observed state of Org
-type OrgStatus struct {
+// GrafanaOrganizationStatus defines the observed state of GrafanaOrganization
+type GrafanaOrganizationStatus struct {
 	// OrgID is the unique id of the org.
 	OrgID string `json:"orgID"`
 
@@ -64,24 +64,24 @@ type DataSources struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// Org is the Schema for the orgs API
-type Org struct {
+// GrafanaOrganization is the Schema for the grafanaorganizations API
+type GrafanaOrganization struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   OrgSpec   `json:"spec,omitempty"`
-	Status OrgStatus `json:"status,omitempty"`
+	Spec   GrafanaOrganizationSpec   `json:"spec,omitempty"`
+	Status GrafanaOrganizationStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// OrgList contains a list of Org
-type OrgList struct {
+// GrafanaOrganizationList contains a list of GrafanaOrganization
+type GrafanaOrganizationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Org `json:"items"`
+	Items           []GrafanaOrganization `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Org{}, &OrgList{})
+	SchemeBuilder.Register(&GrafanaOrganization{}, &GrafanaOrganizationList{})
 }
