@@ -6,7 +6,8 @@
 #
 
 # Directories.
-API_DIR := $(shell [ -d api ] &&  echo api || echo pkg/apis)# default to api, fall back to pkg/apis
+# default to api, fall back to pkg/apis
+API_DIR := $(shell [ -d api ] &&  echo api || echo pkg/apis)
 CRD_DIR := config/crd
 SCRIPTS_DIR := hack
 GOBIN_DIR := $(abspath hack/bin)
@@ -35,7 +36,7 @@ all: generate
 
 $(CONTROLLER_GEN):
 	@echo "$(BUILD_COLOR)Building controller-gen$(NO_COLOR)"
-	GOBIN=$(GOBIN_DIR) go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0
+	GOBIN=$(GOBIN_DIR) go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest
 
 .PHONY: generate
 generate:
