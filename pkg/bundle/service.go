@@ -33,10 +33,6 @@ func NewBundleConfigurationService(client client.Client, config monitoring.Confi
 	}
 }
 
-func (s *BundleConfigurationService) SetMonitoringAgent(monitoringAgent string) {
-	s.config.MonitoringAgent = monitoringAgent
-}
-
 func getConfigMapObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 	return types.NamespacedName{
 		Name:      fmt.Sprintf("%s-observability-platform-configuration", cluster.Name),
@@ -46,7 +42,7 @@ func getConfigMapObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 
 // Configure configures the observability-bundle application.
 // the observabilitybundle application to enable logging agents.
-func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clusterv1.Cluster, monitoringAgent string) error {
 	logger := log.FromContext(ctx)
 	logger.Info("configuring observability-bundle")
 
@@ -54,7 +50,7 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 		Apps: map[string]app{},
 	}
 
-	switch s.config.MonitoringAgent {
+	switch monitoringAgent {
 	case commonmonitoring.MonitoringAgentPrometheus:
 		bundleConfiguration.Apps[commonmonitoring.MonitoringPrometheusAgentAppName] = app{
 			Enabled: s.config.IsMonitored(cluster),
@@ -71,7 +67,7 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 			Enabled: s.config.IsMonitored(cluster),
 		}
 	default:
-		return errors.Errorf("unsupported monitoring agent %q", s.config.MonitoringAgent)
+		return errors.Errorf("unsupported monitoring agent %q", monitoringAgent)
 	}
 
 	logger.Info("creating or updating observability-bundle configmap")
