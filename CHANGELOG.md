@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- [Alloy] Enable VPA for AlloyMetrics
+
 ## [0.6.1] - 2024-10-08
 
 ### Fixed
