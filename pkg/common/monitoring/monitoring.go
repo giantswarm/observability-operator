@@ -27,9 +27,6 @@ const (
 	AlloyRequestsCPU            = "100m"
 	AlloyRequestsMemory         = "2048Mi"
 
-	// DefaultShards is the default number of shards to use.
-	DefaultShards = 1
-
 	// Values accepted by the monitoring-agent flag
 	MonitoringAgentPrometheus = "prometheus-agent"
 	MonitoringAgentAlloy      = "alloy"

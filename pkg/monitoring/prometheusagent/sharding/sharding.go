@@ -2,8 +2,11 @@ package sharding
 
 import (
 	"math"
+)
 
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+const (
+	// DefaultShards is the default number of shards to use.
+	DefaultShards = 1
 )
 
 type Strategy struct {
@@ -44,7 +47,7 @@ func (s Strategy) ComputeShards(currentShardCount int, timeSeries float64) int {
 
 	// We always have a minimum of 1 agent, even if there is no worker node
 	if desiredShardCount <= 0 {
-		return math.Max(commonmonitoring.DefaultShards, currentShardCount)
+		return int(math.Max(float64(DefaultShards), float64(currentShardCount)))
 	}
 	return desiredShardCount
 }

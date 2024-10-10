@@ -21,6 +21,7 @@ import (
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
 )
 
 var (
@@ -43,7 +44,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	// Get current number of shards from Alloy's config.
 	// Shards here is equivalent to replicas in the Alloy controller deployment.
-	var currentShards = commonmonitoring.DefaultShards
+	var currentShards = sharding.DefaultShards
 	if currentState != nil && currentState.Data != nil && currentState.Data["values"] != "" {
 		var monitoringConfig monitoringConfig
 		err := yaml.Unmarshal([]byte(currentState.Data["values"]), &monitoringConfig)
