@@ -1,6 +1,10 @@
 package sharding
 
-import "math"
+import (
+	"math"
+
+	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+)
 
 type Strategy struct {
 	// Configures the number of series needed to add a new shard. Computation is number of series / ScaleUpSeriesCount
@@ -40,10 +44,7 @@ func (s Strategy) ComputeShards(currentShardCount int, timeSeries float64) int {
 
 	// We always have a minimum of 1 agent, even if there is no worker node
 	if desiredShardCount <= 0 {
-		if currentShardCount <= 0 {
-			return 1
-		}
-		return currentShardCount
+		return math.Max(commonmonitoring.DefaultShards, currentShardCount)
 	}
 	return desiredShardCount
 }
