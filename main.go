@@ -124,7 +124,7 @@ func main() {
 	flag.StringVar(&prometheusVersion, "prometheus-version", "",
 		"The version of Prometheus Agents to deploy.")
 	opts := zap.Options{
-		Development: true,
+		Development: false,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()

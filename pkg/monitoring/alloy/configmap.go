@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
@@ -21,6 +21,7 @@ import (
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
 )
 
 var (
@@ -43,9 +44,9 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	// Get current number of shards from Alloy's config.
 	// Shards here is equivalent to replicas in the Alloy controller deployment.
-	var currentShards = commonmonitoring.DefaultShards
+	var currentShards = sharding.DefaultShards
 	if currentState != nil && currentState.Data != nil && currentState.Data["values"] != "" {
-		var monitoringConfig MonitoringConfig
+		var monitoringConfig monitoringConfig
 		err := yaml.Unmarshal([]byte(currentState.Data["values"]), &monitoringConfig)
 		if err != nil {
 			logger.Info("alloy-service - failed to unmarshal current monitoring config", "error", err)
@@ -80,15 +81,11 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		AlloyConfig       string
 		PriorityClassName string
 		Replicas          int
-		RequestsCPU       string
-		RequestsMemory    string
 		SecretName        string
 	}{
 		AlloyConfig:       alloyConfig,
 		PriorityClassName: commonmonitoring.PriorityClassName,
 		Replicas:          shards,
-		RequestsCPU:       commonmonitoring.AlloyRequestsCPU,
-		RequestsMemory:    commonmonitoring.AlloyRequestsMemory,
 		SecretName:        commonmonitoring.AlloyMonitoringAgentAppName,
 	}
 
@@ -129,15 +126,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		QueueConfigMaxSamplesPerSend int
 		QueueConfigMaxShards         int
 
-		ExternalLabelsClusterID       string
-		ExternalLabelsClusterType     string
-		ExternalLabelsCustomer        string
-		ExternalLabelsInstallation    string
-		ExternalLabelsOrganization    string
-		ExternalLabelsPipeline        string
-		ExternalLabelsProvider        string
-		ExternalLabelsRegion          string
-		ExternalLabelsServicePriority string
+		ExternalLabels map[string]string
 	}{
 		RemoteWriteURLEnvVarName:               AlloyRemoteWriteURLEnvVarName,
 		RemoteWriteNameEnvVarName:              AlloyRemoteWriteNameEnvVarName,
@@ -150,15 +139,17 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		QueueConfigMaxSamplesPerSend: commonmonitoring.QueueConfigMaxSamplesPerSend,
 		QueueConfigMaxShards:         commonmonitoring.QueueConfigMaxShards,
 
-		ExternalLabelsClusterID:       cluster.Name,
-		ExternalLabelsClusterType:     common.GetClusterType(cluster, a.ManagementCluster),
-		ExternalLabelsCustomer:        a.ManagementCluster.Customer,
-		ExternalLabelsInstallation:    a.ManagementCluster.Name,
-		ExternalLabelsOrganization:    organization,
-		ExternalLabelsPipeline:        a.ManagementCluster.Pipeline,
-		ExternalLabelsProvider:        provider,
-		ExternalLabelsRegion:          a.ManagementCluster.Region,
-		ExternalLabelsServicePriority: commonmonitoring.GetServicePriority(cluster),
+		ExternalLabels: map[string]string{
+			"cluster_id":       cluster.Name,
+			"cluster_type":     common.GetClusterType(cluster, a.ManagementCluster),
+			"customer":         a.ManagementCluster.Customer,
+			"installation":     a.ManagementCluster.Name,
+			"organization":     organization,
+			"pipeline":         a.ManagementCluster.Pipeline,
+			"provider":         provider,
+			"region":           a.ManagementCluster.Region,
+			"service_priority": commonmonitoring.GetServicePriority(cluster),
+		},
 	}
 
 	err = alloyConfigTemplate.Execute(&values, data)
@@ -174,7 +165,7 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
 			Namespace: cluster.Namespace,
-			Labels:    labels.Common(),
+			Labels:    labels.Common,
 		},
 	}
 

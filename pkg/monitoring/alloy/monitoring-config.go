@@ -1,13 +1,13 @@
 package alloy
 
-type MonitoringConfig struct {
-	Alloy MonitoringConfigAlloy `json:"alloy"`
+type monitoringConfig struct {
+	Alloy monitoringConfigAlloy `json:"alloy"`
 }
 
-type MonitoringConfigAlloy struct {
-	Controller MonitoringConfigAlloyController `json:"controller"`
+type monitoringConfigAlloy struct {
+	Controller monitoringConfigAlloyController `json:"controller"`
 }
 
-type MonitoringConfigAlloyController struct {
+type monitoringConfigAlloyController struct {
 	Replicas int `json:"replicas"`
 }

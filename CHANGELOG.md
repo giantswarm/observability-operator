@@ -7,11 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- [Alloy] Enable VPA for AlloyMetrics
+
+### Fixed
+
+- [Alloy] Fix an issue where monitoring agent is the configured to be the same for all clusters
+- Monitoring agents: keep currently configured shards when failing to compute shards
+
+## [0.6.1] - 2024-10-08
+
+### Fixed
+
+- Fix CI jobs generating new releases
+
+## [0.6.0] - 2024-09-24
+
+### Added
+
+- Add manual e2e testing procedure and script.
+
+## [0.5.0] - 2024-09-17
+
+### Changed
+
+- Require observability-bundle >= 1.6.2 for Alloy monitoring agent support, this is due to incorrect alloyMetrics catalog in observability-bundle
+
+### Fixed
+
+- Fix invalid Alloy config due to missing comma on external labels
+
+## [0.4.1] - 2024-09-17
+
+### Fixed
+
+- Disable logger development mode to avoid panicking, use zap as logger
+- Fix CircleCI release pipeline
+
+## [0.4.0] - 2024-08-20
+
 ### Added
 
 - Add tests with ats in ci pipeline.
 - Add helm chart templating test in ci pipeline.
 - Add support for Alloy to be used as monitoring agent in-place of Prometheus Agent. This is configurable via the `--monitoring-agent` flag.
+- Add Alloy service to manage Alloy monitoring agent configuration
+- Add Alloy configuration templates
+
+### Changed
+
+- Move GetClusterShardingStrategy to common/monitoring package
+- Add query argument to QueryTSDBHeadSeries
+- Removed lll golangci linter
 
 ### Changed
 
@@ -84,7 +132,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/giantswarm/observability-operator/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/giantswarm/observability-operator/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/giantswarm/observability-operator/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/giantswarm/observability-operator/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/giantswarm/observability-operator/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/giantswarm/observability-operator/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/giantswarm/observability-operator/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/giantswarm/observability-operator/compare/v0.1.1...v0.2.0

@@ -50,15 +50,9 @@ prometheus.remote_write "default" {
     }
   }
   external_labels = {
-    "cluster_id" = "{{ .ExternalLabelsClusterID }}",
-    "cluster_type" = "{{ .ExternalLabelsClusterType }}",
-    "customer" = "{{ .ExternalLabelsCustomer }}",
-    "installation" = "{{ .ExternalLabelsInstallation }}",
-    "organization" = "{{ .ExternalLabelsOrganization }}",
-    "pipeline" = "{{ .ExternalLabelsPipeline }}",
-    "provider" = "{{ .ExternalLabelsProvider }}",
-    "region" = "{{ .ExternalLabelsRegion }}",
-    "service_priority" = "{{ .ExternalLabelsServicePriority }}",
+    {{- range $key, $value := .ExternalLabels }}
+    "{{ $key }}" = "{{ $value }}",
+    {{- end }}
   }
 }
 

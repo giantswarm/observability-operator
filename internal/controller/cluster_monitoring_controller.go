@@ -42,8 +42,7 @@ import (
 )
 
 var (
-	// TODO: change this to 1.6.0
-	observabilityBundleVersionSupportAlloyMetrics = semver.MustParse("1.5.0")
+	observabilityBundleVersionSupportAlloyMetrics = semver.MustParse("1.6.2")
 )
 
 // ClusterMonitoringReconciler reconciles a Cluster object
@@ -178,12 +177,9 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		logger.Info("Monitoring agent is not supported by observability bundle, using prometheus-agent instead.", "observability-bundle-version", observabilityBundleVersion, "monitoring-agent", monitoringAgent)
 		monitoringAgent = commonmonitoring.MonitoringAgentPrometheus
 	}
-	r.MonitoringConfig.MonitoringAgent = monitoringAgent
-	r.BundleConfigurationService.SetMonitoringAgent(monitoringAgent)
-	r.AlloyService.SetMonitoringAgent(monitoringAgent)
 
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
-	err = r.BundleConfigurationService.Configure(ctx, cluster)
+	err = r.BundleConfigurationService.Configure(ctx, cluster, monitoringAgent)
 	if err != nil {
 		logger.Error(err, "failed to configure the observability-bundle")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -191,7 +187,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// Cluster specific configuration
 	if r.MonitoringConfig.IsMonitored(cluster) {
-		switch r.MonitoringConfig.MonitoringAgent {
+		switch monitoringAgent {
 		case commonmonitoring.MonitoringAgentPrometheus:
 			// Create or update PrometheusAgent remote write configuration.
 			err = r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
@@ -207,7 +203,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		default:
-			return ctrl.Result{}, errors.Errorf("unsupported monitoring agent %q", r.MonitoringConfig.MonitoringAgent)
+			return ctrl.Result{}, errors.Errorf("unsupported monitoring agent %q", monitoringAgent)
 		}
 	} else {
 		// clean up any existing prometheus agent configuration

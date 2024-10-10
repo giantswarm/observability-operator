@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
@@ -69,7 +69,7 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", cluster.Name, SecretName),
 			Namespace: cluster.Namespace,
-			Labels:    labels.Common(),
+			Labels:    labels.Common,
 		},
 	}
 

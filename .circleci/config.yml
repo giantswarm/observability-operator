@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  architect: giantswarm/architect@5.4.0
+  architect: giantswarm/architect@5.10.0
 
 jobs:
   unit-tests:
@@ -35,15 +35,14 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      
+
       - template-chart:
-          name: "template-chart"
-          filters:
-            branches:
-              ignore:
-                - master
+          name: template-chart
           requires:
-          - "go-build"
+            - go-build
+          filters:
+            tags:
+              only: /^v.*/
 
       - architect/push-to-registries:
           context: architect
@@ -67,14 +66,14 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      
+
       - architect/run-tests-with-ats:
           name: run-chart-tests-with-ats
           filters:
-            # Do not trigger the job on merge to master.
+            # Do not trigger the job on merge to main.
             branches:
               ignore:
-                - master
+                - main
           requires:
             - push-to-app-catalog
 

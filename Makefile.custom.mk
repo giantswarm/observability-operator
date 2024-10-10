@@ -1,8 +1,3 @@
-.PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	go generate ./...
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	go fmt ./...
@@ -21,11 +16,6 @@ test-all: test-unit ## Run all tests
 .PHONY: coverage-html
 coverage-html: test-unit
 	go tool cover -html coverprofile.out
-
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-.PHONY: controller-gen
-controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.10.0)
 
 ENVTEST = $(shell pwd)/bin/setup-envtest
 .PHONY: envtest
