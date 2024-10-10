@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [Alloy] Enable VPA for AlloyMetrics
 
+### Fixed
+
+- Monitoring agents: keep currently configured shards when failing to compute shards
+
 ## [0.6.1] - 2024-10-08
 
 ### Fixed
