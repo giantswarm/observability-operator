@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2024-10-10
+
 ### Fixed
 
 - [Alloy] Fix CiliumNetworkPolicy to allow Alloy to reach out to every pods in the cluster
@@ -135,7 +137,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/giantswarm/observability-operator/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/giantswarm/observability-operator/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/giantswarm/observability-operator/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/giantswarm/observability-operator/compare/v0.5.0...v0.6.0
