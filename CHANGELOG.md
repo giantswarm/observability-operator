@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- [Alloy] Enable VPA for AlloyMetrics
+
 ### Fixed
 
 - [Alloy] Fix an issue where monitoring agent is the configured to be the same for all clusters
