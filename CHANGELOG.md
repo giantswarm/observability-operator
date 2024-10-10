@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - [Alloy] Fix an issue where monitoring agent is the configured to be the same for all clusters
+- Monitoring agents: keep currently configured shards when failing to compute shards
 
 ## [0.6.1] - 2024-10-08
 
