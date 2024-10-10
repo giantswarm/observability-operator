@@ -22,33 +22,33 @@ import (
 
 // GrafanaOrganizationSpec defines the desired state of GrafanaOrganization
 type GrafanaOrganizationSpec struct {
-	// DisplayName is the displayed name of the organization. It can be different from the actual org's name.
+	// DisplayName is the displayed name of the grafanaorganization. It can be different from the actual org's name.
 	DisplayName string `json:"displayName"`
 
-	// Access role that can be assumed to access the organization.
-	Rbac *Rbac `json:"rbac,omitempty"`
+	// Access role that can be assumed to access the grafanaorganization.
+	RBAC *RBAC `json:"rbac,omitempty"`
 }
 
-// RBAC defines the RBAC configuration for the organization.
-type Rbac struct {
-	// Admins is a list of service accounts that have admin access to the organization.
+// RBAC defines the RBAC configuration for the grafanaorganization.
+type RBAC struct {
+	// Admins is a list of service accounts that have admin access to the grafanaorganization.
 	Admins []string `json:"admins"`
 
-	// Editors is a list of service accounts that have editor access to the organization.
+	// Editors is a list of service accounts that have editor access to the grafanaorganization.
 	// +optional
 	Editors []string `json:"editors"`
 
-	// Viewers is a list of service accounts that have viewer access to the organization.
+	// Viewers is a list of service accounts that have viewer access to the grafanaorganization.
 	// +optional
 	Viewers []string `json:"viewers"`
 }
 
 // GrafanaOrganizationStatus defines the observed state of GrafanaOrganization
 type GrafanaOrganizationStatus struct {
-	// OrgID is the unique id of the org.
+	// OrgID is the actual organisation ID in grafana.
 	OrgID string `json:"orgID"`
 
-	// DataSources is a list of grafana data sources that are available to the organization.
+	// DataSources is a list of grafana data sources that are available to the grafanaorganization.
 	DataSources []DataSources `json:"dataSources"`
 }
 
@@ -58,7 +58,7 @@ type DataSources struct {
 	Name string `json:"name"`
 
 	// ID is the unique id of the data source.
-	Id string `json:"id"`
+	ID string `json:"id"`
 }
 
 //+kubebuilder:object:root=true
