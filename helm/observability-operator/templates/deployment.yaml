@@ -46,7 +46,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /healthz
-            port: 8081
+            port: http-healthz
           initialDelaySeconds: 30
           timeoutSeconds: 1
         securityContext:
@@ -56,6 +56,9 @@ spec:
         ports:
         - containerPort: 8080
           name: http
+          protocol: TCP
+        - containerPort: 8081
+          name: http-healthz
           protocol: TCP
         resources: {{ toYaml .Values.operator.resources | nindent 10 }}
       serviceAccountName: {{ include "resource.default.name"  . }}
