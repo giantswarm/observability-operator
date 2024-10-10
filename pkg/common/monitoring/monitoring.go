@@ -24,8 +24,6 @@ const (
 	servicePriorityLabel = "giantswarm.io/service-priority"
 
 	AlloyMonitoringAgentAppName = "alloy-metrics"
-	AlloyRequestsCPU            = "100m"
-	AlloyRequestsMemory         = "2048Mi"
 
 	// Values accepted by the monitoring-agent flag
 	MonitoringAgentPrometheus = "prometheus-agent"
