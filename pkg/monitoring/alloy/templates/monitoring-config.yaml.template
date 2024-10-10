@@ -8,6 +8,7 @@ networkPolicy:
     egress:
     - toEntities:
       - kube-apiserver
+      - cluster
       - world
     - toEndpoints:
       - matchLabels:
