@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- [Alloy] Fix CiliumNetworkPolicy to allow Alloy to reach out to every pods in the cluster
+
 ## [0.7.0] - 2024-10-10
 
 ### Changed
