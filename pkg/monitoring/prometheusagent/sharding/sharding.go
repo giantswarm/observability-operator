@@ -1,6 +1,13 @@
 package sharding
 
-import "math"
+import (
+	"math"
+)
+
+const (
+	// DefaultShards is the default number of shards to use.
+	DefaultShards = 1
+)
 
 type Strategy struct {
 	// Configures the number of series needed to add a new shard. Computation is number of series / ScaleUpSeriesCount
@@ -40,7 +47,7 @@ func (s Strategy) ComputeShards(currentShardCount int, timeSeries float64) int {
 
 	// We always have a minimum of 1 agent, even if there is no worker node
 	if desiredShardCount <= 0 {
-		return 1
+		return int(math.Max(float64(DefaultShards), float64(currentShardCount)))
 	}
 	return desiredShardCount
 }

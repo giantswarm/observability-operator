@@ -25,9 +25,6 @@ const (
 
 	AlloyMonitoringAgentAppName = "alloy-metrics"
 
-	// DefaultShards is the default number of shards to use.
-	DefaultShards = 1
-
 	// Values accepted by the monitoring-agent flag
 	MonitoringAgentPrometheus = "prometheus-agent"
 	MonitoringAgentAlloy      = "alloy"
