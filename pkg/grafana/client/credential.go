@@ -18,8 +18,8 @@ type adminCredentials struct {
 func getAdminCredentials(ctx context.Context, client client.Client) (adminCredentials, error) {
 	grafanaAdminSecret := &v1.Secret{}
 	err := client.Get(ctx, types.NamespacedName{
-		Namespace: Namespace,
-		Name:      GrafanaSecretName,
+		Namespace: grafanaNamespace,
+		Name:      grafanaAdminCredentialsSecretName,
 	}, grafanaAdminSecret)
 	if err != nil {
 		return adminCredentials{}, errors.WithStack(err)

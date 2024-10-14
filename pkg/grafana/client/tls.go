@@ -17,8 +17,8 @@ func buildTLSConfiguration(ctx context.Context, client client.Client) (*tls.Conf
 
 	secret := &v1.Secret{}
 	err := client.Get(ctx, types.NamespacedName{
-		Namespace: Namespace,
-		Name:      grafanaTlsSecretName,
+		Namespace: grafanaNamespace,
+		Name:      grafanaTLSSecretName,
 	}, secret)
 	if err != nil {
 		return nil, errors.WithStack(err)

@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	grafanaURL           = "http://grafana.monitoring.svc.cluster.local:3000"
-	grafanaNamespace            = "monitoring"
-	grafanaAdminCredentialsSecretName    = "grafana"
-	grafanaTLSSecretName = "grafana-tls" // nolint:gosec
+	grafanaURL                        = "http://grafana.monitoring.svc.cluster.local:3000"
+	grafanaNamespace                  = "monitoring"
+	grafanaAdminCredentialsSecretName = "grafana"
+	grafanaTLSSecretName              = "grafana-tls" // nolint:gosec
 )
 
 func GenerateGrafanaClient(ctx context.Context, client client.Client, logger logr.Logger) (*grafana.GrafanaHTTPAPI, error) {
