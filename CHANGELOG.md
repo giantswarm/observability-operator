@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add grafanaOrganization CRD in helm chart.
 
+## [0.7.1] - 2024-10-10
+
+### Fixed
+
+- [Alloy] Fix CiliumNetworkPolicy to allow Alloy to reach out to every pods in the cluster
+
+## [0.7.0] - 2024-10-10
+
+### Changed
+
+- [Alloy] Enable VPA for AlloyMetrics
+- Change the PromQL query used to determine the amount of head series when scaling Prometheus Agent and Alloy ([#74](https://github.com/giantswarm/observability-operator/pull/74))
+
+### Fixed
+
+- [Alloy] Fix an issue where monitoring agent is the configured to be the same for all clusters
+- Monitoring agents: keep currently configured shards when failing to compute shards
+
 ## [0.6.1] - 2024-10-08
 
 ### Fixed
@@ -123,7 +141,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/giantswarm/observability-operator/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/giantswarm/observability-operator/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/giantswarm/observability-operator/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/giantswarm/observability-operator/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/giantswarm/observability-operator/compare/v0.4.1...v0.5.0

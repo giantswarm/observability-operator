@@ -21,6 +21,7 @@ import (
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
 )
 
 var (
@@ -43,7 +44,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	// Get current number of shards from Alloy's config.
 	// Shards here is equivalent to replicas in the Alloy controller deployment.
-	var currentShards = commonmonitoring.DefaultShards
+	var currentShards = sharding.DefaultShards
 	if currentState != nil && currentState.Data != nil && currentState.Data["values"] != "" {
 		var monitoringConfig monitoringConfig
 		err := yaml.Unmarshal([]byte(currentState.Data["values"]), &monitoringConfig)
@@ -56,7 +57,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	}
 
 	// Compute the number of shards based on the number of series.
-	query := fmt.Sprintf(`sum(max_over_time(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", component_id="prometheus.remote_write.default", service="%s"}[6h]))`, cluster.Name, commonmonitoring.AlloyMonitoringAgentAppName)
+	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", component_id="prometheus.remote_write.default", service="%s"})by(pod))[6h:1h]))`, cluster.Name, commonmonitoring.AlloyMonitoringAgentAppName)
 	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to query head series")
@@ -80,15 +81,11 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		AlloyConfig       string
 		PriorityClassName string
 		Replicas          int
-		RequestsCPU       string
-		RequestsMemory    string
 		SecretName        string
 	}{
 		AlloyConfig:       alloyConfig,
 		PriorityClassName: commonmonitoring.PriorityClassName,
 		Replicas:          shards,
-		RequestsCPU:       commonmonitoring.AlloyRequestsCPU,
-		RequestsMemory:    commonmonitoring.AlloyRequestsMemory,
 		SecretName:        commonmonitoring.AlloyMonitoringAgentAppName,
 	}
 

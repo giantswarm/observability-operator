@@ -8,6 +8,7 @@ networkPolicy:
     egress:
     - toEntities:
       - kube-apiserver
+      - cluster
       - world
     - toEndpoints:
       - matchLabels:
@@ -52,10 +53,6 @@ alloy:
     envFrom:
     - secretRef:
         name: {{ .SecretName }}
-    resources:
-      requests:
-        cpu: {{ .RequestsCPU }}
-        memory: {{ .RequestsMemory }}
   controller:
     type: statefulset
     replicas: {{ .Replicas }}
@@ -81,3 +78,15 @@ alloy:
               - alloy
           topologyKey: kubernetes.io/hostname
         weight: 50
+verticalPodAutoscaler:
+  enabled: true
+  resourcePolicy:
+    containerPolicies:
+    - containerName: alloy
+      controlledResources:
+      - memory
+      - cpu
+      controlledValues: "RequestsAndLimits"
+      minAllowed:
+        cpu: 100m
+        memory: 512Mi
