@@ -20,10 +20,9 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net/url"
 
-	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	grafana "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	grafanaclient "github.com/grafana/grafana-openapi-client-go/client"
+	"github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
@@ -74,19 +73,22 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
 
-	logger.WithValues("grafanaOrganization", grafanaOrganization.Spec.Name)
+	logger.WithValues("grafanaOrganization", grafanaOrganization.ObjectMeta.Name)
 
 	// Get grafana admin-password and admin-user
-	grafanaAdminAuth, err := getGrafanaAdminAut(ctx, r.Client)
+	adminCredentials, err := getAdminCredentials(ctx, r.Client)
 	if err != nil {
 		logger.Error(err, "Failed to fetch Grafana admin secret")
 	}
 
 	// Generate Grafana client
-	grafanaClient, err := generateGrafanaClient(ctx, r.Client, grafanaAdminAuth, grafana)
+	grafanaClient, err := generateGrafanaClient(ctx, r.Client, adminCredentials)
+	if err != nil {
+		logger.Error(err, "Failed to create Grafana admin client")
+	}
 
 	// Test connection to Grafana
-	_, _, err = grafanaClient.GetHealth(ctx)
+	_, err = grafanaClient.Health.GetHealth()
 	if err != nil {
 		logger.Error(err, "Failed to connect to Grafana")
 	}
@@ -106,7 +108,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
 	// If the grafanaOrganization doesn't have our finalizer, add it.
-	if controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.grafanaOrganizationFinalizer) {
+	if controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 		logger.Info("Add finalizer to grafana organization")
 		// Register the finalizer immediately to avoid orphaning AWS resources on delete
 		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
@@ -128,29 +130,40 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	logger.Info("Remove finalizer from grafana organization")
 	// Remove the finalizer.
 	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
-	controllerutil.RemoveFinalizer(grafanaOrganization, v1alpha1.grafanaOrganizationFinalizer)
+	controllerutil.RemoveFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
 
 	return r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization))
 }
 
-func getGrafanaAdminAuth(ctx context.Context, client client.Client) ([]string, error) {
+type adminCredentials struct {
+	Username string
+	Password string
+}
+
+func getAdminCredentials(ctx context.Context, client client.Client) (adminCredentials, error) {
 	grafanaAdminSecret := &v1.Secret{}
 	err := client.Get(ctx, types.NamespacedName{
 		Namespace: Namespace,
 		Name:      GrafanaSecretName,
 	}, grafanaAdminSecret)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return adminCredentials{}, errors.WithStack(err)
 	}
 
-	adminPassword, _ := grafanaAdminSecret.Data["admin-password"]
-	adminUser, _ := grafanaAdminSecret.Data["admin-user"]
+	adminUser, ok := grafanaAdminSecret.Data["admin-user"]
+	if !ok {
+		return adminCredentials{}, fmt.Errorf("admin-user not found in secret %v/%v", grafanaAdminSecret.Namespace, grafanaAdminSecret.Name)
+	}
+	adminPassword, ok := grafanaAdminSecret.Data["admin-password"]
+	if !ok {
+		return adminCredentials{}, fmt.Errorf("admin-password not found in secret %v/%v", grafanaAdminSecret.Namespace, grafanaAdminSecret.Name)
+	}
 
-	return []string{adminPassword, adminUser}, nil
+	return adminCredentials{Username: string(adminUser), Password: string(adminPassword)}, nil
 }
 
-func generateGrafanaClient(ctx context.Context, client client.Client, adminAuth []string) (*genapi.GrafanaHTTPAPI, error) {
-	tlsConfig, err := buildTLSConfiguration(ctx, c)
+func generateGrafanaClient(ctx context.Context, client client.Client, adminCredentials adminCredentials) (*grafana.GrafanaHTTPAPI, error) {
+	tlsConfig, err := buildTLSConfiguration(ctx, client)
 	if err != nil {
 		return nil, err
 	}
@@ -160,48 +173,48 @@ func generateGrafanaClient(ctx context.Context, client client.Client, adminAuth 
 		return nil, fmt.Errorf("parsing url for client: %w", err)
 	}
 
-	cfg := &grafanaclient.TransportConfig{
+	cfg := &grafana.TransportConfig{
 		Schemes:  []string{grafanaUrl.Scheme},
 		BasePath: "/api",
 		Host:     grafanaUrl.Host,
 		// We use basic auth to authenticate on grafana.
-		BasicAuth: url.UserPassword(adminAuth[1], adminAuth[0]),
+		BasicAuth: url.UserPassword(adminCredentials.Username, adminCredentials.Password),
 		// NumRetries contains the optional number of attempted retries.
 		NumRetries: 0,
 		TLSConfig:  tlsConfig,
 	}
 
-	cl := grafanaclient.NewHTTPClientWithConfig(nil, cfg)
+	cl := grafana.NewHTTPClientWithConfig(nil, cfg)
 
 	return cl, nil
 }
 
 // build the tls.Config object based on the content of the grafana-tls secret
-func buildTLSConfiguration(ctx context.Context, c client.Client) (*tls.Config, error) {
+func buildTLSConfiguration(ctx context.Context, client client.Client) (*tls.Config, error) {
 	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
 
 	secret := &v1.Secret{}
 	err := client.Get(ctx, types.NamespacedName{
 		Namespace: Namespace,
 		Name:      grafanaTlsSecretName,
-	}, grafanaAdminSecret)
+	}, secret)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	if secret.Data == nil {
-		return nil, fmt.Errorf("empty credential secret: %v/%v", grafana.Namespace, tlsConfigBlock.CertSecretRef.Name)
+		return nil, fmt.Errorf("empty credential secret: %v/%v", secret.Namespace, secret.Name)
 	}
 
 	crt, crtPresent := secret.Data["tls.crt"]
 	key, keyPresent := secret.Data["tls.key"]
 
 	if (crtPresent && !keyPresent) || (keyPresent && !crtPresent) {
-		return nil, fmt.Errorf("invalid secret %v/%v. tls.crt and tls.key needs to be present together when one of them is declared", tlsConfigBlock.CertSecretRef.Namespace, tlsConfigBlock.CertSecretRef.Name)
+		return nil, fmt.Errorf("invalid secret %v/%v. tls.crt and tls.key needs to be present together when one of them is declared", secret.Namespace, secret.Name)
 	} else if crtPresent && keyPresent {
 		loadedCrt, err := tls.X509KeyPair(crt, key)
 		if err != nil {
-			return nil, fmt.Errorf("certificate from secret %v/%v cannot be parsed : %w", grafana.Namespace, tlsConfigBlock.CertSecretRef.Name, err)
+			return nil, fmt.Errorf("certificate from secret %v/%v cannot be parsed : %w", secret.Namespace, secret.Name, err)
 		}
 		tlsConfig.Certificates = []tls.Certificate{loadedCrt}
 	}
