@@ -61,8 +61,8 @@ type DataSources struct {
 	ID string `json:"id"`
 }
 
-//+kubebuilder:resource:scope=Cluster
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:scope=Cluster
 //+kubebuilder:subresource:status
 
 // GrafanaOrganization is the Schema for the grafanaorganizations API
@@ -74,8 +74,8 @@ type GrafanaOrganization struct {
 	Status GrafanaOrganizationStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:resource:scope=Cluster
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:scope=Cluster
 
 // GrafanaOrganizationList contains a list of GrafanaOrganization
 type GrafanaOrganizationList struct {
