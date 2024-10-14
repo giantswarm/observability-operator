@@ -22,14 +22,14 @@ import (
 
 // GrafanaOrganizationSpec defines the desired state of GrafanaOrganization
 type GrafanaOrganizationSpec struct {
-	// DisplayName is the displayed name of the grafanaorganization. It can be different from the actual org's name.
+	// DisplayName is the name displayed when viewing the organization in Grafana. It can be different from the actual org's name.
 	DisplayName string `json:"displayName"`
 
-	// Access role that can be assumed to access the grafanaorganization.
+	// Access rules defines user permissions for interacting with the organization in Grafana.
 	RBAC *RBAC `json:"rbac,omitempty"`
 }
 
-// RBAC defines the RBAC configuration for the grafanaorganization.
+// RBAC defines the RoleBasedAccessControl configuration for the Grafana organization.
 type RBAC struct {
 	// Admins is a list of user organizations that have admin access to the grafanaorganization.
 	Admins []string `json:"admins"`
@@ -48,7 +48,7 @@ type GrafanaOrganizationStatus struct {
 	// OrgID is the actual organisation ID in grafana.
 	OrgID string `json:"orgID"`
 
-	// DataSources is a list of grafana data sources that are available to the grafanaorganization.
+	// DataSources is a list of grafana data sources that are available to the Grafana organization.
 	DataSources []DataSources `json:"dataSources"`
 }
 
@@ -65,7 +65,7 @@ type DataSources struct {
 //+kubebuilder:resource:scope=Cluster
 //+kubebuilder:subresource:status
 
-// GrafanaOrganization is the Schema for the grafanaorganizations API
+// GrafanaOrganization is the Schema describing a Grafana organization. Its lifecycle is managed by the observability-operator.
 type GrafanaOrganization struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
