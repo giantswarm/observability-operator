@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add grafanaOrganization CRD in helm chart.
+- Add logic to grafanaOrganization reconciler.
 
 ## [0.7.1] - 2024-10-10
 
