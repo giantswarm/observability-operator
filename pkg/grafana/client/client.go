@@ -45,7 +45,5 @@ func GenerateGrafanaClient(ctx context.Context, client client.Client, logger log
 		TLSConfig:  tlsConfig,
 	}
 
-	cl := grafana.NewHTTPClientWithConfig(nil, cfg)
-
 	return grafana.NewHTTPClientWithConfig(nil, cfg), nil
 }
