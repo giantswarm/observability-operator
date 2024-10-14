@@ -29,7 +29,7 @@ func GenerateGrafanaClient(ctx context.Context, client client.Client, logger log
 		return nil, fmt.Errorf("failed to build tls config: %w", err)
 	}
 
-	grafanaUrl, err := url.Parse(GrafanaUrl)
+	grafanaUrl, err := url.Parse(grafanaURL)
 	if err != nil {
 		return nil, fmt.Errorf("parsing url for client: %w", err)
 	}
