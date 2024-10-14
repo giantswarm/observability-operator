@@ -31,14 +31,14 @@ type GrafanaOrganizationSpec struct {
 
 // RBAC defines the RBAC configuration for the grafanaorganization.
 type RBAC struct {
-	// Admins is a list of service accounts that have admin access to the grafanaorganization.
+	// Admins is a list of user organizations that have admin access to the grafanaorganization.
 	Admins []string `json:"admins"`
 
-	// Editors is a list of service accounts that have editor access to the grafanaorganization.
+	// Editors is a list of user organizations that have editor access to the grafanaorganization.
 	// +optional
 	Editors []string `json:"editors"`
 
-	// Viewers is a list of service accounts that have viewer access to the grafanaorganization.
+	// Viewers is a list of user organizations that have viewer access to the grafanaorganization.
 	// +optional
 	Viewers []string `json:"viewers"`
 }
@@ -61,6 +61,7 @@ type DataSources struct {
 	ID string `json:"id"`
 }
 
+//+kubebuilder:resource:scope=Cluster
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
@@ -73,6 +74,7 @@ type GrafanaOrganization struct {
 	Status GrafanaOrganizationStatus `json:"status,omitempty"`
 }
 
+//+kubebuilder:resource:scope=Cluster
 //+kubebuilder:object:root=true
 
 // GrafanaOrganizationList contains a list of GrafanaOrganization

@@ -12,7 +12,7 @@ spec:
     listKind: GrafanaOrganizationList
     plural: grafanaorganizations
     singular: grafanaorganization
-  scope: Namespaced
+  scope: Cluster
   versions:
   - name: v1alpha1
     schema:
@@ -41,27 +41,27 @@ spec:
             description: GrafanaOrganizationSpec defines the desired state of GrafanaOrganization
             properties:
               displayName:
-                description: DisplayName is the displayed name of the organization.
+                description: DisplayName is the displayed name of the grafanaorganization.
                   It can be different from the actual org's name.
                 type: string
               rbac:
-                description: Access role that can be assumed to access the organization.
+                description: Access role that can be assumed to access the grafanaorganization.
                 properties:
                   admins:
-                    description: Admins is a list of service accounts that have admin
-                      access to the organization.
+                    description: Admins is a list of user organizations that have
+                      admin access to the grafanaorganization.
                     items:
                       type: string
                     type: array
                   editors:
-                    description: Editors is a list of service accounts that have editor
-                      access to the organization.
+                    description: Editors is a list of user organizations that have
+                      editor access to the grafanaorganization.
                     items:
                       type: string
                     type: array
                   viewers:
-                    description: Viewers is a list of service accounts that have viewer
-                      access to the organization.
+                    description: Viewers is a list of user organizations that have
+                      viewer access to the grafanaorganization.
                     items:
                       type: string
                     type: array
@@ -76,7 +76,7 @@ spec:
             properties:
               dataSources:
                 description: DataSources is a list of grafana data sources that are
-                  available to the organization.
+                  available to the grafanaorganization.
                 items:
                   description: DataSource defines the name and id for data sources.
                   properties:
@@ -92,7 +92,7 @@ spec:
                   type: object
                 type: array
               orgID:
-                description: OrgID is the unique id of the org.
+                description: OrgID is the actual organisation ID in grafana.
                 type: string
             required:
             - dataSources
