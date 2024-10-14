@@ -20,6 +20,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// Finalizer needs to follow the format "domain name, a forward slash and the name of the finalizer"
+	// See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#finalizers
+	GrafanaOrganizationFinalizer = "observability.giantswarm.io/grafanaorganization"
+)
+
 // GrafanaOrganizationSpec defines the desired state of GrafanaOrganization
 type GrafanaOrganizationSpec struct {
 	// DisplayName is the displayed name of the grafanaorganization. It can be different from the actual org's name.
