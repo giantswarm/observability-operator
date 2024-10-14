@@ -14,7 +14,7 @@ const (
 	GrafanaUrl           = "http://grafana.monitoring.svc.cluster.local:3000"
 	Namespace            = "monitoring"
 	GrafanaSecretName    = "grafana"
-	grafanaTlsSecretName = "grafana-tls"
+	grafanaTlsSecretName = "grafana-tls" // nolint:gosec
 )
 
 func GenerateGrafanaClient(ctx context.Context, client client.Client, logger logr.Logger) (*grafana.GrafanaHTTPAPI, error) {

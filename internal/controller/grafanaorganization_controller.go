@@ -81,7 +81,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 }
 
 // reconcileCreate creates the grafanaOrganization.
-func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) {
+func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	logger := log.FromContext(ctx)
 
 	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
