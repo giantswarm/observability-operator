@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.16.3
   name: grafanaorganizations.observability.giantswarm.io
 spec:
   group: observability.giantswarm.io
@@ -17,8 +17,8 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: GrafanaOrganization is the Schema for the grafanaorganizations
-          API
+        description: GrafanaOrganization is the Schema describing a Grafana organization.
+          Its lifecycle is managed by the observability-operator.
         properties:
           apiVersion:
             description: |-
@@ -41,11 +41,12 @@ spec:
             description: GrafanaOrganizationSpec defines the desired state of GrafanaOrganization
             properties:
               displayName:
-                description: DisplayName is the displayed name of the grafanaorganization.
-                  It can be different from the actual org's name.
+                description: DisplayName is the name displayed when viewing the organization
+                  in Grafana. It can be different from the actual org's name.
                 type: string
               rbac:
-                description: Access role that can be assumed to access the grafanaorganization.
+                description: Access rules defines user permissions for interacting
+                  with the organization in Grafana.
                 properties:
                   admins:
                     description: Admins is a list of user organizations that have
@@ -76,7 +77,7 @@ spec:
             properties:
               dataSources:
                 description: DataSources is a list of grafana data sources that are
-                  available to the grafanaorganization.
+                  available to the Grafana organization.
                 items:
                   description: DataSource defines the name and id for data sources.
                   properties:
