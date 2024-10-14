@@ -25,14 +25,16 @@ func getAdminCredentials(ctx context.Context, client client.Client) (adminCreden
 		return adminCredentials{}, errors.WithStack(err)
 	}
 
-	adminUser, ok := grafanaAdminSecret.Data["admin-user"]
-	if !ok {
-		return adminCredentials{}, fmt.Errorf("admin-user not found in secret %v/%v", grafanaAdminSecret.Namespace, grafanaAdminSecret.Name)
-	}
-	adminPassword, ok := grafanaAdminSecret.Data["admin-password"]
-	if !ok {
-		return adminCredentials{}, fmt.Errorf("admin-password not found in secret %v/%v", grafanaAdminSecret.Namespace, grafanaAdminSecret.Name)
+	if grafanaAdminSecret.Data == nil {
+		return adminCredentials{}, fmt.Errorf("empty credential secret: %v/%v", grafanaAdminSecret.Namespace, grafanaAdminSecret.Name)
 	}
 
-	return adminCredentials{Username: string(adminUser), Password: string(adminPassword)}, nil
+	adminUser, userPresent := grafanaAdminSecret.Data["admin-user"]
+	adminPassword, passwordPresent := grafanaAdminSecret.Data["admin-password"]
+
+	if (userPresent && !passwordPresent) || (!userPresent && passwordPresent) {
+		return adminCredentials{}, fmt.Errorf("invalid secret %v/%v. admin-secret and admin-user needs to be present together when one of them is declared", grafanaAdminSecret.Namespace, grafanaAdminSecret.Name)
+	} else if userPresent && passwordPresent {
+		return adminCredentials{Username: string(adminUser), Password: string(adminPassword)}, nil
+	}
 }

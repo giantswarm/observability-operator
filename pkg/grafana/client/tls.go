@@ -25,7 +25,7 @@ func buildTLSConfiguration(ctx context.Context, client client.Client) (*tls.Conf
 	}
 
 	if secret.Data == nil {
-		return nil, fmt.Errorf("empty credential secret: %v/%v", secret.Namespace, secret.Name)
+		return nil, fmt.Errorf("empty tls secret: %v/%v", secret.Namespace, secret.Name)
 	}
 
 	crt, crtPresent := secret.Data["tls.crt"]
