@@ -47,5 +47,5 @@ func GenerateGrafanaClient(ctx context.Context, client client.Client, logger log
 
 	cl := grafana.NewHTTPClientWithConfig(nil, cfg)
 
-	return cl, nil
+	return grafana.NewHTTPClientWithConfig(nil, cfg), nil
 }
