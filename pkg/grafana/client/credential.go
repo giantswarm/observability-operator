@@ -32,9 +32,9 @@ func getAdminCredentials(ctx context.Context, client client.Client) (adminCreden
 	adminUser, userPresent := grafanaAdminSecret.Data["admin-user"]
 	adminPassword, passwordPresent := grafanaAdminSecret.Data["admin-password"]
 
-	if (userPresent && !passwordPresent) || (!userPresent && passwordPresent) {
+	if !passwordPresent || !userPresent {
 		return adminCredentials{}, fmt.Errorf("invalid secret %v/%v. admin-secret and admin-user needs to be present together when one of them is declared", grafanaAdminSecret.Namespace, grafanaAdminSecret.Name)
-	} else if userPresent && passwordPresent {
-		return adminCredentials{Username: string(adminUser), Password: string(adminPassword)}, nil
 	}
+
+	return adminCredentials{Username: string(adminUser), Password: string(adminPassword)}, nil
 }
