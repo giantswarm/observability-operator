@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+### Added
 
-- Try wal truncate_frequency in alloy-metrics.
+- Add wal `truncate_frequency` configuration to alloy-metrics with a default set to 15m.
 
 ## [0.7.1] - 2024-10-10
 
