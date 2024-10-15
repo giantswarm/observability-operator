@@ -13,7 +13,7 @@ import (
 
 // build the tls.Config object based on the content of the grafana-tls secret
 func buildTLSConfiguration(ctx context.Context, client client.Client) (*tls.Config, error) {
-	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
+	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS13}
 
 	secret := &v1.Secret{}
 	err := client.Get(ctx, types.NamespacedName{
