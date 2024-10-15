@@ -2,9 +2,6 @@ apiVersion: observability.giantswarm.io/v1alpha1
 kind: GrafanaOrganization
 metadata:
   labels:
-    app.kubernetes.io/name: grafanaorganization-sample
-    app.kubernetes.io/instance: observability-operator
-    app.kubernetes.io/part-of: observability-operator
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: observability-operator
   name: grafanaorganization-sample
