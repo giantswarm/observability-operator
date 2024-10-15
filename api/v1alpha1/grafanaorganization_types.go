@@ -37,9 +37,11 @@ type GrafanaOrganizationSpec struct {
 
 // RBAC defines the RoleBasedAccessControl configuration for the Grafana organization.
 // Each fields represents the mapping to a Grafana role:
-//   Admin: full access to the Grafana organization
-//   Editor: edit resources in the Grafana organization
-//   Viewer: read only access to the Grafana organization
+//
+//	Admin: full access to the Grafana organization
+//	Editor: edit resources in the Grafana organization
+//	Viewer: read only access to the Grafana organization
+//
 // Each fields holds a list of string which represents values for a specific auth provider org attribute.
 // The org attribute is looked up using the `org_attribute_path` which is configured on your Grafana instance, see `https://<YOUR_GRAFANA_INSTANCE>/admin/settings`.
 // A user is granted a role when one of its org attribute value is contained within one of the role's values defined here.
