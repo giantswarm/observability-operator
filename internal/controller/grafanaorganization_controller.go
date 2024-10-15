@@ -28,6 +28,8 @@ import (
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	grafanaClient "github.com/giantswarm/observability-operator/pkg/grafana/client"
+	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
+	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
 )
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
@@ -60,16 +62,20 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	logger.WithValues("grafanaOrganization", grafanaOrganization.ObjectMeta.Name)
 
 	// Generate Grafana client
-	grafanaClient, err := grafanaClient.GenerateGrafanaClient(ctx, r.Client, logger)
+	grafanaAPI, err := grafanaClient.GenerateGrafanaClient(ctx, r.Client, logger)
 	if err != nil {
 		logger.Error(err, "Failed to create Grafana admin client")
+		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	// Test connection to Grafana
-	_, err = grafanaClient.Health.GetHealth()
+	_, err = grafanaAPI.Health.GetHealth()
 	if err != nil {
 		logger.Error(err, "Failed to connect to Grafana")
+		return ctrl.Result{}, errors.WithStack(err)
 	}
+
+	logger.Info("Successfully connected to Grafana, lets start hacking...")
 
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
@@ -77,11 +83,11 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	// Handle non-deleted grafana organizations
-	return r.reconcileCreate(ctx, grafanaOrganization)
+	return r.reconcileCreate(ctx, grafanaAPI, grafanaOrganization)
 }
 
 // reconcileCreate creates the grafanaOrganization.
-func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
+func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	logger := log.FromContext(ctx)
 
 	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
@@ -92,6 +98,13 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}
+	}
+	_, err := grafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
+		Name: "Shared Org.",
+	})
+	if err != nil {
+		logger.Error(err, "Could not rename Main Org. to Shared Org.")
+		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	//TODO Implement the logic to create the Grafana organization
