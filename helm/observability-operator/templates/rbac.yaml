@@ -29,6 +29,17 @@ rules:
       - update
       - patch
   - apiGroups:
+      - observability.giantswarm.io
+    resources:
+      - grafanaorganizations
+      - grafanaorganizations/status
+    verbs:
+      - watch
+      - get
+      - list
+      - update
+      - patch
+  - apiGroups:
     - coordination.k8s.io
     resources:
     - leases
