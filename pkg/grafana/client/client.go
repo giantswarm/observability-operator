@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	grafanaURL                        = "http://grafana.%s.svc.cluster.local:3000"
+	grafanaURL                        = "http://grafana.%s.svc.cluster.local"
 	grafanaNamespace                  = "monitoring"
 	grafanaAdminCredentialsSecretName = "grafana"
 	grafanaTLSSecretName              = "grafana-tls" // nolint:gosec
@@ -29,7 +29,7 @@ func GenerateGrafanaClient(ctx context.Context, client client.Client, logger log
 		return nil, fmt.Errorf("failed to build tls config: %w", err)
 	}
 
-	grafanaUrl, err := url.Parse(fmt.Sprintf(grafanaURL, namespace))
+	grafanaUrl, err := url.Parse(fmt.Sprintf(grafanaURL, grafanaNamespace))
 	if err != nil {
 		return nil, fmt.Errorf("parsing url for client: %w", err)
 	}
