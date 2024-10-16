@@ -1,0 +1,14 @@
+apiVersion: observability.giantswarm.io/v1alpha1
+kind: GrafanaOrganization
+metadata:
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  name: giantswarm
+spec:
+  displayName: Giant Swarm
+  rbac:
+    # Giant Swarm employees can administer the Giant Swarm organization.
+    admins:
+    ## TODO Get this from shared configs.
+    - "giantswarm-ad:giantswarm-admins"
+    - "giantswarm-github:giantswarm:giantswarm-admins"
