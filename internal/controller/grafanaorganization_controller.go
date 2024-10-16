@@ -17,13 +17,18 @@ limitations under the License.
 package controller
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"strings"
+	"text/template"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,12 +40,22 @@ import (
 	grafanaClient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
 
+var (
+	//go:embed templates/grafana-user-values.yaml.template
+	grafanaUserConfig         string
+	grafanaUserConfigTemplate *template.Template
+)
+
 const (
 	sharedOrgName     = "Shared Org."
 	grafanaAdminRole  = "Admin"
 	grafanaEditorRole = "Editor"
 	grafanaViewerRole = "Viewer"
 )
+
+func init() {
+	grafanaUserConfigTemplate = template.Must(template.New("grafana-user-values.yaml").Parse(grafanaUserConfig))
+}
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
@@ -178,7 +193,6 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 
 func (r GrafanaOrganizationReconciler) configureOrgMapping(ctx context.Context) error {
 	logger := log.FromContext(ctx)
-	logger.WithValues("operation", "org-mapping")
 
 	organizations := v1alpha1.GrafanaOrganizationList{}
 	err := r.Client.List(ctx, &organizations)
@@ -187,32 +201,65 @@ func (r GrafanaOrganizationReconciler) configureOrgMapping(ctx context.Context) 
 		return errors.WithStack(err)
 	}
 
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("\"*:%s:%s\"", sharedOrgName, grafanaAdminRole))
-	for _, organization := range organizations.Items {
-		rbac := organization.Spec.RBAC
-		organizationName := organization.Spec.DisplayName
-		for _, adminOrgAttribute := range rbac.Admins {
-			buildOrgMapping(sb, organizationName, adminOrgAttribute, grafanaAdminRole)
-		}
-		for _, editorOrgAttribute := range rbac.Editors {
-			buildOrgMapping(sb, organizationName, editorOrgAttribute, grafanaEditorRole)
-		}
-		for _, viewerOrgAttribute := range rbac.Admins {
-			buildOrgMapping(sb, organizationName, viewerOrgAttribute, grafanaViewerRole)
-		}
+	grafanaConfig := v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "grafana-user-values",
+			Namespace: "giantswarm",
+		},
+		Data: map[string]string{},
 	}
 
-	orgMapping := sb.String()
+	_, err = controllerutil.CreateOrPatch(ctx, r.Client, &grafanaConfig, func() error {
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("\"*:%s:%s\"", sharedOrgName, grafanaAdminRole))
+		for _, organization := range organizations.Items {
+			rbac := organization.Spec.RBAC
+			organizationName := organization.Spec.DisplayName
+			for _, adminOrgAttribute := range rbac.Admins {
+				buildOrgMapping(&sb, organizationName, adminOrgAttribute, grafanaAdminRole)
+			}
+			for _, editorOrgAttribute := range rbac.Editors {
+				buildOrgMapping(&sb, organizationName, editorOrgAttribute, grafanaEditorRole)
+			}
+			for _, viewerOrgAttribute := range rbac.Viewers {
+				buildOrgMapping(&sb, organizationName, viewerOrgAttribute, grafanaViewerRole)
+			}
+			// Set owner reference to the config map to be able to clean it up when all organizations are deleted
+			err = controllerutil.SetOwnerReference(&organization, &grafanaConfig, r.Scheme)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+		}
 
-	logger.Info("configuring org mapping", "orgMapping", orgMapping)
+		orgMapping := sb.String()
+		logger.Info("configuring org mapping", "orgMapping", orgMapping)
 
-	// TODO Configure the org mapping in Grafana through a user values
+		data := struct {
+			OrgMapping string
+		}{
+			OrgMapping: orgMapping,
+		}
+
+		var values bytes.Buffer
+		err = grafanaUserConfigTemplate.Execute(&values, data)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		grafanaConfig.Data = make(map[string]string)
+		grafanaConfig.Data["values"] = values.String()
+
+		return nil
+	})
+	if err != nil {
+		logger.Error(err, "failed to generate grafana user configmap values.")
+		return errors.WithStack(err)
+	}
 
 	return nil
 }
 
-func buildOrgMapping(sb strings.Builder, organizationName, userOrgAttribute, role string) {
+func buildOrgMapping(sb *strings.Builder, organizationName, userOrgAttribute, role string) {
 	// We preprend with a space and we add double quotes to the org mapping to support spaces in display names
 	sb.WriteString(" \"")
 	// We need to escape the colon in the userOrgAttribute
