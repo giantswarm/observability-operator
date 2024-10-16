@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
@@ -100,28 +102,95 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		}
 	}
 
-	//TODO Check if orgID is present in the status
-	// if not check the name availability (--> getOrg : if it returns nothing name is available)
-	// if name is available create the organization
+	// if the cr doesn't have an orgID, create the organization in Grafana and update the status
+	if grafanaOrganization.Status.OrgID == "" {
+		// Check if the organization name is available
+		obiwan, err := grafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Name)
+		if err != nil {
+			logger.Error(err, "Failed to check if organization name is available")
+			return ctrl.Result{}, errors.WithStack(err)
+		}
+		// If the organization name is already taken, return an error
+		if obiwan != nil {
+			return ctrl.Result{}, errors.Errorf("Organization name is already taken")
+		} else {
+			logger.Info("Create organization in Grafana")
 
-	logger.Info("Create organization in Grafana")
-	_, err := grafanaAPI.Orgs.CreateOrg(&grafanaAPIModels.CreateOrgCommand{
-		Name: grafanaOrganization.Name,
-	})
-	if err != nil {
-		logger.Error(err, "Organization failed")
-		return ctrl.Result{}, errors.WithStack(err)
+			// If the name is available, create the organization in Grafana
+			createdOrg, err := grafanaAPI.Orgs.CreateOrg(&grafanaAPIModels.CreateOrgCommand{
+				Name: grafanaOrganization.Name,
+			})
+			if err != nil {
+				logger.Error(err, "Organization failed")
+				return ctrl.Result{}, errors.WithStack(err)
+			}
+
+			// Update the grafanaOrganization status with the orgID
+			grafanaOrganization.Status.OrgID = fmt.Sprintf("%d", createdOrg.Payload.OrgID)
+			if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
+				logger.Error(err, "Failed to update the status")
+				return ctrl.Result{}, errors.WithStack(err)
+			}
+		}
+	} else {
+		// Cast orgID to int64
+		orgID, err := strconv.ParseInt(grafanaOrganization.Status.OrgID, 10, 64)
+		if err != nil {
+			logger.Error(err, "Failed to parse OrgID")
+			return ctrl.Result{}, errors.WithStack(err)
+		}
+
+		grievious, err := grafanaAPI.Orgs.GetOrgByID(orgID)
+		if err != nil {
+			logger.Error(err, "Failed to get organization by ID")
+			return ctrl.Result{}, errors.WithStack(err)
+		}
+
+		if grievious != nil {
+			// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
+			if grievious.Payload.Name != grafanaOrganization.Name {
+				// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
+				_, err := grafanaAPI.Orgs.UpdateOrg(orgID, &grafanaAPIModels.UpdateOrgForm{
+					Name: grafanaOrganization.Spec.DisplayName,
+				})
+				if err != nil {
+					logger.Error(err, "Failed to update organization name")
+					return ctrl.Result{}, errors.WithStack(err)
+				}
+			} else {
+				return ctrl.Result{}, errors.Errorf("A grafana organization with the same name and ID already exists")
+			}
+		} else { // If the granfana organization CR has an orgID  but does not exist in Grafana, create the organization
+			// Check if the organization name is available
+			obiwan, err := grafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Name)
+			if err != nil {
+				logger.Error(err, "Failed to check if organization name is available")
+				return ctrl.Result{}, errors.WithStack(err)
+			}
+			// If the organization name is already taken, return an error
+			if obiwan != nil {
+				return ctrl.Result{}, errors.Errorf("Organization name is already taken")
+			} else {
+				logger.Info("Create organization in Grafana")
+
+				// If the name is available, create the organization in Grafana
+				createdOrg, err := grafanaAPI.Orgs.CreateOrg(&grafanaAPIModels.CreateOrgCommand{
+					Name: grafanaOrganization.Name,
+				})
+				if err != nil {
+					logger.Error(err, "Organization failed")
+					return ctrl.Result{}, errors.WithStack(err)
+				}
+
+				// Update the grafanaOrganization status with the orgID
+				grafanaOrganization.Status.OrgID = fmt.Sprintf("%d", createdOrg.Payload.OrgID)
+				if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
+					logger.Error(err, "Failed to update the status")
+					return ctrl.Result{}, errors.WithStack(err)
+				}
+			}
+		}
 	}
-
-	logger.Info("Add users to the organization")
-
-	//TODO fetch orgID from above's response andd patch CR status with it
-
-	// If orgID is present, check if it matches an existing org
-	// if it does, check if the name is the same as the CR
-	// if it is not, update the name of the grafana organization if it's available based on the display name
-
-	// if orgId is present in the CR but no grafana org present, create the grafana org (after checking name availability)
 
 	return ctrl.Result{}, nil
 }
