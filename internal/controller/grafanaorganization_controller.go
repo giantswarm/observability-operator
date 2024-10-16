@@ -99,15 +99,29 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 			return ctrl.Result{}, errors.WithStack(err)
 		}
 	}
-	_, err := grafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
-		Name: "Shared Org.",
+
+	//TODO Check if orgID is present in the status
+	// if not check the name availability (--> getOrg : if it returns nothing name is available)
+	// if name is available create the organization
+
+	logger.Info("Create organization in Grafana")
+	_, err := grafanaAPI.Orgs.CreateOrg(&grafanaAPIModels.CreateOrgCommand{
+		Name: grafanaOrganization.Name,
 	})
 	if err != nil {
-		logger.Error(err, "Could not rename Main Org. to Shared Org.")
+		logger.Error(err, "Organization failed")
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	//TODO Implement the logic to create the Grafana organization
+	logger.Info("Add users to the organization")
+
+	//TODO fetch orgID from above's response andd patch CR status with it
+
+	// If orgID is present, check if it matches an existing org
+	// if it does, check if the name is the same as the CR
+	// if it is not, update the name of the grafana organization if it's available based on the display name
+
+	// if orgId is present in the CR but no grafana org present, create the grafana org (after checking name availability)
 
 	return ctrl.Result{}, nil
 }
