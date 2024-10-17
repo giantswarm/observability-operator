@@ -165,7 +165,6 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 			return errors.WithStack(err)
 		}
 
-		// We get the latest state of the object to avoid race conditions.
 		// Finalizer handling needs to come last.
 		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
 		logger.Info("removing finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
