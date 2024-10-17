@@ -211,7 +211,7 @@ func (r GrafanaOrganizationReconciler) configureOrgMapping(ctx context.Context) 
 
 	_, err = controllerutil.CreateOrPatch(ctx, r.Client, &grafanaConfig, func() error {
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("\"*:%s:%s\"", sharedOrgName, grafanaAdminRole))
+		sb.WriteString(fmt.Sprintf(`"*:%s:%s"`, sharedOrgName, grafanaAdminRole))
 		for _, organization := range organizations.Items {
 			rbac := organization.Spec.RBAC
 			organizationName := organization.Spec.DisplayName
