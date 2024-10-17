@@ -126,6 +126,8 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		QueueConfigMaxSamplesPerSend int
 		QueueConfigMaxShards         int
 
+		WALTruncateFrequency string
+
 		ExternalLabels map[string]string
 	}{
 		RemoteWriteURLEnvVarName:               AlloyRemoteWriteURLEnvVarName,
@@ -138,6 +140,8 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		QueueConfigCapacity:          commonmonitoring.QueueConfigCapacity,
 		QueueConfigMaxSamplesPerSend: commonmonitoring.QueueConfigMaxSamplesPerSend,
 		QueueConfigMaxShards:         commonmonitoring.QueueConfigMaxShards,
+
+		WALTruncateFrequency: a.MonitoringConfig.WALTruncateFrequency.String(),
 
 		ExternalLabels: map[string]string{
 			"cluster_id":       cluster.Name,

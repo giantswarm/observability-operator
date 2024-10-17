@@ -2,6 +2,7 @@ package monitoring
 
 import (
 	"strconv"
+	"time"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
@@ -15,6 +16,8 @@ type Config struct {
 	Enabled                 bool
 	MonitoringAgent         string
 	DefaultShardingStrategy sharding.Strategy
+	// WALTruncateFrequency is the frequency at which the WAL segments should be truncated.
+	WALTruncateFrequency time.Duration
 	// TODO(atlas): validate prometheus version using SemVer
 	PrometheusVersion string
 }
