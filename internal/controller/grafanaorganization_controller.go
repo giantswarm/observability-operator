@@ -210,19 +210,19 @@ func (r GrafanaOrganizationReconciler) configureOrgMapping(ctx context.Context) 
 	}
 
 	_, err = controllerutil.CreateOrPatch(ctx, r.Client, &grafanaConfig, func() error {
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf(`"*:%s:%s"`, sharedOrgName, grafanaAdminRole))
+		var orgMappings []string
+		orgMappings = append(orgMappings, fmt.Sprintf(`"*:%s:%s"`, sharedOrgName, grafanaAdminRole))
 		for _, organization := range organizations.Items {
 			rbac := organization.Spec.RBAC
 			organizationName := organization.Spec.DisplayName
 			for _, adminOrgAttribute := range rbac.Admins {
-				buildOrgMapping(&sb, organizationName, adminOrgAttribute, grafanaAdminRole)
+				orgMappings = append(orgMappings, buildOrgMapping(organizationName, adminOrgAttribute, grafanaAdminRole))
 			}
 			for _, editorOrgAttribute := range rbac.Editors {
-				buildOrgMapping(&sb, organizationName, editorOrgAttribute, grafanaEditorRole)
+				orgMappings = append(orgMappings, buildOrgMapping(organizationName, editorOrgAttribute, grafanaEditorRole))
 			}
 			for _, viewerOrgAttribute := range rbac.Viewers {
-				buildOrgMapping(&sb, organizationName, viewerOrgAttribute, grafanaViewerRole)
+				orgMappings = append(orgMappings, buildOrgMapping(organizationName, viewerOrgAttribute, grafanaViewerRole))
 			}
 			// Set owner reference to the config map to be able to clean it up when all organizations are deleted
 			err = controllerutil.SetOwnerReference(&organization, &grafanaConfig, r.Scheme)
@@ -231,7 +231,7 @@ func (r GrafanaOrganizationReconciler) configureOrgMapping(ctx context.Context) 
 			}
 		}
 
-		orgMapping := sb.String()
+		orgMapping := strings.Join(orgMappings, " ")
 		logger.Info("configuring org mapping", "orgMapping", orgMapping)
 
 		data := struct {
