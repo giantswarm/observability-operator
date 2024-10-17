@@ -259,14 +259,9 @@ func (r GrafanaOrganizationReconciler) configureOrgMapping(ctx context.Context) 
 	return nil
 }
 
-func buildOrgMapping(sb *strings.Builder, organizationName, userOrgAttribute, role string) {
-	// We preprend with a space and we add double quotes to the org mapping to support spaces in display names
-	sb.WriteString(" \"")
+func buildOrgMapping(organizationName, userOrgAttribute, role string) string {
 	// We need to escape the colon in the userOrgAttribute
-	sb.WriteString(strings.ReplaceAll(userOrgAttribute, ":", "\\:"))
-	sb.WriteString(":")
-	sb.WriteString(organizationName)
-	sb.WriteString(":")
-	sb.WriteString(role)
-	sb.WriteString("\"")
+	u := strings.ReplaceAll(userOrgAttribute, ":", "\\:")
+	// We add double quotes to the org mapping to support spaces in display names
+	return fmt.Sprintf(`"%s:%s:%s"`, u, organizationName, role)
 }
