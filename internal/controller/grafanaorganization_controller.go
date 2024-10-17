@@ -121,7 +121,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 		if grievious != nil {
 			// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
-			if grievious.Payload.Name != grafanaOrganization.Name {
+			if grievious.Payload.Name != grafanaOrganization.Spec.DisplayName {
 				// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
 				_, err := grafanaAPI.Orgs.UpdateOrg(orgID, &grafanaAPIModels.UpdateOrgForm{
 					Name: grafanaOrganization.Spec.DisplayName,
@@ -145,7 +145,7 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 	logger := log.FromContext(ctx)
 
 	// Check if the organization name is available
-	obiwan, err := grafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Name)
+	obiwan, err := grafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Spec.DisplayName)
 	if err != nil {
 		logger.Error(err, "Failed to check if organization name is available")
 		return errors.WithStack(err)
@@ -158,10 +158,10 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 
 		// If the name is available, create the organization in Grafana
 		createdOrg, err := grafanaAPI.Orgs.CreateOrg(&grafanaAPIModels.CreateOrgCommand{
-			Name: grafanaOrganization.Name,
+			Name: grafanaOrganization.Spec.DisplayName,
 		})
 		if err != nil {
-			logger.Error(err, "Organization failed")
+			logger.Error(err, "Creating organization failed")
 			return errors.WithStack(err)
 		}
 
