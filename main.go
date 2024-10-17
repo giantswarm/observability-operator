@@ -114,7 +114,7 @@ func main() {
 		"The pipeline of the management cluster.")
 	flag.StringVar(&managementClusterRegion, "management-cluster-region", "",
 		"The region of the management cluster.")
-	flag.StringVar(&monitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentPrometheus,
+	flag.StringVar(&monitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
 		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
 	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")

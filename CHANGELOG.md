@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add grafanaOrganization CRD in helm chart.
 
+### Changed
+
+- Change default default monitoring agent to Alloy
+
 ## [0.7.1] - 2024-10-10
 
 ### Fixed
