@@ -55,6 +55,9 @@
         "monitoring": {
             "type": "object",
             "properties": {
+                "agent": {
+                    "type": "string"
+                },
                 "enabled": {
                     "type": "boolean"
                 },
@@ -63,6 +66,25 @@
                 },
                 "prometheusVersion": {
                     "type": "string"
+                },
+                "sharding": {
+                    "type": "object",
+                    "properties": {
+                        "scaleDownPercentage": {
+                            "type": "number"
+                        },
+                        "scaleUpSeriesCount": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "wal": {
+                    "type": "object",
+                    "properties": {
+                        "truncateFrequency": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },

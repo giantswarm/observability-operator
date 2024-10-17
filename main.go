@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -75,6 +76,7 @@ var (
 	monitoringEnabled                     bool
 	monitoringShardingScaleUpSeriesCount  float64
 	monitoringShardingScaleDownPercentage float64
+	monitoringWALTruncateFrequency        time.Duration
 	prometheusVersion                     string
 )
 
@@ -114,16 +116,21 @@ func main() {
 		"The pipeline of the management cluster.")
 	flag.StringVar(&managementClusterRegion, "management-cluster-region", "",
 		"The region of the management cluster.")
+	// Monitoring configuration flags.
 	flag.StringVar(&monitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
 		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
 	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
+	flag.StringVar(&monitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentPrometheus,
+		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
 	flag.Float64Var(&monitoringShardingScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
 		"Configures the number of time series needed to add an extra prometheus agent shard.")
 	flag.Float64Var(&monitoringShardingScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
 		"Configures the percentage of removed series to scale down the number of prometheus agent shards.")
 	flag.StringVar(&prometheusVersion, "prometheus-version", "",
 		"The version of Prometheus Agents to deploy.")
+	flag.DurationVar(&monitoringWALTruncateFrequency, "monitoring-wal-truncate-frequency", 2*time.Hour,
+		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
 	opts := zap.Options{
 		Development: false,
 	}
@@ -213,7 +220,8 @@ func main() {
 			ScaleUpSeriesCount:  monitoringShardingScaleUpSeriesCount,
 			ScaleDownPercentage: monitoringShardingScaleDownPercentage,
 		},
-		PrometheusVersion: prometheusVersion,
+		WALTruncateFrequency: monitoringWALTruncateFrequency,
+		PrometheusVersion:    prometheusVersion,
 	}
 
 	prometheusAgentService := prometheusagent.PrometheusAgentService{
