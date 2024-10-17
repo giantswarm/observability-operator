@@ -19,12 +19,17 @@ package controller
 import (
 	"context"
 
+	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
+	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	grafanaClient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
@@ -39,24 +44,91 @@ type GrafanaOrganizationReconciler struct {
 
 // Reconcile is part of the main Kubernetes reconciliation loop which aims to
 // move the current state of the GrafanaOrganization closer to the desired state.
-// TODO(zirko): Modify the Reconcile function to compare the state specified by
-// the GrafanaOrganization object against the actual organization state, and then
-// perform operations to make the organization state reflect the state specified by
-// the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.0/pkg/reconcile
 func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
-	// TODO(zirko): your logic here
+	logger.Info("Started reconciling Grafana Organization")
+	defer logger.Info("Finished reconciling Grafana Organization")
+
+	grafanaOrganization := &v1alpha1.GrafanaOrganization{}
+	err := r.Client.Get(ctx, req.NamespacedName, grafanaOrganization)
+	if err != nil {
+		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+	}
+
+	logger.WithValues("grafanaOrganization", grafanaOrganization.ObjectMeta.Name)
+
+	// Generate Grafana client
+	grafanaAPI, err := grafanaClient.GenerateGrafanaClient(ctx, r.Client, logger)
+	if err != nil {
+		logger.Error(err, "Failed to create Grafana admin client")
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+
+	// Test connection to Grafana
+	_, err = grafanaAPI.Health.GetHealth()
+	if err != nil {
+		logger.Error(err, "Failed to connect to Grafana")
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+
+	logger.Info("Successfully connected to Grafana, lets start hacking...")
+
+	// Handle deleted grafana organizations
+	if !grafanaOrganization.DeletionTimestamp.IsZero() {
+		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaOrganization)
+	}
+
+	// Handle non-deleted grafana organizations
+	return r.reconcileCreate(ctx, grafanaAPI, grafanaOrganization)
+}
+
+// reconcileCreate creates the grafanaOrganization.
+func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
+	logger := log.FromContext(ctx)
+
+	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
+	// If the grafanaOrganization doesn't have our finalizer, add it.
+	if controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
+		logger.Info("Add finalizer to grafana organization")
+		// Register the finalizer immediately to avoid orphaning AWS resources on delete
+		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
+			return ctrl.Result{}, errors.WithStack(err)
+		}
+	}
+	_, err := grafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
+		Name: "Shared Org.",
+	})
+	if err != nil {
+		logger.Error(err, "Could not rename Main Org. to Shared Org.")
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+
+	//TODO Implement the logic to create the Grafana organization
 
 	return ctrl.Result{}, nil
+}
+
+// reconcileDelete deletes the grafana organization.
+func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+	logger := log.FromContext(ctx)
+
+	//TODO Implement the logic to delete the organization from Grafana.
+
+	logger.Info("Remove finalizer from grafana organization")
+	// Remove the finalizer.
+	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
+	controllerutil.RemoveFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
+
+	return r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization))
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&observabilityv1alpha1.GrafanaOrganization{}).
+		For(&v1alpha1.GrafanaOrganization{}).
 		Complete(r)
 }

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add wal `truncate_frequency` configuration to alloy-metrics with a default set to 15m.
 - Add grafanaOrganization CRD in helm chart.
+- Add logic to grafanaOrganization reconciler.
 
 ### Changed
 
