@@ -105,12 +105,8 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaAPI, grafanaOrganization)
 	} else {
 		grievious, err := grafanaAPI.Orgs.GetOrgByID(grafanaOrganization.Status.OrgID)
-		if err != nil {
-			logger.Error(err, "Failed to get organization by ID")
-			return ctrl.Result{}, errors.WithStack(err)
-		}
 
-		if grievious != nil {
+		if grievious.IsSuccess() {
 			// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
 			if grievious.Payload.Name != grafanaOrganization.Spec.DisplayName {
 				// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
@@ -124,8 +120,12 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 			} else {
 				return ctrl.Result{}, errors.Errorf("A grafana organization with the same name and ID already exists")
 			}
-		} else { // If the granfana organization CR has an orgID  but does not exist in Grafana, create the organization
+		} else if grievious.IsCode(404) { // If the granfana organization CR has an orgID  but does not exist in Grafana, create the organization
 			return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaAPI, grafanaOrganization)
+		} else {
+			// If return cod from the GetOrgByID method is neither 200 nor 404, return the error
+			logger.Error(err, "Failed to get organization by ID")
+			return ctrl.Result{}, errors.WithStack(err)
 		}
 	}
 
@@ -137,7 +137,9 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 
 	// Check if the organization name is available
 	obiwan, err := grafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Spec.DisplayName)
-	if err != nil {
+
+	// If an organization with the same name does not exist, create the organization
+	if obiwan.IsCode(404) {
 		logger.Info("Create organization in Grafana")
 
 		// If the name is available, create the organization in Grafana
@@ -155,10 +157,12 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 			logger.Error(err, "Failed to update the status")
 			return errors.WithStack(err)
 		}
-	}
-	// If the organization name is already taken, return an error
-	if obiwan != nil {
-		return errors.Errorf("Organization name is already taken")
+	} else if obiwan.IsSuccess() { // If the organization name is already taken, return an error
+		logger.Info("Organization name is already taken")
+	} else {
+		// If return cod from the GetOrgByName method is neither 200 nor 404, return the error
+		logger.Error(err, "Failed to get organization by name")
+		return errors.WithStack(err)
 	}
 
 	return nil
