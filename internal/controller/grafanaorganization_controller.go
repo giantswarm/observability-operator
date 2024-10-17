@@ -138,13 +138,6 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 	// Check if the organization name is available
 	obiwan, err := grafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Spec.DisplayName)
 	if err != nil {
-		logger.Error(err, "Failed to check if organization name is available")
-		return errors.WithStack(err)
-	}
-	// If the organization name is already taken, return an error
-	if obiwan != nil {
-		return errors.Errorf("Organization name is already taken")
-	} else {
 		logger.Info("Create organization in Grafana")
 
 		// If the name is available, create the organization in Grafana
@@ -162,6 +155,10 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 			logger.Error(err, "Failed to update the status")
 			return errors.WithStack(err)
 		}
+	}
+	// If the organization name is already taken, return an error
+	if obiwan != nil {
+		return errors.Errorf("Organization name is already taken")
 	}
 
 	return nil
