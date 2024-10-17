@@ -1,0 +1,4 @@
+grafana:
+  grafana.ini:
+    auth.generic_oauth:
+      org_mapping: '{{ .OrgMapping }}'

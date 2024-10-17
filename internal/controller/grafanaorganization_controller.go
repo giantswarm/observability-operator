@@ -17,12 +17,20 @@ limitations under the License.
 package controller
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
+	"fmt"
+	"strings"
+	"text/template"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -31,6 +39,23 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	grafanaClient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
+
+var (
+	//go:embed templates/grafana-user-values.yaml.template
+	grafanaUserConfig         string
+	grafanaUserConfigTemplate *template.Template
+)
+
+const (
+	sharedOrgName     = "Shared Org."
+	grafanaAdminRole  = "Admin"
+	grafanaEditorRole = "Editor"
+	grafanaViewerRole = "Viewer"
+)
+
+func init() {
+	grafanaUserConfigTemplate = template.Must(template.New("grafana-user-values.yaml").Parse(grafanaUserConfig))
+}
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
@@ -90,25 +115,39 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	logger := log.FromContext(ctx)
 
-	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
-	// If the grafanaOrganization doesn't have our finalizer, add it.
-	if controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
-		logger.Info("Add finalizer to grafana organization")
-		// Register the finalizer immediately to avoid orphaning AWS resources on delete
-		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
+	// Add finalizer first if not set to avoid the race condition between init and delete.
+	// Note: Finalizers in general can only be added when the deletionTimestamp is not set.
+	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
+		// We use a patch rather than an update to avoid conflicts when multiple controllers are adding their finalizer to the ClusterCR
+		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
+		logger.Info("adding finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
+		patchHelper, err := patch.NewHelper(grafanaOrganization, r.Client)
+		if err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}
+		controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
+		if err := patchHelper.Patch(ctx, grafanaOrganization); err != nil {
+			logger.Error(err, "failed to add finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
+			return ctrl.Result{}, errors.WithStack(err)
+		}
+		logger.Info("added finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
+		return ctrl.Result{}, nil
 	}
+
 	_, err := grafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
-		Name: "Shared Org.",
+		Name: sharedOrgName,
 	})
 	if err != nil {
-		logger.Error(err, "Could not rename Main Org. to Shared Org.")
+		logger.Error(err, fmt.Sprintf("Could not rename Main Org. to %s", sharedOrgName))
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	//TODO Implement the logic to create the Grafana organization
 
+	err = r.configureOrgMapping(ctx)
+	if err != nil {
+		return ctrl.Result{}, errors.WithStack(err)
+	}
 	return ctrl.Result{}, nil
 }
 
@@ -116,14 +155,32 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
-	//TODO Implement the logic to delete the organization from Grafana.
+	// We do not need to delete anything if there is no finalizer on the cluster
+	if controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 
-	logger.Info("Remove finalizer from grafana organization")
-	// Remove the finalizer.
-	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
-	controllerutil.RemoveFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
+		//TODO Implement the logic to delete the organization from Grafana.
 
-	return r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization))
+		err := r.configureOrgMapping(ctx)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		// Finalizer handling needs to come last.
+		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
+		logger.Info("removing finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
+		patchHelper, err := patch.NewHelper(grafanaOrganization, r.Client)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		controllerutil.RemoveFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
+		if err := patchHelper.Patch(ctx, grafanaOrganization); err != nil {
+			logger.Error(err, "failed to remove finalizer, requeuing", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
+			return errors.WithStack(err)
+		}
+		logger.Info("removed finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -131,4 +188,79 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.GrafanaOrganization{}).
 		Complete(r)
+}
+
+func (r GrafanaOrganizationReconciler) configureOrgMapping(ctx context.Context) error {
+	logger := log.FromContext(ctx)
+
+	organizations := v1alpha1.GrafanaOrganizationList{}
+	err := r.Client.List(ctx, &organizations)
+	if err != nil {
+		logger.Error(err, "failed to list grafana organizations.")
+		return errors.WithStack(err)
+	}
+
+	grafanaConfig := v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "grafana-user-values",
+			Namespace: "giantswarm",
+		},
+		Data: map[string]string{},
+	}
+
+	_, err = controllerutil.CreateOrPatch(ctx, r.Client, &grafanaConfig, func() error {
+		var orgMappings []string
+		orgMappings = append(orgMappings, fmt.Sprintf(`"*:%s:%s"`, sharedOrgName, grafanaAdminRole))
+		for _, organization := range organizations.Items {
+			rbac := organization.Spec.RBAC
+			organizationName := organization.Spec.DisplayName
+			for _, adminOrgAttribute := range rbac.Admins {
+				orgMappings = append(orgMappings, buildOrgMapping(organizationName, adminOrgAttribute, grafanaAdminRole))
+			}
+			for _, editorOrgAttribute := range rbac.Editors {
+				orgMappings = append(orgMappings, buildOrgMapping(organizationName, editorOrgAttribute, grafanaEditorRole))
+			}
+			for _, viewerOrgAttribute := range rbac.Viewers {
+				orgMappings = append(orgMappings, buildOrgMapping(organizationName, viewerOrgAttribute, grafanaViewerRole))
+			}
+			// Set owner reference to the config map to be able to clean it up when all organizations are deleted
+			err = controllerutil.SetOwnerReference(&organization, &grafanaConfig, r.Scheme)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+		}
+
+		orgMapping := strings.Join(orgMappings, " ")
+		logger.Info("configuring org mapping", "orgMapping", orgMapping)
+
+		data := struct {
+			OrgMapping string
+		}{
+			OrgMapping: orgMapping,
+		}
+
+		var values bytes.Buffer
+		err = grafanaUserConfigTemplate.Execute(&values, data)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		grafanaConfig.Data = make(map[string]string)
+		grafanaConfig.Data["values"] = values.String()
+
+		return nil
+	})
+	if err != nil {
+		logger.Error(err, "failed to generate grafana user configmap values.")
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func buildOrgMapping(organizationName, userOrgAttribute, role string) string {
+	// We need to escape the colon in the userOrgAttribute
+	u := strings.ReplaceAll(userOrgAttribute, ":", "\\:")
+	// We add double quotes to the org mapping to support spaces in display names
+	return fmt.Sprintf(`"%s:%s:%s"`, u, organizationName, role)
 }
