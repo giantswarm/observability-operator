@@ -83,7 +83,8 @@ spec:
                   properties:
                     id:
                       description: ID is the unique id of the data source.
-                      type: string
+                      format: int64
+                      type: integer
                     name:
                       description: Name is the name of the data source.
                       type: string
@@ -94,7 +95,8 @@ spec:
                 type: array
               orgID:
                 description: OrgID is the actual organisation ID in grafana.
-                type: string
+                format: int64
+                type: integer
             required:
             - dataSources
             - orgID
