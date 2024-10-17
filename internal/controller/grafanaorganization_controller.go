@@ -18,8 +18,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
@@ -103,17 +101,10 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// if the CR doesn't have an orgID, create the organization in Grafana and update the status
-	if grafanaOrganization.Status.OrgID == "" {
+	if grafanaOrganization.Status.OrgID == 0 {
 		return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaAPI, grafanaOrganization)
 	} else {
-		// Cast orgID to int64
-		orgID, err := strconv.ParseInt(grafanaOrganization.Status.OrgID, 10, 64)
-		if err != nil {
-			logger.Error(err, "Failed to parse OrgID")
-			return ctrl.Result{}, errors.WithStack(err)
-		}
-
-		grievious, err := grafanaAPI.Orgs.GetOrgByID(orgID)
+		grievious, err := grafanaAPI.Orgs.GetOrgByID(grafanaOrganization.Status.OrgID)
 		if err != nil {
 			logger.Error(err, "Failed to get organization by ID")
 			return ctrl.Result{}, errors.WithStack(err)
@@ -123,7 +114,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 			// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
 			if grievious.Payload.Name != grafanaOrganization.Name {
 				// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
-				_, err := grafanaAPI.Orgs.UpdateOrg(orgID, &grafanaAPIModels.UpdateOrgForm{
+				_, err := grafanaAPI.Orgs.UpdateOrg(grafanaOrganization.Status.OrgID, &grafanaAPIModels.UpdateOrgForm{
 					Name: grafanaOrganization.Spec.DisplayName,
 				})
 				if err != nil {
@@ -166,7 +157,7 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 		}
 
 		// Update the grafanaOrganization status with the orgID
-		grafanaOrganization.Status.OrgID = fmt.Sprintf("%d", createdOrg.Payload.OrgID)
+		grafanaOrganization.Status.OrgID = *createdOrg.Payload.OrgID
 		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
 			logger.Error(err, "Failed to update the status")
 			return errors.WithStack(err)
