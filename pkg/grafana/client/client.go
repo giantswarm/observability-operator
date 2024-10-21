@@ -1,48 +1,41 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 
 	grafana "github.com/grafana/grafana-openapi-client-go/client"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var grafanaURL *url.URL
+
+func init() {
+	var err error
+	grafanaURL, err = url.Parse("http://grafana.monitoring.svc.cluster.local")
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse grafana url: %v", err))
+	}
+}
 
 const (
-	grafanaURL                        = "http://grafana.%s.svc.cluster.local"
-	grafanaNamespace                  = "monitoring"
-	grafanaAdminCredentialsSecretName = "grafana"
-	grafanaTLSSecretName              = "grafana-tls" // nolint:gosec
-	clientConfigNumRetries            = 3
+	clientConfigNumRetries = 3
 )
 
-func GenerateGrafanaClient(ctx context.Context, client client.Client) (*grafana.GrafanaHTTPAPI, error) {
-	// Get grafana admin-password and admin-user
-	adminCredentials, err := getAdminCredentials(ctx, client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch grafana admin secret: %w", err)
-	}
-
-	tlsConfig, err := buildTLSConfiguration(ctx, client)
+func GenerateGrafanaClient(adminUserCredentials AdminCredentials, tlsConfig TLSConfig) (*grafana.GrafanaHTTPAPI, error) {
+	grafanaTLSConfig, err := tlsConfig.toTLSConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build tls config: %w", err)
 	}
 
-	grafanaUrl, err := url.Parse(fmt.Sprintf(grafanaURL, grafanaNamespace))
-	if err != nil {
-		return nil, fmt.Errorf("parsing url for client: %w", err)
-	}
-
 	cfg := &grafana.TransportConfig{
-		Schemes:  []string{grafanaUrl.Scheme},
+		Schemes:  []string{grafanaURL.Scheme},
 		BasePath: "/api",
-		Host:     grafanaUrl.Host,
+		Host:     grafanaURL.Host,
 		// We use basic auth to authenticate on grafana.
-		BasicAuth: url.UserPassword(adminCredentials.Username, adminCredentials.Password),
+		BasicAuth: url.UserPassword(adminUserCredentials.Username, adminUserCredentials.Password),
 		// NumRetries contains the optional number of attempted retries.
 		NumRetries: clientConfigNumRetries,
-		TLSConfig:  tlsConfig,
+		TLSConfig:  grafanaTLSConfig,
 	}
 
 	return grafana.NewHTTPClientWithConfig(nil, cfg), nil

@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -83,7 +82,12 @@ var (
 )
 
 const (
-	OpsgenieApiKey = "OPSGENIE_API_KEY" // #nosec G101
+	grafanaAdminUsernameEnvVar = "GRAFANA_ADMIN_USERNAME" // #nosec G101
+	grafanaAdminPasswordEnvVar = "GRAFANA_ADMIN_PASSWORD" // #nosec G101
+	grafanaTLSCertFileEnvVar   = "GRAFANA_TLS_CERT_FILE"  // #nosec G101
+	grafanaTLSKeyFileEnvVar    = "GRAFANA_TLS_KEY_FILE"   // #nosec G101
+
+	opsgenieApiKeyEnvVar = "OPSGENIE_API_KEY" // #nosec G101
 )
 
 func init() {
@@ -199,9 +203,9 @@ func main() {
 		Region:     managementClusterRegion,
 	}
 
-	var opsgenieApiKey = os.Getenv(OpsgenieApiKey)
+	var opsgenieApiKey = os.Getenv(opsgenieApiKeyEnvVar)
 	if opsgenieApiKey == "" {
-		setupLog.Error(nil, fmt.Sprintf("environment variable %s not set", OpsgenieApiKey))
+		setupLog.Error(nil, fmt.Sprintf("environment variable %s not set", opsgenieApiKeyEnvVar))
 		os.Exit(1)
 	}
 
@@ -212,13 +216,6 @@ func main() {
 	}
 
 	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
-
-	// Generate Grafana client
-	grafanaAPI, err := client.GenerateGrafanaClient(context.Background(), mgr.GetClient())
-	if err != nil {
-		setupLog.Error(err, "unable to create grafana client")
-		os.Exit(1)
-	}
 
 	monitoringConfig := monitoring.Config{
 		Enabled:         monitoringEnabled,
@@ -264,6 +261,30 @@ func main() {
 		BundleConfigurationService: bundle.NewBundleConfigurationService(mgr.GetClient(), monitoringConfig),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
+		os.Exit(1)
+	}
+
+	// Generate Grafana client
+	// Get grafana admin-password and admin-user
+	grafanaAdminCredentials := client.AdminCredentials{
+		Username: os.Getenv(grafanaAdminUsernameEnvVar),
+		Password: os.Getenv(grafanaAdminPasswordEnvVar),
+	}
+	if grafanaAdminCredentials.Username == "" {
+		setupLog.Error(nil, fmt.Sprintf("environment variable %s not set", grafanaAdminUsernameEnvVar))
+		os.Exit(1)
+	}
+	if grafanaAdminCredentials.Password == "" {
+		setupLog.Error(nil, fmt.Sprintf("environment variable %s not set", grafanaAdminPasswordEnvVar))
+		os.Exit(1)
+	}
+	grafanaTLSConfig := client.TLSConfig{
+		Cert: os.Getenv(grafanaTLSCertFileEnvVar),
+		Key:  os.Getenv(grafanaTLSKeyFileEnvVar),
+	}
+	grafanaAPI, err := client.GenerateGrafanaClient(grafanaAdminCredentials, grafanaTLSConfig)
+	if err != nil {
+		setupLog.Error(err, "unable to create grafana client")
 		os.Exit(1)
 	}
 
