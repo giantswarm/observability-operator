@@ -11,18 +11,12 @@ import (
 )
 
 const (
+	grafanaURL                        = "http://grafana.%s.svc.cluster.local"
 	grafanaNamespace                  = "monitoring"
 	grafanaAdminCredentialsSecretName = "grafana"
 	grafanaTLSSecretName              = "grafana-tls" // nolint:gosec
+	clientConfigNumRetries            = 3
 )
-
-var grafanaUrl *url.URL
-
-func init() {
-	grafanaUrl, err = url.Parse(fmt.Sprintf("http://grafana.%s.svc.cluster.local", grafanaNamespace))
-	if err != nil {
-		panic(err)
-	}
 
 func GenerateGrafanaClient(ctx context.Context, client client.Client, logger logr.Logger) (*grafana.GrafanaHTTPAPI, error) {
 	// Get grafana admin-password and admin-user
@@ -36,6 +30,11 @@ func GenerateGrafanaClient(ctx context.Context, client client.Client, logger log
 		return nil, fmt.Errorf("failed to build tls config: %w", err)
 	}
 
+	grafanaUrl, err := url.Parse(fmt.Sprintf(grafanaURL, grafanaNamespace))
+	if err != nil {
+		return nil, fmt.Errorf("parsing url for client: %w", err)
+	}
+
 	cfg := &grafana.TransportConfig{
 		Schemes:  []string{grafanaUrl.Scheme},
 		BasePath: "/api",
@@ -43,7 +42,7 @@ func GenerateGrafanaClient(ctx context.Context, client client.Client, logger log
 		// We use basic auth to authenticate on grafana.
 		BasicAuth: url.UserPassword(adminCredentials.Username, adminCredentials.Password),
 		// NumRetries contains the optional number of attempted retries.
-		NumRetries: 0,
+		NumRetries: clientConfigNumRetries,
 		TLSConfig:  tlsConfig,
 	}
 

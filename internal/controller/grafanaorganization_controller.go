@@ -93,7 +93,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
 	// If the grafanaOrganization doesn't have our finalizer, add it.
 	if controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
-   	logger.Info("Add finalizer to Grafana Organization")
+		logger.Info("Add finalizer to Grafana Organization")
 		// Register the finalizer immediately to avoid orphaning AWS resources on delete
 		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
@@ -123,9 +123,14 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	logger.Info("Remove finalizer from grafana organization")
 	// Remove the finalizer.
 	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
-	controllerutil.RemoveFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
+	if controllerutil.RemoveFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
+		err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization))
+		if err != nil {
+			return err
+		}
+	}
 
-	return r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization))
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
