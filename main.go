@@ -123,10 +123,10 @@ func main() {
 	flag.StringVar(&managementClusterRegion, "management-cluster-region", "",
 		"The region of the management cluster.")
 	// Monitoring configuration flags.
+	flag.StringVar(&monitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
+		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
 	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
-	flag.StringVar(&monitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentPrometheus,
-		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
 	flag.Float64Var(&monitoringShardingScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
 		"Configures the number of time series needed to add an extra prometheus agent shard.")
 	flag.Float64Var(&monitoringShardingScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
