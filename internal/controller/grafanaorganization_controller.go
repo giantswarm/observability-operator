@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
-	grafanaClient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
 
 const sharedOrgName = "Shared Org."
@@ -39,7 +38,8 @@ const sharedOrgName = "Shared Org."
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme     *runtime.Scheme
+	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
 }
 
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations,verbs=get;list;watch;create;update;patch;delete
@@ -65,24 +65,17 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	logger.WithValues("grafanaOrganization", grafanaOrganization.ObjectMeta.Name)
 
-	// Generate Grafana client
-	grafanaAPI, err := grafanaClient.GenerateGrafanaClient(ctx, r.Client, logger)
-	if err != nil {
-		logger.Error(err, "Failed to create Grafana admin client")
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
 		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaOrganization)
 	}
 
 	// Handle non-deleted grafana organizations
-	return r.reconcileCreate(ctx, grafanaAPI, grafanaOrganization)
+	return r.reconcileCreate(ctx, grafanaOrganization)
 }
 
 // reconcileCreate creates the grafanaOrganization.
-func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
+func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	logger := log.FromContext(ctx)
 
 	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
@@ -96,7 +89,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Ensure the first organization is renamed.
-	_, err := grafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
+	_, err := r.GrafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
 		Name: sharedOrgName,
 	})
 	if err != nil {
@@ -106,15 +99,15 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	// if the CR doesn't have an orgID, create the organization in Grafana and update the status
 	if grafanaOrganization.Status.OrgID == 0 {
-		return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaAPI, grafanaOrganization)
+		return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaOrganization)
 	} else {
-		searchResult, err := grafanaAPI.Orgs.GetOrgByID(grafanaOrganization.Status.OrgID)
+		searchResult, err := r.GrafanaAPI.Orgs.GetOrgByID(grafanaOrganization.Status.OrgID)
 		if err != nil {
 			// Parsing error message to find out the error code
 			is404 := strings.Contains(err.Error(), "(status 404)")
 
 			if is404 { // If the granfana organization CR has an orgID  but does not exist in Grafana, create the organization
-				return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaAPI, grafanaOrganization)
+				return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaOrganization)
 			} else {
 				// If return cod from the GetOrgByID method is neither 200 nor 404, return the error
 				logger.Error(err, "Failed to get organization by ID")
@@ -124,7 +117,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 			// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
 			if searchResult.Payload.Name != grafanaOrganization.Spec.DisplayName {
 				// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
-				_, err := grafanaAPI.Orgs.UpdateOrg(grafanaOrganization.Status.OrgID, &grafanaAPIModels.UpdateOrgForm{
+				_, err := r.GrafanaAPI.Orgs.UpdateOrg(grafanaOrganization.Status.OrgID, &grafanaAPIModels.UpdateOrgForm{
 					Name: grafanaOrganization.Spec.DisplayName,
 				})
 				if err != nil {
@@ -140,11 +133,11 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	return ctrl.Result{}, nil
 }
 
-func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
 	// Check if the organization name is available
-	_, err := grafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Spec.DisplayName)
+	_, err := r.GrafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Spec.DisplayName)
 	if err != nil {
 		// Parsing error message to find out the error code
 		is404 := strings.Contains(err.Error(), "(status 404)")
@@ -154,7 +147,7 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 			logger.Info("Create organization in Grafana")
 
 			// If the name is available, create the organization in Grafana
-			createdOrg, err := grafanaAPI.Orgs.CreateOrg(&grafanaAPIModels.CreateOrgCommand{
+			createdOrg, err := r.GrafanaAPI.Orgs.CreateOrg(&grafanaAPIModels.CreateOrgCommand{
 				Name: grafanaOrganization.Spec.DisplayName,
 			})
 			if err != nil {
