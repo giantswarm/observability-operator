@@ -15,6 +15,7 @@ const (
 	grafanaNamespace                  = "monitoring"
 	grafanaAdminCredentialsSecretName = "grafana"
 	grafanaTLSSecretName              = "grafana-tls" // nolint:gosec
+	clientConfigNumRetries            = 3
 )
 
 func GenerateGrafanaClient(ctx context.Context, client client.Client, logger logr.Logger) (*grafana.GrafanaHTTPAPI, error) {
@@ -41,7 +42,7 @@ func GenerateGrafanaClient(ctx context.Context, client client.Client, logger log
 		// We use basic auth to authenticate on grafana.
 		BasicAuth: url.UserPassword(adminCredentials.Username, adminCredentials.Password),
 		// NumRetries contains the optional number of attempted retries.
-		NumRetries: 0,
+		NumRetries: clientConfigNumRetries,
 		TLSConfig:  tlsConfig,
 	}
 

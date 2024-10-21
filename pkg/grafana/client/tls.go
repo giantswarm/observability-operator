@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// build the tls.Config object based on the content of the grafana-tls secret
+// buildTLSConfiguration builds the tls.Config object based on the content of the grafana-tls secret
 func buildTLSConfiguration(ctx context.Context, client client.Client) (*tls.Config, error) {
 	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS13}
 
