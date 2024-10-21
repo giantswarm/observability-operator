@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
@@ -32,6 +33,8 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	grafanaClient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
+
+const sharedOrgName = "Shared Org."
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
@@ -90,6 +93,15 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}
+	}
+
+	// Ensure the first organization is renamed.
+	_, err := grafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
+		Name: sharedOrgName,
+	})
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Could not rename Main Org. to %s", sharedOrgName))
+		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	// if the CR doesn't have an orgID, create the organization in Grafana and update the status
