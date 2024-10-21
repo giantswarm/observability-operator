@@ -9,7 +9,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/giantswarm/apiextensions-application v0.6.2
 	github.com/go-logr/logr v1.4.2
-	github.com/grafana/grafana-openapi-client-go v0.0.0-20240826142251-d1c93bae4198
+	github.com/grafana/grafana-openapi-client-go v0.0.0-20241018134006-9d96c2007bd8
 	github.com/onsi/ginkgo/v2 v2.20.2
 	github.com/onsi/gomega v1.34.2
 	github.com/opsgenie/opsgenie-go-sdk-v2 v1.2.23
