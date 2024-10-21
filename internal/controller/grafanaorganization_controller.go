@@ -124,7 +124,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	return ctrl.Result{}, nil
 }
 
-// reconcileDelete deletes the bucket.
+// reconcileDelete deletes the grafana organization.
 func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
