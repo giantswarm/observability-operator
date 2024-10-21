@@ -93,12 +93,14 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
 	// If the grafanaOrganization doesn't have our finalizer, add it.
 	if controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
-		logger.Info("Add finalizer to grafana organization")
+   	logger.Info("Add finalizer to Grafana Organization")
 		// Register the finalizer immediately to avoid orphaning AWS resources on delete
 		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}
 	}
+
+	// Ensure the first organization is renamed.
 	_, err := grafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
 		Name: "Shared Org.",
 	})
