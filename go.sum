@@ -105,8 +105,8 @@ github.com/google/pprof v0.0.0-20240827171923-fa2c70bbbfe5 h1:5iH8iuqE5apketRbSF
 github.com/google/pprof v0.0.0-20240827171923-fa2c70bbbfe5/go.mod h1:vavhavw2zAxS5dIdcRluK6cSGGPlZynqzFM8NdvU144=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/grafana/grafana-openapi-client-go v0.0.0-20240826142251-d1c93bae4198 h1:JEoUdaKnBdZ57YsWiDeAERYu52W4c7g7eAAxY2PpWl8=
-github.com/grafana/grafana-openapi-client-go v0.0.0-20240826142251-d1c93bae4198/go.mod h1:hiZnMmXc9KXNUlvkV2BKFsiWuIFF/fF4wGgYWEjBitI=
+github.com/grafana/grafana-openapi-client-go v0.0.0-20241018134006-9d96c2007bd8 h1:fRwRuI/kDT0feopB1jrcA2Jpn/s4elfidFl+v9Y8qpo=
+github.com/grafana/grafana-openapi-client-go v0.0.0-20241018134006-9d96c2007bd8/go.mod h1:hiZnMmXc9KXNUlvkV2BKFsiWuIFF/fF4wGgYWEjBitI=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0 h1:gmcG1KaJ57LophUzW0Hy8NmPhnMZb4M0+kPpLofRdBo=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 h1:bkypFPDjIYGfCYD5mRBvpqxfYX1YCS1PXdKYWi8FsN0=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0/go.mod h1:P+Lt/0by1T8bfcF3z737NnSbmxQAppXMRziHUxPOC8k=
