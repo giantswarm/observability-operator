@@ -68,15 +68,6 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	// Test connection to Grafana
-	_, err = grafanaAPI.Health.GetHealth()
-	if err != nil {
-		logger.Error(err, "Failed to connect to Grafana")
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-
-	logger.Info("Successfully connected to Grafana, lets start hacking...")
-
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
 		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaOrganization)
