@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -46,6 +47,7 @@ import (
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
+	"github.com/giantswarm/observability-operator/pkg/grafana/client"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
@@ -211,6 +213,13 @@ func main() {
 
 	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
 
+	// Generate Grafana client
+	grafanaAPI, err := client.GenerateGrafanaClient(context.Background(), mgr.GetClient())
+	if err != nil {
+		setupLog.Error(err, "unable to create grafana client")
+		os.Exit(1)
+	}
+
 	monitoringConfig := monitoring.Config{
 		Enabled:         monitoringEnabled,
 		MonitoringAgent: monitoringAgent,
@@ -257,9 +266,11 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
 		os.Exit(1)
 	}
+
 	if err = (&controller.GrafanaOrganizationReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		GrafanaAPI: grafanaAPI,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GrafanaOrganization")
 		os.Exit(1)

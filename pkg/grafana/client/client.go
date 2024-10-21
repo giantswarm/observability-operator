@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/go-logr/logr"
 	grafana "github.com/grafana/grafana-openapi-client-go/client"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -18,7 +17,7 @@ const (
 	clientConfigNumRetries            = 3
 )
 
-func GenerateGrafanaClient(ctx context.Context, client client.Client, logger logr.Logger) (*grafana.GrafanaHTTPAPI, error) {
+func GenerateGrafanaClient(ctx context.Context, client client.Client) (*grafana.GrafanaHTTPAPI, error) {
 	// Get grafana admin-password and admin-user
 	adminCredentials, err := getAdminCredentials(ctx, client)
 	if err != nil {

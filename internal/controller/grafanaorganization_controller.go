@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
@@ -29,13 +30,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
-	grafanaClient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
+
+const sharedOrgName = "Shared Org."
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme     *runtime.Scheme
+	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
 }
 
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations,verbs=get;list;watch;create;update;patch;delete
@@ -59,17 +62,9 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
 
-	logger.WithValues("grafanaOrganization", grafanaOrganization.ObjectMeta.Name)
-
-	// Generate Grafana client
-	grafanaAPI, err := grafanaClient.GenerateGrafanaClient(ctx, r.Client, logger)
-	if err != nil {
-		logger.Error(err, "Failed to create Grafana admin client")
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-
 	// Test connection to Grafana
-	_, err = grafanaAPI.Health.GetHealth()
+	// TODO(zirko) Remove in the next iteration
+	_, err = r.GrafanaAPI.Health.GetHealth()
 	if err != nil {
 		logger.Error(err, "Failed to connect to Grafana")
 		return ctrl.Result{}, errors.WithStack(err)
@@ -83,29 +78,29 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	// Handle non-deleted grafana organizations
-	return r.reconcileCreate(ctx, grafanaAPI, grafanaOrganization)
+	return r.reconcileCreate(ctx, grafanaOrganization)
 }
 
 // reconcileCreate creates the grafanaOrganization.
-func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
+func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	logger := log.FromContext(ctx)
 
 	originalGrafanaOrganization := grafanaOrganization.DeepCopy()
 	// If the grafanaOrganization doesn't have our finalizer, add it.
 	if controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 		logger.Info("Add finalizer to Grafana Organization")
-		// Register the finalizer immediately to avoid orphaning AWS resources on delete
+		// Register the finalizer immediately to avoid orphaning resources on delete
 		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}
 	}
 
 	// Ensure the first organization is renamed.
-	_, err := grafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
-		Name: "Shared Org.",
+	_, err := r.GrafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
+		Name: sharedOrgName,
 	})
 	if err != nil {
-		logger.Error(err, "Could not rename Main Org. to Shared Org.")
+		logger.Error(err, fmt.Sprintf("Could not rename Main Org. to %s", sharedOrgName))
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
