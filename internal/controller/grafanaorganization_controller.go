@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
@@ -36,6 +35,8 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 )
+
+const sharedOrgName = "Shared Org."
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
