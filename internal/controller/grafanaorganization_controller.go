@@ -96,7 +96,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	if grafanaOrganization.Status.OrgID == 0 {
 		return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaAPI, grafanaOrganization)
 	} else {
-		grievious, err := grafanaAPI.Orgs.GetOrgByID(grafanaOrganization.Status.OrgID)
+		searchResult, err := grafanaAPI.Orgs.GetOrgByID(grafanaOrganization.Status.OrgID)
 		if err != nil {
 			// Parsing error message to find out the error code
 			is404 := strings.Contains(err.Error(), "(status 404)")
@@ -110,7 +110,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 			}
 		} else {
 			// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
-			if grievious.Payload.Name != grafanaOrganization.Spec.DisplayName {
+			if searchResult.Payload.Name != grafanaOrganization.Spec.DisplayName {
 				// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
 				_, err := grafanaAPI.Orgs.UpdateOrg(grafanaOrganization.Status.OrgID, &grafanaAPIModels.UpdateOrgForm{
 					Name: grafanaOrganization.Spec.DisplayName,
