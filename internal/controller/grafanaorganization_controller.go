@@ -80,7 +80,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	// If the grafanaOrganization doesn't have our finalizer, add it.
 	if controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 		logger.Info("Add finalizer to Grafana Organization")
-		// Register the finalizer immediately to avoid orphaning resources on delete
+		// Register the finalizer immediately to avoid orphaning AWS resources on delete
 		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}
@@ -95,77 +95,77 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	// if the CR doesn't have an orgID, create the organization in Grafana and update the status
-	if grafanaOrganization.Status.OrgID == 0 {
-		return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaOrganization)
-	} else {
-		foundOrganization, err := r.GrafanaAPI.Orgs.GetOrgByID(grafanaOrganization.Status.OrgID)
-		if err != nil {
-			// Parsing error message to find out the error code
-			is404 := strings.Contains(err.Error(), "(status 404)")
+	// Check if the organization name is available
+	_, err = r.GrafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Spec.DisplayName)
+	if err != nil {
+		// Parsing error message to find out the error code
+		is404 := strings.Contains(err.Error(), "(status 404)")
 
-			if is404 { // If the grafana organization CR has an orgID  but does not exist in Grafana, create the organization
+		// If an organization with the same name does not exist, check if the CR has an orgID
+		if is404 {
+			// if the CR doesn't have an orgID, create the organization in Grafana and update the status
+			if grafanaOrganization.Status.OrgID == 0 {
 				return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaOrganization)
 			} else {
-				// If return code from the GetOrgByID method is neither 200 nor 404, return the error
-				logger.Error(err, "Failed to get organization by ID")
-				return ctrl.Result{}, errors.WithStack(err)
+				foundOrganization, err := r.GrafanaAPI.Orgs.GetOrgByID(grafanaOrganization.Status.OrgID)
+				if err != nil {
+					// Parsing error message to find out the error code
+					is404 := strings.Contains(err.Error(), "(status 404)")
+
+					if is404 { // If the grafana organization CR has an orgID  but does not exist in Grafana, create the organization
+						return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaOrganization)
+					} else {
+						// If return code from the GetOrgByID method is neither 200 nor 404, return the error
+						logger.Error(err, "Failed to get organization by ID")
+						return ctrl.Result{}, errors.WithStack(err)
+					}
+				} else {
+					// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
+					if foundOrganization.Payload.Name != grafanaOrganization.Spec.DisplayName {
+						// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
+						_, err := r.GrafanaAPI.Orgs.UpdateOrg(grafanaOrganization.Status.OrgID, &grafanaAPIModels.UpdateOrgForm{
+							Name: grafanaOrganization.Spec.DisplayName,
+						})
+						if err != nil {
+							logger.Error(err, "Failed to update organization name")
+							return ctrl.Result{}, errors.WithStack(err)
+						}
+					} else {
+						return ctrl.Result{}, errors.Errorf("A grafana organization with the same name and ID already exists.")
+					}
+				}
 			}
 		} else {
-			// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
-			if foundOrganization.Payload.Name != grafanaOrganization.Spec.DisplayName {
-				// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
-				_, err := r.GrafanaAPI.Orgs.UpdateOrg(grafanaOrganization.Status.OrgID, &grafanaAPIModels.UpdateOrgForm{
-					Name: grafanaOrganization.Spec.DisplayName,
-				})
-				if err != nil {
-					logger.Error(err, "Failed to update organization name")
-					return ctrl.Result{}, errors.WithStack(err)
-				}
-			} else {
-				return ctrl.Result{}, errors.Errorf("A grafana organization with the same name and ID already exists")
-			}
+			// If return code from the GetOrgByName method is neither 200 nor 404, return the error
+			logger.Error(err, "Failed to get organization by name")
+			return ctrl.Result{}, errors.WithStack(err)
 		}
+	} else { // If the organization name is already taken, return an error
+		logger.Error(err, "A grafana organization with the same name already exists. Please choose a different display name.")
+		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	return ctrl.Result{}, nil
 }
 
+// createOrganizationInGrafana creates the organization in Grafana
 func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
-	// Check if the organization name is available
-	_, err := r.GrafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Spec.DisplayName)
+	logger.Info("Create organization in Grafana")
+	createdOrg, err := r.GrafanaAPI.Orgs.CreateOrg(&grafanaAPIModels.CreateOrgCommand{
+		Name: grafanaOrganization.Spec.DisplayName,
+	})
 	if err != nil {
-		// Parsing error message to find out the error code
-		is404 := strings.Contains(err.Error(), "(status 404)")
+		logger.Error(err, "Creating organization failed")
+		return errors.WithStack(err)
+	}
 
-		// If an organization with the same name does not exist, create the organization
-		if is404 {
-			logger.Info("Create organization in Grafana")
-
-			// If the name is available, create the organization in Grafana
-			createdOrg, err := r.GrafanaAPI.Orgs.CreateOrg(&grafanaAPIModels.CreateOrgCommand{
-				Name: grafanaOrganization.Spec.DisplayName,
-			})
-			if err != nil {
-				logger.Error(err, "Creating organization failed")
-				return errors.WithStack(err)
-			}
-
-			// Update the grafanaOrganization status with the orgID
-			grafanaOrganization.Status.OrgID = *createdOrg.Payload.OrgID
-			if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
-				logger.Error(err, "Failed to update the status")
-				return errors.WithStack(err)
-			}
-		} else {
-			// If return code from the GetOrgByName method is neither 200 nor 404, return the error
-			logger.Error(err, "Failed to get organization by name")
-			return errors.WithStack(err)
-		}
-	} else { // If the organization name is already taken, return an error
-		logger.Info("Organization name is already taken")
+	// Update the grafanaOrganization status with the orgID
+	grafanaOrganization.Status.OrgID = *createdOrg.Payload.OrgID
+	if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
+		logger.Error(err, "Failed to update the status")
+		return errors.WithStack(err)
 	}
 
 	return nil
