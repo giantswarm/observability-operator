@@ -81,7 +81,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	// If the grafanaOrganization doesn't have our finalizer, add it.
 	if controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 		logger.Info("Add finalizer to Grafana Organization")
-		// Register the finalizer immediately to avoid orphaning AWS resources on delete
+		// Register the finalizer immediately to avoid orphaning resources on delete
 		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}
@@ -100,15 +100,15 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	if grafanaOrganization.Status.OrgID == 0 {
 		return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaOrganization)
 	} else {
-		searchResult, err := r.GrafanaAPI.Orgs.GetOrgByID(grafanaOrganization.Status.OrgID)
+		foundOrganization, err := r.GrafanaAPI.Orgs.GetOrgByID(grafanaOrganization.Status.OrgID)
 		if err != nil {
 			// Parsing error message to find out the error code
 			is404 := strings.Contains(err.Error(), "(status 404)")
 
-			if is404 { // If the granfana organization CR has an orgID  but does not exist in Grafana, create the organization
+			if is404 { // If the grafana organization CR has an orgID  but does not exist in Grafana, create the organization
 				return ctrl.Result{}, r.createOrganizationInGrafana(ctx, grafanaOrganization)
 			} else {
-				// If return cod from the GetOrgByID method is neither 200 nor 404, return the error
+				// If return code from the GetOrgByID method is neither 200 nor 404, return the error
 				logger.Error(err, "Failed to get organization by ID")
 				return ctrl.Result{}, errors.WithStack(err)
 			}
