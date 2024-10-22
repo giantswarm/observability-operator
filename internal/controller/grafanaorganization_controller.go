@@ -138,6 +138,7 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 
 	// Check if the organization name is available
 	foundOrg, err := r.GrafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Spec.DisplayName)
+	logger.Info("see error : %s", err)
 	if err != nil {
 		// Parsing error message to find out the error code
 		is404 := strings.Contains(err.Error(), "(status 404)")
