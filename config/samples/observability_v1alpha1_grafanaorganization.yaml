@@ -18,9 +18,9 @@ spec:
     - my-awesome-viewers
     - other-viewers
 status:
-  orgID: "2"
+  orgID: 2
   dataSources:
   - name: "mimir"
-    id: "1"
+    id: 1
   - name: "loki"
-    id: "2"
+    id: 2
