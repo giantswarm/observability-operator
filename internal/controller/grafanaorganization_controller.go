@@ -63,7 +63,6 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
 
-
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
 		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaOrganization)
@@ -114,7 +113,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 			}
 		} else {
 			// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
-			if searchResult.Payload.Name != grafanaOrganization.Spec.DisplayName {
+			if foundOrganization.Payload.Name != grafanaOrganization.Spec.DisplayName {
 				// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
 				_, err := r.GrafanaAPI.Orgs.UpdateOrg(grafanaOrganization.Status.OrgID, &grafanaAPIModels.UpdateOrgForm{
 					Name: grafanaOrganization.Spec.DisplayName,
