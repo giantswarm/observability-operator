@@ -137,7 +137,7 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 	logger := log.FromContext(ctx)
 
 	// Check if the organization name is available
-	_, err := r.GrafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Spec.DisplayName)
+	foundOrg, err := r.GrafanaAPI.Orgs.GetOrgByName(grafanaOrganization.Spec.DisplayName)
 	if err != nil {
 		// Parsing error message to find out the error code
 		is404 := strings.Contains(err.Error(), "(status 404)")
@@ -167,7 +167,8 @@ func (r GrafanaOrganizationReconciler) createOrganizationInGrafana(ctx context.C
 			return errors.WithStack(err)
 		}
 	} else { // If the organization name is already taken, return an error
-		logger.Info("Organization name is already taken")
+		logger.Info("Organization name is already taken, see org id : %s, org name : %s", foundOrg.Payload.ID, foundOrg.Payload.Name)
+		logger.Info("See Org : %s", foundOrg.Payload)
 	}
 
 	return nil
