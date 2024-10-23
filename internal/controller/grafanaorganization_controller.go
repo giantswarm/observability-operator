@@ -66,16 +66,6 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
 
-	// Test connection to Grafana
-	// TODO(zirko) Remove in the next iteration
-	_, err = r.GrafanaAPI.Health.GetHealth()
-	if err != nil {
-		logger.Error(err, "Failed to connect to Grafana")
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-
-	logger.Info("Successfully connected to Grafana, lets start hacking...")
-
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
 		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaOrganization)
@@ -117,6 +107,37 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	// TODO add datasources for shared org.
+
+	// Create or update organization in Grafana
+	var organization grafana.Organization = grafana.Organization{
+		ID:   grafanaOrganization.Status.OrgID,
+		Name: grafanaOrganization.Spec.DisplayName,
+	}
+
+	if organization.ID == 0 {
+		// if the CR doesn't have an orgID, create the organization in Grafana
+		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, organization)
+	} else {
+		organization, err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, organization)
+	}
+
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Update CR status if anything was changed
+	if organization.ID != grafanaOrganization.Status.OrgID {
+		grafanaOrganization.Status.OrgID = organization.ID
+
+		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
+			logger.Error(err, "Failed to update the status")
+			return ctrl.Result{}, errors.WithStack(err)
+		}
+	}
+
+	// TODO add datasources for the organization.
+
 	err = r.configureGrafana(ctx)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
@@ -153,6 +174,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		}
 		logger.Info("removed finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
 	}
+
 	return nil
 }
 

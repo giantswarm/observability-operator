@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add Grafana Organization creation logic in reconciler.
+- Add configuration of the Grafana org_mapping via user-values.
+
+## [0.8.1] - 2024-10-17
+
+### Fixed
+
+- Fix `flag redefined` error
+
+## [0.8.0] - 2024-10-17
+
 ## [0.8.1] - 2024-10-17
 
 ### Fixed
@@ -19,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add wal `truncate_frequency` configuration to alloy-metrics with a default set to 15m.
 - Add grafanaOrganization CRD in helm chart.
-- Add logic to grafanaOrganization reconciler.
 
 ### Changed
 
