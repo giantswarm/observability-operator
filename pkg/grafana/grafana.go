@@ -2,18 +2,17 @@ package grafana
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
-  "context"
 	"fmt"
 	"html/template"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/grafana/grafana-openapi-client-go/client"
-	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
+	"github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-  
+
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
@@ -50,7 +49,7 @@ func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	}
 
 	logger.Info("Create organization in Grafana")
-	createdOrg, err := grafanaAPI.Orgs.CreateOrg(&grafanaAPIModels.CreateOrgCommand{
+	createdOrg, err := grafanaAPI.Orgs.CreateOrg(&models.CreateOrgCommand{
 		Name: organization.Name,
 	})
 	if err != nil {
@@ -95,7 +94,7 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	}
 
 	// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
-	_, err = grafanaAPI.Orgs.UpdateOrg(organization.ID, &grafanaAPIModels.UpdateOrgForm{
+	_, err = grafanaAPI.Orgs.UpdateOrg(organization.ID, &models.UpdateOrgForm{
 		Name: organization.Name,
 	})
 	if err != nil {
