@@ -101,25 +101,18 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-
-		// TODO handle status update better
-
-		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "Failed to update the status")
-			return ctrl.Result{}, errors.WithStack(err)
-		}
 	} else {
 		err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, grafanaOrganization)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+	}
 
-		// TODO handle status update better
+	// TODO handle status update better
 
-		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "Failed to update the status")
-			return ctrl.Result{}, errors.WithStack(err)
-		}
+	if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
+		logger.Error(err, "Failed to update the status")
+		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	return ctrl.Result{}, nil

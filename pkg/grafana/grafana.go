@@ -16,12 +16,12 @@ func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	logger := log.FromContext(ctx)
 
 	// Check if the organization name is available
-	_, found, err := getOrganizationInGrafanaByName(ctx, grafanaAPI, organization.Spec.DisplayName)
+	organizationInGrafana, err := getOrganizationInGrafanaByName(ctx, grafanaAPI, organization.Spec.DisplayName)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	if found {
+	if organizationInGrafana != nil {
 		logger.Error(err, "A grafana organization with the same name already exists. Please choose a different display name.")
 		return errors.WithStack(err)
 	}
@@ -44,26 +44,26 @@ func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
-	foundOrgName, found, err := getOrganizationInGrafanaByID(ctx, grafanaAPI, organization.Status.OrgID)
+	organizationInGrafana, err := getOrganizationInGrafanaByID(ctx, grafanaAPI, organization.Status.OrgID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	if !found {
+	if organizationInGrafana == nil {
 		// If the CR orgID does not exist in Grafana, then we create the organization
 		return CreateOrganization(ctx, grafanaAPI, organization)
 	}
 
 	// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
-	if foundOrgName != organization.Spec.DisplayName {
+	if organizationInGrafana.Name != organization.Spec.DisplayName {
 
 		// Check if the organization name is available
-		_, found, err = getOrganizationInGrafanaByName(ctx, grafanaAPI, organization.Spec.DisplayName)
+		organizationInGrafana, err = getOrganizationInGrafanaByName(ctx, grafanaAPI, organization.Spec.DisplayName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		if found {
+		if organizationInGrafana != nil {
 			logger.Error(err, "A grafana organization with the same name already exists. Please choose a different display name.")
 			return errors.WithStack(err)
 		}
@@ -92,33 +92,39 @@ func isNotFound(err error) bool {
 }
 
 // getOrganizationInGrafanaByName is a Wrapper function to get the organization in Grafana by Name
-func getOrganizationInGrafanaByName(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, name string) (int, bool, error) {
+func getOrganizationInGrafanaByName(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, name string) (*Organization, error) {
 	logger := log.FromContext(ctx)
 	organization, err := grafanaAPI.Orgs.GetOrgByName(name)
 	if err != nil {
 		if isNotFound(err) {
-			return 0, false, nil
+			return nil, nil
 		} else {
 			logger.Error(err, "Failed to get organization by name")
-			return 0, false, errors.WithStack(err)
+			return nil, errors.WithStack(err)
 		}
 	}
 
-	return int(organization.Payload.ID), true, nil
+	return &Organization{
+		ID:   int64(organization.Payload.ID),
+		Name: organization.Payload.Name,
+	}, nil
 }
 
 // getOrganizationInGrafanaByID is a Wrapper function to get the organization in Grafana by ID
-func getOrganizationInGrafanaByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, orgID int64) (string, bool, error) {
+func getOrganizationInGrafanaByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, orgID int64) (*Organization, error) {
 	logger := log.FromContext(ctx)
 	organization, err := grafanaAPI.Orgs.GetOrgByID(orgID)
 	if err != nil {
 		if isNotFound(err) {
-			return "", false, nil
+			return nil, nil
 		} else {
 			logger.Error(err, "Failed to get organization by ID")
-			return "", false, errors.WithStack(err)
+			return nil, errors.WithStack(err)
 		}
 	}
 
-	return organization.Payload.Name, true, nil
+	return &Organization{
+		ID:   int64(organization.Payload.ID),
+		Name: organization.Payload.Name,
+	}, nil
 }
