@@ -16,7 +16,7 @@ managementCluster:
   region: region
 
 monitoring:
-  agent: prometheus-agent
+  agent: alloy
   enabled: false
   opsgenieApiKey: ""
   prometheusVersion: ""
