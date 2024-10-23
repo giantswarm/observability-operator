@@ -50,7 +50,6 @@ spec:
             secretKeyRef:
               name: grafana
               key: admin-user
-        - name: GRAFANA_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
               name: grafana
