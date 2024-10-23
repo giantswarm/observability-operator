@@ -95,22 +95,27 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	var organization *grafana.Organization
-	if grafanaOrganization.Status.OrgID == 0 {
+	// TODO add datasources for shared org.
+
+	// Create or update organization in Grafana
+	var organization grafana.Organization = grafana.Organization{
+		ID:   grafanaOrganization.Status.OrgID,
+		Name: grafanaOrganization.Spec.DisplayName,
+	}
+
+	if organization.ID == 0 {
 		// if the CR doesn't have an orgID, create the organization in Grafana
-		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, grafanaOrganization)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, organization)
 	} else {
-		organization, err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, grafanaOrganization)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+		organization, err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, organization)
+	}
+
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// Update CR status if anything was changed
-	if organization != nil && organization.ID != grafanaOrganization.Status.OrgID {
+	if organization.ID != grafanaOrganization.Status.OrgID {
 		grafanaOrganization.Status.OrgID = organization.ID
 
 		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
@@ -118,6 +123,10 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 			return ctrl.Result{}, errors.WithStack(err)
 		}
 	}
+
+	// TODO add datasources for the organization.
+
+	// TODO configure grafana org_mapping
 
 	return ctrl.Result{}, nil
 }
