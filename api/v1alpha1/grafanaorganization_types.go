@@ -65,6 +65,7 @@ type GrafanaOrganizationStatus struct {
 	OrgID int64 `json:"orgID"`
 
 	// DataSources is a list of grafana data sources that are available to the Grafana organization.
+	// +optional
 	DataSources []DataSources `json:"dataSources"`
 }
 
