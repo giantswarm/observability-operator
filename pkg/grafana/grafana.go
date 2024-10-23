@@ -83,12 +83,12 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 }
 
 func isNotFound(err error) bool {
-	if err != nil {
+	if err == nil {
 		return false
-	} else {
-		// Parsing error message to find out the error code
-		return strings.Contains(err.Error(), "(status 404)")
 	}
+
+	// Parsing error message to find out the error code
+	return strings.Contains(err.Error(), "(status 404)")
 }
 
 // getOrganizationInGrafanaByName is a Wrapper function to get the organization in Grafana by Name
