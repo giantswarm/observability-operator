@@ -54,30 +54,30 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 		return CreateOrganization(ctx, grafanaAPI, organization)
 	}
 
-	// If the CR orgID matches an existing org in grafana, check if the name is the same as the CR
-	if organizationInGrafana.Name != organization.Spec.DisplayName {
-
-		// Check if the organization name is available
-		organizationInGrafana, err = getOrganizationInGrafanaByName(ctx, grafanaAPI, organization.Spec.DisplayName)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if organizationInGrafana != nil {
-			logger.Error(err, "A grafana organization with the same name already exists. Please choose a different display name.")
-			return errors.WithStack(err)
-		}
-
-		// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
-		_, err := grafanaAPI.Orgs.UpdateOrg(organization.Status.OrgID, &grafanaAPIModels.UpdateOrgForm{
-			Name: organization.Spec.DisplayName,
-		})
-		if err != nil {
-			logger.Error(err, "Failed to update organization name")
-			return errors.WithStack(err)
-		}
-	} else {
+	// If both name matches, there is nothing to do.
+	if organizationInGrafana.Name == organization.Spec.DisplayName {
 		logger.Info("The organization already exists in Grafana and does not need to be updated.")
+		return nil
+	}
+
+	// Check if the organization name is available
+	organizationInGrafana, err = getOrganizationInGrafanaByName(ctx, grafanaAPI, organization.Spec.DisplayName)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if organizationInGrafana != nil {
+		logger.Error(err, "A grafana organization with the same name already exists. Please choose a different display name.")
+		return errors.WithStack(err)
+	}
+
+	// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
+	_, err = grafanaAPI.Orgs.UpdateOrg(organization.Status.OrgID, &grafanaAPIModels.UpdateOrgForm{
+		Name: organization.Spec.DisplayName,
+	})
+	if err != nil {
+		logger.Error(err, "Failed to update organization name")
+		return errors.WithStack(err)
 	}
 	return nil
 }
