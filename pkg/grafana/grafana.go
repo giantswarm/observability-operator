@@ -36,7 +36,7 @@ func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	}
 
 	return &Organization{
-		ID:   int64(*createdOrg.Payload.OrgID),
+		ID:   *createdOrg.Payload.OrgID,
 		Name: organization.Spec.DisplayName,
 	}, nil
 }
@@ -109,7 +109,7 @@ func getOrganizationInGrafanaByName(ctx context.Context, grafanaAPI *client.Graf
 	}
 
 	return &Organization{
-		ID:   int64(organization.Payload.ID),
+		ID:   organization.Payload.ID,
 		Name: organization.Payload.Name,
 	}, nil
 }
@@ -128,7 +128,7 @@ func getOrganizationInGrafanaByID(ctx context.Context, grafanaAPI *client.Grafan
 	}
 
 	return &Organization{
-		ID:   int64(organization.Payload.ID),
+		ID:   organization.Payload.ID,
 		Name: organization.Payload.Name,
 	}, nil
 }
