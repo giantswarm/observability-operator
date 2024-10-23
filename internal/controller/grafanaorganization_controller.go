@@ -95,24 +95,27 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	var organization *grafana.Organization
 	if grafanaOrganization.Status.OrgID == 0 {
 		// if the CR doesn't have an orgID, create the organization in Grafana and update the status
-		err = grafana.CreateOrganization(ctx, r.GrafanaAPI, grafanaOrganization)
+		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, grafanaOrganization)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 	} else {
-		err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, grafanaOrganization)
+		organization, err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, grafanaOrganization)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
-	// TODO handle status update better
+	if organization != nil && organization.ID != grafanaOrganization.Status.OrgID {
+		grafanaOrganization.Status.OrgID = organization.ID
 
-	if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
-		logger.Error(err, "Failed to update the status")
-		return ctrl.Result{}, errors.WithStack(err)
+		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
+			logger.Error(err, "Failed to update the status")
+			return ctrl.Result{}, errors.WithStack(err)
+		}
 	}
 
 	return ctrl.Result{}, nil

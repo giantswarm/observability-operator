@@ -12,18 +12,18 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
-func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *v1alpha1.GrafanaOrganization) error {
+func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *v1alpha1.GrafanaOrganization) (*Organization, error) {
 	logger := log.FromContext(ctx)
 
 	// Check if the organization name is available
 	organizationInGrafana, err := getOrganizationInGrafanaByName(ctx, grafanaAPI, organization.Spec.DisplayName)
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	if organizationInGrafana != nil {
 		logger.Error(err, "A grafana organization with the same name already exists. Please choose a different display name.")
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	logger.Info("Create organization in Grafana")
@@ -32,21 +32,21 @@ func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	})
 	if err != nil {
 		logger.Error(err, "Creating organization failed")
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
-	// Update the grafanaOrganization status with the orgID
-	organization.Status.OrgID = *createdOrg.Payload.OrgID
-
-	return nil
+	return &Organization{
+		ID:   int64(*createdOrg.Payload.OrgID),
+		Name: organization.Spec.DisplayName,
+	}, nil
 }
 
-func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *v1alpha1.GrafanaOrganization) error {
+func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *v1alpha1.GrafanaOrganization) (*Organization, error) {
 	logger := log.FromContext(ctx)
 
 	organizationInGrafana, err := getOrganizationInGrafanaByID(ctx, grafanaAPI, organization.Status.OrgID)
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	if organizationInGrafana == nil {
@@ -57,18 +57,18 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	// If both name matches, there is nothing to do.
 	if organizationInGrafana.Name == organization.Spec.DisplayName {
 		logger.Info("The organization already exists in Grafana and does not need to be updated.")
-		return nil
+		return organizationInGrafana, nil
 	}
 
 	// Check if the organization name is available
 	organizationInGrafana, err = getOrganizationInGrafanaByName(ctx, grafanaAPI, organization.Spec.DisplayName)
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	if organizationInGrafana != nil {
 		logger.Error(err, "A grafana organization with the same name already exists. Please choose a different display name.")
-		return errors.WithStack(err)
+		return organizationInGrafana, errors.WithStack(err)
 	}
 
 	// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
@@ -77,9 +77,13 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	})
 	if err != nil {
 		logger.Error(err, "Failed to update organization name")
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
-	return nil
+
+	return &Organization{
+		ID:   organization.Status.OrgID,
+		Name: organization.Spec.DisplayName,
+	}, nil
 }
 
 func isNotFound(err error) bool {
