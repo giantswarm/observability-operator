@@ -80,7 +80,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	// If the grafanaOrganization doesn't have our finalizer, add it.
 	if controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 		logger.Info("Add finalizer to Grafana Organization")
-		// Register the finalizer immediately to avoid orphaning AWS resources on delete
+		// Register the finalizer immediately to avoid orphaning resources on delete
 		if err := r.Client.Patch(ctx, grafanaOrganization, client.MergeFrom(originalGrafanaOrganization)); err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}
@@ -97,7 +97,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	var organization *grafana.Organization
 	if grafanaOrganization.Status.OrgID == 0 {
-		// if the CR doesn't have an orgID, create the organization in Grafana and update the status
+		// if the CR doesn't have an orgID, create the organization in Grafana
 		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, grafanaOrganization)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -109,6 +109,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		}
 	}
 
+	// Update CR status if anything was changed
 	if organization != nil && organization.ID != grafanaOrganization.Status.OrgID {
 		grafanaOrganization.Status.OrgID = organization.ID
 
