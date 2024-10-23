@@ -36,8 +36,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 )
 
-const sharedOrgName = "Shared Org."
-
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
 	client.Client

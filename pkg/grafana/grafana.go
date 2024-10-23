@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	SharedOrgName = "Shared Org."
+	SharedOrgName = "Shared Org"
 
 	grafanaAdminRole  = "Admin"
 	grafanaEditorRole = "Editor"
