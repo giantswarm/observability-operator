@@ -34,6 +34,7 @@ import (
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
+	"github.com/giantswarm/observability-operator/pkg/grafana/templating"
 )
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
@@ -213,7 +214,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 	}
 
 	_, err = controllerutil.CreateOrPatch(ctx, r.Client, &grafanaConfig, func() error {
-		config, err := grafana.GenerateGrafanaConfiguration(organizations.Items)
+		config, err := templating.GenerateGrafanaConfiguration(organizations.Items)
 		if err != nil {
 			logger.Error(err, "failed to generate grafana user configmap values.")
 			return errors.WithStack(err)
