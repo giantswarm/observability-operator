@@ -1,6 +1,5 @@
 import logging
 from typing import List
-import requests
 
 import pykube
 import pytest
@@ -18,36 +17,40 @@ logger = logging.getLogger(__name__)
 namespace_name = "monitoring"
 deployment_name= "observability-operator"
 
-app_catalog_url = "oci://giantswarmpublic.azurecr.io/control-plane-catalog"
+
 apps = [
     {
       "name": "grafana",
       "version": "2.16.3",
-      "config_values": f'''grafana:
-  enabled: true
-  grafana:
-    fullnameOverride: grafana
-    ingress:
-      annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-giantswarm
-        kubernetes.io/tls-acme: "true"
-      enabled: true
-      hosts:
+      "catalog": "control-plane-catalog",
+      "catalog_url": "oci://giantswarmpublic.azurecr.io/control-plane-catalog",
+      "config_values": '''grafana:
+  fullnameOverride: grafana
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-giantswarm
+      kubernetes.io/tls-acme: "true"
+    enabled: true
+    hosts:
+    - grafana.test.gigantic.io
+    ingressClassName: nginx
+    tls:
+    - hosts:
       - grafana.test.gigantic.io
-      ingressClassName: nginx
-      tls:
-      - hosts:
-        - grafana.test.gigantic.io
-        secretName: grafana-tls
+      secretName: grafana-tls
 ''',
     },
     {
       "name": "cert-manager",
+      "catalog": "default",
+      "catalog_url": "https://giantswarm.github.io/default-catalog",
       "version": "3.8.1",
       "config_values": "",
     },
     {
       "name": "ingress-nginx",
+      "catalog": "control-plane-catalog",
+      "catalog_url": "oci://giantswarmpublic.azurecr.io/control-plane-catalog",
       "version": "3.9.2",
       "config_values": "",
     },
@@ -74,9 +77,9 @@ def deployedApps(
         app_factory(
           app["name"],
           app["version"],
-          "control-plane-catalog",
+          app["catalog"],
           namespace_name,
-          app_catalog_url,
+          app["catalog_url"],
           timeout_sec=timeout,
           namespace=namespace_name,
           deployment_namespace=namespace_name,
@@ -84,7 +87,7 @@ def deployedApps(
         )
       except pykube.exceptions.HTTPError as e:
         if e.code == 409:
-          logger.warning("App already deployed", app_name=app["name"])
+          logger.warning("App %s already deployed", app["name"])
         else:
           raise
 
