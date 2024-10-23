@@ -101,7 +101,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		Name: grafana.SharedOrgName,
 	})
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("Could not rename Main Org. to %s", grafana.SharedOrgName))
+		logger.Error(err, fmt.Sprintf("failed to rename Main Org. to %s", grafana.SharedOrgName))
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
@@ -129,7 +129,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		grafanaOrganization.Status.OrgID = organization.ID
 
 		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "Failed to update the status")
+			logger.Error(err, "failed to update the status")
 			return ctrl.Result{}, errors.WithStack(err)
 		}
 	}
@@ -150,7 +150,19 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	// We do not need to delete anything if there is no finalizer on the cluster
 	if controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 
-		//TODO Implement the logic to delete the organization from Grafana.
+		// Delete organization in Grafana if it exists
+		if grafanaOrganization.Status.OrgID > 0 {
+			err := grafana.DeleteByID(ctx, r.GrafanaAPI, grafanaOrganization.Status.OrgID)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+
+			grafanaOrganization.Status.OrgID = 0
+			if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
+				logger.Error(err, "failed to update the status")
+				return errors.WithStack(err)
+			}
+		}
 
 		err := r.configureGrafana(ctx)
 		if err != nil {
