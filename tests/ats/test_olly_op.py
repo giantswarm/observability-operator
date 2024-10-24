@@ -3,13 +3,58 @@ from typing import List
 
 import pykube
 import pytest
+
 from pytest_helm_charts.clusters import Cluster
 from pytest_helm_charts.k8s.deployment import wait_for_deployments_to_run
+from pytest_helm_charts.giantswarm_app_platform.app import (
+    wait_for_apps_to_run,
+    AppFactoryFunc,
+    AppCR,
+)
 
 logger = logging.getLogger(__name__)
 
 namespace_name = "monitoring"
 deployment_name= "observability-operator"
+
+
+apps = [
+    {
+      "name": "grafana",
+      "version": "2.16.3",
+      "catalog": "control-plane-catalog",
+      "catalog_url": "oci://giantswarmpublic.azurecr.io/control-plane-catalog",
+      "config_values": '''grafana:
+  fullnameOverride: grafana
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-giantswarm
+      kubernetes.io/tls-acme: "true"
+    enabled: true
+    hosts:
+    - grafana.test.gigantic.io
+    ingressClassName: nginx
+    tls:
+    - hosts:
+      - grafana.test.gigantic.io
+      secretName: grafana-tls
+''',
+    },
+    {
+      "name": "cert-manager",
+      "catalog": "default",
+      "catalog_url": "https://giantswarm.github.io/default-catalog",
+      "version": "3.8.1",
+      "config_values": "",
+    },
+    {
+      "name": "ingress-nginx",
+      "catalog": "control-plane-catalog",
+      "catalog_url": "oci://giantswarmpublic.azurecr.io/control-plane-catalog",
+      "version": "3.9.2",
+      "config_values": "",
+    },
+]
 
 timeout: int = 560
 
@@ -24,33 +69,64 @@ def test_api_working(kube_cluster: Cluster) -> None:
 # scope "module" means this is run only once, for the first test case requesting! It might be tricky
 # if you want to assert this multiple times
 @pytest.fixture(scope="module")
-def deployment(kube_cluster: Cluster) -> List[pykube.Deployment]:
-    logger.info("Waiting for observability-operator deployment..")
+def deployedApps(
+    kube_cluster: Cluster, app_factory: AppFactoryFunc
+) ->  List[AppCR]:
+    for app in apps:
+      try:
+        app_factory(
+          app["name"],
+          app["version"],
+          app["catalog"],
+          namespace_name,
+          app["catalog_url"],
+          timeout_sec=timeout,
+          namespace=namespace_name,
+          deployment_namespace=namespace_name,
+          config_values=app["config_values"],
+        )
+      except pykube.exceptions.HTTPError as e:
+        if e.code == 409:
+          logger.warning("App %s already deployed", app["name"])
+        else:
+          raise
 
-    deployment_ready = wait_for_deployment(kube_cluster)
-
-    logger.info("observability-operator deployment looks satisfied..")
-
-    return deployment_ready
-
-def wait_for_deployment(kube_cluster: Cluster) -> List[pykube.Deployment]:
-    deployments = wait_for_deployments_to_run(
-        kube_cluster.kube_client,
-        [deployment_name],
-        namespace_name,
-        timeout,
+    logger.info("waiting for apps to be deployed")
+    deployedApp = wait_for_apps_to_run(
+      kube_cluster.kube_client,
+      [app["name"] for app in apps],
+      namespace_name,
+      timeout,
     )
-    return deployments
+    logger.info("required apps are running")
+    return deployedApp
 
+@pytest.fixture(scope="module")
+def deployment(kube_cluster: Cluster, deployedApps: List[AppCR]) -> List[pykube.Deployment]:
+  logger.info("waiting for observability-operator deployment")
+  deployment_ready = wait_for_deployments_to_run(
+    kube_cluster.kube_client,
+    [deployment_name],
+    namespace_name,
+    timeout,
+  )
+  logger.info("observability-operator deployment is ready")
+
+  return deployment_ready
 
 @pytest.fixture(scope="module")
 def pods(kube_cluster: Cluster) -> List[pykube.Pod]:
-    pods = pykube.Pod.objects(kube_cluster.kube_client)
+  pods = pykube.Pod.objects(kube_cluster.kube_client)
 
-    pods = pods.filter(namespace=namespace_name, selector={
-                       'app.kubernetes.io/name': 'observability-operator', 'app.kubernetes.io/instance': 'observability-operator'})
+  pods = pods.filter(
+    namespace=namespace_name,
+    selector={
+      'app.kubernetes.io/name': 'observability-operator',
+      'app.kubernetes.io/instance': 'observability-operator'
+    }
+  )
 
-    return pods
+  return pods
 
 # when we start the tests on circleci, we have to wait for pods to be available, hence
 # this additional delay and retries
