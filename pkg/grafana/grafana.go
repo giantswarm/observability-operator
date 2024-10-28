@@ -102,6 +102,19 @@ func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64
 	return nil
 }
 
+func GetDatasourceID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, name string) (int64, error) {
+	logger := log.FromContext(ctx)
+
+	dataSource, err := grafanaAPI.Datasources.GetDataSourceByName(name)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("failed to get datasource with name: %s", name))
+		return 0, errors.WithStack(err)
+	}
+	logger.Info("got datasource")
+
+	return dataSource.Payload.ID, nil
+}
+
 func isNotFound(err error) bool {
 	if err == nil {
 		return false

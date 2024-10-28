@@ -40,6 +40,11 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/grafana/templating"
 )
 
+const (
+	mimirDatasourceName = "Mimir"
+	lokiDatasourceName  = "Loki"
+)
+
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
 	client.Client
@@ -129,22 +134,60 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Update CR status if anything was changed
-	if organization.ID != grafanaOrganization.Status.OrgID {
-		grafanaOrganization.Status.OrgID = organization.ID
-
-		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to update the status")
-			return ctrl.Result{}, errors.WithStack(err)
-		}
+	if err = r.updateOrgStatus(ctx, grafanaOrganization, organization.ID); err != nil {
+		return ctrl.Result{}, errors.WithStack(err)
 	}
-
-	// TODO add datasources for the organization.
 
 	err = r.configureGrafana(ctx)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 	return ctrl.Result{}, nil
+}
+
+func (r GrafanaOrganizationReconciler) updateOrgStatus(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization, orgID int64) error {
+	logger := log.FromContext(ctx)
+
+	// Update orgID in the CR's satus
+	if grafanaOrganization.Status.OrgID != orgID {
+		log.Log.Info("updating orgID in the org's status")
+		grafanaOrganization.Status.OrgID = orgID
+
+		if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
+			logger.Error(err, "failed to update the status")
+			return errors.WithStack(err)
+		}
+	}
+
+	// Update the datasources in the CR's status
+	log.Log.Info("updating dataSources in the org's status")
+	var datasources []v1alpha1.DataSources
+
+	lokiDatasourceID, err := grafana.GetDatasourceID(ctx, r.GrafanaAPI, "Loki")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	mimirDatasourceID, err := grafana.GetDatasourceID(ctx, r.GrafanaAPI, "Mimir")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	datasources = append(datasources, v1alpha1.DataSources{
+		Name: mimirDatasourceName,
+		ID:   mimirDatasourceID,
+	}, v1alpha1.DataSources{
+		Name: lokiDatasourceName,
+		ID:   lokiDatasourceID,
+	})
+
+	grafanaOrganization.Status.DataSources = datasources
+	if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
+		logger.Error(err, "failed to update the status")
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
 // reconcileDelete deletes the grafana organization.
