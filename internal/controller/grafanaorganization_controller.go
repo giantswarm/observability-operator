@@ -29,10 +29,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
@@ -200,12 +203,22 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 			&v1.Pod{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 				return []reconcile.Request{
-					{
-						NamespacedName: types.NamespacedName{
-							Name:      "grafana",
-							Namespace: "monitoring",
-						}},
+					{NamespacedName: types.NamespacedName{
+						Name:      "grafana",
+						Namespace: "monitoring",
+					}},
 				}
+			}),
+			builder.WithPredicates(predicate.Funcs{ // Only reconcile the pod in the case of create or delete events
+				// Allow create events
+				CreateFunc: func(e event.CreateEvent) bool {
+					return true
+				},
+
+				// Allow delete events
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return true
+				},
 			}),
 		).
 		Complete(r)
