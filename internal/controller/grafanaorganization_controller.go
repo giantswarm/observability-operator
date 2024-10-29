@@ -160,31 +160,33 @@ func (r GrafanaOrganizationReconciler) updateOrgStatus(ctx context.Context, graf
 	}
 
 	// Update the datasources in the CR's status
-	log.Log.Info("updating dataSources in the org's status")
-	var datasources []v1alpha1.DataSources
+	if grafanaOrganization.Status.DataSources == nil {
+		log.Log.Info("updating dataSources in the org's status")
+		var datasources []v1alpha1.DataSources
 
-	lokiDatasourceID, err := grafana.GetDatasourceID(ctx, r.GrafanaAPI, "Loki")
-	if err != nil {
-		return errors.WithStack(err)
-	}
+		lokiDatasourceID, err := grafana.GetDatasourceID(ctx, r.GrafanaAPI, "Loki")
+		if err != nil {
+			return errors.WithStack(err)
+		}
 
-	mimirDatasourceID, err := grafana.GetDatasourceID(ctx, r.GrafanaAPI, "Mimir")
-	if err != nil {
-		return errors.WithStack(err)
-	}
+		mimirDatasourceID, err := grafana.GetDatasourceID(ctx, r.GrafanaAPI, "Mimir")
+		if err != nil {
+			return errors.WithStack(err)
+		}
 
-	datasources = append(datasources, v1alpha1.DataSources{
-		Name: mimirDatasourceName,
-		ID:   mimirDatasourceID,
-	}, v1alpha1.DataSources{
-		Name: lokiDatasourceName,
-		ID:   lokiDatasourceID,
-	})
+		datasources = append(datasources, v1alpha1.DataSources{
+			Name: mimirDatasourceName,
+			ID:   mimirDatasourceID,
+		}, v1alpha1.DataSources{
+			Name: lokiDatasourceName,
+			ID:   lokiDatasourceID,
+		})
 
-	grafanaOrganization.Status.DataSources = datasources
-	if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
-		logger.Error(err, "failed to update the status")
-		return errors.WithStack(err)
+		grafanaOrganization.Status.DataSources = datasources
+		if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
+			logger.Error(err, "failed to update the status")
+			return errors.WithStack(err)
+		}
 	}
 
 	return nil

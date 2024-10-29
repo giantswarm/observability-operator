@@ -102,17 +102,40 @@ func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64
 	return nil
 }
 
-func GetDatasourceID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, name string) (int64, error) {
+func FindDatasourceByName(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, name string) (Datasource, error) {
 	logger := log.FromContext(ctx)
 
 	dataSource, err := grafanaAPI.Datasources.GetDataSourceByName(name)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("failed to get datasource with name: %s", name))
-		return 0, errors.WithStack(err)
+		return Datasource{}, errors.WithStack(err)
 	}
 	logger.Info("got datasource")
 
-	return dataSource.Payload.ID, nil
+	return Datasource{
+		Name: dataSource.Payload.Name,
+		ID:   dataSource.Payload.ID,
+	}, nil
+}
+
+func CreateDatasource(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, name string, datasourceType string) (Datasource, error) {
+	logger := log.FromContext(ctx)
+
+	logger.Info("creating datasource")
+	createdDataSource, err := grafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
+		Name: name,
+		Type: datasourceType,
+	})
+	if err != nil {
+		logger.Error(err, "failed to create datasource")
+		return Datasource{}, errors.WithStack(err)
+	}
+	logger.Info("datasource created")
+
+	return Datasource{
+		Name: *createdDataSource.Payload.Name,
+		ID:   *createdDataSource.Payload.ID,
+	}, nil
 }
 
 func isNotFound(err error) bool {
