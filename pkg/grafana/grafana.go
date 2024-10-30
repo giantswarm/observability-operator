@@ -125,11 +125,13 @@ func CreateDatasource(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([
 
 	logger.Info("creating datasources")
 	for _, toCreateDatasource := range []Datasource{mimirDatasource, lokiDatasource} {
+		logger.Info(fmt.Sprintf("TRYING TO ADD THE FOLLOWING DATASOURCE : %v", toCreateDatasource))
 		createdDataSource, err := grafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
 			Name: toCreateDatasource.Name,
 			Type: toCreateDatasource.Type,
 			URL:  toCreateDatasource.Url,
 		})
+		logger.Info(fmt.Sprintf("RESULT OF ADD DATASOURCE METHOD : %v", createdDataSource))
 		if err != nil {
 			logger.Error(err, "failed to create datasource")
 			return []Datasource{}, errors.WithStack(err)
