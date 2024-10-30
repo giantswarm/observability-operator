@@ -7,128 +7,136 @@ jobs:
   unit-tests:
     executor: architect/architect
     steps:
-      - checkout
-      - run:
-          name: "Run unit tests"
-          command: CGO_ENABLED=0 make test-unit
+    - checkout
+    - run:
+        name: Run unit tests
+        command: CGO_ENABLED=0 make test-unit
   template-chart:
     docker:
-      - image: giantswarm/helm-chart-testing:v3.11.0
+    - image: giantswarm/helm-chart-testing:v3.11.0
     steps:
-      - checkout
-      - run: cd helm/observability-operator && helm dep up
-      - run: helm template helm/observability-operator
+    - checkout
+    - run: cd helm/observability-operator && helm dep up
+    - run: helm template helm/observability-operator
 
 workflows:
   build:
     jobs:
-      - unit-tests:
-          filters:
-            tags:
-              only: /^v.*/
+    - unit-tests:
+        filters:
+          tags:
+            only: /^v.*/
 
-      - architect/go-build:
-          name: go-build
-          requires:
-            - unit-tests
-          binary: observability-operator
-          filters:
-            tags:
-              only: /^v.*/
+    - architect/go-build:
+        name: go-build
+        requires:
+        - unit-tests
+        binary: observability-operator
+        filters:
+          tags:
+            only: /^v.*/
 
-      - template-chart:
-          name: template-chart
-          requires:
-            - go-build
-          filters:
-            tags:
-              only: /^v.*/
+    - template-chart:
+        name: template-chart
+        requires:
+        - go-build
+        filters:
+          tags:
+            only: /^v.*/
 
-      - architect/push-to-registries:
-          context: architect
-          name: push-to-registries
-          requires:
-            - template-chart
-          filters:
-            tags:
-              only: /^v.*/
+    - architect/push-to-registries:
+        context: architect
+        name: push-to-registries
+        requires:
+        - template-chart
+        filters:
+          tags:
+            only: /^v.*/
 
-      - architect/push-to-app-catalog:
-          context: "architect"
-          executor: "app-build-suite"
-          name: push-to-app-catalog
-          app_catalog: "control-plane-catalog"
-          app_catalog_test: "control-plane-test-catalog"
-          chart: "observability-operator"
-          persist_chart_archive: true
-          requires:
-            - push-to-registries
-          filters:
-            tags:
-              only: /^v.*/
+          branches:
+            ignore:
+            - main
+            - master
+    - architect/push-to-app-catalog:
+        context: architect
+        executor: app-build-suite
+        name: push-to-app-catalog
+        app_catalog: control-plane-catalog
+        app_catalog_test: control-plane-test-catalog
+        chart: observability-operator
+        persist_chart_archive: true
+        requires:
+        - push-to-registries
+        filters:
+          tags:
+            only: /^v.*/
 
-      - architect/run-tests-with-ats:
-          name: run-chart-tests-with-ats
-          filters:
+          branches:
+            ignore:
+            - main
+            - master
+    - architect/run-tests-with-ats:
+        name: run-chart-tests-with-ats
+        filters:
             # Do not trigger the job on merge to main.
-            branches:
-              ignore:
-                - main
-          requires:
-            - push-to-app-catalog
+          branches:
+            ignore:
+            - main
+        requires:
+        - push-to-app-catalog
 
-      - architect/push-to-app-collection:
-          context: "architect"
-          name: capa-app-collection
-          app_name: "observability-operator"
-          app_namespace: "monitoring"
-          app_collection_repo: "capa-app-collection"
-          requires:
-            - push-to-app-catalog
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v.*/
+    - architect/push-to-app-collection:
+        context: architect
+        name: capa-app-collection
+        app_name: observability-operator
+        app_namespace: monitoring
+        app_collection_repo: capa-app-collection
+        requires:
+        - push-to-app-catalog
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v.*/
 
-      - architect/push-to-app-collection:
-          context: "architect"
-          name: capz-app-collection
-          app_name: "observability-operator"
-          app_namespace: "monitoring"
-          app_collection_repo: "capz-app-collection"
-          requires:
-            - push-to-app-catalog
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v.*/
+    - architect/push-to-app-collection:
+        context: architect
+        name: capz-app-collection
+        app_name: observability-operator
+        app_namespace: monitoring
+        app_collection_repo: capz-app-collection
+        requires:
+        - push-to-app-catalog
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v.*/
 
-      - architect/push-to-app-collection:
-          context: "architect"
-          name: cloud-director-app-collection
-          app_name: "observability-operator"
-          app_namespace: "monitoring"
-          app_collection_repo: "cloud-director-app-collection"
-          requires:
-            - push-to-app-catalog
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v.*/
+    - architect/push-to-app-collection:
+        context: architect
+        name: cloud-director-app-collection
+        app_name: observability-operator
+        app_namespace: monitoring
+        app_collection_repo: cloud-director-app-collection
+        requires:
+        - push-to-app-catalog
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v.*/
 
-      - architect/push-to-app-collection:
-          context: "architect"
-          name: vsphere-app-collection
-          app_name: "observability-operator"
-          app_namespace: "monitoring"
-          app_collection_repo: "vsphere-app-collection"
-          requires:
-            - push-to-app-catalog
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v.*/
+    - architect/push-to-app-collection:
+        context: architect
+        name: vsphere-app-collection
+        app_name: observability-operator
+        app_namespace: monitoring
+        app_collection_repo: vsphere-app-collection
+        requires:
+        - push-to-app-catalog
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v.*/
