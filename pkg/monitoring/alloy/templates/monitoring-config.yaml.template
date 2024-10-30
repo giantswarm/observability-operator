@@ -57,6 +57,8 @@ alloy:
     type: statefulset
     replicas: {{ .Replicas }}
     priorityClassName: {{ .PriorityClassName }}
+  crds:
+    create: false
   affinity:
     nodeAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
