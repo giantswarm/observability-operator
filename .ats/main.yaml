@@ -2,8 +2,10 @@ app-tests-app-config-file: tests/test-values.yaml
 app-tests-deploy-namespace: monitoring
 
 smoke-tests-cluster-type: kind
+smoke-tests-cluster-config-file: tests/kind-config.yaml
 
 upgrade-tests-cluster-type: kind
+upgrade-tests-cluster-config-file: tests/kind-config.yaml
 upgrade-tests-app-catalog-url: https://giantswarm.github.io/control-plane-catalog
 upgrade-tests-app-config-file: tests/test-values.yaml
 
