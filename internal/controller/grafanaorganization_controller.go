@@ -198,27 +198,29 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.GrafanaOrganization{}).
-		Watches( // Watch for grafana pod's status changes
+		// Watch for grafana pod's status changes
+		Watches(
 			&v1.Pod{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 				k8sClient := mgr.GetClient()
-				var grafanaOrgCrList v1alpha1.GrafanaOrganizationList
+				var organizations v1alpha1.GrafanaOrganizationList
 
-				err := k8sClient.List(ctx, &grafanaOrgCrList)
+				err := k8sClient.List(ctx, &organizations)
 				if err != nil {
 					log.FromContext(ctx).Error(err, "failed to list grafana organization CRs")
 					return []reconcile.Request{}
 				}
 
-				for _, grafanaOrgCr := range grafanaOrgCrList.Items {
-					return []reconcile.Request{
-						{NamespacedName: types.NamespacedName{
-							Name: grafanaOrgCr.Name,
-						}},
-					}
+				// Reconcile all grafana organizations when the grafana pod is recreated
+				requests := make([]reconcile.Request, 0, len(organizations.Items))
+				for _, organization := range organizations.Items {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name: organization.Name,
+						},
+					})
 				}
-
-				return []reconcile.Request{}
+				return requests
 			}),
 			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
