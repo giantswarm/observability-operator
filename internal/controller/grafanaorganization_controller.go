@@ -40,11 +40,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/grafana/templating"
 )
 
-const (
-	mimirDatasourceName = "Mimir"
-	lokiDatasourceName  = "Loki"
-)
-
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
 	client.Client
@@ -164,29 +159,29 @@ func (r GrafanaOrganizationReconciler) updateOrgStatus(ctx context.Context, graf
 		log.Log.Info("updating dataSources in the org's status")
 		var datasources []v1alpha1.DataSources
 
-		lokiDatasourceID, err := grafana.GetDatasourceID(ctx, r.GrafanaAPI, "Loki")
+		// Switch context to the current org
+		orgGrafanaAPI := r.GrafanaAPI.WithOrgID(grafanaOrganization.Status.OrgID)
+
+		createdDatasources, err := grafana.CreateDatasource(ctx, orgGrafanaAPI)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		mimirDatasourceID, err := grafana.GetDatasourceID(ctx, r.GrafanaAPI, "Mimir")
-		if err != nil {
-			return errors.WithStack(err)
+		for _, createdDatasource := range createdDatasources {
+			datasources = append(datasources, v1alpha1.DataSources{
+				Name: createdDatasource.Name,
+				ID:   createdDatasource.ID,
+			})
 		}
-
-		datasources = append(datasources, v1alpha1.DataSources{
-			Name: mimirDatasourceName,
-			ID:   mimirDatasourceID,
-		}, v1alpha1.DataSources{
-			Name: lokiDatasourceName,
-			ID:   lokiDatasourceID,
-		})
 
 		grafanaOrganization.Status.DataSources = datasources
 		if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
 			logger.Error(err, "failed to update the status")
 			return errors.WithStack(err)
 		}
+
+		// Switch context back to default org
+		r.GrafanaAPI = r.GrafanaAPI.WithOrgID(1)
 	}
 
 	return nil
@@ -217,6 +212,8 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		if err != nil {
 			return errors.WithStack(err)
 		}
+
+		//TODO delete org's datasources
 
 		// Finalizer handling needs to come last.
 		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts

@@ -13,7 +13,13 @@ import (
 )
 
 const (
-	SharedOrgName = "Shared Org"
+	SharedOrgName       = "Shared Org"
+	MimirDatasourceName = "Mimir"
+	MimirDatasourceType = "prometheus"
+	MimirDatasourceUrl  = "http://mimir-gateway.mimir.svc/prometheus"
+	lokiDatasourceName  = "Loki"
+	LokiDatasourceType  = "loki"
+	LokiDatasourceUrl   = "http://grafana-multi-tenant-proxy.monitoring.svc"
 )
 
 func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) (Organization, error) {
@@ -102,40 +108,41 @@ func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64
 	return nil
 }
 
-func FindDatasourceByName(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, name string) (Datasource, error) {
+func CreateDatasource(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
-	dataSource, err := grafanaAPI.Datasources.GetDataSourceByName(name)
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("failed to get datasource with name: %s", name))
-		return Datasource{}, errors.WithStack(err)
+	createdDatasources := make([]Datasource, 0)
+	mimirDatasource := Datasource{
+		Name: MimirDatasourceName,
+		Type: MimirDatasourceType,
+		Url:  MimirDatasourceUrl,
 	}
-	logger.Info("got datasource")
-
-	return Datasource{
-		Name: dataSource.Payload.Name,
-		ID:   dataSource.Payload.ID,
-	}, nil
-}
-
-func CreateDatasource(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, name string, datasourceType string) (Datasource, error) {
-	logger := log.FromContext(ctx)
-
-	logger.Info("creating datasource")
-	createdDataSource, err := grafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
-		Name: name,
-		Type: datasourceType,
-	})
-	if err != nil {
-		logger.Error(err, "failed to create datasource")
-		return Datasource{}, errors.WithStack(err)
+	lokiDatasource := Datasource{
+		Name: lokiDatasourceName,
+		Type: LokiDatasourceType,
+		Url:  LokiDatasourceUrl,
 	}
-	logger.Info("datasource created")
 
-	return Datasource{
-		Name: *createdDataSource.Payload.Name,
-		ID:   *createdDataSource.Payload.ID,
-	}, nil
+	logger.Info("creating datasources")
+	for _, toCreateDatasource := range []Datasource{mimirDatasource, lokiDatasource} {
+		createdDataSource, err := grafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
+			Name: toCreateDatasource.Name,
+			Type: toCreateDatasource.Type,
+			URL:  toCreateDatasource.Url,
+		})
+		if err != nil {
+			logger.Error(err, "failed to create datasource")
+			return []Datasource{}, errors.WithStack(err)
+		}
+
+		createdDatasources = append(createdDatasources, Datasource{
+			Name: *createdDataSource.Payload.Name,
+			ID:   *createdDataSource.Payload.ID,
+		})
+	}
+	logger.Info("datasources created")
+
+	return createdDatasources, nil
 }
 
 func isNotFound(err error) bool {
