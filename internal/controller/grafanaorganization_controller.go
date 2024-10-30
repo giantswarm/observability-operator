@@ -24,6 +24,7 @@ import (
 	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -38,6 +39,7 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller/predicates"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
+	"github.com/giantswarm/observability-operator/pkg/grafana/templating"
 )
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
@@ -140,10 +142,10 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	// TODO add datasources for the organization.
 
-	/* err = r.configureGrafana(ctx)
+	err = r.configureGrafana(ctx)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
-	} */
+	}
 	return ctrl.Result{}, nil
 }
 
@@ -168,10 +170,10 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 			}
 		}
 
-		/* err := r.configureGrafana(ctx)
+		err := r.configureGrafana(ctx)
 		if err != nil {
 			return errors.WithStack(err)
-		} */
+		}
 
 		// Finalizer handling needs to come last.
 		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
@@ -223,7 +225,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Complete(r)
 }
 
-/* func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) error {
+func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	organizations := v1alpha1.GrafanaOrganizationList{}
@@ -269,4 +271,4 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 	}
 
 	return nil
-} */
+}
