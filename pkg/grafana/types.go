@@ -11,4 +11,5 @@ type Datasource struct {
 	Type   string
 	URL    string
 	Access string
+	UID    string
 }

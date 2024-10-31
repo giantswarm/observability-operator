@@ -15,10 +15,12 @@ import (
 const (
 	SharedOrgName        = "Shared Org"
 	MimirDatasourceName  = "Mimir"
+	MimirDatasourceUID   = "mimir"
 	MimirDatasourceType  = "prometheus"
 	MimirDatasourceUrl   = "http://mimir-gateway.mimir.svc/prometheus"
 	lokiDatasourceName   = "Loki"
 	LokiDatasourceType   = "loki"
+	LokiDatasourceUID    = "loki"
 	LokiDatasourceUrl    = "http://grafana-multi-tenant-proxy.monitoring.svc"
 	DatasourceAccessMode = "proxy"
 )
@@ -113,26 +115,30 @@ func CreateDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTT
 	logger := log.FromContext(ctx)
 
 	createdDatasources := make([]Datasource, 0)
-	mimirDatasource := Datasource{
-		Name:   MimirDatasourceName,
-		Type:   MimirDatasourceType,
-		Url:    MimirDatasourceUrl,
-		Access: DatasourceAccessMode,
-	}
-	lokiDatasource := Datasource{
-		Name:   lokiDatasourceName,
-		Type:   LokiDatasourceType,
-		Url:    LokiDatasourceUrl,
-		Access: DatasourceAccessMode,
+	defaultDatasources := []Datasource{
+		Datasource{
+			Name:   MimirDatasourceName,
+			Type:   MimirDatasourceType,
+			URL:    MimirDatasourceUrl,
+			Access: DatasourceAccessMode,
+			UID:    MimirDatasourceUID,
+		},
+		Datasource{
+			Name:   lokiDatasourceName,
+			Type:   LokiDatasourceType,
+			URL:    LokiDatasourceUrl,
+			Access: DatasourceAccessMode,
+			UID:    LokiDatasourceUID,
+		},
 	}
 
 	logger.Info("creating datasources")
-	for _, datasource := range []Datasource{mimirDatasource, lokiDatasource} {
+	for _, datasource := range defaultDatasources {
 		created, err := grafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
-			Name:   toCreateDatasource.Name,
-			Type:   toCreateDatasource.Type,
-			URL:    toCreateDatasource.Url,
-			Access: models.DsAccess(toCreateDatasource.Access),
+			Name:   datasource.Name,
+			Type:   datasource.Type,
+			URL:    datasource.URL,
+			Access: models.DsAccess(datasource.Access),
 		})
 		if err != nil {
 			logger.Error(err, "failed to create datasource")
@@ -140,8 +146,8 @@ func CreateDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTT
 		}
 
 		createdDatasources = append(createdDatasources, Datasource{
-			Name: *createdDataSource.Payload.Name,
-			ID:   *createdDataSource.Payload.ID,
+			Name: *created.Payload.Name,
+			ID:   *created.Payload.ID,
 		})
 	}
 	logger.Info("datasources created")

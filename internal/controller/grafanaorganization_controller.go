@@ -131,7 +131,19 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Update CR status if anything was changed
-	if err = r.updateOrgStatus(ctx, grafanaOrganization, organization.ID); err != nil {
+	// Update orgID in the CR's satus
+	if grafanaOrganization.Status.OrgID != organization.ID {
+		logger.Info("updating orgID in the org's status")
+		grafanaOrganization.Status.OrgID = organization.ID
+
+		if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
+			logger.Error(err, "failed to update the status")
+			return ctrl.Result{}, errors.WithStack(err)
+		}
+	}
+
+	// Update the datasources in the CR's status
+	if err = r.updateDatasourceInStatus(ctx, grafanaOrganization); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
@@ -142,21 +154,9 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	return ctrl.Result{}, nil
 }
 
-func (r GrafanaOrganizationReconciler) updateOrgStatus(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization, orgID int64) error {
+func (r GrafanaOrganizationReconciler) updateDatasourceInStatus(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
-	// Update orgID in the CR's satus
-	if grafanaOrganization.Status.OrgID != orgID {
-		logger.Info("updating orgID in the org's status")
-		grafanaOrganization.Status.OrgID = orgID
-
-		if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to update the status")
-			return errors.WithStack(err)
-		}
-	}
-
-	// Update the datasources in the CR's status
 	if grafanaOrganization.Status.DataSources == nil {
 		log.Log.Info("updating dataSources in the org's status")
 		var datasources []v1alpha1.DataSources
@@ -164,7 +164,7 @@ func (r GrafanaOrganizationReconciler) updateOrgStatus(ctx context.Context, graf
 		// Switch context to the current org
 		orgGrafanaAPI := r.GrafanaAPI.WithOrgID(grafanaOrganization.Status.OrgID)
 
-		createdDatasources, err := grafana.CreateDatasource(ctx, orgGrafanaAPI)
+		createdDatasources, err := grafana.CreateDefaultDatasources(ctx, orgGrafanaAPI)
 		if err != nil {
 			return errors.WithStack(err)
 		}
