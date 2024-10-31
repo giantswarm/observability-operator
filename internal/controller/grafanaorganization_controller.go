@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -37,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/internal/controller/predicates"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	"github.com/giantswarm/observability-operator/pkg/grafana/templating"
 )
@@ -271,17 +273,31 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.GrafanaOrganization{}).
-		Watches( // Watch for grafana pod's status changes
+		// Watch for grafana pod's status changes
+		Watches(
 			&v1.Pod{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
-				return []reconcile.Request{
-					{
-						NamespacedName: types.NamespacedName{
-							Name:      "grafana",
-							Namespace: "monitoring",
-						}},
+				k8sClient := mgr.GetClient()
+				var organizations v1alpha1.GrafanaOrganizationList
+
+				err := k8sClient.List(ctx, &organizations)
+				if err != nil {
+					log.FromContext(ctx).Error(err, "failed to list grafana organization CRs")
+					return []reconcile.Request{}
 				}
+
+				// Reconcile all grafana organizations when the grafana pod is recreated
+				requests := make([]reconcile.Request, 0, len(organizations.Items))
+				for _, organization := range organizations.Items {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name: organization.Name,
+						},
+					})
+				}
+				return requests
 			}),
+			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
 }
