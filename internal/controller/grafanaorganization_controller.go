@@ -160,9 +160,10 @@ func (r GrafanaOrganizationReconciler) updateOrgStatus(ctx context.Context, graf
 		foundDatasource, err := r.GrafanaAPI.Datasources.GetDataSourceByName("mimir-bis")
 		if err != nil {
 			createdDatasource, err := r.GrafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
-				Name: "mimir-bis",
-				Type: grafana.MimirDatasourceType,
-				URL:  grafana.MimirDatasourceUrl,
+				Name:   "mimir-bis",
+				Type:   grafana.MimirDatasourceType,
+				URL:    grafana.MimirDatasourceUrl,
+				Access: models.DsAccess(grafana.DatasourceAccessMode),
 			})
 			if err != nil {
 				logger.Error(err, "failed to create datasource mimir-bis")

@@ -6,8 +6,9 @@ type Organization struct {
 }
 
 type Datasource struct {
-	ID   int64
-	Name string
-	Type string
-	Url  string
+	ID     int64
+	Name   string
+	Type   string
+	Url    string
+	Access string
 }

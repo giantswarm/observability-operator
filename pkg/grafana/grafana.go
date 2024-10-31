@@ -13,13 +13,14 @@ import (
 )
 
 const (
-	SharedOrgName       = "Shared Org"
-	MimirDatasourceName = "Mimir"
-	MimirDatasourceType = "prometheus"
-	MimirDatasourceUrl  = "http://mimir-gateway.mimir.svc/prometheus"
-	lokiDatasourceName  = "Loki"
-	LokiDatasourceType  = "loki"
-	LokiDatasourceUrl   = "http://grafana-multi-tenant-proxy.monitoring.svc"
+	SharedOrgName        = "Shared Org"
+	MimirDatasourceName  = "Mimir"
+	MimirDatasourceType  = "prometheus"
+	MimirDatasourceUrl   = "http://mimir-gateway.mimir.svc/prometheus"
+	lokiDatasourceName   = "Loki"
+	LokiDatasourceType   = "loki"
+	LokiDatasourceUrl    = "http://grafana-multi-tenant-proxy.monitoring.svc"
+	DatasourceAccessMode = "proxy"
 )
 
 func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) (Organization, error) {
@@ -113,22 +114,25 @@ func CreateDatasource(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([
 
 	createdDatasources := make([]Datasource, 0)
 	mimirDatasource := Datasource{
-		Name: MimirDatasourceName,
-		Type: MimirDatasourceType,
-		Url:  MimirDatasourceUrl,
+		Name:   MimirDatasourceName,
+		Type:   MimirDatasourceType,
+		Url:    MimirDatasourceUrl,
+		Access: DatasourceAccessMode,
 	}
 	lokiDatasource := Datasource{
-		Name: lokiDatasourceName,
-		Type: LokiDatasourceType,
-		Url:  LokiDatasourceUrl,
+		Name:   lokiDatasourceName,
+		Type:   LokiDatasourceType,
+		Url:    LokiDatasourceUrl,
+		Access: DatasourceAccessMode,
 	}
 
 	logger.Info("creating datasources")
 	for _, toCreateDatasource := range []Datasource{mimirDatasource, lokiDatasource} {
 		createdDataSource, err := grafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
-			Name: toCreateDatasource.Name,
-			Type: toCreateDatasource.Type,
-			URL:  toCreateDatasource.Url,
+			Name:   toCreateDatasource.Name,
+			Type:   toCreateDatasource.Type,
+			URL:    toCreateDatasource.Url,
+			Access: models.DsAccess(toCreateDatasource.Access),
 		})
 		if err != nil {
 			logger.Error(err, "failed to create datasource")
