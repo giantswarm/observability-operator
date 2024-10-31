@@ -109,7 +109,7 @@ func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64
 	return nil
 }
 
-func CreateDatasource(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([]Datasource, error) {
+func CreateDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
 	createdDatasources := make([]Datasource, 0)
@@ -127,8 +127,8 @@ func CreateDatasource(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([
 	}
 
 	logger.Info("creating datasources")
-	for _, toCreateDatasource := range []Datasource{mimirDatasource, lokiDatasource} {
-		createdDataSource, err := grafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
+	for _, datasource := range []Datasource{mimirDatasource, lokiDatasource} {
+		created, err := grafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
 			Name:   toCreateDatasource.Name,
 			Type:   toCreateDatasource.Type,
 			URL:    toCreateDatasource.Url,

@@ -9,6 +9,6 @@ type Datasource struct {
 	ID     int64
 	Name   string
 	Type   string
-	Url    string
+	URL    string
 	Access string
 }
