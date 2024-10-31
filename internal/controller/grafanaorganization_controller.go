@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
-	"github.com/grafana/grafana-openapi-client-go/models"
 	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -159,39 +158,7 @@ func (r GrafanaOrganizationReconciler) updateOrgStatus(ctx context.Context, graf
 
 	// Update the datasources in the CR's status
 	if grafanaOrganization.Status.DataSources == nil {
-		foundDatasource, err := r.GrafanaAPI.Datasources.GetDataSourceByName("mimir-bis")
-		if err != nil {
-			createdDatasource, err := r.GrafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
-				Name:   "mimir-bis",
-				Type:   grafana.MimirDatasourceType,
-				URL:    grafana.MimirDatasourceUrl,
-				Access: models.DsAccess(grafana.DatasourceAccessMode),
-			})
-			if err != nil {
-				logger.Error(err, "failed to create datasource mimir-bis")
-				return errors.WithStack(err)
-			}
-
-			grafanaOrganization.Status.DataSources = append(grafanaOrganization.Status.DataSources, v1alpha1.DataSources{
-				Name: *createdDatasource.Payload.Name,
-				ID:   *createdDatasource.Payload.ID,
-			})
-		}
-
-		if foundDatasource != nil {
-			logger.Info("found datasource mimir-bis")
-			grafanaOrganization.Status.DataSources = append(grafanaOrganization.Status.DataSources, v1alpha1.DataSources{
-				Name: foundDatasource.Payload.Name,
-				ID:   foundDatasource.Payload.ID,
-			})
-		}
-
-		if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to update the status")
-			return errors.WithStack(err)
-		}
-
-		/* log.Log.Info("updating dataSources in the org's status")
+		log.Log.Info("updating dataSources in the org's status")
 		var datasources []v1alpha1.DataSources
 
 		// Switch context to the current org
@@ -216,7 +183,7 @@ func (r GrafanaOrganizationReconciler) updateOrgStatus(ctx context.Context, graf
 		}
 
 		// Switch context back to default org
-		r.GrafanaAPI = r.GrafanaAPI.WithOrgID(1) */
+		r.GrafanaAPI = r.GrafanaAPI.WithOrgID(1)
 	}
 
 	return nil
