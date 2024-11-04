@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/grafana/grafana-openapi-client-go/client"
@@ -13,17 +14,24 @@ import (
 )
 
 const (
-	SharedOrgName        = "Shared Org"
-	MimirDatasourceName  = "Mimir"
-	MimirDatasourceUID   = "mimir"
-	MimirDatasourceType  = "prometheus"
-	MimirDatasourceUrl   = "http://mimir-gateway.mimir.svc/prometheus"
-	lokiDatasourceName   = "Loki"
-	LokiDatasourceType   = "loki"
-	LokiDatasourceUID    = "loki"
-	LokiDatasourceUrl    = "http://grafana-multi-tenant-proxy.monitoring.svc"
-	DatasourceAccessMode = "proxy"
+	SharedOrgName             = "Shared Org"
+	DatasourceProxyAccessMode = "proxy"
 )
+
+var defaultDatasources = []Datasource{
+	{
+		Name:   "Mimir",
+		Type:   "prometheus",
+		URL:    "http://mimir-gateway.mimir.svc/prometheus",
+		Access: DatasourceProxyAccessMode,
+	},
+	{
+		Name:   "Loki",
+		Type:   "loki",
+		URL:    "http://grafana-multi-tenant-proxy.monitoring.svc",
+		Access: DatasourceProxyAccessMode,
+	},
+}
 
 func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) (Organization, error) {
 	logger := log.FromContext(ctx)
@@ -111,48 +119,63 @@ func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64
 	return nil
 }
 
-func CreateDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([]Datasource, error) {
+func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, current []Datasource) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
-	createdDatasources := make([]Datasource, 0)
-	defaultDatasources := []Datasource{
-		Datasource{
-			Name:   MimirDatasourceName,
-			Type:   MimirDatasourceType,
-			URL:    MimirDatasourceUrl,
-			Access: DatasourceAccessMode,
-			UID:    MimirDatasourceUID,
-		},
-		Datasource{
-			Name:   lokiDatasourceName,
-			Type:   LokiDatasourceType,
-			URL:    LokiDatasourceUrl,
-			Access: DatasourceAccessMode,
-			UID:    LokiDatasourceUID,
-		},
-	}
-
-	logger.Info("creating datasources")
-	for _, datasource := range defaultDatasources {
-		created, err := grafanaAPI.Datasources.AddDataSource(&models.AddDataSourceCommand{
-			Name:   datasource.Name,
-			Type:   datasource.Type,
-			URL:    datasource.URL,
-			Access: models.DsAccess(datasource.Access),
-		})
-		if err != nil {
-			logger.Error(err, "failed to create datasource")
-			return []Datasource{}, errors.WithStack(err)
+	var datasources []Datasource = make([]Datasource, len(defaultDatasources))
+	if len(current) == 0 {
+		logger.Info("creating datasources")
+		for i, datasource := range defaultDatasources {
+			created, err := grafanaAPI.Datasources.AddDataSource(
+				&models.AddDataSourceCommand{
+					Name:      datasource.Name,
+					Type:      datasource.Type,
+					URL:       datasource.URL,
+					IsDefault: true,
+					JSONData:  models.JSON(map[string]interface{}{
+						// TODO FILLME
+					}),
+					Access: models.DsAccess(datasource.Access),
+				})
+			if err != nil {
+				logger.Error(err, "failed to create datasource")
+				return []Datasource{}, errors.WithStack(err)
+			}
+			datasources[i] = Datasource{
+				Name: *created.Payload.Name,
+				ID:   *created.Payload.ID,
+			}
 		}
 
-		createdDatasources = append(createdDatasources, Datasource{
-			Name: *created.Payload.Name,
-			ID:   *created.Payload.ID,
-		})
+		logger.Info("datasources created")
+	} else {
+		logger.Info("updating datasources")
+		for i, datasource := range defaultDatasources {
+			updated, err := grafanaAPI.Datasources.UpdateDataSourceByID(
+				strconv.FormatInt(datasource.ID, 10),
+				&models.UpdateDataSourceCommand{
+					Name:      datasource.Name,
+					Type:      datasource.Type,
+					URL:       datasource.URL,
+					IsDefault: true,
+					JSONData:  models.JSON(map[string]interface{}{
+						// TODO FILLME
+					}),
+					Access: models.DsAccess(datasource.Access),
+				})
+			if err != nil {
+				logger.Error(err, "failed to update datasource")
+				return []Datasource{}, errors.WithStack(err)
+			}
+			datasources[i] = Datasource{
+				Name: *updated.Payload.Name,
+				ID:   *updated.Payload.ID,
+			}
+		}
+		logger.Info("datasources updated")
 	}
-	logger.Info("datasources created")
 
-	return createdDatasources, nil
+	return datasources, nil
 }
 
 func isNotFound(err error) bool {

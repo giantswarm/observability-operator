@@ -66,16 +66,16 @@ type GrafanaOrganizationStatus struct {
 
 	// DataSources is a list of grafana data sources that are available to the Grafana organization.
 	// +optional
-	DataSources []DataSources `json:"dataSources"`
+	DataSources []DataSource `json:"dataSources"`
 }
 
 // DataSource defines the name and id for data sources.
-type DataSources struct {
-	// Name is the name of the data source.
-	Name string `json:"name"`
-
+type DataSource struct {
 	// ID is the unique id of the data source.
 	ID int64 `json:"id"`
+
+	// Name is the name of the data source.
+	Name string `json:"name"`
 }
 
 //+kubebuilder:object:root=true

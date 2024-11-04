@@ -113,6 +113,26 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	// TODO add datasources for shared org.
 
+	// Configure the organization in Grafana
+	if err = r.configureOrganization(ctx, grafanaOrganization); err != nil {
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+
+	// Update the datasources in the CR's status
+	if err = r.configureDatasources(ctx, grafanaOrganization); err != nil {
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+
+	err = r.configureGrafana(ctx)
+	if err != nil {
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+	return ctrl.Result{}, nil
+}
+
+func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+	logger := log.FromContext(ctx)
+	var err error
 	// Create or update organization in Grafana
 	var organization grafana.Organization = grafana.Organization{
 		ID:   grafanaOrganization.Status.OrgID,
@@ -127,64 +147,66 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 
 	// Update CR status if anything was changed
 	// Update orgID in the CR's satus
 	if grafanaOrganization.Status.OrgID != organization.ID {
-		logger.Info("updating orgID in the org's status")
+		logger.Info("updating orgID in the organization status")
 		grafanaOrganization.Status.OrgID = organization.ID
 
 		if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to update the status")
-			return ctrl.Result{}, errors.WithStack(err)
+			logger.Error(err, "failed to update the status with orgID	information")
+			return errors.WithStack(err)
 		}
+		logger.Info("updated orgID in the organization status")
 	}
 
-	// Update the datasources in the CR's status
-	if err = r.updateDatasourceInStatus(ctx, grafanaOrganization); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-
-	err = r.configureGrafana(ctx)
-	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-	return ctrl.Result{}, nil
+	return nil
 }
 
-func (r GrafanaOrganizationReconciler) updateDatasourceInStatus(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
-	if grafanaOrganization.Status.DataSources == nil {
-		log.Log.Info("updating dataSources in the org's status")
-		var datasources []v1alpha1.DataSources
+	logger.Info("configuring data sources")
 
-		// Switch context to the current org
-		orgGrafanaAPI := r.GrafanaAPI.WithOrgID(grafanaOrganization.Status.OrgID)
-
-		createdDatasources, err := grafana.CreateDefaultDatasources(ctx, orgGrafanaAPI)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		for _, createdDatasource := range createdDatasources {
-			datasources = append(datasources, v1alpha1.DataSources{
-				Name: createdDatasource.Name,
-				ID:   createdDatasource.ID,
-			})
-		}
-
-		grafanaOrganization.Status.DataSources = datasources
-		if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to update the status")
-			return errors.WithStack(err)
-		}
-
-		// Switch context back to default org
+	// Switch context to the current org
+	r.GrafanaAPI = r.GrafanaAPI.WithOrgID(grafanaOrganization.Status.OrgID)
+	defer func() {
+		// Switch context back to default org once we're done whether we succeed or fail
 		r.GrafanaAPI = r.GrafanaAPI.WithOrgID(1)
+	}()
+
+	existingDatasources := make([]grafana.Datasource, len(grafanaOrganization.Status.DataSources))
+	for i, datasource := range grafanaOrganization.Status.DataSources {
+		existingDatasources[i] = grafana.Datasource{
+			ID:   datasource.ID,
+			Name: datasource.Name,
+		}
 	}
+
+	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, existingDatasources)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	var desiredDatasources = make([]v1alpha1.DataSource, len(datasources))
+	for i, datasource := range datasources {
+		desiredDatasources[i] = v1alpha1.DataSource{
+			ID:   datasource.ID,
+			Name: datasource.Name,
+		}
+	}
+
+	logger.Info("updating datasources in the organization status")
+	grafanaOrganization.Status.DataSources = desiredDatasources
+	if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
+		logger.Error(err, "failed to update the status with datasources information")
+		return errors.WithStack(err)
+	}
+	logger.Info("updated datasources in the organization status")
+	logger.Info("configured data sources")
 
 	return nil
 }
@@ -214,8 +236,6 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		if err != nil {
 			return errors.WithStack(err)
 		}
-
-		//TODO delete org's datasources
 
 		// Finalizer handling needs to come last.
 		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
