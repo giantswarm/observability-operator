@@ -114,7 +114,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	// TODO add datasources for shared org.
 
 	// Create or update organization in Grafana
-	var organization grafana.Organization = grafana.Organization{
+	var organization = grafana.Organization{
 		ID:   grafanaOrganization.Status.OrgID,
 		Name: grafanaOrganization.Spec.DisplayName,
 	}
