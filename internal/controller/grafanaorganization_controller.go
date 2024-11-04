@@ -162,39 +162,39 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		return nil
 	}
 
-		// Delete organization in Grafana if it exists
-		if grafanaOrganization.Status.OrgID > 0 {
-			err := grafana.DeleteByID(ctx, r.GrafanaAPI, grafanaOrganization.Status.OrgID)
-			if err != nil {
-				return errors.WithStack(err)
-			}
-
-			grafanaOrganization.Status.OrgID = 0
-			if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
-				logger.Error(err, "failed to update grafanaOrganization status")
-				return errors.WithStack(err)
-			}
-		}
-
-		err := r.configureGrafana(ctx)
+	// Delete organization in Grafana if it exists
+	if grafanaOrganization.Status.OrgID > 0 {
+		err := grafana.DeleteByID(ctx, r.GrafanaAPI, grafanaOrganization.Status.OrgID)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		// Finalizer handling needs to come last.
-		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-		logger.Info("removing finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
-		patchHelper, err := patch.NewHelper(grafanaOrganization, r.Client)
-		if err != nil {
+		grafanaOrganization.Status.OrgID = 0
+		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
+			logger.Error(err, "failed to update grafanaOrganization status")
 			return errors.WithStack(err)
 		}
+	}
 
-		controllerutil.RemoveFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
-		if err := patchHelper.Patch(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to remove finalizer, requeuing", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
-			return errors.WithStack(err)
-		}
-		logger.Info("removed finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
+	err := r.configureGrafana(ctx)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	// Finalizer handling needs to come last.
+	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
+	logger.Info("removing finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
+	patchHelper, err := patch.NewHelper(grafanaOrganization, r.Client)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	controllerutil.RemoveFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
+	if err := patchHelper.Patch(ctx, grafanaOrganization); err != nil {
+		logger.Error(err, "failed to remove finalizer, requeuing", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
+		return errors.WithStack(err)
+	}
+	logger.Info("removed finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
 
 	return nil
 }

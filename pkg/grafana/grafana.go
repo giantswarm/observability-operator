@@ -116,16 +116,19 @@ func assertNameIsAvailable(ctx context.Context, grafanaAPI *client.GrafanaHTTPAP
 	logger := log.FromContext(ctx)
 
 	found, err := findByName(grafanaAPI, organization.Name)
-	// We only error if we have any error other than a 404
-	if err != nil && !isNotFound(err) {
-		logger.Error(err, fmt.Sprintf("failed to find organization with name: %s", organization.Name))
-		return errors.WithStack(err)
+	if err != nil {
+		// We only error if we have any error other than a 404
+		if !isNotFound(err) {
+			logger.Error(err, fmt.Sprintf("failed to find organization with name: %s", organization.Name))
+			return errors.WithStack(err)
+		}
+
+		if found != nil {
+			logger.Error(err, "a grafana organization with the same name already exists. Please choose a different display name.")
+			return errors.WithStack(err)
+		}
 	}
 
-	if found != nil {
-		logger.Error(err, "a grafana organization with the same name already exists. Please choose a different display name.")
-		return errors.WithStack(err)
-	}
 	return nil
 }
 
