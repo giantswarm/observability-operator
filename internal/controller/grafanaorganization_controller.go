@@ -165,7 +165,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 
 			grafanaOrganization.Status.OrgID = 0
 			if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
-				logger.Error(err, "failed to update the status")
+				logger.Error(err, "failed to update grafanaOrganization status")
 				return errors.WithStack(err)
 			}
 		}
