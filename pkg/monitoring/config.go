@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/blang/semver"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
@@ -18,8 +19,7 @@ type Config struct {
 	DefaultShardingStrategy sharding.Strategy
 	// WALTruncateFrequency is the frequency at which the WAL segments should be truncated.
 	WALTruncateFrequency time.Duration
-	// TODO(atlas): validate prometheus version using SemVer
-	PrometheusVersion string
+	PrometheusVersion    semver.Version
 }
 
 // Monitoring should be enabled when all conditions are met:

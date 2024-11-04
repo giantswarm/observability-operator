@@ -64,10 +64,10 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		PrometheusAgentConfig: &PrometheusAgentConfig{
 			ExternalLabels: externalLabels,
 			Image: &PrometheusAgentImage{
-				Tag: pas.MonitoringConfig.PrometheusVersion,
+				Tag: pas.MonitoringConfig.PrometheusVersion.String(),
 			},
 			Shards:  shards,
-			Version: pas.MonitoringConfig.PrometheusVersion,
+			Version: pas.MonitoringConfig.PrometheusVersion.String(),
 		},
 	})
 	if err != nil {

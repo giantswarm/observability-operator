@@ -6,10 +6,11 @@ type Organization struct {
 }
 
 type Datasource struct {
-	ID     int64
-	Name   string
-	Type   string
-	URL    string
-	Access string
-	UID    string
+	ID        int64
+	Name      string
+	IsDefault bool
+	Type      string
+	URL       string
+	Access    string
+	JSONData  map[string]interface{}
 }

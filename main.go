@@ -27,6 +27,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/blang/semver"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -217,6 +218,11 @@ func main() {
 
 	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
 
+	version, err := semver.Parse(prometheusVersion)
+	if err != nil {
+		setupLog.Error(err, "prometheus version is not a valid semver")
+		os.Exit(1)
+	}
 	monitoringConfig := monitoring.Config{
 		Enabled:         monitoringEnabled,
 		MonitoringAgent: monitoringAgent,
@@ -225,7 +231,7 @@ func main() {
 			ScaleDownPercentage: monitoringShardingScaleDownPercentage,
 		},
 		WALTruncateFrequency: monitoringWALTruncateFrequency,
-		PrometheusVersion:    prometheusVersion,
+		PrometheusVersion:    version,
 	}
 
 	prometheusAgentService := prometheusagent.PrometheusAgentService{

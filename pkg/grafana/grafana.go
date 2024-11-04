@@ -20,16 +20,25 @@ const (
 
 var defaultDatasources = []Datasource{
 	{
-		Name:   "Mimir",
-		Type:   "prometheus",
-		URL:    "http://mimir-gateway.mimir.svc/prometheus",
-		Access: DatasourceProxyAccessMode,
+		Name:      "Mimir",
+		Type:      "prometheus",
+		IsDefault: true,
+		URL:       "http://mimir-gateway.mimir.svc/prometheus",
+		Access:    DatasourceProxyAccessMode,
+		JSONData: map[string]interface{}{
+			"cacheLevel":     "none",
+			"httpMethod":     "POST",
+			"mimirVersion":   "2.14.0",
+			"prometheusType": "mimir",
+			"timeInterval":   "60s",
+		},
 	},
 	{
-		Name:   "Loki",
-		Type:   "loki",
-		URL:    "http://grafana-multi-tenant-proxy.monitoring.svc",
-		Access: DatasourceProxyAccessMode,
+		Name:      "Loki",
+		Type:      "loki",
+		IsDefault: false,
+		URL:       "http://grafana-multi-tenant-proxy.monitoring.svc",
+		Access:    DatasourceProxyAccessMode,
 	},
 }
 
@@ -49,7 +58,7 @@ func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 		logger.Error(err, "failed to create organization")
 		return organization, errors.WithStack(err)
 	}
-	logger.Info("organization created")
+	logger.Info("created organization")
 
 	return Organization{
 		ID:   *createdOrg.Payload.OrgID,
@@ -131,11 +140,9 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 					Name:      datasource.Name,
 					Type:      datasource.Type,
 					URL:       datasource.URL,
-					IsDefault: true,
-					JSONData:  models.JSON(map[string]interface{}{
-						// TODO FILLME
-					}),
-					Access: models.DsAccess(datasource.Access),
+					IsDefault: datasource.IsDefault,
+					JSONData:  models.JSON(datasource.JSONData),
+					Access:    models.DsAccess(datasource.Access),
 				})
 			if err != nil {
 				logger.Error(err, "failed to create datasource")
@@ -157,11 +164,9 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 					Name:      datasource.Name,
 					Type:      datasource.Type,
 					URL:       datasource.URL,
-					IsDefault: true,
-					JSONData:  models.JSON(map[string]interface{}{
-						// TODO FILLME
-					}),
-					Access: models.DsAccess(datasource.Access),
+					IsDefault: datasource.IsDefault,
+					JSONData:  models.JSON(datasource.JSONData),
+					Access:    models.DsAccess(datasource.Access),
 				})
 			if err != nil {
 				logger.Error(err, "failed to update datasource")
@@ -192,16 +197,19 @@ func assertNameIsAvailable(ctx context.Context, grafanaAPI *client.GrafanaHTTPAP
 	logger := log.FromContext(ctx)
 
 	found, err := findByName(grafanaAPI, organization.Name)
-	// We only error if we have any error other than a 404
-	if err != nil && !isNotFound(err) {
-		logger.Error(err, fmt.Sprintf("failed to find organization with name: %s", organization.Name))
-		return errors.WithStack(err)
+	if err != nil {
+		// We only error if we have any error other than a 404
+		if !isNotFound(err) {
+			logger.Error(err, fmt.Sprintf("failed to find organization with name: %s", organization.Name))
+			return errors.WithStack(err)
+		}
+
+		if found != nil {
+			logger.Error(err, "a grafana organization with the same name already exists. Please choose a different display name.")
+			return errors.WithStack(err)
+		}
 	}
 
-	if found != nil {
-		logger.Error(err, "a grafana organization with the same name already exists. Please choose a different display name.")
-		return errors.WithStack(err)
-	}
 	return nil
 }
 
