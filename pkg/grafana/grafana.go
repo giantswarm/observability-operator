@@ -32,7 +32,7 @@ func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 		logger.Error(err, "failed to create organization")
 		return organization, errors.WithStack(err)
 	}
-	logger.Info("organization created")
+	logger.Info("created organization")
 
 	return Organization{
 		ID:   *createdOrg.Payload.OrgID,
