@@ -80,6 +80,11 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 }
 
 // reconcileCreate creates the grafanaOrganization.
+// reconcileCreate ensures the Grafana organization described in grafanaOrganization CR is created in Grafana.
+// This function is also responsible for:
+// - Adding the finalizer to the CR
+// - Updating the CR status field
+// - Renaming the Grafana Main Org.
 func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	logger := log.FromContext(ctx)
 
