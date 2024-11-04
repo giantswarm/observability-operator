@@ -158,7 +158,9 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	logger := log.FromContext(ctx)
 
 	// We do not need to delete anything if there is no finalizer on the grafana organization
-	if controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
+	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
+		return nil
+	}
 
 		// Delete organization in Grafana if it exists
 		if grafanaOrganization.Status.OrgID > 0 {
