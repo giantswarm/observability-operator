@@ -259,7 +259,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 			}
 		}
 
-		logger.Info("configuring grafana", "config", config)
+		logger.Info("updating grafana-user-values", "config", config)
 
 		grafanaConfig.Data = make(map[string]string)
 		grafanaConfig.Data["values"] = config
