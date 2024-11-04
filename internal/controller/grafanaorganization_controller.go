@@ -153,7 +153,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
-	// We do not need to delete anything if there is no finalizer on the cluster
+	// We do not need to delete anything if there is no finalizer on the grafana organization
 	if controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 
 		// Delete organization in Grafana if it exists
