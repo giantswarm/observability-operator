@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add creation and update of Grafana organizations.
 - Add configuration of the Grafana org_mapping via user-values.
 
+### Fixed
+
+- Disable crd installation from alloy-metrics as this is causing issues with the new v29 releases.
+
 ## [0.8.1] - 2024-10-17
 
 ### Fixed
