@@ -227,6 +227,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Complete(r)
 }
 
+// configureGrafana ensures the RBAC configuration is set in Grafana.
 func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
