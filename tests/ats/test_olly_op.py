@@ -38,10 +38,10 @@ def deployments(kube_cluster: Cluster) -> List[pykube.Deployment]:
         "name": "grafana",
         "namespace": "monitoring"
     },
-    "type": "Opaque":
+    "type": "Opaque",
     "data": {
         "admin-password": "YWRtaW4=",
-        "admin-user": "YWRtaW4="
+        "admin-user": "YWRtaW4=",
       },
     }
 
@@ -54,10 +54,10 @@ def deployments(kube_cluster: Cluster) -> List[pykube.Deployment]:
         "name": "grafana-tls",
         "namespace": "monitoring"
     },
-    "type": "Opaque":
+    "type": "Opaque",
     "data": {
         "tls.crt": "YWRtaW4=",
-        "tls.key": "YWRtaW4="
+        "tls.key": "YWRtaW4=",
       },
     }
     pykube.Secret(kube_cluster.kube_client, grafanaTLSSecret).create()
