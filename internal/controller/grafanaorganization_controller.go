@@ -189,7 +189,6 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 			return errors.WithStack(err)
 		}
 		logger.Info("removed finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
-	}
 
 	return nil
 }
