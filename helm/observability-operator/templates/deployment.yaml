@@ -49,7 +49,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: grafana
-              key: admin-username
+              key: admin-user
         - name: GRAFANA_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
