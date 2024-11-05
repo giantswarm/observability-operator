@@ -62,9 +62,10 @@ type RBAC struct {
 // GrafanaOrganizationStatus defines the observed state of GrafanaOrganization
 type GrafanaOrganizationStatus struct {
 	// OrgID is the actual organisation ID in grafana.
-	OrgID string `json:"orgID"`
+	OrgID int64 `json:"orgID"`
 
 	// DataSources is a list of grafana data sources that are available to the Grafana organization.
+	// +optional
 	DataSources []DataSources `json:"dataSources"`
 }
 
@@ -74,7 +75,7 @@ type DataSources struct {
 	Name string `json:"name"`
 
 	// ID is the unique id of the data source.
-	ID string `json:"id"`
+	ID int64 `json:"id"`
 }
 
 //+kubebuilder:object:root=true
