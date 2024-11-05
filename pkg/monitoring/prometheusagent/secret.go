@@ -8,6 +8,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/yaml"
 
@@ -33,8 +34,8 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 				{
 					RemoteWriteSpec: promv1.RemoteWriteSpec{
 						URL:           url,
-						Name:          commonmonitoring.RemoteWriteName,
-						RemoteTimeout: commonmonitoring.RemoteWriteTimeout,
+						Name:          ptr.To(commonmonitoring.RemoteWriteName),
+						RemoteTimeout: ptr.To(promv1.Duration(commonmonitoring.RemoteWriteTimeout)),
 						QueueConfig: &promv1.QueueConfig{
 							Capacity:          commonmonitoring.QueueConfigCapacity,
 							MaxSamplesPerSend: commonmonitoring.QueueConfigMaxSamplesPerSend,
