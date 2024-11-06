@@ -12,10 +12,27 @@ type GrafanaPodRecreatedPredicate struct {
 	predicate.Funcs
 }
 
-func (GrafanaPodRecreatedPredicate) Delete(e event.DeleteEvent) bool {
-	if e.Object != nil && strings.Contains(e.Object.GetName(), "grafana") && e.Object.GetNamespace() == "monitoring" {
+// When a grafana pod is recreated, we want to trigger a reconciliation.
+func (GrafanaPodRecreatedPredicate) Create(e event.CreateEvent) bool {
+	if e.Object != nil &&
+		strings.Contains(e.Object.GetName(), "grafana") &&
+		e.Object.GetNamespace() == "monitoring" &&
+		// Ensure we don't trigger on the grafana permissions pods or grafana multi-tenant proxy
+		e.Object.GetLabels()["app.kubernetes.io/instance"] == "grafana" {
 		return true
 	}
 
+	return false
+}
+
+func (GrafanaPodRecreatedPredicate) Delete(e event.DeleteEvent) bool {
+	return false
+}
+
+func (GrafanaPodRecreatedPredicate) Update(e event.UpdateEvent) bool {
+	return false
+}
+
+func (GrafanaPodRecreatedPredicate) Generic(e event.GenericEvent) bool {
 	return false
 }

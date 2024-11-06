@@ -1,11 +1,5 @@
 package grafana
 
-import (
-	"fmt"
-
-	"github.com/grafana/grafana-openapi-client-go/models"
-)
-
 type Organization struct {
 	ID       int64
 	Name     string
@@ -22,7 +16,19 @@ type Datasource struct {
 	JSONData  map[string]interface{}
 }
 
-func (d Datasource) buildJSONData() models.JSON {
+func (d Datasource) withID(id int64) Datasource {
+	return Datasource{
+		ID:        id,
+		Name:      d.Name,
+		IsDefault: d.IsDefault,
+		Type:      d.Type,
+		URL:       d.URL,
+		Access:    d.Access,
+		JSONData:  d.buildJSONData(),
+	}
+}
+
+func (d Datasource) buildJSONData() map[string]interface{} {
 	copy := make(map[string]interface{})
 	// Copy from the original map to the target map
 	for key, value := range d.JSONData {
@@ -30,11 +36,7 @@ func (d Datasource) buildJSONData() models.JSON {
 	}
 	// Add tenant header name
 	copy["httpHeaderName1"] = "X-Scope-OrgID"
-	return models.JSON(copy)
-}
-
-func (d Datasource) getDisplayName(organization Organization) string {
-	return fmt.Sprintf("%s - %s", d.Name, organization.Name)
+	return copy
 }
 
 func (d Datasource) buildSecureJSONData(organization Organization) map[string]string {

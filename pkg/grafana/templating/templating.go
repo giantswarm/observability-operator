@@ -4,8 +4,8 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
-	"html/template"
 	"strings"
+	"text/template"
 
 	"github.com/pkg/errors"
 
@@ -31,7 +31,7 @@ func init() {
 
 func GenerateGrafanaConfiguration(organizations []v1alpha1.GrafanaOrganization) (string, error) {
 	var orgMappings []string
-	orgMappings = append(orgMappings, fmt.Sprintf(`"*:%s:%s"`, grafana.SharedOrg.Name, grafanaAdminRole))
+	orgMappings = append(orgMappings, fmt.Sprintf(`"*:%s:%s"`, grafana.SharedOrg.Name, grafanaEditorRole))
 	for _, organization := range organizations {
 		rbac := organization.Spec.RBAC
 		organizationName := organization.Spec.DisplayName

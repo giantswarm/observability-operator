@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"slices"
+	"strings"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
@@ -75,6 +77,39 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	// Handle non-deleted grafana organizations
 	return r.reconcileCreate(ctx, grafanaOrganization)
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&v1alpha1.GrafanaOrganization{}).
+		// Watch for grafana pod's status changes
+		Watches(
+			&v1.Pod{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+				var logger = log.FromContext(ctx)
+				var organizations v1alpha1.GrafanaOrganizationList
+
+				err := mgr.GetClient().List(ctx, &organizations)
+				if err != nil {
+					logger.Error(err, "failed to list grafana organization CRs")
+					return []reconcile.Request{}
+				}
+
+				// Reconcile all grafana organizations when the grafana pod is recreated
+				requests := make([]reconcile.Request, 0, len(organizations.Items))
+				for _, organization := range organizations.Items {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name: organization.Name,
+						},
+					})
+				}
+				return requests
+			}),
+			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
+		).
+		Complete(r)
 }
 
 // reconcileCreate creates the grafanaOrganization.
@@ -137,7 +172,7 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 		return errors.WithStack(err)
 	}
 
-	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg); err != nil {
+	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, grafana.SharedOrg); err != nil {
 		logger.Info("failed to configure datasources for shared org")
 		return errors.WithStack(err)
 	}
@@ -215,7 +250,7 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 		}
 	}
 
-	logger.Info("updating datasources in the organization status")
+	logger.Info("updating datasources in the grafanaOrganization status")
 	grafanaOrganization.Status.DataSources = desiredDatasources
 	if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
 		logger.Error(err, "failed to update the the grafanaOrganization status with datasources information")
@@ -273,67 +308,40 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	return nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.GrafanaOrganization{}).
-		// Watch for grafana pod's status changes
-		Watches(
-			&v1.Pod{},
-			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
-				k8sClient := mgr.GetClient()
-				var organizations v1alpha1.GrafanaOrganizationList
-
-				err := k8sClient.List(ctx, &organizations)
-				if err != nil {
-					log.FromContext(ctx).Error(err, "failed to list grafana organization CRs")
-					return []reconcile.Request{}
-				}
-
-				// Reconcile all grafana organizations when the grafana pod is recreated
-				requests := make([]reconcile.Request, 0, len(organizations.Items))
-				for _, organization := range organizations.Items {
-					requests = append(requests, reconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Name: organization.Name,
-						},
-					})
-				}
-				return requests
-			}),
-			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
-		).
-		Complete(r)
-}
-
 // configureGrafana ensures the RBAC configuration is set in Grafana.
 func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
-	organizations := v1alpha1.GrafanaOrganizationList{}
-	err := r.Client.List(ctx, &organizations)
+	organizationList := v1alpha1.GrafanaOrganizationList{}
+	err := r.Client.List(ctx, &organizationList)
 	if err != nil {
 		logger.Error(err, "failed to list grafana organizations.")
 		return errors.WithStack(err)
 	}
 
-	grafanaConfig := v1.ConfigMap{
+	grafanaConfig := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "grafana-user-values",
 			Namespace: "giantswarm",
 		},
 	}
 
-	_, err = controllerutil.CreateOrPatch(ctx, r.Client, &grafanaConfig, func() error {
-		config, err := templating.GenerateGrafanaConfiguration(organizations.Items)
+	_, err = controllerutil.CreateOrPatch(ctx, r.Client, grafanaConfig, func() error {
+		organizations := organizationList.Items
+		// We always sort the organizations to ensure the order is deterministic and the configmap is stable
+		slices.SortFunc(organizations, func(i, j v1alpha1.GrafanaOrganization) int {
+			return strings.Compare(i.Name, j.Name)
+		})
+
+		config, err := templating.GenerateGrafanaConfiguration(organizations)
 		if err != nil {
 			logger.Error(err, "failed to generate grafana user configmap values.")
 			return errors.WithStack(err)
 		}
 
-		for _, organization := range organizations.Items {
+		for _, organization := range organizations {
 			// Set owner reference to the config map to be able to clean it up when all organizations are deleted
-			err = controllerutil.SetOwnerReference(&organization, &grafanaConfig, r.Scheme)
+			err = controllerutil.SetOwnerReference(&organization, grafanaConfig, r.Scheme)
 			if err != nil {
 				return errors.WithStack(err)
 			}

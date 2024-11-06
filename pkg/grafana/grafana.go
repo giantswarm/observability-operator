@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DatasourceProxyAccessMode = "proxy"
+	datasourceProxyAccessMode = "proxy"
 )
 
 var SharedOrg = Organization{
@@ -23,27 +23,38 @@ var SharedOrg = Organization{
 	TenantID: "giantswarm",
 }
 
+// We need to use a custom name for now until we can replace the existing datasources.
 var defaultDatasources = []Datasource{
 	{
-		Name:      "Mimir",
-		Type:      "prometheus",
-		IsDefault: true,
-		URL:       "http://mimir-gateway.mimir.svc/prometheus",
-		Access:    DatasourceProxyAccessMode,
+		Name:   "Alertmanager olly-op",
+		Type:   "alertmanager",
+		URL:    "http://alertmanager-operated.monitoring.svc:9093",
+		Access: datasourceProxyAccessMode,
 		JSONData: map[string]interface{}{
-			"cacheLevel":     "none",
+			"handleGrafanaManagedAlerts": false,
+			"implementation":             "prometheus",
+		},
+	},
+	{
+		Name: "Mimir olly-op",
+		Type: "prometheus",
+		// TODO make this a default when we replace the existing datasources
+		IsDefault: false,
+		URL:       "http://mimir-gateway.mimir.svc/prometheus",
+		Access:    datasourceProxyAccessMode,
+		JSONData: map[string]interface{}{
+			"cacheLevel":     "None",
 			"httpMethod":     "POST",
 			"mimirVersion":   "2.14.0",
-			"prometheusType": "mimir",
+			"prometheusType": "Mimir",
 			"timeInterval":   "60s",
 		},
 	},
 	{
-		Name:      "Loki",
-		Type:      "loki",
-		IsDefault: false,
-		URL:       "http://grafana-multi-tenant-proxy.monitoring.svc",
-		Access:    DatasourceProxyAccessMode,
+		Name:   "Loki olly-op",
+		Type:   "loki",
+		URL:    "http://loki-gateway.loki.svc",
+		Access: datasourceProxyAccessMode,
 	},
 }
 
@@ -65,10 +76,8 @@ func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	}
 	logger.Info("created organization")
 
-	return Organization{
-		ID:   *createdOrg.Payload.OrgID,
-		Name: organization.Name,
-	}, nil
+	organization.ID = *createdOrg.Payload.OrgID
+	return organization, nil
 }
 
 func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) (Organization, error) {
@@ -108,10 +117,7 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 
 	logger.Info("updated organization")
 
-	return Organization{
-		ID:   organization.ID,
-		Name: organization.Name,
-	}, nil
+	return organization, nil
 }
 
 func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64) error {
@@ -136,38 +142,39 @@ func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64
 func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
-	// Switch context to the current org
-	// We need to clone as WithOrgID modifies the original client
-	grafanaAPI = grafanaAPI.Clone().WithOrgID(organization.ID)
+	// TODO using a serviceaccount later would be better as they are scoped to an organization
 
-	resp, err := grafanaAPI.Datasources.GetDataSources()
+	// Switch context to the current org
+	if _, err := grafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
+		logger.Error(err, "failed to change current org for signed in user")
+		return nil, errors.WithStack(err)
+	}
+
+	// We always switch back to the shared org
+	defer func() {
+		if _, err := grafanaAPI.SignedInUser.UserSetUsingOrg(SharedOrg.ID); err != nil {
+			logger.Error(err, "failed to change current org for signed in user")
+		}
+	}()
+
+	configuredDatasourcesInGrafana, err := listDatasourcesForOrganization(ctx, grafanaAPI)
 	if err != nil {
-		logger.Error(err, "failed to get configured datasources")
-		return []Datasource{}, errors.WithStack(err)
+		logger.Error(err, "failed to list datasources")
+		return nil, errors.WithStack(err)
 	}
 
 	datasourcesToCreate := make([]Datasource, 0)
 	datasourcesToUpdate := make([]Datasource, 0)
 
-	configuredDatasourcesInGrafana := make([]Datasource, len(resp.Payload))
-	for i, datasource := range resp.Payload {
-		configuredDatasourcesInGrafana[i] = Datasource{
-			ID:        datasource.ID,
-			Name:      datasource.Name,
-			IsDefault: datasource.IsDefault,
-			Type:      datasource.Type,
-			URL:       datasource.URL,
-			Access:    string(datasource.Access),
-		}
-	}
-
 	// Check if the default datasources are already configured
 	for _, defaultDatasource := range defaultDatasources {
 		found := false
-		for _, datasource := range configuredDatasourcesInGrafana {
-			if datasource.Name == defaultDatasource.getDisplayName(organization) {
+		for _, configuredDatasource := range configuredDatasourcesInGrafana {
+			if configuredDatasource.Name == defaultDatasource.Name {
 				found = true
-				datasourcesToUpdate = append(datasourcesToUpdate, datasource)
+
+				// We need to extract the ID from the configured datasource
+				datasourcesToUpdate = append(datasourcesToUpdate, defaultDatasource.withID(configuredDatasource.ID))
 			}
 		}
 		if !found {
@@ -175,23 +182,23 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 		}
 	}
 
-	var datasources []Datasource = make([]Datasource, len(defaultDatasources))
+	var datasources []Datasource = make([]Datasource, 0)
 	if len(datasourcesToCreate) > 0 {
 		logger.Info("creating datasources")
 		for _, datasource := range datasourcesToCreate {
 			created, err := grafanaAPI.Datasources.AddDataSource(
 				&models.AddDataSourceCommand{
-					Name:           datasource.getDisplayName(organization),
+					Name:           datasource.Name,
 					Type:           datasource.Type,
 					URL:            datasource.URL,
 					IsDefault:      datasource.IsDefault,
-					JSONData:       datasource.buildJSONData(),
+					JSONData:       models.JSON(datasource.buildJSONData()),
 					SecureJSONData: datasource.buildSecureJSONData(organization),
 					Access:         models.DsAccess(datasource.Access),
 				})
 			if err != nil {
-				logger.Error(err, "failed to create datasources", "datasource", datasource.getDisplayName(organization))
-				return []Datasource{}, errors.WithStack(err)
+				logger.Error(err, "failed to create datasources", "datasource", datasource.Name)
+				return nil, errors.WithStack(err)
 			}
 			datasource.ID = *created.Payload.ID
 			datasources = append(datasources, datasource)
@@ -202,24 +209,48 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 	if len(datasourcesToUpdate) > 0 {
 		logger.Info("updating datasources")
 		for _, datasource := range datasourcesToUpdate {
-			updated, err := grafanaAPI.Datasources.UpdateDataSourceByID(
+			_, err := grafanaAPI.Datasources.UpdateDataSourceByID(
 				strconv.FormatInt(datasource.ID, 10),
 				&models.UpdateDataSourceCommand{
-					Name:           datasource.getDisplayName(organization),
+					Name:           datasource.Name,
 					Type:           datasource.Type,
 					URL:            datasource.URL,
 					IsDefault:      datasource.IsDefault,
-					JSONData:       datasource.buildJSONData(),
+					JSONData:       models.JSON(datasource.buildJSONData()),
 					SecureJSONData: datasource.buildSecureJSONData(organization),
 					Access:         models.DsAccess(datasource.Access),
 				})
 			if err != nil {
-				logger.Error(err, "failed to update datasources", "datasource", updated.Payload.Name)
-				return []Datasource{}, errors.WithStack(err)
+				logger.Error(err, "failed to update datasources", "datasource", datasource.Name)
+				return nil, errors.WithStack(err)
 			}
 			datasources = append(datasources, datasource)
 		}
 		logger.Info("datasources updated")
+	}
+
+	return datasources, nil
+}
+
+func listDatasourcesForOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([]Datasource, error) {
+	logger := log.FromContext(ctx)
+
+	resp, err := grafanaAPI.Datasources.GetDataSources()
+	if err != nil {
+		logger.Error(err, "failed to get configured datasources")
+		return nil, errors.WithStack(err)
+	}
+
+	datasources := make([]Datasource, len(resp.Payload))
+	for i, datasource := range resp.Payload {
+		datasources[i] = Datasource{
+			ID:        datasource.ID,
+			Name:      datasource.Name,
+			IsDefault: datasource.IsDefault,
+			Type:      datasource.Type,
+			URL:       datasource.URL,
+			Access:    string(datasource.Access),
+		}
 	}
 
 	return datasources, nil
