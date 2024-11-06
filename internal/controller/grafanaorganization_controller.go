@@ -135,13 +135,13 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
-	var err error
 	// Create or update organization in Grafana
 	var organization = grafana.Organization{
 		ID:   grafanaOrganization.Status.OrgID,
 		Name: grafanaOrganization.Spec.DisplayName,
 	}
 
+	var err error
 	if organization.ID == 0 {
 		// if the CR doesn't have an orgID, create the organization in Grafana
 		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, organization)
@@ -156,14 +156,14 @@ func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context
 	// Update CR status if anything was changed
 	// Update orgID in the CR's satus
 	if grafanaOrganization.Status.OrgID != organization.ID {
-		logger.Info("updating orgID in the organization status")
+		logger.Info("updating orgID in the grafanaOrganization status")
 		grafanaOrganization.Status.OrgID = organization.ID
 
-		if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
+		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
 			logger.Error(err, "failed to update grafanaOrganization status")
 			return errors.WithStack(err)
 		}
-		logger.Info("updated orgID in the organization status")
+		logger.Info("updated orgID in the grafanaOrganization status")
 	}
 
 	return nil
@@ -175,21 +175,19 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 	logger.Info("configuring data sources")
 
 	// Switch context to the current org
-	r.GrafanaAPI = r.GrafanaAPI.WithOrgID(grafanaOrganization.Status.OrgID)
-	defer func() {
-		// Switch context back to default org once we're done whether we succeed or fail
-		r.GrafanaAPI = r.GrafanaAPI.WithOrgID(1)
-	}()
+	// We need to clonse as WithOrgID modifies the original client
+	grafanaAPIWithOrgs := r.GrafanaAPI.Clone().
+		WithOrgID(grafanaOrganization.Status.OrgID)
 
-	existingDatasources := make([]grafana.Datasource, len(grafanaOrganization.Status.DataSources))
+	currentDatasources := make([]grafana.Datasource, len(grafanaOrganization.Status.DataSources))
 	for i, datasource := range grafanaOrganization.Status.DataSources {
-		existingDatasources[i] = grafana.Datasource{
+		currentDatasources[i] = grafana.Datasource{
 			ID:   datasource.ID,
 			Name: datasource.Name,
 		}
 	}
 
-	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, existingDatasources)
+	datasources, err := grafana.ConfigureDefaultDatasources(ctx, grafanaAPIWithOrgs, currentDatasources)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -205,10 +203,10 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 	logger.Info("updating datasources in the organization status")
 	grafanaOrganization.Status.DataSources = desiredDatasources
 	if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
-		logger.Error(err, "failed to update the status with datasources information")
+		logger.Error(err, "failed to update the the grafanaOrganization status with datasources information")
 		return errors.WithStack(err)
 	}
-	logger.Info("updated datasources in the organization status")
+	logger.Info("updated datasources in the grafanaOrganization status")
 	logger.Info("configured data sources")
 
 	return nil
