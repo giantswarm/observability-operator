@@ -154,7 +154,6 @@ func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context
 	}
 
 	// Update CR status if anything was changed
-	// Update orgID in the CR's satus
 	if grafanaOrganization.Status.OrgID != organization.ID {
 		logger.Info("updating orgID in the grafanaOrganization status")
 		grafanaOrganization.Status.OrgID = organization.ID
