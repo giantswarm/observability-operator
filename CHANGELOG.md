@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Disable crd installation from alloy-metrics as this is causing issues with the new v29 releases.
+- Fix failing ATS tests by upgrading python testing dependencies and creating necessary secrets.
 
 ## [0.8.1] - 2024-10-17
 
