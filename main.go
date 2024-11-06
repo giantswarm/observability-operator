@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -218,7 +219,8 @@ func main() {
 
 	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
 
-	version, err := semver.Parse(prometheusVersion)
+	// We need to parse the Prometheus version to a semver.Version. We support versions in the format vX.Y.Z or in X.Y.Z.
+	version, err := semver.Parse(strings.TrimPrefix(prometheusVersion, "v"))
 	if err != nil {
 		setupLog.Error(err, "prometheus version is not a valid semver")
 		os.Exit(1)

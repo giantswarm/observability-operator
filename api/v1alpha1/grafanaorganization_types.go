@@ -72,7 +72,7 @@ type GrafanaOrganizationStatus struct {
 // DataSource defines the name and id for data sources.
 type DataSource struct {
 	// ID is the unique id of the data source.
-	ID int64 `json:"id"`
+	ID int64 `json:"ID"`
 
 	// Name is the name of the data source.
 	Name string `json:"name"`
@@ -81,6 +81,8 @@ type DataSource struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:scope=Cluster
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:JSONPath=".spec.displayName",name=DisplayName,type=string
+//+kubebuilder:printcolumn:JSONPath=".status.orgID",name=OrgID,type=integer
 
 // GrafanaOrganization is the Schema describing a Grafana organization. Its lifecycle is managed by the observability-operator.
 type GrafanaOrganization struct {

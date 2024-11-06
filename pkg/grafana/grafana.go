@@ -128,8 +128,10 @@ func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64
 	return nil
 }
 
-func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, current []Datasource) ([]Datasource, error) {
+func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization, current []Datasource) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
+
+	// TODO(quentin) do we need to get the existing datasource and delete them first?
 
 	var datasources []Datasource = make([]Datasource, len(defaultDatasources))
 	if len(current) == 0 {
@@ -137,12 +139,13 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 		for i, datasource := range defaultDatasources {
 			created, err := grafanaAPI.Datasources.AddDataSource(
 				&models.AddDataSourceCommand{
-					Name:      datasource.Name,
-					Type:      datasource.Type,
-					URL:       datasource.URL,
-					IsDefault: datasource.IsDefault,
-					JSONData:  models.JSON(datasource.JSONData),
-					Access:    models.DsAccess(datasource.Access),
+					Name:           fmt.Sprintf("%s - %s", datasource.Name, organization.TenantID),
+					Type:           datasource.Type,
+					URL:            datasource.URL,
+					IsDefault:      datasource.IsDefault,
+					JSONData:       datasource.buildJSONData(),
+					SecureJSONData: datasource.buildSecureJSONData(organization),
+					Access:         models.DsAccess(datasource.Access),
 				})
 			if err != nil {
 				logger.Error(err, "failed to create datasource")
@@ -161,12 +164,13 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 			updated, err := grafanaAPI.Datasources.UpdateDataSourceByID(
 				strconv.FormatInt(datasource.ID, 10),
 				&models.UpdateDataSourceCommand{
-					Name:      datasource.Name,
-					Type:      datasource.Type,
-					URL:       datasource.URL,
-					IsDefault: datasource.IsDefault,
-					JSONData:  models.JSON(datasource.JSONData),
-					Access:    models.DsAccess(datasource.Access),
+					Name:           datasource.Name,
+					Type:           datasource.Type,
+					URL:            datasource.URL,
+					IsDefault:      datasource.IsDefault,
+					JSONData:       datasource.buildJSONData(),
+					SecureJSONData: datasource.buildSecureJSONData(organization),
+					Access:         models.DsAccess(datasource.Access),
 				})
 			if err != nil {
 				logger.Error(err, "failed to update datasource")

@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
-	grafanaAPIModels "github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,39 +105,59 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, nil
 	}
 
-	// Ensure the first organization is renamed.
-	_, err := r.GrafanaAPI.Orgs.UpdateOrg(1, &grafanaAPIModels.UpdateOrgForm{
-		Name: grafana.SharedOrgName,
-	})
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("failed to rename Main Org. to %s", grafana.SharedOrgName))
+	// Configure the organization in Grafana
+	if err := r.configureSharedOrg(ctx); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	// TODO add datasources for shared org.
-
 	// Configure the organization in Grafana
-	if err = r.configureOrganization(ctx, grafanaOrganization); err != nil {
+	if err := r.configureOrganization(ctx, grafanaOrganization); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	// Update the datasources in the CR's status
-	if err = r.configureDatasources(ctx, grafanaOrganization); err != nil {
+	if err := r.configureDatasources(ctx, grafanaOrganization); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	if err = r.configureGrafana(ctx); err != nil {
+	if err := r.configureGrafana(ctx); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
+
 	return ctrl.Result{}, nil
+}
+
+func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) error {
+	logger := log.FromContext(ctx)
+
+	sharedOrg := grafana.Organization{
+		ID:       1,
+		Name:     grafana.SharedOrgName,
+		TenantID: "giantswarm",
+	}
+
+	logger.Info("configuring %s organization", grafana.SharedOrgName)
+	if _, err := grafana.UpdateOrganization(ctx, r.GrafanaAPI, sharedOrg); err != nil {
+		logger.Error(err, fmt.Sprintf("failed to rename Main Org. to %s", grafana.SharedOrgName))
+		return errors.WithStack(err)
+	}
+
+	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg, []grafana.Datasource{}); err != nil {
+		logger.Info("failed to configure datasources for %s organization", grafana.SharedOrgName)
+		return errors.WithStack(err)
+	}
+
+	logger.Info("configured %s organization", grafana.SharedOrgName)
+	return nil
 }
 
 func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 	// Create or update organization in Grafana
 	var organization = grafana.Organization{
-		ID:   grafanaOrganization.Status.OrgID,
-		Name: grafanaOrganization.Spec.DisplayName,
+		ID:       grafanaOrganization.Status.OrgID,
+		Name:     grafanaOrganization.Spec.DisplayName,
+		TenantID: grafanaOrganization.Name,
 	}
 
 	var err error
@@ -173,10 +192,17 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 
 	logger.Info("configuring data sources")
 
+	// Create or update organization in Grafana
+	var organization = grafana.Organization{
+		ID:       grafanaOrganization.Status.OrgID,
+		Name:     grafanaOrganization.Spec.DisplayName,
+		TenantID: grafanaOrganization.Name,
+	}
+
 	// Switch context to the current org
-	// We need to clonse as WithOrgID modifies the original client
+	// We need to clone as WithOrgID modifies the original client
 	grafanaAPIWithOrgs := r.GrafanaAPI.Clone().
-		WithOrgID(grafanaOrganization.Status.OrgID)
+		WithOrgID(organization.ID)
 
 	currentDatasources := make([]grafana.Datasource, len(grafanaOrganization.Status.DataSources))
 	for i, datasource := range grafanaOrganization.Status.DataSources {
@@ -186,7 +212,7 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 		}
 	}
 
-	datasources, err := grafana.ConfigureDefaultDatasources(ctx, grafanaAPIWithOrgs, currentDatasources)
+	datasources, err := grafana.ConfigureDefaultDatasources(ctx, grafanaAPIWithOrgs, organization, currentDatasources)
 	if err != nil {
 		return errors.WithStack(err)
 	}

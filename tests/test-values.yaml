@@ -4,3 +4,4 @@ global:
 monitoring:
   enabled: true
   opsgenieApiKey: "opsgenieApiKey"
+  prometheusVersion: "v2.59.1"

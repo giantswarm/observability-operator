@@ -60,14 +60,15 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 	shardingStrategy := pas.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
 	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
+	prometheusVersion := fmt.Sprintf("v%s", pas.MonitoringConfig.PrometheusVersion)
 	config, err := yaml.Marshal(RemoteWriteConfig{
 		PrometheusAgentConfig: &PrometheusAgentConfig{
 			ExternalLabels: externalLabels,
 			Image: &PrometheusAgentImage{
-				Tag: pas.MonitoringConfig.PrometheusVersion.String(),
+				Tag: prometheusVersion,
 			},
 			Shards:  shards,
-			Version: pas.MonitoringConfig.PrometheusVersion.String(),
+			Version: prometheusVersion,
 		},
 	})
 	if err != nil {
