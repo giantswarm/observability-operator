@@ -150,7 +150,7 @@ func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context
 	}
 
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	// Update CR status if anything was changed
