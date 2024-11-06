@@ -128,7 +128,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	err = r.configureGrafana(ctx)
-	if err != nil {
+	if err = r.configureGrafana(ctx); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 	return ctrl.Result{}, nil
