@@ -1,6 +1,10 @@
 package grafana
 
-import "github.com/grafana/grafana-openapi-client-go/models"
+import (
+	"fmt"
+
+	"github.com/grafana/grafana-openapi-client-go/models"
+)
 
 type Organization struct {
 	ID       int64
@@ -27,6 +31,10 @@ func (d Datasource) buildJSONData() models.JSON {
 	// Add tenant header name
 	copy["httpHeaderName1"] = "X-Scope-OrgID"
 	return models.JSON(copy)
+}
+
+func (d Datasource) getDisplayName(organization Organization) string {
+	return fmt.Sprintf("%s - %s", d.Name, organization.Name)
 }
 
 func (d Datasource) buildSecureJSONData(organization Organization) map[string]string {

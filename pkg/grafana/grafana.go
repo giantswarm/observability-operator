@@ -14,9 +14,14 @@ import (
 )
 
 const (
-	SharedOrgName             = "Shared Org"
 	DatasourceProxyAccessMode = "proxy"
 )
+
+var SharedOrg = Organization{
+	ID:       1,
+	Name:     "Shared Org",
+	TenantID: "giantswarm",
+}
 
 var defaultDatasources = []Datasource{
 	{
@@ -128,18 +133,55 @@ func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64
 	return nil
 }
 
-func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization, current []Datasource) ([]Datasource, error) {
+func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
-	// TODO(quentin) do we need to get the existing datasource and delete them first?
+	// Switch context to the current org
+	// We need to clone as WithOrgID modifies the original client
+	grafanaAPI = grafanaAPI.Clone().WithOrgID(organization.ID)
+
+	resp, err := grafanaAPI.Datasources.GetDataSources()
+	if err != nil {
+		logger.Error(err, "failed to get configured datasources")
+		return []Datasource{}, errors.WithStack(err)
+	}
+
+	datasourcesToCreate := make([]Datasource, 0)
+	datasourcesToUpdate := make([]Datasource, 0)
+
+	configuredDatasourcesInGrafana := make([]Datasource, len(resp.Payload))
+	for i, datasource := range resp.Payload {
+		configuredDatasourcesInGrafana[i] = Datasource{
+			ID:        datasource.ID,
+			Name:      datasource.Name,
+			IsDefault: datasource.IsDefault,
+			Type:      datasource.Type,
+			URL:       datasource.URL,
+			Access:    string(datasource.Access),
+		}
+	}
+
+	// Check if the default datasources are already configured
+	for _, defaultDatasource := range defaultDatasources {
+		found := false
+		for _, datasource := range configuredDatasourcesInGrafana {
+			if datasource.Name == defaultDatasource.getDisplayName(organization) {
+				found = true
+				datasourcesToUpdate = append(datasourcesToUpdate, datasource)
+			}
+		}
+		if !found {
+			datasourcesToCreate = append(datasourcesToCreate, defaultDatasource)
+		}
+	}
 
 	var datasources []Datasource = make([]Datasource, len(defaultDatasources))
-	if len(current) == 0 {
+	if len(datasourcesToCreate) > 0 {
 		logger.Info("creating datasources")
-		for i, datasource := range defaultDatasources {
+		for _, datasource := range datasourcesToCreate {
 			created, err := grafanaAPI.Datasources.AddDataSource(
 				&models.AddDataSourceCommand{
-					Name:           fmt.Sprintf("%s - %s", datasource.Name, organization.TenantID),
+					Name:           datasource.getDisplayName(organization),
 					Type:           datasource.Type,
 					URL:            datasource.URL,
 					IsDefault:      datasource.IsDefault,
@@ -148,23 +190,22 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 					Access:         models.DsAccess(datasource.Access),
 				})
 			if err != nil {
-				logger.Error(err, "failed to create datasource")
+				logger.Error(err, "failed to create datasources", "datasource", datasource.getDisplayName(organization))
 				return []Datasource{}, errors.WithStack(err)
 			}
-			datasources[i] = Datasource{
-				Name: *created.Payload.Name,
-				ID:   *created.Payload.ID,
-			}
+			datasource.ID = *created.Payload.ID
+			datasources = append(datasources, datasource)
+			logger.Info("datasources created")
 		}
+	}
 
-		logger.Info("datasources created")
-	} else {
+	if len(datasourcesToUpdate) > 0 {
 		logger.Info("updating datasources")
-		for i, datasource := range defaultDatasources {
+		for _, datasource := range datasourcesToUpdate {
 			updated, err := grafanaAPI.Datasources.UpdateDataSourceByID(
 				strconv.FormatInt(datasource.ID, 10),
 				&models.UpdateDataSourceCommand{
-					Name:           datasource.Name,
+					Name:           datasource.getDisplayName(organization),
 					Type:           datasource.Type,
 					URL:            datasource.URL,
 					IsDefault:      datasource.IsDefault,
@@ -173,13 +214,10 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 					Access:         models.DsAccess(datasource.Access),
 				})
 			if err != nil {
-				logger.Error(err, "failed to update datasource")
+				logger.Error(err, "failed to update datasources", "datasource", updated.Payload.Name)
 				return []Datasource{}, errors.WithStack(err)
 			}
-			datasources[i] = Datasource{
-				Name: *updated.Payload.Name,
-				ID:   *updated.Payload.ID,
-			}
+			datasources = append(datasources, datasource)
 		}
 		logger.Info("datasources updated")
 	}

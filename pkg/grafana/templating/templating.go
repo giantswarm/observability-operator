@@ -31,7 +31,7 @@ func init() {
 
 func GenerateGrafanaConfiguration(organizations []v1alpha1.GrafanaOrganization) (string, error) {
 	var orgMappings []string
-	orgMappings = append(orgMappings, fmt.Sprintf(`"*:%s:%s"`, grafana.SharedOrgName, grafanaAdminRole))
+	orgMappings = append(orgMappings, fmt.Sprintf(`"*:%s:%s"`, grafana.SharedOrg.Name, grafanaAdminRole))
 	for _, organization := range organizations {
 		rbac := organization.Spec.RBAC
 		organizationName := organization.Spec.DisplayName

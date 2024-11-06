@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
@@ -105,7 +104,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, nil
 	}
 
-	// Configure the organization in Grafana
+	// Configure shared the organization in Grafana
 	if err := r.configureSharedOrg(ctx); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
@@ -130,24 +129,20 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
-	sharedOrg := grafana.Organization{
-		ID:       1,
-		Name:     grafana.SharedOrgName,
-		TenantID: "giantswarm",
-	}
+	sharedOrg := grafana.SharedOrg
 
-	logger.Info("configuring %s organization", grafana.SharedOrgName)
+	logger.Info("configuring shared organization")
 	if _, err := grafana.UpdateOrganization(ctx, r.GrafanaAPI, sharedOrg); err != nil {
-		logger.Error(err, fmt.Sprintf("failed to rename Main Org. to %s", grafana.SharedOrgName))
+		logger.Error(err, "failed to rename shared org")
 		return errors.WithStack(err)
 	}
 
-	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg, []grafana.Datasource{}); err != nil {
-		logger.Info("failed to configure datasources for %s organization", grafana.SharedOrgName)
+	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg); err != nil {
+		logger.Info("failed to configure datasources for shared org")
 		return errors.WithStack(err)
 	}
 
-	logger.Info("configured %s organization", grafana.SharedOrgName)
+	logger.Info("configured shared org")
 	return nil
 }
 
@@ -199,11 +194,6 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 		TenantID: grafanaOrganization.Name,
 	}
 
-	// Switch context to the current org
-	// We need to clone as WithOrgID modifies the original client
-	grafanaAPIWithOrgs := r.GrafanaAPI.Clone().
-		WithOrgID(organization.ID)
-
 	currentDatasources := make([]grafana.Datasource, len(grafanaOrganization.Status.DataSources))
 	for i, datasource := range grafanaOrganization.Status.DataSources {
 		currentDatasources[i] = grafana.Datasource{
@@ -212,7 +202,7 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 		}
 	}
 
-	datasources, err := grafana.ConfigureDefaultDatasources(ctx, grafanaAPIWithOrgs, organization, currentDatasources)
+	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, organization)
 	if err != nil {
 		return errors.WithStack(err)
 	}
