@@ -154,6 +154,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	// Configure Grafana RBAC
 	if err := r.configureGrafana(ctx); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
