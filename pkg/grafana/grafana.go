@@ -143,15 +143,16 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 	logger := log.FromContext(ctx)
 	// TODO using a serviceaccount later would be better as they are scoped to an organization
 
+	var err error
 	// Switch context to the current org
-	if _, err := grafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
+	if _, err = grafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
 		logger.Error(err, "failed to change current org for signed in user")
 		return nil, errors.WithStack(err)
 	}
 
 	// We always switch back to the shared org
 	defer func() {
-		if _, err := grafanaAPI.SignedInUser.UserSetUsingOrg(SharedOrg.ID); err != nil {
+		if _, err = grafanaAPI.SignedInUser.UserSetUsingOrg(SharedOrg.ID); err != nil {
 			logger.Error(err, "failed to change current org for signed in user")
 		}
 	}()
@@ -181,8 +182,8 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 		}
 	}
 
-	logger.Info("creating datasources")
 	for index, datasource := range datasourcesToCreate {
+		logger.Info("creating datasource", "datasource", datasource.Name)
 		created, err := grafanaAPI.Datasources.AddDataSource(
 			&models.AddDataSourceCommand{
 				Name:           datasource.Name,
@@ -198,11 +199,11 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 			return nil, errors.WithStack(err)
 		}
 		datasourcesToCreate[index].ID = *created.Payload.ID
+		logger.Info("datasource created", "datasource", datasource.Name)
 	}
-	logger.Info("datasources created")
 
-	logger.Info("updating datasources")
 	for _, datasource := range datasourcesToUpdate {
+		logger.Info("updating datasource", "datasource", datasource.Name)
 		_, err := grafanaAPI.Datasources.UpdateDataSourceByID(
 			strconv.FormatInt(datasource.ID, 10),
 			&models.UpdateDataSourceCommand{
@@ -218,10 +219,11 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 			logger.Error(err, "failed to update datasources", "datasource", datasource.Name)
 			return nil, errors.WithStack(err)
 		}
+		logger.Info("datasource updated", "datasource", datasource.Name)
 	}
-	logger.Info("datasources updated")
 
-	return append(datasourcesToCreate, datasourcesToUpdate...), nil
+	// We return the datasources and the error if it exists. This allows us to return the defer function error it it exists.
+	return append(datasourcesToCreate, datasourcesToUpdate...), errors.WithStack(err)
 }
 
 func listDatasourcesForOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([]Datasource, error) {
