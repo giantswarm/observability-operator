@@ -173,7 +173,7 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 		return errors.WithStack(err)
 	}
 
-	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, grafana.SharedOrg); err != nil {
+	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg); err != nil {
 		logger.Info("failed to configure datasources for shared org")
 		return errors.WithStack(err)
 	}
