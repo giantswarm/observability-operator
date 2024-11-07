@@ -181,52 +181,47 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 		}
 	}
 
-	var datasources []Datasource = make([]Datasource, 0)
-	if len(datasourcesToCreate) > 0 {
-		logger.Info("creating datasources")
-		for _, datasource := range datasourcesToCreate {
-			created, err := grafanaAPI.Datasources.AddDataSource(
-				&models.AddDataSourceCommand{
-					Name:           datasource.Name,
-					Type:           datasource.Type,
-					URL:            datasource.URL,
-					IsDefault:      datasource.IsDefault,
-					JSONData:       models.JSON(datasource.buildJSONData()),
-					SecureJSONData: datasource.buildSecureJSONData(organization),
-					Access:         models.DsAccess(datasource.Access),
-				})
-			if err != nil {
-				logger.Error(err, "failed to create datasources", "datasource", datasource.Name)
-				return nil, errors.WithStack(err)
-			}
-			datasource.ID = *created.Payload.ID
-			datasources = append(datasources, datasource)
-			logger.Info("datasources created")
+	logger.Info("creating datasources")
+	for index, datasource := range datasourcesToCreate {
+		created, err := grafanaAPI.Datasources.AddDataSource(
+			&models.AddDataSourceCommand{
+				Name:           datasource.Name,
+				Type:           datasource.Type,
+				URL:            datasource.URL,
+				IsDefault:      datasource.IsDefault,
+				JSONData:       models.JSON(datasource.buildJSONData()),
+				SecureJSONData: datasource.buildSecureJSONData(organization),
+				Access:         models.DsAccess(datasource.Access),
+			})
+		if err != nil {
+			logger.Error(err, "failed to create datasources", "datasource", datasourcesToCreate[index].Name)
+			return nil, errors.WithStack(err)
 		}
+		datasourcesToCreate[index].ID = *created.Payload.ID
 	}
+	logger.Info("datasources created")
 
-	if len(datasourcesToUpdate) > 0 {
-		logger.Info("updating datasources")
-		for _, datasource := range datasourcesToUpdate {
-			_, err := grafanaAPI.Datasources.UpdateDataSourceByID(
-				strconv.FormatInt(datasource.ID, 10),
-				&models.UpdateDataSourceCommand{
-					Name:           datasource.Name,
-					Type:           datasource.Type,
-					URL:            datasource.URL,
-					IsDefault:      datasource.IsDefault,
-					JSONData:       models.JSON(datasource.buildJSONData()),
-					SecureJSONData: datasource.buildSecureJSONData(organization),
-					Access:         models.DsAccess(datasource.Access),
-				})
-			if err != nil {
-				logger.Error(err, "failed to update datasources", "datasource", datasource.Name)
-				return nil, errors.WithStack(err)
-			}
-			datasources = append(datasources, datasource)
+	logger.Info("updating datasources")
+	for _, datasource := range datasourcesToUpdate {
+		_, err := grafanaAPI.Datasources.UpdateDataSourceByID(
+			strconv.FormatInt(datasource.ID, 10),
+			&models.UpdateDataSourceCommand{
+				Name:           datasource.Name,
+				Type:           datasource.Type,
+				URL:            datasource.URL,
+				IsDefault:      datasource.IsDefault,
+				JSONData:       models.JSON(datasource.buildJSONData()),
+				SecureJSONData: datasource.buildSecureJSONData(organization),
+				Access:         models.DsAccess(datasource.Access),
+			})
+		if err != nil {
+			logger.Error(err, "failed to update datasources", "datasource", datasource.Name)
+			return nil, errors.WithStack(err)
 		}
-		logger.Info("datasources updated")
 	}
+	logger.Info("datasources updated")
+	
+	datasources := append(datasourcesToCreate, datasourcesToUpdate...)
 
 	return datasources, nil
 }
