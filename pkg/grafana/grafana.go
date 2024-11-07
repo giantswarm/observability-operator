@@ -36,10 +36,9 @@ var defaultDatasources = []Datasource{
 		},
 	},
 	{
-		Name: "Mimir olly-op",
-		Type: "prometheus",
-		// TODO make this a default when we replace the existing datasources
-		IsDefault: false,
+		Name:      "Mimir olly-op",
+		Type:      "prometheus",
+		IsDefault: true,
 		URL:       "http://mimir-gateway.mimir.svc/prometheus",
 		Access:    datasourceProxyAccessMode,
 		JSONData: map[string]interface{}{
