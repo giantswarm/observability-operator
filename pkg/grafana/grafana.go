@@ -26,10 +26,11 @@ var SharedOrg = Organization{
 // We need to use a custom name for now until we can replace the existing datasources.
 var defaultDatasources = []Datasource{
 	{
-		Name:   "Alertmanager olly-op",
-		Type:   "alertmanager",
-		URL:    "http://alertmanager-operated.monitoring.svc:9093",
-		Access: datasourceProxyAccessMode,
+		Name:      "Alertmanager olly-op",
+		Type:      "alertmanager",
+		IsDefault: true,
+		URL:       "http://alertmanager-operated.monitoring.svc:9093",
+		Access:    datasourceProxyAccessMode,
 		JSONData: map[string]interface{}{
 			"handleGrafanaManagedAlerts": false,
 			"implementation":             "prometheus",
@@ -140,7 +141,6 @@ func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64
 
 func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
-
 	// TODO using a serviceaccount later would be better as they are scoped to an organization
 
 	// Switch context to the current org
@@ -220,10 +220,8 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 		}
 	}
 	logger.Info("datasources updated")
-	
-	datasources := append(datasourcesToCreate, datasourcesToUpdate...)
 
-	return datasources, nil
+	return append(datasourcesToCreate, datasourcesToUpdate...), nil
 }
 
 func listDatasourcesForOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([]Datasource, error) {

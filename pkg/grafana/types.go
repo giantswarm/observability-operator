@@ -17,7 +17,7 @@ type Datasource struct {
 }
 
 func (d Datasource) withID(id int64) Datasource {
-	datasource.ID = id
+	d.ID = id
 	return d
 }
 
@@ -28,18 +28,17 @@ func (d Datasource) buildJSONData() map[string]interface{} {
 
 	// Add tenant header name
 	d.JSONData["httpHeaderName1"] = "X-Scope-OrgID"
-	
+
 	return d.JSONData
 }
 
 func (d Datasource) buildSecureJSONData(organization Organization) map[string]string {
+	tenant := organization.TenantID
 	if d.Name != "Loki" {
-		return map[string]string{
-			// We do not support multi-tenancy for Mimir yet
-			"httpHeaderValue1": "anonymous",
-		}
+		// We do not support multi-tenancy for Mimir yet
+		tenant = "anonymous"
 	}
 	return map[string]string{
-		"httpHeaderValue1": organization.TenantID,
+		"httpHeaderValue1": tenant,
 	}
 }
