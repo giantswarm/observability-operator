@@ -139,7 +139,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, nil
 	}
 
-	// Configure shared the organization in Grafana
+	// Configure the shared organization in Grafana
 	if err := r.configureSharedOrg(ctx); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
