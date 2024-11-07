@@ -17,15 +17,8 @@ type Datasource struct {
 }
 
 func (d Datasource) withID(id int64) Datasource {
-	return Datasource{
-		ID:        id,
-		Name:      d.Name,
-		IsDefault: d.IsDefault,
-		Type:      d.Type,
-		URL:       d.URL,
-		Access:    d.Access,
-		JSONData:  d.buildJSONData(),
-	}
+	datasource.ID = id
+	return d
 }
 
 func (d Datasource) buildJSONData() map[string]interface{} {
