@@ -36,6 +36,9 @@ prometheus.remote_write "default" {
     name = env("{{ .RemoteWriteNameEnvVarName }}")
     enable_http2 = false
     remote_timeout = "{{ .RemoteWriteTimeout }}"
+    headers = {
+      "X-Scope-OrgID" = "giantswarm",
+    }
     basic_auth {
       username = env("{{ .RemoteWriteBasicAuthUsernameEnvVarName }}")
       password = env("{{ .RemoteWriteBasicAuthPasswordEnvVarName }}")
