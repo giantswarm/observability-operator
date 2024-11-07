@@ -229,7 +229,6 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 		TenantID: grafanaOrganization.Name,
 	}
 
-	currentDatasources := make([]grafana.Datasource, len(grafanaOrganization.Status.DataSources))
 	for i, datasource := range grafanaOrganization.Status.DataSources {
 		currentDatasources[i] = grafana.Datasource{
 			ID:   datasource.ID,
