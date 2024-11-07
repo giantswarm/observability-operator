@@ -16,10 +16,11 @@ type GrafanaPodRecreatedPredicate struct {
 func (GrafanaPodRecreatedPredicate) Create(e event.CreateEvent) bool {
 	if e.Object != nil &&
 		strings.Contains(e.Object.GetName(), "grafana") &&
-		e.Object.GetNamespace() == "monitoring" &&
+		e.Object.GetNamespace() == "monitoring" {
 		// Ensure we don't trigger on the grafana permissions pods or grafana multi-tenant proxy
-		e.Object.GetLabels()["app.kubernetes.io/instance"] == "grafana" {
-		return true
+		if l := e.Object.GetLabels(); l != nil && l["app.kubernetes.io/instance"] == "grafana" {
+			return true
+		}
 	}
 
 	return false
