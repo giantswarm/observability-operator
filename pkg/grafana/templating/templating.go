@@ -31,7 +31,8 @@ func init() {
 
 func GenerateGrafanaConfiguration(organizations []v1alpha1.GrafanaOrganization) (string, error) {
 	var orgMappings []string
-	orgMappings = append(orgMappings, fmt.Sprintf(`"*:%s:%s"`, grafana.SharedOrg.Name, grafanaEditorRole))
+	// TODO: We need to be admins to be able to see the private dashboards, make this editor once https://github.com/giantswarm/roadmap/issues/3696 is done.
+	orgMappings = append(orgMappings, fmt.Sprintf(`"*:%s:%s"`, grafana.SharedOrg.Name, grafanaAdminRole))
 	for _, organization := range organizations {
 		rbac := organization.Spec.RBAC
 		organizationName := organization.Spec.DisplayName
