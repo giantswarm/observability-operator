@@ -181,7 +181,7 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 	return nil
 }
 
-func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (err error) {
 	logger := log.FromContext(ctx)
 	// Create or update organization in Grafana
 	var organization = grafana.Organization{
