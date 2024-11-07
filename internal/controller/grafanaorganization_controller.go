@@ -229,7 +229,6 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 		TenantID: grafanaOrganization.Name,
 	}
 
-			ID:   datasource.ID,
 			Name: datasource.Name,
 		}
 	}
