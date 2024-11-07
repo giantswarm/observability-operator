@@ -190,7 +190,6 @@ func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context
 		TenantID: grafanaOrganization.Name,
 	}
 
-	var err error
 	if organization.ID == 0 {
 		// if the CR doesn't have an orgID, create the organization in Grafana
 		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, organization)
