@@ -321,6 +321,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 	_, err = controllerutil.CreateOrPatch(ctx, r.Client, grafanaConfig, func() error {
 		organizations := organizationList.Items
 		// We always sort the organizations to ensure the order is deterministic and the configmap is stable
+		// in order to prevent grafana to restarts.
 		slices.SortFunc(organizations, func(i, j v1alpha1.GrafanaOrganization) int {
 			return strings.Compare(i.Name, j.Name)
 		})
