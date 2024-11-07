@@ -229,7 +229,6 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 		TenantID: grafanaOrganization.Name,
 	}
 
-	}
 
 	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, organization)
 	if err != nil {
