@@ -22,14 +22,14 @@ func (d Datasource) withID(id int64) Datasource {
 }
 
 func (d Datasource) buildJSONData() map[string]interface{} {
-	copy := make(map[string]interface{})
-	// Copy from the original map to the target map
-	for key, value := range d.JSONData {
-		copy[key] = value
+	if d.JSONData == nil {
+		d.JSONData = make(map[string]interface{})
 	}
+
 	// Add tenant header name
-	copy["httpHeaderName1"] = "X-Scope-OrgID"
-	return copy
+	d.JSONData["httpHeaderName1"] = "X-Scope-OrgID"
+	
+	return d.JSONData
 }
 
 func (d Datasource) buildSecureJSONData(organization Organization) map[string]string {
