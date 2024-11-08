@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add Grafana Organization creation logic in reconciler.
+- Add creation and update of Grafana organizations.
+- Add configuration of the Grafana org_mapping via user-values.
+
+### Fixed
+
+- Disable crd installation from alloy-metrics as this is causing issues with the new v29 releases.
+- Fix failing ATS tests by upgrading python testing dependencies and creating necessary secrets.
+
+## [0.8.1] - 2024-10-17
+
 ### Fixed
 
 - Fix `flag redefined` error
@@ -152,7 +165,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/giantswarm/observability-operator/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/giantswarm/observability-operator/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/giantswarm/observability-operator/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/giantswarm/observability-operator/compare/v0.6.1...v0.7.0

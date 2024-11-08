@@ -45,6 +45,26 @@ spec:
             secretKeyRef:
               name: {{ include "resource.default.name" . }}-credentials
               key: opsgenieApiKey
+        - name: GRAFANA_ADMIN_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: grafana
+              key: admin-user
+        - name: GRAFANA_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: grafana
+              key: admin-password
+        - name: GRAFANA_TLS_CERT_FILE
+          valueFrom:
+            secretKeyRef:
+              name: grafana-tls
+              key: tls.crt
+        - name: GRAFANA_TLS_KEY_FILE
+          valueFrom:
+            secretKeyRef:
+              name: grafana-tls
+              key: tls.key
         livenessProbe:
           httpGet:
             path: /healthz
