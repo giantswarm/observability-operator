@@ -5,7 +5,7 @@ grafana:
       apiVersion: 1
       datasources:
       {{ range .Organizations }}
-      - name: Alertmanager olly-op
+      - name: Alertmanager olly-op 2
         type: alertmanager
         access: proxy
         orgId: {{ .ID }}
@@ -21,7 +21,7 @@ grafana:
           httpHeaderName1: X-Scope-OrgID
         secureJsonData:
           httpHeaderValue1: "anonymous"
-      - name: Mimir olly-op
+      - name: Mimir olly-op 2
         type: prometheus
         access: proxy
         orgId: {{ .ID }}
@@ -40,7 +40,7 @@ grafana:
           httpHeaderName1: X-Scope-OrgID
         secureJsonData:
           httpHeaderValue1: "anonymous"
-      - name: Loki olly-op
+      - name: Loki olly-op 2
         type: loki
         access: proxy
         orgId: {{ .ID }}
