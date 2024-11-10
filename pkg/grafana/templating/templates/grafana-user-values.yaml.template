@@ -1,4 +1,59 @@
 grafana:
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      {{ range .Organizations }}
+      - name: Alertmanager olly-op
+        type: alertmanager
+        access: proxy
+        orgId: {{ .ID }}
+        url: http://alertmanager-operated.monitoring.svc:9093
+        basicAuth: false
+        withCredentials: false
+        isDefault: false
+        editable: false
+        version: 
+        jsonData:
+          handleGrafanaManagedAlerts: false
+          implementation: prometheus
+          httpHeaderName1: X-Scope-OrgID
+        secureJsonData:
+          httpHeaderValue1: "anonymous"
+      - name: Mimir olly-op
+        type: prometheus
+        access: proxy
+        orgId: {{ .ID }}
+        url: http://mimir-gateway.mimir.svc/prometheus
+        basicAuth: false
+        withCredentials: false
+        isDefault: true
+        editable: false
+        version: 1
+        jsonData:
+          cacheLevel: None
+          httpMethod: POST
+          mimirVersion: 2.14.0
+          prometheusType: Mimir
+          timeInterval: 60s
+          httpHeaderName1: X-Scope-OrgID
+        secureJsonData:
+          httpHeaderValue1: "anonymous"
+      - name: Loki olly-op
+        type: loki
+        access: proxy
+        orgId: {{ .ID }}
+        url: http://loki-gateway.loki.svc
+        basicAuth: false
+        withCredentials: false
+        isDefault: false
+        editable: false
+        version: 1
+        jsonData:
+          httpHeaderName1: X-Scope-OrgID
+        secureJsonData:
+          httpHeaderValue1: {{.TenantID }}
+      {{ end }}
   grafana.ini:
     auth:
       disable_signout_menu: false
