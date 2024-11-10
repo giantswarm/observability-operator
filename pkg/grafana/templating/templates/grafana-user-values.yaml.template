@@ -1,18 +1,17 @@
 grafana:
-  // We need to use a custom name (with olly-op) for now until we can replace the existing datasources.
   datasources:
     datasources.yaml:
       apiVersion: 1
       datasources:
       {{ range .Organizations }}
-      - name: Alertmanager olly-op
+      - name: Alertmanager olly-op 2
         type: alertmanager
         access: proxy
         orgId: {{ .ID }}
         url: http://alertmanager-operated.monitoring.svc:9093
         basicAuth: false
         withCredentials: false
-        isDefault: true
+        isDefault: false
         editable: false
         version: 
         jsonData:
@@ -21,7 +20,7 @@ grafana:
           httpHeaderName1: X-Scope-OrgID
         secureJsonData:
           httpHeaderValue1: "anonymous"
-      - name: Mimir olly-op
+      - name: Mimir olly-op 2
         type: prometheus
         access: proxy
         orgId: {{ .ID }}
@@ -40,14 +39,14 @@ grafana:
           httpHeaderName1: X-Scope-OrgID
         secureJsonData:
           httpHeaderValue1: "anonymous"
-      - name: Loki olly-op
+      - name: Loki olly-op 2
         type: loki
         access: proxy
         orgId: {{ .ID }}
         url: http://loki-gateway.loki.svc
         basicAuth: false
         withCredentials: false
-        isDefault: true
+        isDefault: false
         editable: false
         version: 1
         jsonData:
