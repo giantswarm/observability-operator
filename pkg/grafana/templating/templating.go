@@ -49,10 +49,22 @@ func GenerateGrafanaConfiguration(organizations []v1alpha1.GrafanaOrganization) 
 
 	orgMapping := strings.Join(orgMappings, " ")
 
+	provisionedOrganizations := make([]grafana.Organization, len(organizations)+1)
+	provisionedOrganizations[0] = grafana.SharedOrg
+	for i, org := range organizations {
+		provisionedOrganizations[i+1] = grafana.Organization{
+			ID:       org.Status.OrgID,
+			Name:     org.Spec.DisplayName,
+			TenantID: org.Name,
+		}
+	}
+
 	data := struct {
-		OrgMapping string
+		OrgMapping    string
+		Organizations []grafana.Organization
 	}{
-		OrgMapping: orgMapping,
+		OrgMapping:    orgMapping,
+		Organizations: provisionedOrganizations,
 	}
 
 	var values bytes.Buffer

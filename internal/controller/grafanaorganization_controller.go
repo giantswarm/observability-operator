@@ -149,11 +149,6 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	// Update the datasources in the CR's status
-	if err := r.configureDatasources(ctx, grafanaOrganization); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-
 	// Configure Grafana RBAC
 	if err := r.configureGrafana(ctx); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
@@ -170,11 +165,6 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 	logger.Info("configuring shared organization")
 	if _, err := grafana.UpdateOrganization(ctx, r.GrafanaAPI, sharedOrg); err != nil {
 		logger.Error(err, "failed to rename shared org")
-		return errors.WithStack(err)
-	}
-
-	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg); err != nil {
-		logger.Info("failed to configure datasources for shared org")
 		return errors.WithStack(err)
 	}
 
@@ -213,43 +203,6 @@ func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context
 		}
 		logger.Info("updated orgID in the grafanaOrganization status")
 	}
-
-	return nil
-}
-
-func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
-	logger := log.FromContext(ctx)
-
-	logger.Info("configuring data sources")
-
-	// Create or update organization in Grafana
-	var organization = grafana.Organization{
-		ID:       grafanaOrganization.Status.OrgID,
-		Name:     grafanaOrganization.Spec.DisplayName,
-		TenantID: grafanaOrganization.Name,
-	}
-
-	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, organization)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	var desiredDatasources = make([]v1alpha1.DataSource, len(datasources))
-	for i, datasource := range datasources {
-		desiredDatasources[i] = v1alpha1.DataSource{
-			ID:   datasource.ID,
-			Name: datasource.Name,
-		}
-	}
-
-	logger.Info("updating datasources in the grafanaOrganization status")
-	grafanaOrganization.Status.DataSources = desiredDatasources
-	if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
-		logger.Error(err, "failed to update the the grafanaOrganization status with datasources information")
-		return errors.WithStack(err)
-	}
-	logger.Info("updated datasources in the grafanaOrganization status")
-	logger.Info("configured data sources")
 
 	return nil
 }
