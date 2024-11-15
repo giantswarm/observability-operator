@@ -234,16 +234,16 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	var desiredDatasources = make([]v1alpha1.DataSource, len(datasources))
+	var configuredDatasources = make([]v1alpha1.DataSource, len(datasources))
 	for i, datasource := range datasources {
-		desiredDatasources[i] = v1alpha1.DataSource{
+		configuredDatasources[i] = v1alpha1.DataSource{
 			ID:   datasource.ID,
 			Name: datasource.Name,
 		}
 	}
 
 	logger.Info("updating datasources in the grafanaOrganization status")
-	grafanaOrganization.Status.DataSources = desiredDatasources
+	grafanaOrganization.Status.DataSources = configuredDatasources
 	if err := r.Status().Update(ctx, grafanaOrganization); err != nil {
 		logger.Error(err, "failed to update the the grafanaOrganization status with datasources information")
 		return errors.WithStack(err)
