@@ -185,7 +185,7 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (err error) {
 	logger := log.FromContext(ctx)
 	// Create or update organization in Grafana
-	var organization = grafana.Organization{
+	var organization = &grafana.Organization{
 		ID:       grafanaOrganization.Status.OrgID,
 		Name:     grafanaOrganization.Spec.DisplayName,
 		TenantID: grafanaOrganization.Name,
@@ -193,9 +193,9 @@ func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context
 
 	if organization.ID == 0 {
 		// if the CR doesn't have an orgID, create the organization in Grafana
-		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, organization)
+		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, *organization)
 	} else {
-		organization, err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, organization)
+		organization, err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, *organization)
 	}
 
 	if err != nil {
