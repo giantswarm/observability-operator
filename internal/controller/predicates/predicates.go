@@ -3,6 +3,7 @@ package predicates
 import (
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -13,17 +14,8 @@ type GrafanaPodRecreatedPredicate struct {
 	predicate.Funcs
 }
 
-// When a grafana pod is recreated, we want to trigger a reconciliation.
 func (GrafanaPodRecreatedPredicate) Create(e event.CreateEvent) bool {
-	if e.Object != nil &&
-		strings.Contains(e.Object.GetName(), "grafana") &&
-		e.Object.GetNamespace() == "monitoring" {
-		// Ensure we don't trigger on the grafana permissions pods or grafana multi-tenant proxy
-		if l := e.Object.GetLabels(); l != nil && l["app.kubernetes.io/instance"] == "grafana" {
-			return true
-		}
-	}
-
+	// Do nothing as we want to act on Grafana pod creation event only.
 	return false
 }
 
@@ -32,8 +24,42 @@ func (GrafanaPodRecreatedPredicate) Delete(e event.DeleteEvent) bool {
 	return false
 }
 
+// When a grafana pod becomes ready, we want to trigger a reconciliation.
 func (GrafanaPodRecreatedPredicate) Update(e event.UpdateEvent) bool {
-	// Do nothing as we want to act on Grafana pod creation event only.
+	if e.ObjectOld == nil || e.ObjectNew == nil {
+		return false
+	}
+	newPod, ok := e.ObjectNew.(*corev1.Pod)
+	if !ok {
+		return false
+	}
+	oldPod, ok := e.ObjectOld.(*corev1.Pod)
+	if !ok {
+		return false
+	}
+	if isGrafanaPod(oldPod) && isGrafanaPod(newPod) {
+		return !isPodReady(oldPod) && isPodReady(newPod)
+
+	}
+	return false
+}
+
+// isGrafanaPod checks if the object is a Grafana pod.
+func isGrafanaPod(pod *corev1.Pod) bool {
+	return pod != nil &&
+		strings.HasPrefix(pod.GetName(), "grafana") &&
+		pod.GetNamespace() == "monitoring" &&
+		pod.GetLabels() != nil &&
+		pod.GetLabels()["app.kubernetes.io/instance"] == "grafana"
+}
+
+// isPodReady checks if the pod is ready by inspecting its conditions.
+func isPodReady(pod *corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
 	return false
 }
 
