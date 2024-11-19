@@ -26,22 +26,14 @@ func (GrafanaPodRecreatedPredicate) Delete(e event.DeleteEvent) bool {
 
 // When a grafana pod becomes ready, we want to trigger a reconciliation.
 func (GrafanaPodRecreatedPredicate) Update(e event.UpdateEvent) bool {
-	if e.ObjectOld == nil || e.ObjectNew == nil {
+	if e.ObjectNew == nil {
 		return false
 	}
 	newPod, ok := e.ObjectNew.(*corev1.Pod)
 	if !ok {
 		return false
 	}
-	oldPod, ok := e.ObjectOld.(*corev1.Pod)
-	if !ok {
-		return false
-	}
-	if isGrafanaPod(oldPod) && isGrafanaPod(newPod) {
-		return !isPodReady(oldPod) && isPodReady(newPod)
-
-	}
-	return false
+	return isGrafanaPod(newPod) && isPodReady(newPod)
 }
 
 // isGrafanaPod checks if the object is a Grafana pod.
