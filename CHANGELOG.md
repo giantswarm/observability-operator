@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix exclusion check for mimir datasource to use the datasource type instead of the name.
+
 ## [0.9.0] - 2024-11-20
 
 ### Added
