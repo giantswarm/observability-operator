@@ -288,6 +288,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&controller.DashboardReconciler{
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		GrafanaAPI: grafanaAPI,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Dashboard")
+		os.Exit(1)
+	}
+
 	if err = (&controller.GrafanaOrganizationReconciler{
 		Client:     mgr.GetClient(),
 		Scheme:     mgr.GetScheme(),
