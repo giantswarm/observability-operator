@@ -26,8 +26,7 @@ func TestAlertmanagerConfigLoad(t *testing.T) {
 		//templatePath           = "notification-template.tmpl"
 
 		// Mimir Alertmanager URL and path
-		alertmanagerURL     = "http://localhost:8080"
-		alertmanagerAPIPath = "/api/v1/alerts"
+		alertmanagerURL = "http://localhost:8080/api/v1/alerts"
 
 		tenandID = "anonymous"
 	)
@@ -89,7 +88,7 @@ func TestAlertmanagerConfigLoad(t *testing.T) {
 	}
 
 	// Send request to Alertmanager API
-	req, err := http.NewRequest("POST", alertmanagerURL+alertmanagerAPIPath, bytes.NewBuffer(data))
+	req, err := http.NewRequest("POST", alertmanagerURL, bytes.NewBuffer(data))
 	//req, err := http.NewRequest("DELETE", "http://localhost:8080/api/v1/alerts", nil)
 	if err != nil {
 		t.Fatalf("Error creating request: %v", err)
