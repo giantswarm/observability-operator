@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package alertmanager
 
 import (
@@ -23,7 +26,7 @@ type configCompat struct {
 func TestAlertmanagerConfigLoad(t *testing.T) {
 	const (
 		//alertmanagerConfigPath = "alertmanager.yaml"
-		//templatePath           = "notification-template.tmpl"
+		templatePath = "notification-template.tmpl"
 
 		// Mimir Alertmanager URL and path
 		alertmanagerURL = "http://localhost:8080/api/v1/alerts"
