@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add Mimir Alertmanager datasource
 
+### Changed
+
+- moved grafanaAPI from common resource to per-reconciler resource.
+
 ## [0.9.1] - 2024-11-21
 
 ### Fixed

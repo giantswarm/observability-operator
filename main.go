@@ -282,16 +282,12 @@ func main() {
 		Cert: os.Getenv(grafanaTLSCertFileEnvVar),
 		Key:  os.Getenv(grafanaTLSKeyFileEnvVar),
 	}
-	grafanaAPI, err := client.GenerateGrafanaClient(grafanaAdminCredentials, grafanaTLSConfig)
-	if err != nil {
-		setupLog.Error(err, "unable to create grafana client")
-		os.Exit(1)
-	}
 
 	if err = (&controller.GrafanaOrganizationReconciler{
-		Client:     mgr.GetClient(),
-		Scheme:     mgr.GetScheme(),
-		GrafanaAPI: grafanaAPI,
+		Client:                  mgr.GetClient(),
+		Scheme:                  mgr.GetScheme(),
+		GrafanaAdminCredentials: grafanaAdminCredentials,
+		GrafanaTLSConfig:        grafanaTLSConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GrafanaOrganization")
 		os.Exit(1)
