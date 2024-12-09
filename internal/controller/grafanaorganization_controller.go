@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -34,7 +35,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/giantswarm/observability-operator/pkg/config"
+	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller/predicates"
@@ -47,6 +52,43 @@ type GrafanaOrganizationReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
+}
+
+func SetupGrafanaOrganizationReconciler(mgr manager.Manager, environment config.Environment) error {
+	// Generate Grafana client
+	// Get grafana admin-password and admin-user
+	grafanaAdminCredentials := grafanaclient.AdminCredentials{
+		Username: environment.GrafanaAdminUsername,
+		Password: environment.GrafanaAdminPassword,
+	}
+	if grafanaAdminCredentials.Username == "" {
+		return fmt.Errorf("GrafanaAdminUsername not set: %q", environment.GrafanaAdminUsername)
+	}
+	if grafanaAdminCredentials.Password == "" {
+		return fmt.Errorf("GrafanaAdminPassword not set: %q", environment.GrafanaAdminPassword)
+	}
+
+	grafanaTLSConfig := grafanaclient.TLSConfig{
+		Cert: environment.GrafanaTLSCertFile,
+		Key:  environment.GrafanaTLSKeyFile,
+	}
+	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(grafanaAdminCredentials, grafanaTLSConfig)
+	if err != nil {
+		return fmt.Errorf("unable to create grafana client: %w", err)
+	}
+
+	r := &GrafanaOrganizationReconciler{
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		GrafanaAPI: grafanaAPI,
+	}
+
+	err = r.SetupWithManager(mgr)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations,verbs=get;list;watch;create;update;patch;delete

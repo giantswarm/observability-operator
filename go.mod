@@ -6,6 +6,7 @@ toolchain go1.23.4
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
+	github.com/Netflix/go-env v0.1.2
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/giantswarm/apiextensions-application v0.6.2
 	github.com/go-logr/logr v1.4.2
