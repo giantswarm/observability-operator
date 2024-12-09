@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add Mimir Alertmanager datasource
 
+### Changed
+
+- Removed organization OwnerReference on grafana-user-values configmap, this fixes an issue where the configmap is removed when the last organization is deleted which prevent Grafana from starting.
+
 ## [0.9.1] - 2024-11-21
 
 ### Fixed
