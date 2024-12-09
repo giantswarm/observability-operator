@@ -37,6 +37,17 @@ var defaultDatasources = []Datasource{
 		},
 	},
 	{
+		Name:      "Mimir Alertmanager",
+		Type:      "alertmanager",
+		IsDefault: false,
+		URL:       "http://mimir-alertmanager.mimir.svc:8080",
+		Access:    datasourceProxyAccessMode,
+		JSONData: map[string]interface{}{
+			"handleGrafanaManagedAlerts": false,
+			"implementation":             "mimir",
+		},
+	},
+	{
 		Name:      "Mimir olly-op",
 		Type:      "prometheus",
 		IsDefault: true,

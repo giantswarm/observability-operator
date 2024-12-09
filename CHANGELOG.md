@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add Mimir Alertmanager datasource
+
 ## [0.9.1] - 2024-11-21
 
 ### Fixed
