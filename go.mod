@@ -9,7 +9,6 @@ require (
 	github.com/Netflix/go-env v0.1.2
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/giantswarm/apiextensions-application v0.6.2
-	github.com/giantswarm/prometheus-meta-operator/v2 v2.4.1-0.20241205182541-c7a492eb2f8f
 	github.com/go-logr/logr v1.4.2
 	github.com/grafana/grafana-openapi-client-go v0.0.0-20241126111151-59d2d35e24eb
 	github.com/onsi/ginkgo/v2 v2.22.0
@@ -68,7 +67,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.30.0
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
-	golang.org/x/net v0.32.0
+	golang.org/x/net v0.32.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
@@ -90,21 +89,12 @@ require (
 require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/semver/v3 v3.3.0 // indirect
-	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go v1.50.8 // indirect
-	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
-	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
-	github.com/giantswarm/backoff v1.0.0 // indirect
-	github.com/giantswarm/k8sclient/v7 v7.2.0 // indirect
-	github.com/giantswarm/microerror v0.4.1 // indirect
-	github.com/giantswarm/micrologger v1.1.1 // indirect
-	github.com/giantswarm/versionbundle v1.1.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
-	github.com/go-logfmt/logfmt v0.6.0 // indirect
+	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/analysis v0.23.0 // indirect
 	github.com/go-openapi/errors v0.22.0 // indirect
@@ -113,7 +103,6 @@ require (
 	github.com/go-openapi/spec v0.21.0 // indirect
 	github.com/go-openapi/strfmt v0.23.0 // indirect
 	github.com/go-openapi/validate v0.24.0 // indirect
-	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
@@ -133,7 +122,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	gopkg.in/resty.v1 v1.12.0 // indirect
 )
 
 replace (

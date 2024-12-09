@@ -11,10 +11,7 @@ type Config struct {
 	ProbeAddr            string
 	SecureMetrics        bool
 	EnableHTTP2          bool
-
-	AlertmanagerSecretName string
-	AlertmanagerURL        string
-	Namespace              string
+	Namespace            string
 
 	ManagementCluster common.ManagementCluster
 
