@@ -332,7 +332,8 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 			return errors.WithStack(err)
 		}
 
-		// cleanup owner references from the config map - TODO: to be removed for next release
+		// TODO: to be removed for next release
+		// cleanup owner references from the config map, see https://github.com/giantswarm/observability-operator/pull/183
 		for _, organization := range organizations {
 			// nolint:errcheck,gosec // ignore errors, owner references are probably already gone
 			controllerutil.RemoveOwnerReference(&organization, grafanaConfig, r.Scheme)
