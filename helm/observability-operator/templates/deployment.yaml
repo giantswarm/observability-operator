@@ -31,11 +31,13 @@ spec:
         - --management-cluster-pipeline={{ $.Values.managementCluster.pipeline }}
         - --management-cluster-region={{ $.Values.managementCluster.region }}
         # Monitoring configuration
+        - --alertmanager-secret-name={{ include "alertmanager-secret.name" . }}
         - --monitoring-enabled={{ $.Values.monitoring.enabled }}
         - --monitoring-agent={{ $.Values.monitoring.agent }}
         - --monitoring-sharding-scale-up-series-count={{ $.Values.monitoring.sharding.scaleUpSeriesCount }}
         - --monitoring-sharding-scale-down-percentage={{ $.Values.monitoring.sharding.scaleDownPercentage }}
         - --monitoring-wal-truncate-frequency={{ $.Values.monitoring.wal.truncateFrequency }}
+        - --namespace={{ include "resource.default.namespace" . }}
         {{- if .Values.monitoring.prometheusVersion }}
         - --prometheus-version={{ $.Values.monitoring.prometheusVersion }}
         {{- end }}

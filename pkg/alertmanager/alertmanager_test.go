@@ -18,11 +18,6 @@ import (
 
 const alertmanagerAPIPath = "/api/v1/alerts"
 
-type configCompat struct {
-	TemplateFiles      map[string]string `yaml:"template_files"`
-	AlertmanagerConfig string            `yaml:"alertmanager_config"`
-}
-
 func TestAlertmanagerConfigLoad(t *testing.T) {
 	const (
 		//alertmanagerConfigPath = "alertmanager.yaml"

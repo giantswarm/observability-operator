@@ -103,6 +103,10 @@ func main() {
 	flag.StringVar(&conf.ManagementCluster.Region, "management-cluster-region", "",
 		"The region of the management cluster.")
 	// Monitoring configuration flags.
+	flag.StringVar(&conf.AlertmanagerSecretName, "alertmanager-secret-name", "",
+		"The name of the secret containing the Alertmanager configuration.")
+	flag.StringVar(&conf.Namespace, "namespace", "",
+		"The namespace where the observability-operator is running.")
 	flag.StringVar(&conf.Monitoring.MonitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
 		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
 	flag.BoolVar(&conf.Monitoring.Enabled, "monitoring-enabled", false,
