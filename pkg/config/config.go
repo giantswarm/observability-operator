@@ -16,3 +16,12 @@ type Config struct {
 
 	Monitoring monitoring.Config
 }
+
+type Environment struct {
+	GrafanaAdminUsername string `env:"GRAFANA_ADMIN_USERNAME,required=true"`
+	GrafanaAdminPassword string `env:"GRAFANA_ADMIN_PASSWORD,required=true"`
+	GrafanaTLSCertFile   string `env:"GRAFANA_TLS_CERT_FILE,required=true"`
+	GrafanaTLSKeyFile    string `env:"GRAFANA_TLS_KEY_FILE,required=true"`
+
+	OpsgenieApiKey string `env:"OPSGENIE_API_KEY,required=true"`
+}

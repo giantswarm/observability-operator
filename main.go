@@ -27,6 +27,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/Netflix/go-env"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -41,33 +42,17 @@ import (
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller"
-	"github.com/giantswarm/observability-operator/pkg/bundle"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/common/organization"
-	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/config"
-	"github.com/giantswarm/observability-operator/pkg/grafana/client"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 	//+kubebuilder:scaffold:imports
 )
 
 var (
-	conf config.Config
+	conf        config.Config
+	environment config.Environment
 
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
-)
-
-const (
-	grafanaAdminUsernameEnvVar = "GRAFANA_ADMIN_USERNAME" // #nosec G101
-	grafanaAdminPasswordEnvVar = "GRAFANA_ADMIN_PASSWORD" // #nosec G101
-	grafanaTLSCertFileEnvVar   = "GRAFANA_TLS_CERT_FILE"  // #nosec G101
-	grafanaTLSKeyFileEnvVar    = "GRAFANA_TLS_KEY_FILE"   // #nosec G101
-
-	opsgenieApiKeyEnvVar = "OPSGENIE_API_KEY" // #nosec G101
 )
 
 func init() {
@@ -90,6 +75,8 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&conf.EnableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+
+	// Management cluster configuration flags.
 	flag.StringVar(&conf.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
 		"The base domain of the management cluster.")
 	flag.StringVar(&conf.ManagementCluster.Customer, "management-cluster-customer", "",
@@ -102,6 +89,7 @@ func main() {
 		"The pipeline of the management cluster.")
 	flag.StringVar(&conf.ManagementCluster.Region, "management-cluster-region", "",
 		"The region of the management cluster.")
+
 	// Monitoring configuration flags.
 	flag.StringVar(&conf.Monitoring.MonitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
 		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
@@ -118,8 +106,16 @@ func main() {
 	opts := zap.Options{
 		Development: false,
 	}
+
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	// Load environment variables.
+	_, err := env.UnmarshalFromEnviron(&environment)
+	if err != nil {
+		setupLog.Error(err, "failed to unmarshal environment variables")
+		os.Exit(1)
+	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
@@ -174,86 +170,17 @@ func main() {
 	// Initialize event recorder.
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
-	var opsgenieApiKey = os.Getenv(opsgenieApiKeyEnvVar)
-	if opsgenieApiKey == "" {
-		setupLog.Error(nil, fmt.Sprintf("environment variable %s not set", opsgenieApiKeyEnvVar))
-		os.Exit(1)
-	}
-
-	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(opsgenieApiKey, conf.ManagementCluster)
+	// Setup controller for the Cluster resource.
+	err = controller.SetupClusterMonitoringReconciler(mgr, conf, environment)
 	if err != nil {
-		setupLog.Error(err, "unable to create heartbeat repository")
+		setupLog.Error(err, "unable to create controller", "controller", "ClusterMonitoringReconciler")
 		os.Exit(1)
 	}
 
-	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
-
-	prometheusAgentService := prometheusagent.PrometheusAgentService{
-		Client:                 mgr.GetClient(),
-		OrganizationRepository: organizationRepository,
-		PasswordManager:        password.SimpleManager{},
-		ManagementCluster:      conf.ManagementCluster,
-		MonitoringConfig:       conf.Monitoring,
-	}
-
-	alloyService := alloy.Service{
-		Client:                 mgr.GetClient(),
-		OrganizationRepository: organizationRepository,
-		PasswordManager:        password.SimpleManager{},
-		ManagementCluster:      conf.ManagementCluster,
-		MonitoringConfig:       conf.Monitoring,
-	}
-
-	mimirService := mimir.MimirService{
-		Client:            mgr.GetClient(),
-		PasswordManager:   password.SimpleManager{},
-		ManagementCluster: conf.ManagementCluster,
-	}
-
-	if err = (&controller.ClusterMonitoringReconciler{
-		Client:                     mgr.GetClient(),
-		ManagementCluster:          conf.ManagementCluster,
-		HeartbeatRepository:        heartbeatRepository,
-		PrometheusAgentService:     prometheusAgentService,
-		AlloyService:               alloyService,
-		MimirService:               mimirService,
-		MonitoringConfig:           conf.Monitoring,
-		BundleConfigurationService: bundle.NewBundleConfigurationService(mgr.GetClient(), conf.Monitoring),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
-		os.Exit(1)
-	}
-
-	// Generate Grafana client
-	// Get grafana admin-password and admin-user
-	grafanaAdminCredentials := client.AdminCredentials{
-		Username: os.Getenv(grafanaAdminUsernameEnvVar),
-		Password: os.Getenv(grafanaAdminPasswordEnvVar),
-	}
-	if grafanaAdminCredentials.Username == "" {
-		setupLog.Error(nil, fmt.Sprintf("environment variable %s not set", grafanaAdminUsernameEnvVar))
-		os.Exit(1)
-	}
-	if grafanaAdminCredentials.Password == "" {
-		setupLog.Error(nil, fmt.Sprintf("environment variable %s not set", grafanaAdminPasswordEnvVar))
-		os.Exit(1)
-	}
-	grafanaTLSConfig := client.TLSConfig{
-		Cert: os.Getenv(grafanaTLSCertFileEnvVar),
-		Key:  os.Getenv(grafanaTLSKeyFileEnvVar),
-	}
-	grafanaAPI, err := client.GenerateGrafanaClient(grafanaAdminCredentials, grafanaTLSConfig)
+	// Setup controller for the GrafanaOrganization resource.
+	err = controller.SetupGrafanaOrganizationReconciler(mgr, environment)
 	if err != nil {
-		setupLog.Error(err, "unable to create grafana client")
-		os.Exit(1)
-	}
-
-	if err = (&controller.GrafanaOrganizationReconciler{
-		Client:     mgr.GetClient(),
-		Scheme:     mgr.GetScheme(),
-		GrafanaAPI: grafanaAPI,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "GrafanaOrganization")
+		setupLog.Error(err, "unable to setup controller", "controller", "GrafanaOrganizationReconciler")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

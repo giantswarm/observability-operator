@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/blang/semver"
@@ -29,11 +30,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/common/organization"
+	"github.com/giantswarm/observability-operator/pkg/common/password"
+	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
@@ -62,6 +67,61 @@ type ClusterMonitoringReconciler struct {
 	*bundle.BundleConfigurationService
 	// MonitoringConfig is the configuration for the monitoring package.
 	MonitoringConfig monitoring.Config
+}
+
+func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config, environment config.Environment) error {
+	managerClient := mgr.GetClient()
+
+	if environment.OpsgenieApiKey == "" {
+		return fmt.Errorf("OpsgenieApiKey not set: %q", environment.OpsgenieApiKey)
+	}
+
+	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(environment.OpsgenieApiKey, conf.ManagementCluster)
+	if err != nil {
+		return fmt.Errorf("unable to create heartbeat repository: %w", err)
+	}
+
+	organizationRepository := organization.NewNamespaceRepository(managerClient)
+
+	prometheusAgentService := prometheusagent.PrometheusAgentService{
+		Client:                 managerClient,
+		OrganizationRepository: organizationRepository,
+		PasswordManager:        password.SimpleManager{},
+		ManagementCluster:      conf.ManagementCluster,
+		MonitoringConfig:       conf.Monitoring,
+	}
+
+	alloyService := alloy.Service{
+		Client:                 managerClient,
+		OrganizationRepository: organizationRepository,
+		PasswordManager:        password.SimpleManager{},
+		ManagementCluster:      conf.ManagementCluster,
+		MonitoringConfig:       conf.Monitoring,
+	}
+
+	mimirService := mimir.MimirService{
+		Client:            managerClient,
+		PasswordManager:   password.SimpleManager{},
+		ManagementCluster: conf.ManagementCluster,
+	}
+
+	r := &ClusterMonitoringReconciler{
+		Client:                     managerClient,
+		ManagementCluster:          conf.ManagementCluster,
+		HeartbeatRepository:        heartbeatRepository,
+		PrometheusAgentService:     prometheusAgentService,
+		AlloyService:               alloyService,
+		MimirService:               mimirService,
+		MonitoringConfig:           conf.Monitoring,
+		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, conf.Monitoring),
+	}
+
+	err = r.SetupWithManager(mgr)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
