@@ -332,7 +332,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 			return errors.WithStack(err)
 		}
 
-		// cleanup owner references from the config map - to be removed for next release
+		// cleanup owner references from the config map - TODO: to be removed for next release
 		for _, organization := range organizations {
 			err = controllerutil.RemoveOwnerReference(&organization, grafanaConfig, r.Scheme)
 			if err != nil {
