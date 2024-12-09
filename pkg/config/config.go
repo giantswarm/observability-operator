@@ -15,6 +15,8 @@ type Config struct {
 	ManagementCluster common.ManagementCluster
 
 	Monitoring monitoring.Config
+
+	Environment Environment
 }
 
 type Environment struct {

@@ -69,14 +69,14 @@ type ClusterMonitoringReconciler struct {
 	MonitoringConfig monitoring.Config
 }
 
-func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config, environment config.Environment) error {
+func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) error {
 	managerClient := mgr.GetClient()
 
-	if environment.OpsgenieApiKey == "" {
-		return fmt.Errorf("OpsgenieApiKey not set: %q", environment.OpsgenieApiKey)
+	if conf.Environment.OpsgenieApiKey == "" {
+		return fmt.Errorf("OpsgenieApiKey not set: %q", conf.Environment.OpsgenieApiKey)
 	}
 
-	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(environment.OpsgenieApiKey, conf.ManagementCluster)
+	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(conf.Environment.OpsgenieApiKey, conf.ManagementCluster)
 	if err != nil {
 		return fmt.Errorf("unable to create heartbeat repository: %w", err)
 	}

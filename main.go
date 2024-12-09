@@ -48,8 +48,7 @@ import (
 )
 
 var (
-	conf        config.Config
-	environment config.Environment
+	conf config.Config
 
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
@@ -111,7 +110,7 @@ func main() {
 	flag.Parse()
 
 	// Load environment variables.
-	_, err := env.UnmarshalFromEnviron(&environment)
+	_, err := env.UnmarshalFromEnviron(&conf.Environment)
 	if err != nil {
 		setupLog.Error(err, "failed to unmarshal environment variables")
 		os.Exit(1)
@@ -171,14 +170,14 @@ func main() {
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
 	// Setup controller for the Cluster resource.
-	err = controller.SetupClusterMonitoringReconciler(mgr, conf, environment)
+	err = controller.SetupClusterMonitoringReconciler(mgr, conf)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterMonitoringReconciler")
 		os.Exit(1)
 	}
 
 	// Setup controller for the GrafanaOrganization resource.
-	err = controller.SetupGrafanaOrganizationReconciler(mgr, environment)
+	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf.Environment)
 	if err != nil {
 		setupLog.Error(err, "unable to setup controller", "controller", "GrafanaOrganizationReconciler")
 		os.Exit(1)
