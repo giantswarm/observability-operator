@@ -126,43 +126,14 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	// Note: Finalizers in general can only be added when the deletionTimestamp is not set.
 	if !controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
-		// We use a patch rather than an update to avoid conflicts when multiple controllers are adding their finalizer to the ClusterCR
-		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-		logger.Info("adding finalizer", "finalizer", monitoring.MonitoringFinalizer)
-		patchHelper, err := patch.NewHelper(cluster, r.Client)
-		if err != nil {
-			return ctrl.Result{}, errors.WithStack(err)
-		}
-		controllerutil.AddFinalizer(cluster, monitoring.MonitoringFinalizer)
-		if err := patchHelper.Patch(ctx, cluster); err != nil {
-			logger.Error(err, "failed to add finalizer", "finalizer", monitoring.MonitoringFinalizer)
-			return ctrl.Result{}, errors.WithStack(err)
-		}
-		logger.Info("added finalizer", "finalizer", monitoring.MonitoringFinalizer)
-		return ctrl.Result{}, nil
+		return r.addFinalizer(ctx, cluster)
 	}
 
 	// Management cluster specific configuration
 	if cluster.Name == r.ManagementCluster.Name {
-		// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
-		if r.MonitoringConfig.Enabled {
-			err = r.HeartbeatRepository.CreateOrUpdate(ctx)
-			if err != nil {
-				logger.Error(err, "failed to create or update heartbeat")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-			}
-
-			err = r.MimirService.ConfigureMimir(ctx)
-			if err != nil {
-				logger.Error(err, "failed to configure mimir")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-			}
-		} else {
-			err = r.tearDown(ctx)
-			if err != nil {
-				logger.Error(err, "failed to tear down the monitoring stack")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-			}
+		result := r.reconcileManagementCluster(ctx)
+		if result != nil {
+			return *result, nil
 		}
 	}
 
@@ -257,22 +228,79 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// We get the latest state of the object to avoid race conditions.
 		// Finalizer handling needs to come last.
-		// We use a patch rather than an update to avoid conflicts when multiple controllers are removing their finalizer from the ClusterCR
-		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-		logger.Info("removing finalizer", "finalizer", monitoring.MonitoringFinalizer)
-		patchHelper, err := patch.NewHelper(cluster, r.Client)
+		err = r.removeFinalizer(ctx, cluster)
 		if err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}
-
-		controllerutil.RemoveFinalizer(cluster, monitoring.MonitoringFinalizer)
-		if err := patchHelper.Patch(ctx, cluster); err != nil {
-			logger.Error(err, "failed to remove finalizer, requeuing", "finalizer", monitoring.MonitoringFinalizer)
-			return ctrl.Result{}, errors.WithStack(err)
-		}
-		logger.Info("removed finalizer", "finalizer", monitoring.MonitoringFinalizer)
 	}
+
 	return ctrl.Result{}, nil
+}
+
+func (r *ClusterMonitoringReconciler) addFinalizer(ctx context.Context, cluster *clusterv1.Cluster) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	// We use a patch rather than an update to avoid conflicts when multiple controllers are adding their finalizer to the ClusterCR
+	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
+	logger.Info("adding finalizer", "finalizer", monitoring.MonitoringFinalizer)
+	patchHelper, err := patch.NewHelper(cluster, r.Client)
+	if err != nil {
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+	controllerutil.AddFinalizer(cluster, monitoring.MonitoringFinalizer)
+	if err := patchHelper.Patch(ctx, cluster); err != nil {
+		logger.Error(err, "failed to add finalizer", "finalizer", monitoring.MonitoringFinalizer)
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+	logger.Info("added finalizer", "finalizer", monitoring.MonitoringFinalizer)
+	return ctrl.Result{}, nil
+}
+
+func (r *ClusterMonitoringReconciler) removeFinalizer(ctx context.Context, cluster *clusterv1.Cluster) error {
+	logger := log.FromContext(ctx)
+
+	// We use a patch rather than an update to avoid conflicts when multiple controllers are removing their finalizer from the ClusterCR
+	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
+	logger.Info("removing finalizer", "finalizer", monitoring.MonitoringFinalizer)
+	patchHelper, err := patch.NewHelper(cluster, r.Client)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	controllerutil.RemoveFinalizer(cluster, monitoring.MonitoringFinalizer)
+	if err := patchHelper.Patch(ctx, cluster); err != nil {
+		logger.Error(err, "failed to remove finalizer, requeuing", "finalizer", monitoring.MonitoringFinalizer)
+		return errors.WithStack(err)
+	}
+	logger.Info("removed finalizer", "finalizer", monitoring.MonitoringFinalizer)
+	return nil
+}
+
+func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Context) *ctrl.Result {
+	logger := log.FromContext(ctx)
+
+	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
+	if r.MonitoringConfig.Enabled {
+		err := r.HeartbeatRepository.CreateOrUpdate(ctx)
+		if err != nil {
+			logger.Error(err, "failed to create or update heartbeat")
+			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
+		}
+
+		err = r.MimirService.ConfigureMimir(ctx)
+		if err != nil {
+			logger.Error(err, "failed to configure mimir")
+			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
+		}
+	} else {
+		err := r.tearDown(ctx)
+		if err != nil {
+			logger.Error(err, "failed to tear down the monitoring stack")
+			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
+		}
+	}
+
+	return nil
 }
 
 // tearDown tears down the monitoring stack management cluster specific components like the hearbeat, mimir secrets and so on.
