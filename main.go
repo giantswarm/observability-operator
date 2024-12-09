@@ -42,43 +42,23 @@ import (
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
-	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
+	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/grafana/client"
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
 	//+kubebuilder:scaffold:imports
 )
 
 var (
+	conf config.Config
+
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
-
-	metricsAddr          string
-	enableLeaderElection bool
-	probeAddr            string
-	secureMetrics        bool
-	enableHTTP2          bool
-
-	managementClusterBaseDomain string
-	managementClusterCustomer   string
-	managementClusterInsecureCA bool
-	managementClusterName       string
-	managementClusterPipeline   string
-	managementClusterRegion     string
-
-	monitoringAgent                       string
-	monitoringEnabled                     bool
-	monitoringShardingScaleUpSeriesCount  float64
-	monitoringShardingScaleDownPercentage float64
-	monitoringWALTruncateFrequency        time.Duration
-	prometheusVersion                     string
 )
 
 const (
@@ -99,41 +79,41 @@ func init() {
 }
 
 func main() {
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080",
+	flag.StringVar(&conf.MetricsAddr, "metrics-bind-address", ":8080",
 		"The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081",
+	flag.StringVar(&conf.ProbeAddr, "health-probe-bind-address", ":8081",
 		"The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+	flag.BoolVar(&conf.EnableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&secureMetrics, "metrics-secure", false,
+	flag.BoolVar(&conf.SecureMetrics, "metrics-secure", false,
 		"If set the metrics endpoint is served securely")
-	flag.BoolVar(&enableHTTP2, "enable-http2", false,
+	flag.BoolVar(&conf.EnableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	flag.StringVar(&managementClusterBaseDomain, "management-cluster-base-domain", "",
+	flag.StringVar(&conf.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
 		"The base domain of the management cluster.")
-	flag.StringVar(&managementClusterCustomer, "management-cluster-customer", "",
+	flag.StringVar(&conf.ManagementCluster.Customer, "management-cluster-customer", "",
 		"The customer of the management cluster.")
-	flag.BoolVar(&managementClusterInsecureCA, "management-cluster-insecure-ca", false,
+	flag.BoolVar(&conf.ManagementCluster.InsecureCA, "management-cluster-insecure-ca", false,
 		"Flag to indicate if the management cluster has an insecure CA that should be trusted")
-	flag.StringVar(&managementClusterName, "management-cluster-name", "",
+	flag.StringVar(&conf.ManagementCluster.Name, "management-cluster-name", "",
 		"The name of the management cluster.")
-	flag.StringVar(&managementClusterPipeline, "management-cluster-pipeline", "",
+	flag.StringVar(&conf.ManagementCluster.Pipeline, "management-cluster-pipeline", "",
 		"The pipeline of the management cluster.")
-	flag.StringVar(&managementClusterRegion, "management-cluster-region", "",
+	flag.StringVar(&conf.ManagementCluster.Region, "management-cluster-region", "",
 		"The region of the management cluster.")
 	// Monitoring configuration flags.
-	flag.StringVar(&monitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
+	flag.StringVar(&conf.Monitoring.MonitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
 		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
-	flag.BoolVar(&monitoringEnabled, "monitoring-enabled", false,
+	flag.BoolVar(&conf.Monitoring.Enabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
-	flag.Float64Var(&monitoringShardingScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
+	flag.Float64Var(&conf.Monitoring.DefaultShardingStrategy.ScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
 		"Configures the number of time series needed to add an extra prometheus agent shard.")
-	flag.Float64Var(&monitoringShardingScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
+	flag.Float64Var(&conf.Monitoring.DefaultShardingStrategy.ScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
 		"Configures the percentage of removed series to scale down the number of prometheus agent shards.")
-	flag.StringVar(&prometheusVersion, "prometheus-version", "",
+	flag.StringVar(&conf.Monitoring.PrometheusVersion, "prometheus-version", "",
 		"The version of Prometheus Agents to deploy.")
-	flag.DurationVar(&monitoringWALTruncateFrequency, "monitoring-wal-truncate-frequency", 2*time.Hour,
+	flag.DurationVar(&conf.Monitoring.WALTruncateFrequency, "monitoring-wal-truncate-frequency", 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
 	opts := zap.Options{
 		Development: false,
@@ -155,7 +135,7 @@ func main() {
 	}
 
 	tlsOpts := []func(*tls.Config){}
-	if !enableHTTP2 {
+	if !conf.EnableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
@@ -166,13 +146,13 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
-			BindAddress:   metricsAddr,
-			SecureServing: secureMetrics,
+			BindAddress:   conf.MetricsAddr,
+			SecureServing: conf.SecureMetrics,
 			TLSOpts:       tlsOpts,
 		},
 		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
+		HealthProbeBindAddress: conf.ProbeAddr,
+		LeaderElection:         conf.EnableLeaderElection,
 		LeaderElectionID:       "5c99b45b.giantswarm.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
@@ -194,22 +174,13 @@ func main() {
 	// Initialize event recorder.
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
-	var managementCluster common.ManagementCluster = common.ManagementCluster{
-		BaseDomain: managementClusterBaseDomain,
-		Customer:   managementClusterCustomer,
-		InsecureCA: managementClusterInsecureCA,
-		Name:       managementClusterName,
-		Pipeline:   managementClusterPipeline,
-		Region:     managementClusterRegion,
-	}
-
 	var opsgenieApiKey = os.Getenv(opsgenieApiKeyEnvVar)
 	if opsgenieApiKey == "" {
 		setupLog.Error(nil, fmt.Sprintf("environment variable %s not set", opsgenieApiKeyEnvVar))
 		os.Exit(1)
 	}
 
-	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(opsgenieApiKey, managementCluster)
+	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(opsgenieApiKey, conf.ManagementCluster)
 	if err != nil {
 		setupLog.Error(err, "unable to create heartbeat repository")
 		os.Exit(1)
@@ -217,48 +188,37 @@ func main() {
 
 	organizationRepository := organization.NewNamespaceRepository(mgr.GetClient())
 
-	monitoringConfig := monitoring.Config{
-		Enabled:         monitoringEnabled,
-		MonitoringAgent: monitoringAgent,
-		DefaultShardingStrategy: sharding.Strategy{
-			ScaleUpSeriesCount:  monitoringShardingScaleUpSeriesCount,
-			ScaleDownPercentage: monitoringShardingScaleDownPercentage,
-		},
-		WALTruncateFrequency: monitoringWALTruncateFrequency,
-		PrometheusVersion:    prometheusVersion,
-	}
-
 	prometheusAgentService := prometheusagent.PrometheusAgentService{
 		Client:                 mgr.GetClient(),
 		OrganizationRepository: organizationRepository,
 		PasswordManager:        password.SimpleManager{},
-		ManagementCluster:      managementCluster,
-		MonitoringConfig:       monitoringConfig,
+		ManagementCluster:      conf.ManagementCluster,
+		MonitoringConfig:       conf.Monitoring,
 	}
 
 	alloyService := alloy.Service{
 		Client:                 mgr.GetClient(),
 		OrganizationRepository: organizationRepository,
 		PasswordManager:        password.SimpleManager{},
-		ManagementCluster:      managementCluster,
-		MonitoringConfig:       monitoringConfig,
+		ManagementCluster:      conf.ManagementCluster,
+		MonitoringConfig:       conf.Monitoring,
 	}
 
 	mimirService := mimir.MimirService{
 		Client:            mgr.GetClient(),
 		PasswordManager:   password.SimpleManager{},
-		ManagementCluster: managementCluster,
+		ManagementCluster: conf.ManagementCluster,
 	}
 
 	if err = (&controller.ClusterMonitoringReconciler{
 		Client:                     mgr.GetClient(),
-		ManagementCluster:          managementCluster,
+		ManagementCluster:          conf.ManagementCluster,
 		HeartbeatRepository:        heartbeatRepository,
 		PrometheusAgentService:     prometheusAgentService,
 		AlloyService:               alloyService,
 		MimirService:               mimirService,
-		MonitoringConfig:           monitoringConfig,
-		BundleConfigurationService: bundle.NewBundleConfigurationService(mgr.GetClient(), monitoringConfig),
+		MonitoringConfig:           conf.Monitoring,
+		BundleConfigurationService: bundle.NewBundleConfigurationService(mgr.GetClient(), conf.Monitoring),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
 		os.Exit(1)
