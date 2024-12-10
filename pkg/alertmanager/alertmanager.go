@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"slices"
@@ -13,6 +14,7 @@ import (
 	"github.com/prometheus/alertmanager/config"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
 	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
@@ -54,6 +56,10 @@ func New(conf pkgconfig.Config, c client.Client) Job {
 }
 
 func (j Job) Configure(ctx context.Context) error {
+	logger := log.FromContext(ctx)
+
+	logger.Info("Alertmanager: configuring")
+
 	//TODO: get this from somewhere
 	tenantID := "anonymous"
 
@@ -79,10 +85,18 @@ func (j Job) Configure(ctx context.Context) error {
 		}
 	}
 
-	return j.configure(alertmanagerConfigContent, templates, tenantID)
+	err = j.configure(alertmanagerConfigContent, templates, tenantID)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to configure: %w", err))
+	}
+
+	logger.Info("Alertmanager: configured")
+	return nil
 }
 
-func (j Job) configure(alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
+func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
+	logger := log.FromContext(ctx)
+
 	// Load alertmanager configuration
 	alertmanagerConfig, err := config.Load(string(alertmanagerConfigContent))
 	if err != nil {
@@ -93,10 +107,11 @@ func (j Job) configure(alertmanagerConfigContent []byte, templates map[string]st
 	// This must match the key set for the template in configCompat.TemplateFiles. This value should not be a path otherwise the request will fail with:
 	// > error validating Alertmanager config: invalid template name "/etc/dummy.tmpl": the template name cannot contain any path
 	alertmanagerConfig.Templates = slices.Collect(maps.Keys(templates))
+	alertmanacgerConfigString := alertmanagerConfig.String()
 
 	// Prepare request for Alertmanager API
 	requestData := configRequest{
-		AlertmanagerConfig: alertmanagerConfig.String(),
+		AlertmanagerConfig: alertmanagerConfigString,
 		TemplateFiles:      templates,
 	}
 	data, err := yaml.Marshal(requestData)
@@ -104,8 +119,11 @@ func (j Job) configure(alertmanagerConfigContent []byte, templates map[string]st
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to marshal yaml: %w", err))
 	}
 
+	url := j.alertmanagerURL + alertmanagerAPIPath
+	logger.WithValues("url", url, "data_size", len(data), "config_size", len(alertmanagerConfigString), "templates_count", len(templates)).Info("Alertmanager: sending configuration")
+
 	// Send request to Alertmanager's API
-	req, err := http.NewRequest(http.MethodPost, j.alertmanagerURL+alertmanagerAPIPath, bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to create request: %w", err))
 	}
@@ -116,6 +134,13 @@ func (j Job) configure(alertmanagerConfigContent []byte, templates map[string]st
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to send request: %w", err))
 	}
 	defer resp.Body.Close() // nolint: errcheck
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to read response: %w", err))
+	}
+
+	logger.WithValues("status_code", resp.StatusCode, "response", string(respBody)).Info("Alertmanager: configuration sent")
 
 	//TODO: handle response errors if any
 
