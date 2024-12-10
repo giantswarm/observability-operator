@@ -39,7 +39,7 @@ type GrafanaOrganizationSpec struct {
 	// Tenants is a list of tenants that are associated with the Grafana organization.
 	// +kubebuilder:example={"giantswarm"}
 	// +kube:validation:MinItems=1
-	Tenants []TenantID `json:"tenants,omitempty"`
+	Tenants []TenantID `json:"tenants"`
 }
 
 // TenantID is a unique identifier for a tenant. It must be lowercase.
