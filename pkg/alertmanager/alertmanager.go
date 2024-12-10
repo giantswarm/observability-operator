@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -85,7 +86,7 @@ func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, te
 	// Set notification template name
 	// This must match the key set for the template in configCompat.TemplateFiles. This value should not be a path otherwise the request will fail with:
 	// > error validating Alertmanager config: invalid template name "/etc/dummy.tmpl": the template name cannot contain any path
-	alertmanagerConfig.Templates = maps.Collect(maps.Keys(templates))
+	alertmanagerConfig.Templates = slices.Collect(maps.Keys(templates))
 
 	// Prepare request for Alertmanager API
 	requestData := configRequest{
