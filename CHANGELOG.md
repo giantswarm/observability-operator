@@ -7,13 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2024-12-10
+
 ### Added
 
-- Add Mimir Alertmanager datasource
+- Add Mimir Alertmanager datasource.
+- Add tenant ids field to the grafana organization CR to be able to support multiple tenants into one organization.
 
 ### Changed
 
 - Removed organization OwnerReference on grafana-user-values configmap, this fixes an issue where the configmap is removed when the last organization is deleted which prevent Grafana from starting.
+
+### Fixed
+
+- Fix grafana organization deletion
 
 ## [0.9.1] - 2024-11-21
 
@@ -181,7 +188,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/giantswarm/observability-operator/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/giantswarm/observability-operator/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/giantswarm/observability-operator/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/giantswarm/observability-operator/compare/v0.8.0...v0.8.1

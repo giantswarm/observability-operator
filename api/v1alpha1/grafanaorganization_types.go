@@ -32,8 +32,18 @@ type GrafanaOrganizationSpec struct {
 	DisplayName string `json:"displayName"`
 
 	// Access rules defines user permissions for interacting with the organization in Grafana.
-	RBAC *RBAC `json:"rbac,omitempty"`
+	RBAC *RBAC `json:"rbac"`
+
+	// Tenants is a list of tenants that are associated with the Grafana organization.
+	// +kubebuilder:example={"giantswarm"}
+	Tenants []TenantID `json:"tenants,omitempty"`
 }
+
+// TenantID is a unique identifier for a tenant. It must be lowercase.
+// +kubebuilder:validation:Pattern="^[a-z]*$"
+// +kubebuilder:validation:MinLength=1
+// +kubebuilder:validation:MaxLength=63
+type TenantID string
 
 // RBAC defines the RoleBasedAccessControl configuration for the Grafana organization.
 // Each fields represents the mapping to a Grafana role:
@@ -62,6 +72,7 @@ type RBAC struct {
 // GrafanaOrganizationStatus defines the observed state of GrafanaOrganization
 type GrafanaOrganizationStatus struct {
 	// OrgID is the actual organisation ID in grafana.
+	// +optional
 	OrgID int64 `json:"orgID"`
 
 	// DataSources is a list of grafana data sources that are available to the Grafana organization.
