@@ -1,8 +1,8 @@
 global:
   resolve_timeout: 5m
-{{- if .ProxyURL }}
+{{- if .alertmanager.proxyURL }}
   http_config:
-    proxy_url:  {{ .ProxyURL }}
+    proxy_url:  {{ .alertmanager.proxyURL }}
 {{- end }}
 {{- if .alertmanager.slackAPIToken }}
   slack_api_url: "https://slack.com/api/chat.postMessage"
@@ -174,8 +174,8 @@ receivers:
         credentials: {{ .monitoring.opsgenieApiKey }}
       follow_redirects: true
       enable_http2: true
-      {{- if .ProxyURL }}
-      proxy_url:  {{ .ProxyURL }}
+      {{- if .alertmanager.proxyURL }}
+      proxy_url:  {{ .alertmanager.proxyURL }}
       {{- end }}
     url: https://api.opsgenie.com/v2/heartbeats/{{ .managementCluster.name }}/ping
 
@@ -191,8 +191,8 @@ receivers:
       authorization:
         type: Bearer
         credentials: {{ .alertmanager.slackAPIToken }}
-      {{- if .ProxyURL }}
-      proxy_url:  {{ .ProxyURL }}
+      {{- if .alertmanager.proxyURL }}
+      proxy_url:  {{ .alertmanager.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -227,8 +227,8 @@ receivers:
       authorization:
         type: Bearer
         credentials: {{ .alertmanager.slackAPIToken }}
-      {{- if .ProxyURL }}
-      proxy_url:  {{ .ProxyURL }}
+      {{- if .alertmanager.proxyURL }}
+      proxy_url:  {{ .alertmanager.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -246,8 +246,8 @@ receivers:
       authorization:
         type: Bearer
         credentials: {{ .alertmanager.slackAPIToken }}
-      {{- if .ProxyURL }}
-      proxy_url:  {{ .ProxyURL }}
+      {{- if .alertmanager.proxyURL }}
+      proxy_url:  {{ .alertmanager.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -265,8 +265,8 @@ receivers:
       authorization:
         type: Bearer
         credentials: {{ .alertmanager.slackAPIToken }}
-      {{- if .ProxyURL }}
-      proxy_url:  {{ .ProxyURL }}
+      {{- if .alertmanager.proxyURL }}
+      proxy_url:  {{ .alertmanager.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -284,8 +284,8 @@ receivers:
       authorization:
         type: Bearer
         credentials: {{ .alertmanager.slackAPIToken }}
-      {{- if .ProxyURL }}
-      proxy_url:  {{ .ProxyURL }}
+      {{- if .alertmanager.proxyURL }}
+      proxy_url:  {{ .alertmanager.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -299,8 +299,8 @@ receivers:
       authorization:
         type: Bearer
         credentials: {{ .alertmanager.slackAPIToken }}
-      {{- if .ProxyURL }}
-      proxy_url:  {{ .ProxyURL }}
+      {{- if .alertmanager.proxyURL }}
+      proxy_url:  {{ .alertmanager.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -318,8 +318,8 @@ receivers:
       authorization:
         type: Bearer
         credentials: {{ .alertmanager.slackAPIToken }}
-      {{- if .ProxyURL }}
-      proxy_url:  {{ .ProxyURL }}
+      {{- if .alertmanager.proxyURL }}
+      proxy_url:  {{ .alertmanager.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -333,8 +333,8 @@ receivers:
       authorization:
         type: Bearer
         credentials: {{ .alertmanager.slackAPIToken }}
-      {{- if .ProxyURL }}
-      proxy_url:  {{ .ProxyURL }}
+      {{- if .alertmanager.proxyURL }}
+      proxy_url:  {{ .alertmanager.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -348,8 +348,8 @@ receivers:
       authorization:
         type: Bearer
         credentials: {{ .alertmanager.slackAPIToken }}
-      {{- if .ProxyURL }}
-      proxy_url:  {{ .ProxyURL }}
+      {{- if .alertmanager.proxyURL }}
+      proxy_url:  {{ .alertmanager.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
