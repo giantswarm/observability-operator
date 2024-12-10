@@ -76,8 +76,22 @@ spec:
                 required:
                 - admins
                 type: object
+              tenants:
+                description: Tenants is a list of tenants that are associated with
+                  the Grafana organization.
+                example:
+                - giantswarm
+                items:
+                  description: TenantID is a unique identifier for a tenant. It must
+                    be lowercase.
+                  maxLength: 63
+                  minLength: 1
+                  pattern: ^[a-z]*$
+                  type: string
+                type: array
             required:
             - displayName
+            - rbac
             type: object
           status:
             description: GrafanaOrganizationStatus defines the observed state of GrafanaOrganization
@@ -104,8 +118,6 @@ spec:
                 description: OrgID is the actual organisation ID in grafana.
                 format: int64
                 type: integer
-            required:
-            - orgID
             type: object
         type: object
     served: true
