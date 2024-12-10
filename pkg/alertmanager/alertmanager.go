@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 
@@ -18,8 +19,11 @@ import (
 )
 
 const (
-	alertmanagerConfigKey   = "alertmanager.yaml"
-	notificationTemplateKey = "notification-template.tmpl"
+	// Those values are used to retrieve the Alertmanager configuration from the secret named after conf.Monitoring.AlertmanagerSecretName
+	// alertmanagerConfigKey is the key to the alertmanager configuration in the secret
+	alertmanagerConfigKey = "alertmanager.yaml"
+	// templatesSuffix is the suffix used to identify the templates in the secret
+	templatesSuffix = ".tmpl"
 
 	orgIDHeader         = "X-Scope-OrgID"
 	alertmanagerAPIPath = "/api/v1/alerts"
@@ -47,27 +51,31 @@ func (j Job) Configure(ctx context.Context, conf pkgconfig.Config) error {
 	//TODO: get this from somewhere
 	tenantID := "anonymous"
 
-	// Read alertmanager configuration source from the secret.
+	// Read secret used as source for Alertmanager configuration
 	alertmanagerSecret := v1.Secret{}
 	err := j.client.Get(ctx, types.NamespacedName{Name: conf.Monitoring.AlertmanagerSecretName, Namespace: conf.Namespace}, &alertmanagerSecret)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to get secret: %w", err))
 	}
 
+	// Retrieve Alertmanager configuration from secret
 	alertmanagerConfigContent, ok := alertmanagerSecret.Data[alertmanagerConfigKey]
 	if !ok {
 		return errors.WithStack(fmt.Errorf("alertmanager: config not found"))
 	}
 
-	notificationTemplateContent, ok := alertmanagerSecret.Data[notificationTemplateKey]
-	if !ok {
-		return errors.WithStack(fmt.Errorf("alertmanager: notification template not found"))
+	// Retrieve all alertmanager templates from secret
+	templates := make(map[string]string)
+	for key, value := range alertmanagerSecret.Data {
+		if strings.HasSuffix(key, templatesSuffix) {
+			templates[key] = string(value)
+		}
 	}
 
-	return j.configure(ctx, alertmanagerConfigContent, notificationTemplateContent, tenantID, conf)
+	return j.configure(ctx, alertmanagerConfigContent, templates, tenantID, conf)
 }
 
-func (j Job) configure(ctx context.Context, alertmanagerConfigContent, notificationTemplateContent []byte, tenantID string, conf pkgconfig.Config) error {
+func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string, conf pkgconfig.Config) error {
 	// Load alertmanager configuration
 	alertmanagerConfig, err := config.Load(string(alertmanagerConfigContent))
 	if err != nil {
@@ -77,14 +85,12 @@ func (j Job) configure(ctx context.Context, alertmanagerConfigContent, notificat
 	// Set notification template name
 	// This must match the key set for the template in configCompat.TemplateFiles. This value should not be a path otherwise the request will fail with:
 	// > error validating Alertmanager config: invalid template name "/etc/dummy.tmpl": the template name cannot contain any path
-	alertmanagerConfig.Templates = []string{notificationTemplateKey}
+	alertmanagerConfig.Templates = maps.Collect(maps.Keys(templates))
 
 	// Prepare request for Alertmanager API
 	requestData := configRequest{
 		AlertmanagerConfig: string(alertmanagerConfig.String()),
-		TemplateFiles: map[string]string{
-			notificationTemplateKey: string(notificationTemplateContent),
-		},
+		TemplateFiles:      templates,
 	}
 	data, err := yaml.Marshal(requestData)
 	if err != nil {
