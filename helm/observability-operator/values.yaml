@@ -15,6 +15,15 @@ managementCluster:
   pipeline: pipeline
   region: region
 
+alertmanager:
+  GrafanaAddress: ""
+  Installation: ""
+  OpsgenieKey: ""
+  Pipeline: ""
+  ProxyURL: ""
+  SlackApiToken: ""
+  SlackApiURL: ""
+
 monitoring:
   agent: alloy
   enabled: false
