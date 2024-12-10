@@ -305,9 +305,16 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		return nil
 	}
 
+	// Delete organization in Grafana
+	var organization = grafana.Organization{
+		ID:       grafanaOrganization.Status.OrgID,
+		Name:     grafanaOrganization.Spec.DisplayName,
+		TenantID: grafanaOrganization.Name,
+	}
+
 	// Delete organization in Grafana if it exists
 	if grafanaOrganization.Status.OrgID > 0 {
-		err := grafana.DeleteByID(ctx, r.GrafanaAPI, grafanaOrganization.Status.OrgID)
+		err := grafana.DeleteOrganization(ctx, r.GrafanaAPI, organization)
 		if err != nil {
 			return errors.WithStack(err)
 		}

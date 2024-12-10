@@ -131,16 +131,22 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	return &organization, nil
 }
 
-func DeleteByID(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, id int64) error {
+func DeleteOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("deleting organization")
-	_, err := findByID(grafanaAPI, id)
+	_, err := findByID(grafanaAPI, organization.ID)
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", id))
+		if isNotFound(err) {
+			logger.Info("organization id was not found, skipping deletion")
+			// If the CR orgID does not exist in Grafana, then we create the organization
+			return nil
+		}
+		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", organization.ID))
+		return errors.WithStack(err)
 	}
 
-	_, err = grafanaAPI.Orgs.DeleteOrgByID(id)
+	_, err = grafanaAPI.Orgs.DeleteOrgByID(organization.ID)
 	if err != nil {
 		logger.Error(err, "failed to delete organization")
 		return errors.WithStack(err)
