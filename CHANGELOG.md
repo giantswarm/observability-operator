@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add Mimir Alertmanager datasource.
 - Add tenant ids field to the grafana organization CR to be able to support multiple tenants into one organization.
 
+### Fixed
+
+- Fix grafana organization deletion
+
 ### Changed
 
 - Removed organization OwnerReference on grafana-user-values configmap, this fixes an issue where the configmap is removed when the last organization is deleted which prevent Grafana from starting.
