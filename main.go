@@ -183,7 +183,7 @@ func main() {
 	}
 
 	// Setup controller for the GrafanaOrganization resource.
-	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf.Environment)
+	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf)
 	if err != nil {
 		setupLog.Error(err, "unable to setup controller", "controller", "GrafanaOrganizationReconciler")
 		os.Exit(1)

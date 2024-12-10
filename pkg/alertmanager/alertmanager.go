@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/alertmanager/config"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
@@ -31,8 +30,9 @@ const (
 )
 
 type Job struct {
-	client          client.Client
-	alertmanagerURL string
+	client             client.Client
+	alertmanagerURL    string
+	alertmanagerSecret client.ObjectKey
 }
 
 type configRequest struct {
@@ -43,18 +43,23 @@ type configRequest struct {
 func New(conf pkgconfig.Config) Job {
 	job := Job{
 		alertmanagerURL: strings.TrimSuffix(conf.Monitoring.AlertmanagerURL, "/"),
+		alertmanagerSecret: client.ObjectKey{
+			Name:      conf.Monitoring.AlertmanagerSecretName,
+			Namespace: conf.Namespace,
+		},
 	}
 
 	return job
 }
 
-func (j Job) Configure(ctx context.Context, conf pkgconfig.Config) error {
+func (j Job) Configure(ctx context.Context) error {
 	//TODO: get this from somewhere
 	tenantID := "anonymous"
 
 	// Read secret used as source for Alertmanager configuration
 	alertmanagerSecret := v1.Secret{}
-	err := j.client.Get(ctx, types.NamespacedName{Name: conf.Monitoring.AlertmanagerSecretName, Namespace: conf.Namespace}, &alertmanagerSecret)
+	err := j.client.Get(ctx, j.alertmanagerSecret, &alertmanagerSecret)
+
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to get secret: %w", err))
 	}

@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/pkg/alertmanager"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 
@@ -50,27 +51,28 @@ import (
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
+	Scheme          *runtime.Scheme
+	GrafanaAPI      *grafanaAPI.GrafanaHTTPAPI
+	AlertmanagerJob alertmanager.Job
 }
 
-func SetupGrafanaOrganizationReconciler(mgr manager.Manager, environment config.Environment) error {
+func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
 	// Generate Grafana client
 	// Get grafana admin-password and admin-user
 	grafanaAdminCredentials := grafanaclient.AdminCredentials{
-		Username: environment.GrafanaAdminUsername,
-		Password: environment.GrafanaAdminPassword,
+		Username: conf.Environment.GrafanaAdminUsername,
+		Password: conf.Environment.GrafanaAdminPassword,
 	}
 	if grafanaAdminCredentials.Username == "" {
-		return fmt.Errorf("GrafanaAdminUsername not set: %q", environment.GrafanaAdminUsername)
+		return fmt.Errorf("GrafanaAdminUsername not set: %q", conf.Environment.GrafanaAdminUsername)
 	}
 	if grafanaAdminCredentials.Password == "" {
-		return fmt.Errorf("GrafanaAdminPassword not set: %q", environment.GrafanaAdminPassword)
+		return fmt.Errorf("GrafanaAdminPassword not set: %q", conf.Environment.GrafanaAdminPassword)
 	}
 
 	grafanaTLSConfig := grafanaclient.TLSConfig{
-		Cert: environment.GrafanaTLSCertFile,
-		Key:  environment.GrafanaTLSKeyFile,
+		Cert: conf.Environment.GrafanaTLSCertFile,
+		Key:  conf.Environment.GrafanaTLSKeyFile,
 	}
 	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(grafanaAdminCredentials, grafanaTLSConfig)
 	if err != nil {
@@ -78,9 +80,10 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, environment config.
 	}
 
 	r := &GrafanaOrganizationReconciler{
-		Client:     mgr.GetClient(),
-		Scheme:     mgr.GetScheme(),
-		GrafanaAPI: grafanaAPI,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		GrafanaAPI:      grafanaAPI,
+		AlertmanagerJob: alertmanager.New(conf),
 	}
 
 	err = r.SetupWithManager(mgr)
@@ -179,6 +182,12 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		}
 		logger.Info("added finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
 		return ctrl.Result{}, nil
+	}
+
+	// Configure Alertmanager
+	err := r.AlertmanagerJob.Configure(ctx)
+	if err != nil {
+		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	// Configure the shared organization in Grafana
