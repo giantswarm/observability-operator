@@ -16,6 +16,7 @@ managementCluster:
   region: region
 
 alertmanager:
+  alertmanagerURL: ""
   grafanaAddress: ""
   proxyURL: ""
   slackAPIToken: ""
