@@ -37,9 +37,11 @@ type Job struct {
 	alertmanagerSecret client.ObjectKey
 }
 
+// configRequest is the structure used to send the configuration to Alertmanager's API
+// json tags also applies yaml field names
 type configRequest struct {
-	TemplateFiles      map[string]string `yaml:"template_files"`
-	AlertmanagerConfig string            `yaml:"alertmanager_config"`
+	TemplateFiles      map[string]string `json:"template_files"`
+	AlertmanagerConfig string            `json:"alertmanager_config"`
 }
 
 func New(conf pkgconfig.Config, c client.Client) Job {
