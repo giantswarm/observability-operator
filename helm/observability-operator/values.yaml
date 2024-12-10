@@ -16,10 +16,10 @@ managementCluster:
   region: region
 
 alertmanager:
-  GrafanaAddress: ""
-  ProxyURL: ""
-  SlackApiToken: ""
-  SlackApiURL: ""
+  grafanaAddress: ""
+  proxyURL: ""
+  slackAPIToken: ""
+  slackAPIURL: ""
 
 monitoring:
   agent: alloy
