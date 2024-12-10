@@ -4,10 +4,10 @@ global:
   http_config:
     proxy_url:  {{ .ProxyURL }}
 {{- end }}
-{{- if .SlackApiToken }}
+{{- if .alertmanager.slackAPIToken }}
   slack_api_url: "https://slack.com/api/chat.postMessage"
 {{- else }}
-  slack_api_url: {{ .SlackApiURL }}
+  slack_api_url: {{ .alertmanager.slackAPIURL }}
 {{- end }}
 
 route:
@@ -27,7 +27,7 @@ route:
     group_wait: 30s
     group_interval: 30s
     repeat_interval: 15m
-  {{- if eq .Pipeline "stable-testing" }}
+  {{- if eq .managementCluster.pipeline "stable-testing" }}
   - receiver: blackhole
     matchers:
     - cluster_type="workload_cluster"
@@ -84,7 +84,7 @@ route:
   # Team Atlas Slack
   - receiver: team_atlas_slack
     matchers:
-    {{- if eq .Pipeline "stable" }}
+    {{- if eq .managementCluster.pipeline "stable" }}
     - severity="notify"
     {{- else }}
     - severity=~"page|notify"
@@ -171,26 +171,26 @@ receivers:
     http_config:
       authorization:
         type: GenieKey
-        credentials: {{ .OpsgenieKey }}
+        credentials: {{ .monitoring.opsgenieApiKey }}
       follow_redirects: true
       enable_http2: true
       {{- if .ProxyURL }}
       proxy_url:  {{ .ProxyURL }}
       {{- end }}
-    url: https://api.opsgenie.com/v2/heartbeats/{{ .Installation }}/ping
+    url: https://api.opsgenie.com/v2/heartbeats/{{ .managementCluster.name }}/ping
 
-{{- if eq .Pipeline "stable-testing" }}
+{{- if eq .managementCluster.pipeline "stable-testing" }}
 - name: blackhole
 {{- end }}
 
 - name: falco_noise_slack
   slack_configs:
   - channel: '#noise-falco'
-    {{- if .SlackApiToken }}
+    {{- if .alertmanager.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .SlackApiToken }}
+        credentials: {{ .alertmanager.slackAPIToken }}
       {{- if .ProxyURL }}
       proxy_url:  {{ .ProxyURL }}
       {{- end }}
@@ -217,16 +217,16 @@ receivers:
 
 - name: team_atlas_slack
   slack_configs:
-  {{- if eq .Pipeline "stable" }}
+  {{- if eq .managementCluster.pipeline "stable" }}
   - channel: '#alert-atlas'
   {{- else }}
   - channel: '#alert-atlas-test'
   {{- end }}
-    {{- if .SlackApiToken }}
+    {{- if .alertmanager.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .SlackApiToken }}
+        credentials: {{ .alertmanager.slackAPIToken }}
       {{- if .ProxyURL }}
       proxy_url:  {{ .ProxyURL }}
       {{- end }}
@@ -236,16 +236,16 @@ receivers:
 
 - name: team_phoenix_slack
   slack_configs:
-  {{- if eq .Pipeline "stable" }}
+  {{- if eq .managementCluster.pipeline "stable" }}
   - channel: '#alert-phoenix'
   {{- else }}
   - channel: '#alert-phoenix-test'
   {{- end }}
-    {{- if .SlackApiToken }}
+    {{- if .alertmanager.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .SlackApiToken }}
+        credentials: {{ .alertmanager.slackAPIToken }}
       {{- if .ProxyURL }}
       proxy_url:  {{ .ProxyURL }}
       {{- end }}
@@ -255,16 +255,16 @@ receivers:
 
 - name: team_bigmac_slack
   slack_configs:
-  {{- if eq .Pipeline "stable" }}
+  {{- if eq .managementCluster.pipeline "stable" }}
   - channel: '#alert-bigmac'
   {{- else }}
   - channel: '#alert-bigmac-test'
   {{- end }}
-    {{- if .SlackApiToken }}
+    {{- if .alertmanager.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .SlackApiToken }}
+        credentials: {{ .alertmanager.slackAPIToken }}
       {{- if .ProxyURL }}
       proxy_url:  {{ .ProxyURL }}
       {{- end }}
@@ -274,16 +274,16 @@ receivers:
 
 - name: team_rocket_slack
   slack_configs:
-  {{- if eq .Pipeline "stable" }}
+  {{- if eq .managementCluster.pipeline "stable" }}
   - channel: '#alert-rocket'
   {{- else }}
   - channel: '#alert-rocket-test'
   {{- end }}
-    {{- if .SlackApiToken }}
+    {{- if .alertmanager.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .SlackApiToken }}
+        credentials: {{ .alertmanager.slackAPIToken }}
       {{- if .ProxyURL }}
       proxy_url:  {{ .ProxyURL }}
       {{- end }}
@@ -294,11 +294,11 @@ receivers:
 - name: team_shield_slack
   slack_configs:
   - channel: '#alert-shield'
-    {{- if .SlackApiToken }}
+    {{- if .alertmanager.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .SlackApiToken }}
+        credentials: {{ .alertmanager.slackAPIToken }}
       {{- if .ProxyURL }}
       proxy_url:  {{ .ProxyURL }}
       {{- end }}
@@ -308,16 +308,16 @@ receivers:
 
 - name: team_turtles_slack
   slack_configs:
-  {{- if eq .Pipeline "stable" }}
+  {{- if eq .managementCluster.pipeline "stable" }}
   - channel: '#alert-turtles'
   {{- else }}
   - channel: '#alert-turtles-test'
   {{- end }}
-    {{- if .SlackApiToken }}
+    {{- if .alertmanager.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .SlackApiToken }}
+        credentials: {{ .alertmanager.slackAPIToken }}
       {{- if .ProxyURL }}
       proxy_url:  {{ .ProxyURL }}
       {{- end }}
@@ -328,11 +328,11 @@ receivers:
 - name: team_tenet_slack
   slack_configs:
   - channel: '#alert-tenet'
-    {{- if .SlackApiToken }}
+    {{- if .alertmanager.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .SlackApiToken }}
+        credentials: {{ .alertmanager.slackAPIToken }}
       {{- if .ProxyURL }}
       proxy_url:  {{ .ProxyURL }}
       {{- end }}
@@ -343,11 +343,11 @@ receivers:
 - name: team_honeybadger_slack
   slack_configs:
   - channel: '#alert-honeybadger'
-    {{- if .SlackApiToken }}
+    {{- if .alertmanager.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .SlackApiToken }}
+        credentials: {{ .alertmanager.slackAPIToken }}
       {{- if .ProxyURL }}
       proxy_url:  {{ .ProxyURL }}
       {{- end }}
@@ -357,7 +357,7 @@ receivers:
 
 - name: opsgenie_router
   opsgenie_configs:
-  - api_key: {{ .OpsgenieKey }}
+  - api_key: {{ .monitoring.opsgenieApiKey }}
     tags: {{`{{ (index .Alerts 0).Labels.alertname }},{{ (index .Alerts 0).Labels.cluster_type }},{{ (index .Alerts 0).Labels.severity }},{{ (index .Alerts 0).Labels.team }},{{ (index .Alerts 0).Labels.area }},{{ (index .Alerts 0).Labels.service_priority }},{{ (index .Alerts 0).Labels.provider }},{{ (index .Alerts 0).Labels.installation }},{{ (index .Alerts 0).Labels.pipeline }},{{ (index .Alerts 0).Labels.customer }}`}}
 
 inhibit_rules:
@@ -369,7 +369,7 @@ inhibit_rules:
 
 - source_matchers:
   - inhibit_kube_state_metrics_down=true
-  - cluster_id={{ .Installation }}
+  - cluster_id={{ .managementCluster.name }}
   target_matchers:
   - cancel_if_mc_kube_state_metrics_down=true
 
