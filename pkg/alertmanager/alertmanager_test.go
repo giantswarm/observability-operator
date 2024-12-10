@@ -50,7 +50,11 @@ func TestAlertmanagerConfigLoad(t *testing.T) {
 	//}
 	alertmanagerTemplate := ""
 
-	job.configure(context.TODO(), []byte(alertmanagerContent), []byte(alertmanagerTemplate), tenantID, c)
+	templates := map[string]string{
+		"notification-template.tmpl": alertmanagerTemplate,
+	}
+
+	job.configure(context.TODO(), []byte(alertmanagerContent), templates, tenantID, c)
 	t.Logf("config: %d, template: %d\n", len(alertmanagerContent), len(alertmanagerTemplate))
 
 	// Debug response
