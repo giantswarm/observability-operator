@@ -83,7 +83,7 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config)
 		Client:          mgr.GetClient(),
 		Scheme:          mgr.GetScheme(),
 		GrafanaAPI:      grafanaAPI,
-		AlertmanagerJob: alertmanager.New(conf),
+		AlertmanagerJob: alertmanager.New(conf, mgr.GetClient()),
 	}
 
 	err = r.SetupWithManager(mgr)

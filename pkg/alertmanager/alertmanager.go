@@ -40,8 +40,9 @@ type configRequest struct {
 	AlertmanagerConfig string            `yaml:"alertmanager_config"`
 }
 
-func New(conf pkgconfig.Config) Job {
+func New(conf pkgconfig.Config, c client.Client) Job {
 	job := Job{
+		client:          c,
 		alertmanagerURL: strings.TrimSuffix(conf.Monitoring.AlertmanagerURL, "/"),
 		alertmanagerSecret: client.ObjectKey{
 			Name:      conf.Monitoring.AlertmanagerSecretName,
