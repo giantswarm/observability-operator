@@ -17,9 +17,6 @@ managementCluster:
 
 alertmanager:
   GrafanaAddress: ""
-  Installation: ""
-  OpsgenieKey: ""
-  Pipeline: ""
   ProxyURL: ""
   SlackApiToken: ""
   SlackApiURL: ""
