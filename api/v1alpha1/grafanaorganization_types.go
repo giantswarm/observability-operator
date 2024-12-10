@@ -29,6 +29,8 @@ const (
 // GrafanaOrganizationSpec defines the desired state of GrafanaOrganization
 type GrafanaOrganizationSpec struct {
 	// DisplayName is the name displayed when viewing the organization in Grafana. It can be different from the actual org's name.
+	// +kubebuilder:example="Giant Swarm"
+	// +kubebuilder:validation:MinLength=1
 	DisplayName string `json:"displayName"`
 
 	// Access rules defines user permissions for interacting with the organization in Grafana.
@@ -36,6 +38,7 @@ type GrafanaOrganizationSpec struct {
 
 	// Tenants is a list of tenants that are associated with the Grafana organization.
 	// +kubebuilder:example={"giantswarm"}
+	// +kube:validation:MinItems=1
 	Tenants []TenantID `json:"tenants,omitempty"`
 }
 

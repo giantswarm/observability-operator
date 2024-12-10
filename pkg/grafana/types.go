@@ -1,9 +1,11 @@
 package grafana
 
+import "strings"
+
 type Organization struct {
-	ID       int64
-	Name     string
-	TenantID string
+	ID        int64
+	Name      string
+	TenantIDs []string
 }
 
 type Datasource struct {
@@ -33,12 +35,12 @@ func (d Datasource) buildJSONData() map[string]interface{} {
 }
 
 func (d Datasource) buildSecureJSONData(organization Organization) map[string]string {
-	tenant := organization.TenantID
+	tenantIDs := organization.TenantIDs
 	if d.Type != "loki" {
 		// We do not support multi-tenancy for Mimir yet
-		tenant = "anonymous"
+		tenantIDs = []string{"anonymous"}
 	}
 	return map[string]string{
-		"httpHeaderValue1": tenant,
+		"httpHeaderValue1": strings.Join(tenantIDs, "|"),
 	}
 }

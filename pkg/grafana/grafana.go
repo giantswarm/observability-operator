@@ -18,9 +18,9 @@ const (
 )
 
 var SharedOrg = Organization{
-	ID:       1,
-	Name:     "Shared Org",
-	TenantID: "giantswarm",
+	ID:        1,
+	Name:      "Shared Org",
+	TenantIDs: []string{"giantswarm"},
 }
 
 // We need to use a custom name for now until we can replace the existing datasources.
