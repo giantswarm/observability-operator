@@ -219,7 +219,7 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 	sharedOrg := grafana.SharedOrg
 
 	logger.Info("configuring shared organization")
-	if _, err := grafana.UpdateOrganization(ctx, r.GrafanaAPI, sharedOrg); err != nil {
+	if err := grafana.UpdateOrganization(ctx, r.GrafanaAPI, &sharedOrg); err != nil {
 		logger.Error(err, "failed to rename shared org")
 		return errors.WithStack(err)
 	}
@@ -233,20 +233,28 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 	return nil
 }
 
+func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.Organization {
+	tenantIDs := make([]string, len(grafanaOrganization.Spec.Tenants))
+	for i, tenant := range grafanaOrganization.Spec.Tenants {
+		tenantIDs[i] = string(tenant)
+	}
+
+	return grafana.Organization{
+		ID:        grafanaOrganization.Status.OrgID,
+		Name:      grafanaOrganization.Spec.DisplayName,
+		TenantIDs: tenantIDs,
+	}
+}
+
 func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (err error) {
 	logger := log.FromContext(ctx)
 	// Create or update organization in Grafana
-	var organization = &grafana.Organization{
-		ID:       grafanaOrganization.Status.OrgID,
-		Name:     grafanaOrganization.Spec.DisplayName,
-		TenantID: grafanaOrganization.Name,
-	}
-
+	var organization = newOrganization(grafanaOrganization)
 	if organization.ID == 0 {
 		// if the CR doesn't have an orgID, create the organization in Grafana
-		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, *organization)
+		err = grafana.CreateOrganization(ctx, r.GrafanaAPI, &organization)
 	} else {
-		organization, err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, *organization)
+		err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, &organization)
 	}
 
 	if err != nil {
@@ -274,11 +282,7 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 	logger.Info("configuring data sources")
 
 	// Create or update organization in Grafana
-	var organization = grafana.Organization{
-		ID:       grafanaOrganization.Status.OrgID,
-		Name:     grafanaOrganization.Spec.DisplayName,
-		TenantID: grafanaOrganization.Name,
-	}
+	var organization = newOrganization(grafanaOrganization)
 
 	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, organization)
 	if err != nil {
@@ -315,11 +319,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	}
 
 	// Delete organization in Grafana
-	var organization = grafana.Organization{
-		ID:       grafanaOrganization.Status.OrgID,
-		Name:     grafanaOrganization.Spec.DisplayName,
-		TenantID: grafanaOrganization.Name,
-	}
+	var organization = newOrganization(grafanaOrganization)
 
 	// Delete organization in Grafana if it exists
 	if grafanaOrganization.Status.OrgID > 0 {
