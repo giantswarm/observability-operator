@@ -69,13 +69,13 @@ var defaultDatasources = []Datasource{
 	},
 }
 
-func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) (*Organization, error) {
+func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *Organization) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("creating organization")
 	err := assertNameIsAvailable(ctx, grafanaAPI, organization)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	createdOrg, err := grafanaAPI.Orgs.CreateOrg(&models.CreateOrgCommand{
@@ -83,15 +83,15 @@ func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	})
 	if err != nil {
 		logger.Error(err, "failed to create organization")
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 	logger.Info("created organization")
 
 	organization.ID = *createdOrg.Payload.OrgID
-	return &organization, nil
+	return nil
 }
 
-func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) (*Organization, error) {
+func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *Organization) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("updating organization")
@@ -103,18 +103,18 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 			return CreateOrganization(ctx, grafanaAPI, organization)
 		}
 		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", organization.ID))
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	// If both name matches, there is nothing to do.
 	if found.Name == organization.Name {
 		logger.Info("the organization already exists in Grafana and does not need to be updated.")
-		return &organization, nil
+		return nil
 	}
 
 	err = assertNameIsAvailable(ctx, grafanaAPI, organization)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
@@ -123,12 +123,12 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	})
 	if err != nil {
 		logger.Error(err, "failed to update organization name")
-		return nil, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	logger.Info("updated organization")
 
-	return &organization, nil
+	return nil
 }
 
 func DeleteOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) error {
@@ -158,6 +158,7 @@ func DeleteOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 
 func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
+
 	// TODO using a serviceaccount later would be better as they are scoped to an organization
 
 	var err error
@@ -278,7 +279,7 @@ func isNotFound(err error) bool {
 }
 
 // assertNameIsAvailable is a helper function to check if the organization name is available in Grafana
-func assertNameIsAvailable(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) error {
+func assertNameIsAvailable(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *Organization) error {
 	logger := log.FromContext(ctx)
 
 	found, err := findByName(grafanaAPI, organization.Name)
