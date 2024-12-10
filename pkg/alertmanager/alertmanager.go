@@ -85,7 +85,7 @@ func (j Job) Configure(ctx context.Context) error {
 		}
 	}
 
-	err = j.configure(alertmanagerConfigContent, templates, tenantID)
+	err = j.configure(ctx, alertmanagerConfigContent, templates, tenantID)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to configure: %w", err))
 	}
@@ -107,7 +107,7 @@ func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, te
 	// This must match the key set for the template in configCompat.TemplateFiles. This value should not be a path otherwise the request will fail with:
 	// > error validating Alertmanager config: invalid template name "/etc/dummy.tmpl": the template name cannot contain any path
 	alertmanagerConfig.Templates = slices.Collect(maps.Keys(templates))
-	alertmanacgerConfigString := alertmanagerConfig.String()
+	alertmanagerConfigString := alertmanagerConfig.String()
 
 	// Prepare request for Alertmanager API
 	requestData := configRequest{
