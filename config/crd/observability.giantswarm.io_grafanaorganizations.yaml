@@ -50,6 +50,8 @@ spec:
               displayName:
                 description: DisplayName is the name displayed when viewing the organization
                   in Grafana. It can be different from the actual org's name.
+                example: Giant Swarm
+                minLength: 1
                 type: string
               rbac:
                 description: Access rules defines user permissions for interacting
@@ -92,6 +94,7 @@ spec:
             required:
             - displayName
             - rbac
+            - tenants
             type: object
           status:
             description: GrafanaOrganizationStatus defines the observed state of GrafanaOrganization
