@@ -73,10 +73,10 @@ func (j Job) Configure(ctx context.Context, conf pkgconfig.Config) error {
 		}
 	}
 
-	return j.configure(ctx, alertmanagerConfigContent, templates, tenantID, conf)
+	return j.configure(alertmanagerConfigContent, templates, tenantID)
 }
 
-func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string, conf pkgconfig.Config) error {
+func (j Job) configure(alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
 	// Load alertmanager configuration
 	alertmanagerConfig, err := config.Load(string(alertmanagerConfigContent))
 	if err != nil {
@@ -90,7 +90,7 @@ func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, te
 
 	// Prepare request for Alertmanager API
 	requestData := configRequest{
-		AlertmanagerConfig: string(alertmanagerConfig.String()),
+		AlertmanagerConfig: alertmanagerConfig.String(),
 		TemplateFiles:      templates,
 	}
 	data, err := yaml.Marshal(requestData)
@@ -109,7 +109,7 @@ func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, te
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to send request: %w", err))
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint: errcheck
 
 	//TODO: handle response errors if any
 
