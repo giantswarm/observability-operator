@@ -37,9 +37,11 @@ type Job struct {
 	alertmanagerSecret client.ObjectKey
 }
 
+// configRequest is the structure used to send the configuration to Alertmanager's API
+// json tags also applies yaml field names
 type configRequest struct {
-	TemplateFiles      map[string]string `yaml:"template_files"`
-	AlertmanagerConfig string            `yaml:"alertmanager_config"`
+	TemplateFiles      map[string]string `json:"template_files"`
+	AlertmanagerConfig string            `json:"alertmanager_config"`
 }
 
 func New(conf pkgconfig.Config, c client.Client) Job {
@@ -135,14 +137,21 @@ func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, te
 	}
 	defer resp.Body.Close() // nolint: errcheck
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to read response: %w", err))
+	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: configuration sent")
+
+	if resp.StatusCode != http.StatusCreated {
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return errors.WithStack(fmt.Errorf("alertmanager: failed to read response: %w", err))
+		}
+
+		e := APIError{
+			Code:    resp.StatusCode,
+			Message: string(respBody),
+		}
+
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to send configuration: %w", e))
 	}
-
-	logger.WithValues("status_code", resp.StatusCode, "response", string(respBody)).Info("Alertmanager: configuration sent")
-
-	//TODO: handle response errors if any
 
 	return nil
 }
