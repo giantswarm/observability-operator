@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add Mimir Alertmanager datasource
+- Add Mimir Alertmanager datasource.
+- Add tenant ids field to the grafana organization CR to be able to support multiple tenants into one organization.
 
 ### Changed
 
