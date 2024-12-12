@@ -140,7 +140,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 
 				// Sort organizations by orgID to ensure the order is deterministic.
 				// This is important to prevent incorrect ordering of organizations on grafana restarts.
-				slices.SortStableFunc(organizations.Items, sortOrganizationsByID)
+				slices.SortStableFunc(organizations.Items, compareOrganizationsByID)
 
 				// Reconcile all grafana organizations when the grafana pod is recreated
 				requests := make([]reconcile.Request, 0, len(organizations.Items))
@@ -158,7 +158,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Complete(r)
 }
 
-func sortOrganizationsByID(i, j v1alpha1.GrafanaOrganization) int {
+func compareOrganizationsByID(i, j v1alpha1.GrafanaOrganization) int {
 	// if both orgs have a nil orgID, they are equal
 	// if one org has a nil orgID, it is higher than the other as it was not created in Grafana yet
 	if i.Status.OrgID == 0 && j.Status.OrgID == 0 {
@@ -387,7 +387,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 	_, err = controllerutil.CreateOrPatch(ctx, r.Client, grafanaConfig, func() error {
 		// We always sort the organizations to ensure the order is deterministic and the configmap is stable
 		// in order to prevent grafana to restarts.
-		slices.SortStableFunc(organizationList.Items, sortOrganizationsByID)
+		slices.SortStableFunc(organizationList.Items, compareOrganizationsByID)
 
 		config, err := templating.GenerateGrafanaConfiguration(organizationList.Items)
 		if err != nil {
