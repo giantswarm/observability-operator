@@ -17,10 +17,10 @@ limitations under the License.
 package controller
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
@@ -138,6 +138,10 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 					return []reconcile.Request{}
 				}
 
+				// Sort organizations by orgID to ensure the order is deterministic.
+				// This is important to prevent incorrect ordering of organizations on grafana restarts.
+				slices.SortStableFunc(organizations.Items, compareOrganizationsByID)
+
 				// Reconcile all grafana organizations when the grafana pod is recreated
 				requests := make([]reconcile.Request, 0, len(organizations.Items))
 				for _, organization := range organizations.Items {
@@ -152,6 +156,19 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
+}
+
+func compareOrganizationsByID(i, j v1alpha1.GrafanaOrganization) int {
+	// if both orgs have a nil orgID, they are equal
+	// if one org has a nil orgID, it is higher than the other as it was not created in Grafana yet
+	if i.Status.OrgID == 0 && j.Status.OrgID == 0 {
+		return 0
+	} else if i.Status.OrgID == 0 {
+		return 1
+	} else if j.Status.OrgID == 0 {
+		return -1
+	}
+	return cmp.Compare(i.Status.OrgID, j.Status.OrgID)
 }
 
 // reconcileCreate creates the grafanaOrganization.
@@ -368,14 +385,11 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 	}
 
 	_, err = controllerutil.CreateOrPatch(ctx, r.Client, grafanaConfig, func() error {
-		organizations := organizationList.Items
 		// We always sort the organizations to ensure the order is deterministic and the configmap is stable
 		// in order to prevent grafana to restarts.
-		slices.SortFunc(organizations, func(i, j v1alpha1.GrafanaOrganization) int {
-			return strings.Compare(i.Name, j.Name)
-		})
+		slices.SortStableFunc(organizationList.Items, compareOrganizationsByID)
 
-		config, err := templating.GenerateGrafanaConfiguration(organizations)
+		config, err := templating.GenerateGrafanaConfiguration(organizationList.Items)
 		if err != nil {
 			logger.Error(err, "failed to generate grafana user configmap values.")
 			return errors.WithStack(err)
@@ -383,7 +397,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 
 		// TODO: to be removed for next release
 		// cleanup owner references from the config map, see https://github.com/giantswarm/observability-operator/pull/183
-		for _, organization := range organizations {
+		for _, organization := range organizationList.Items {
 			// nolint:errcheck,gosec // ignore errors, owner references are probably already gone
 			controllerutil.RemoveOwnerReference(&organization, grafanaConfig, r.Scheme)
 		}
