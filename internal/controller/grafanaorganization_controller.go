@@ -17,10 +17,10 @@ limitations under the License.
 package controller
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
@@ -138,6 +138,10 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 					return []reconcile.Request{}
 				}
 
+				// Sort organizations by orgID to ensure the order is deterministic.
+				// This is important to prevent incorrect ordering of organizations on grafana restarts.
+				slices.SortStableFunc(organizations.Items, compareOrganizationsByID)
+
 				// Reconcile all grafana organizations when the grafana pod is recreated
 				requests := make([]reconcile.Request, 0, len(organizations.Items))
 				for _, organization := range organizations.Items {
@@ -152,6 +156,19 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
+}
+
+func compareOrganizationsByID(i, j v1alpha1.GrafanaOrganization) int {
+	// if both orgs have a nil orgID, they are equal
+	// if one org has a nil orgID, it is higher than the other as it was not created in Grafana yet
+	if i.Status.OrgID == 0 && j.Status.OrgID == 0 {
+		return 0
+	} else if i.Status.OrgID == 0 {
+		return 1
+	} else if j.Status.OrgID == 0 {
+		return -1
+	}
+	return cmp.Compare(i.Status.OrgID, j.Status.OrgID)
 }
 
 // reconcileCreate creates the grafanaOrganization.
@@ -210,7 +227,7 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 	sharedOrg := grafana.SharedOrg
 
 	logger.Info("configuring shared organization")
-	if _, err := grafana.UpdateOrganization(ctx, r.GrafanaAPI, sharedOrg); err != nil {
+	if err := grafana.UpdateOrganization(ctx, r.GrafanaAPI, &sharedOrg); err != nil {
 		logger.Error(err, "failed to rename shared org")
 		return errors.WithStack(err)
 	}
@@ -224,20 +241,28 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 	return nil
 }
 
+func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.Organization {
+	tenantIDs := make([]string, len(grafanaOrganization.Spec.Tenants))
+	for i, tenant := range grafanaOrganization.Spec.Tenants {
+		tenantIDs[i] = string(tenant)
+	}
+
+	return grafana.Organization{
+		ID:        grafanaOrganization.Status.OrgID,
+		Name:      grafanaOrganization.Spec.DisplayName,
+		TenantIDs: tenantIDs,
+	}
+}
+
 func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (err error) {
 	logger := log.FromContext(ctx)
 	// Create or update organization in Grafana
-	var organization = &grafana.Organization{
-		ID:       grafanaOrganization.Status.OrgID,
-		Name:     grafanaOrganization.Spec.DisplayName,
-		TenantID: grafanaOrganization.Name,
-	}
-
+	var organization = newOrganization(grafanaOrganization)
 	if organization.ID == 0 {
 		// if the CR doesn't have an orgID, create the organization in Grafana
-		organization, err = grafana.CreateOrganization(ctx, r.GrafanaAPI, *organization)
+		err = grafana.CreateOrganization(ctx, r.GrafanaAPI, &organization)
 	} else {
-		organization, err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, *organization)
+		err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, &organization)
 	}
 
 	if err != nil {
@@ -265,11 +290,7 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 	logger.Info("configuring data sources")
 
 	// Create or update organization in Grafana
-	var organization = grafana.Organization{
-		ID:       grafanaOrganization.Status.OrgID,
-		Name:     grafanaOrganization.Spec.DisplayName,
-		TenantID: grafanaOrganization.Name,
-	}
+	var organization = newOrganization(grafanaOrganization)
 
 	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, organization)
 	if err != nil {
@@ -306,11 +327,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	}
 
 	// Delete organization in Grafana
-	var organization = grafana.Organization{
-		ID:       grafanaOrganization.Status.OrgID,
-		Name:     grafanaOrganization.Spec.DisplayName,
-		TenantID: grafanaOrganization.Name,
-	}
+	var organization = newOrganization(grafanaOrganization)
 
 	// Delete organization in Grafana if it exists
 	if grafanaOrganization.Status.OrgID > 0 {
@@ -368,14 +385,11 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 	}
 
 	_, err = controllerutil.CreateOrPatch(ctx, r.Client, grafanaConfig, func() error {
-		organizations := organizationList.Items
 		// We always sort the organizations to ensure the order is deterministic and the configmap is stable
 		// in order to prevent grafana to restarts.
-		slices.SortFunc(organizations, func(i, j v1alpha1.GrafanaOrganization) int {
-			return strings.Compare(i.Name, j.Name)
-		})
+		slices.SortStableFunc(organizationList.Items, compareOrganizationsByID)
 
-		config, err := templating.GenerateGrafanaConfiguration(organizations)
+		config, err := templating.GenerateGrafanaConfiguration(organizationList.Items)
 		if err != nil {
 			logger.Error(err, "failed to generate grafana user configmap values.")
 			return errors.WithStack(err)
@@ -383,7 +397,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 
 		// TODO: to be removed for next release
 		// cleanup owner references from the config map, see https://github.com/giantswarm/observability-operator/pull/183
-		for _, organization := range organizations {
+		for _, organization := range organizationList.Items {
 			// nolint:errcheck,gosec // ignore errors, owner references are probably already gone
 			controllerutil.RemoveOwnerReference(&organization, grafanaConfig, r.Scheme)
 		}
