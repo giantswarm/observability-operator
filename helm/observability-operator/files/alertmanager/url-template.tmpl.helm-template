@@ -1,17 +1,17 @@
 {{`
 {{ define "__alerturl" }}
-`}}{{ .Values.alertmanager.grafanaAddress }}{{`/alerting/Mimir/{{ .CommonLabels.alertname }}/find
+`}}{{ .Values.alerting.grafanaAddress }}{{`/alerting/Mimir/{{ .CommonLabels.alertname }}/find
 {{ end }}
 
 {{ define "__dashboardurl" -}}
 {{ if match "^https://.+" (index .Alerts 0).Annotations.dashboard }}{{ (index .Alerts 0).Annotations.dashboard }}
 {{ else }}
-`}}{{ .Values.alertmanager.grafanaAddress }}{{`/d/{{ (index .Alerts 0).Annotations.dashboard }}
+`}}{{ .Values.alerting.grafanaAddress }}{{`/d/{{ (index .Alerts 0).Annotations.dashboard }}
 {{ end }}
 {{- end }}
 
 {{ define "__queryurl" }}
-`}}{{ .Values.alertmanager.grafanaAddress }}{{`/alerting/Mimir/{{ .CommonLabels.alertname }}/find
+`}}{{ .Values.alerting.grafanaAddress }}{{`/alerting/Mimir/{{ .CommonLabels.alertname }}/find
 {{ end }}
 
 {{ define "__runbookurl" -}}https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/{{ (index .Alerts 0).Annotations.opsrecipe }}{{- end }}

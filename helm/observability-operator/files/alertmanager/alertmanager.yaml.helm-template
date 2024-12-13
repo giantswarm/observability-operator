@@ -1,13 +1,13 @@
 global:
   resolve_timeout: 5m
-{{- if .Values.alertmanager.proxyURL }}
+{{- if .Values.alerting.proxyURL }}
   http_config:
-    proxy_url:  {{ .Values.alertmanager.proxyURL }}
+    proxy_url:  {{ .Values.alerting.proxyURL }}
 {{- end }}
-{{- if .Values.alertmanager.slackAPIToken }}
+{{- if .Values.alerting.slackAPIToken }}
   slack_api_url: "https://slack.com/api/chat.postMessage"
 {{- else }}
-  slack_api_url: {{ .Values.alertmanager.slackAPIURL }}
+  slack_api_url: {{ .Values.alerting.slackAPIURL }}
 {{- end }}
 
 route:
@@ -174,8 +174,8 @@ receivers:
         credentials: {{ .Values.monitoring.opsgenieApiKey }}
       follow_redirects: true
       enable_http2: true
-      {{- if .Values.alertmanager.proxyURL }}
-      proxy_url:  {{ .Values.alertmanager.proxyURL }}
+      {{- if .Values.alerting.proxyURL }}
+      proxy_url:  {{ .Values.alerting.proxyURL }}
       {{- end }}
     url: https://api.opsgenie.com/v2/heartbeats/{{ .Values.managementCluster.name }}/ping
 
@@ -186,13 +186,13 @@ receivers:
 - name: falco_noise_slack
   slack_configs:
   - channel: '#noise-falco'
-    {{- if .Values.alertmanager.slackAPIToken }}
+    {{- if .Values.alerting.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .Values.alertmanager.slackAPIToken }}
-      {{- if .Values.alertmanager.proxyURL }}
-      proxy_url:  {{ .Values.alertmanager.proxyURL }}
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      {{- if .Values.alerting.proxyURL }}
+      proxy_url:  {{ .Values.alerting.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -222,13 +222,13 @@ receivers:
   {{- else }}
   - channel: '#alert-atlas-test'
   {{- end }}
-    {{- if .Values.alertmanager.slackAPIToken }}
+    {{- if .Values.alerting.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .Values.alertmanager.slackAPIToken }}
-      {{- if .Values.alertmanager.proxyURL }}
-      proxy_url:  {{ .Values.alertmanager.proxyURL }}
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      {{- if .Values.alerting.proxyURL }}
+      proxy_url:  {{ .Values.alerting.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -241,13 +241,13 @@ receivers:
   {{- else }}
   - channel: '#alert-phoenix-test'
   {{- end }}
-    {{- if .Values.alertmanager.slackAPIToken }}
+    {{- if .Values.alerting.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .Values.alertmanager.slackAPIToken }}
-      {{- if .Values.alertmanager.proxyURL }}
-      proxy_url:  {{ .Values.alertmanager.proxyURL }}
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      {{- if .Values.alerting.proxyURL }}
+      proxy_url:  {{ .Values.alerting.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -260,13 +260,13 @@ receivers:
   {{- else }}
   - channel: '#alert-bigmac-test'
   {{- end }}
-    {{- if .Values.alertmanager.slackAPIToken }}
+    {{- if .Values.alerting.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .Values.alertmanager.slackAPIToken }}
-      {{- if .Values.alertmanager.proxyURL }}
-      proxy_url:  {{ .Values.alertmanager.proxyURL }}
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      {{- if .Values.alerting.proxyURL }}
+      proxy_url:  {{ .Values.alerting.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -279,13 +279,13 @@ receivers:
   {{- else }}
   - channel: '#alert-rocket-test'
   {{- end }}
-    {{- if .Values.alertmanager.slackAPIToken }}
+    {{- if .Values.alerting.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .Values.alertmanager.slackAPIToken }}
-      {{- if .Values.alertmanager.proxyURL }}
-      proxy_url:  {{ .Values.alertmanager.proxyURL }}
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      {{- if .Values.alerting.proxyURL }}
+      proxy_url:  {{ .Values.alerting.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -294,13 +294,13 @@ receivers:
 - name: team_shield_slack
   slack_configs:
   - channel: '#alert-shield'
-    {{- if .Values.alertmanager.slackAPIToken }}
+    {{- if .Values.alerting.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .Values.alertmanager.slackAPIToken }}
-      {{- if .Values.alertmanager.proxyURL }}
-      proxy_url:  {{ .Values.alertmanager.proxyURL }}
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      {{- if .Values.alerting.proxyURL }}
+      proxy_url:  {{ .Values.alerting.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -313,13 +313,13 @@ receivers:
   {{- else }}
   - channel: '#alert-turtles-test'
   {{- end }}
-    {{- if .Values.alertmanager.slackAPIToken }}
+    {{- if .Values.alerting.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .Values.alertmanager.slackAPIToken }}
-      {{- if .Values.alertmanager.proxyURL }}
-      proxy_url:  {{ .Values.alertmanager.proxyURL }}
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      {{- if .Values.alerting.proxyURL }}
+      proxy_url:  {{ .Values.alerting.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -328,13 +328,13 @@ receivers:
 - name: team_tenet_slack
   slack_configs:
   - channel: '#alert-tenet'
-    {{- if .Values.alertmanager.slackAPIToken }}
+    {{- if .Values.alerting.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .Values.alertmanager.slackAPIToken }}
-      {{- if .Values.alertmanager.proxyURL }}
-      proxy_url:  {{ .Values.alertmanager.proxyURL }}
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      {{- if .Values.alerting.proxyURL }}
+      proxy_url:  {{ .Values.alerting.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
@@ -343,13 +343,13 @@ receivers:
 - name: team_honeybadger_slack
   slack_configs:
   - channel: '#alert-honeybadger'
-    {{- if .Values.alertmanager.slackAPIToken }}
+    {{- if .Values.alerting.slackAPIToken }}
     http_config:
       authorization:
         type: Bearer
-        credentials: {{ .Values.alertmanager.slackAPIToken }}
-      {{- if .Values.alertmanager.proxyURL }}
-      proxy_url:  {{ .Values.alertmanager.proxyURL }}
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      {{- if .Values.alerting.proxyURL }}
+      proxy_url:  {{ .Values.alerting.proxyURL }}
       {{- end }}
     {{- end }}
     send_resolved: true
