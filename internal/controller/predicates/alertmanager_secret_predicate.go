@@ -18,6 +18,10 @@ func NewAlertmanagerSecretPredicate(secretName, namespace string) predicate.Pred
 			return false
 		}
 
+		if !secret.DeletionTimestamp.IsZero() {
+			return false
+		}
+
 		labels := secret.GetLabels()
 
 		ok = secret.GetName() == secretName &&
@@ -51,12 +55,17 @@ func NewAlertmanagerPodPredicate() predicate.Predicate {
 			return false
 		}
 
+		if !pod.DeletionTimestamp.IsZero() {
+			return false
+		}
+
 		labels := pod.GetLabels()
 
 		ok = pod.GetNamespace() == mimirNamespace &&
 			labels != nil &&
 			labels["app.kubernetes.io/component"] == mimirAlertmanagerComponent &&
-			labels["app.kubernetes.io/instance"] == mimirInstance
+			labels["app.kubernetes.io/instance"] == mimirInstance &&
+			isPodReady(pod)
 
 		return ok
 	}
