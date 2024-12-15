@@ -54,23 +54,23 @@ type GrafanaOrganizationReconciler struct {
 	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
 }
 
-func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
+func SetupGrafanaOrganizationReconciler(mgr manager.Manager, environment config.Environment) error {
 	// Generate Grafana client
 	// Get grafana admin-password and admin-user
 	grafanaAdminCredentials := grafanaclient.AdminCredentials{
-		Username: conf.Environment.GrafanaAdminUsername,
-		Password: conf.Environment.GrafanaAdminPassword,
+		Username: environment.GrafanaAdminUsername,
+		Password: environment.GrafanaAdminPassword,
 	}
 	if grafanaAdminCredentials.Username == "" {
-		return fmt.Errorf("GrafanaAdminUsername not set: %q", conf.Environment.GrafanaAdminUsername)
+		return fmt.Errorf("GrafanaAdminUsername not set: %q", environment.GrafanaAdminUsername)
 	}
 	if grafanaAdminCredentials.Password == "" {
-		return fmt.Errorf("GrafanaAdminPassword not set: %q", conf.Environment.GrafanaAdminPassword)
+		return fmt.Errorf("GrafanaAdminPassword not set: %q", environment.GrafanaAdminPassword)
 	}
 
 	grafanaTLSConfig := grafanaclient.TLSConfig{
-		Cert: conf.Environment.GrafanaTLSCertFile,
-		Key:  conf.Environment.GrafanaTLSKeyFile,
+		Cert: environment.GrafanaTLSCertFile,
+		Key:  environment.GrafanaTLSKeyFile,
 	}
 	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(grafanaAdminCredentials, grafanaTLSConfig)
 	if err != nil {
