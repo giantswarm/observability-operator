@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/alertmanager/config"
 	v1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
@@ -29,12 +28,13 @@ const (
 
 	orgIDHeader         = "X-Scope-OrgID"
 	alertmanagerAPIPath = "/api/v1/alerts"
+
+	//TODO: get this from somewhere
+	tenantID = "anonymous"
 )
 
 type Job struct {
-	client             client.Client
-	alertmanagerURL    string
-	alertmanagerSecret client.ObjectKey
+	alertmanagerURL string
 }
 
 // configRequest is the structure used to send the configuration to Alertmanager's API
@@ -44,50 +44,38 @@ type configRequest struct {
 	AlertmanagerConfig string            `json:"alertmanager_config"`
 }
 
-func New(conf pkgconfig.Config, c client.Client) Job {
+func New(conf pkgconfig.Config) Job {
 	job := Job{
-		client:          c,
 		alertmanagerURL: strings.TrimSuffix(conf.Monitoring.AlertmanagerURL, "/"),
-		alertmanagerSecret: client.ObjectKey{
-			Name:      conf.Monitoring.AlertmanagerSecretName,
-			Namespace: conf.Namespace,
-		},
 	}
 
 	return job
 }
 
-func (j Job) Configure(ctx context.Context) error {
+func (j Job) Configure(ctx context.Context, secret *v1.Secret) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("Alertmanager: configuring")
 
-	//TODO: get this from somewhere
-	tenantID := "anonymous"
-
-	// Read secret used as source for Alertmanager configuration
-	alertmanagerSecret := v1.Secret{}
-	err := j.client.Get(ctx, j.alertmanagerSecret, &alertmanagerSecret)
-
-	if err != nil {
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to get secret: %w", err))
+	if secret == nil {
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to get secret"))
 	}
 
 	// Retrieve Alertmanager configuration from secret
-	alertmanagerConfigContent, ok := alertmanagerSecret.Data[alertmanagerConfigKey]
+	alertmanagerConfigContent, ok := secret.Data[alertmanagerConfigKey]
 	if !ok {
 		return errors.WithStack(fmt.Errorf("alertmanager: config not found"))
 	}
 
 	// Retrieve all alertmanager templates from secret
 	templates := make(map[string]string)
-	for key, value := range alertmanagerSecret.Data {
+	for key, value := range secret.Data {
 		if strings.HasSuffix(key, templatesSuffix) {
 			templates[key] = string(value)
 		}
 	}
 
-	err = j.configure(ctx, alertmanagerConfigContent, templates, tenantID)
+	err := j.configure(ctx, alertmanagerConfigContent, templates, tenantID)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to configure: %w", err))
 	}
@@ -96,6 +84,8 @@ func (j Job) Configure(ctx context.Context) error {
 	return nil
 }
 
+// configure sends the configuration and templates to Mimir Alertmanager's API
+// https://grafana.com/docs/mimir/latest/references/http-api/#set-alertmanager-configuration
 func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
 	logger := log.FromContext(ctx)
 
