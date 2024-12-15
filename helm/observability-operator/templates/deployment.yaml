@@ -32,7 +32,7 @@ spec:
         - --management-cluster-region={{ $.Values.managementCluster.region }}
         # Monitoring configuration
         - --alertmanager-secret-name={{ include "alertmanager-secret.name" . }}
-        - --alertmanager-url={{ $.Values.alertmanager.alertmanagerURL }}
+        - --alertmanager-url={{ $.Values.alerting.alertmanagerURL }}
         - --monitoring-enabled={{ $.Values.monitoring.enabled }}
         - --monitoring-agent={{ $.Values.monitoring.agent }}
         - --monitoring-sharding-scale-up-series-count={{ $.Values.monitoring.sharding.scaleUpSeriesCount }}
