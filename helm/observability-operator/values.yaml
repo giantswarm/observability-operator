@@ -15,7 +15,7 @@ managementCluster:
   pipeline: pipeline
   region: region
 
-alerting:
+alertmanager:
   alertmanagerURL: ""
   grafanaAddress: ""
   proxyURL: ""
