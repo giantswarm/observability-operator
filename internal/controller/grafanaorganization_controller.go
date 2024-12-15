@@ -38,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/giantswarm/observability-operator/pkg/alertmanager"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 
@@ -51,9 +50,8 @@ import (
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	GrafanaAPI      *grafanaAPI.GrafanaHTTPAPI
-	AlertmanagerJob alertmanager.Job
+	Scheme     *runtime.Scheme
+	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
 }
 
 func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
@@ -80,10 +78,9 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config)
 	}
 
 	r := &GrafanaOrganizationReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		GrafanaAPI:      grafanaAPI,
-		AlertmanagerJob: alertmanager.New(conf, mgr.GetClient()),
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		GrafanaAPI: grafanaAPI,
 	}
 
 	err = r.SetupWithManager(mgr)
@@ -199,12 +196,6 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		}
 		logger.Info("added finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
 		return ctrl.Result{}, nil
-	}
-
-	// Configure Alertmanager
-	err := r.AlertmanagerJob.Configure(ctx)
-	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	// Configure the shared organization in Grafana
