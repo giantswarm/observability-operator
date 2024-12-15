@@ -46,7 +46,7 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
 
 	// Setup the controller
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1.ConfigMap{}, builder.WithPredicates(secretPredicate)).
+		For(&v1.Secret{}, builder.WithPredicates(secretPredicate)).
 		Watches(&v1.Pod{}, p, builder.WithPredicates(podPredicate)).
 		Complete(r)
 }
