@@ -7,6 +7,7 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"path"
 	"slices"
 	"strings"
 
@@ -71,7 +72,10 @@ func (j Job) Configure(ctx context.Context, secret *v1.Secret) error {
 	templates := make(map[string]string)
 	for key, value := range secret.Data {
 		if strings.HasSuffix(key, templatesSuffix) {
-			templates[key] = string(value)
+			// Template key/name should not be a path otherwise the request will fail with:
+			// > error validating Alertmanager config: invalid template name "/etc/dummy.tmpl": the template name cannot contain any path
+			baseKey := path.Base(key)
+			templates[baseKey] = string(value)
 		}
 	}
 
@@ -95,9 +99,8 @@ func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, te
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to load configuration: %w", err))
 	}
 
-	// Set notification template name
-	// This must match the key set for the template in configCompat.TemplateFiles. This value should not be a path otherwise the request will fail with:
-	// > error validating Alertmanager config: invalid template name "/etc/dummy.tmpl": the template name cannot contain any path
+	// Set template names
+	// Values set here must match the keys set in requestData.TemplateFiles
 	alertmanagerConfig.Templates = slices.Collect(maps.Keys(templates))
 	alertmanagerConfigString := alertmanagerConfig.String()
 
