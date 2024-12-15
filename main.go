@@ -188,6 +188,13 @@ func main() {
 		setupLog.Error(err, "unable to setup controller", "controller", "GrafanaOrganizationReconciler")
 		os.Exit(1)
 	}
+
+	// Setup controller for Alertmanager
+	err = controller.SetupAlertmanagerReconciler(mgr, conf)
+	if err != nil {
+		setupLog.Error(err, "unable to setup controller", "controller", "AlertmanagerReconciler")
+		os.Exit(1)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
