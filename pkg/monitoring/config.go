@@ -15,7 +15,8 @@ const MonitoringLabel = "giantswarm.io/monitoring"
 type Config struct {
 	Enabled bool
 
-	AlertmanagerURL string
+	AlertmanagerSecretName string
+	AlertmanagerURL        string
 
 	MonitoringAgent         string
 	DefaultShardingStrategy sharding.Strategy

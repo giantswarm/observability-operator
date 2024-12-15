@@ -11,6 +11,7 @@ type Config struct {
 	ProbeAddr            string
 	SecureMetrics        bool
 	EnableHTTP2          bool
+	Namespace            string
 
 	ManagementCluster common.ManagementCluster
 

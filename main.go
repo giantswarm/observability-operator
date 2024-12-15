@@ -74,6 +74,8 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&conf.EnableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&conf.Namespace, "namespace", "",
+		"The namespace where the observability-operator is running.")
 
 	// Management cluster configuration flags.
 	flag.StringVar(&conf.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
@@ -90,6 +92,8 @@ func main() {
 		"The region of the management cluster.")
 
 	// Monitoring configuration flags.
+	flag.StringVar(&conf.Monitoring.AlertmanagerSecretName, "alertmanager-secret-name", "",
+		"The name of the secret containing the Alertmanager configuration.")
 	flag.StringVar(&conf.Monitoring.AlertmanagerURL, "alertmanager-url", "",
 		"The URL of the Alertmanager API.")
 	flag.StringVar(&conf.Monitoring.MonitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
