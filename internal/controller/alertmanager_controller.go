@@ -32,7 +32,7 @@ type AlertmanagerReconciler struct {
 func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
 	r := &AlertmanagerReconciler{
 		client:          mgr.GetClient(),
-		alertmanagerJob: alertmanager.New(conf, mgr.GetClient()),
+		alertmanagerJob: alertmanager.New(conf),
 	}
 
 	// Filter only the Alertmanager secret created by the observability-operator Helm chart
@@ -93,7 +93,7 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 // Handle create and update events
 func (r AlertmanagerReconciler) reconcileCreate(ctx context.Context, secret *v1.Secret) (ctrl.Result, error) { // nolint: unparam
 	// Ensure the configuration is set and up to date in Alertmanager
-	err := r.alertmanagerJob.Configure(ctx)
+	err := r.alertmanagerJob.Configure(ctx, secret)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
