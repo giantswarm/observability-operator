@@ -36,7 +36,7 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
 	}
 
 	// Filter only the Alertmanager secret created by the observability-operator Helm chart
-	secretPredicate := predicates.NewAlertmanagerSecretPredicate(conf.Monitoring.AlertmanagerSecretName, conf.OperatorNamespace)
+	secretPredicate := predicates.NewAlertmanagerSecretPredicate(conf)
 
 	// Filter only the Mimir Alertmanager pod
 	podPredicate := predicates.NewAlertmanagerPodPredicate()
