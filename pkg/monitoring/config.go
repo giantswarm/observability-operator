@@ -13,7 +13,12 @@ const MonitoringLabel = "giantswarm.io/monitoring"
 
 // Config represents the configuration used by the monitoring package.
 type Config struct {
-	Enabled                 bool
+	Enabled bool
+
+	AlertmanagerSecretName string
+	AlertmanagerURL        string
+	AlertmanagerEnabled    bool
+
 	MonitoringAgent         string
 	DefaultShardingStrategy sharding.Strategy
 	// WALTruncateFrequency is the frequency at which the WAL segments should be truncated.

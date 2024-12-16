@@ -74,6 +74,8 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&conf.EnableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&conf.OperatorNamespace, "operator-namespace", "",
+		"The namespace where the observability-operator is running.")
 
 	// Management cluster configuration flags.
 	flag.StringVar(&conf.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
@@ -90,6 +92,12 @@ func main() {
 		"The region of the management cluster.")
 
 	// Monitoring configuration flags.
+	flag.BoolVar(&conf.Monitoring.AlertmanagerEnabled, "alertmanager-enabled", false,
+		"Enable Alertmanager controller.")
+	flag.StringVar(&conf.Monitoring.AlertmanagerSecretName, "alertmanager-secret-name", "",
+		"The name of the secret containing the Alertmanager configuration.")
+	flag.StringVar(&conf.Monitoring.AlertmanagerURL, "alertmanager-url", "",
+		"The URL of the Alertmanager API.")
 	flag.StringVar(&conf.Monitoring.MonitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
 		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
 	flag.BoolVar(&conf.Monitoring.Enabled, "monitoring-enabled", false,
@@ -109,14 +117,14 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
 	// Load environment variables.
 	_, err := env.UnmarshalFromEnviron(&conf.Environment)
 	if err != nil {
 		setupLog.Error(err, "failed to unmarshal environment variables")
 		os.Exit(1)
 	}
-
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -181,6 +189,15 @@ func main() {
 	if err != nil {
 		setupLog.Error(err, "unable to setup controller", "controller", "GrafanaOrganizationReconciler")
 		os.Exit(1)
+	}
+
+	if conf.Monitoring.AlertmanagerEnabled {
+		// Setup controller for Alertmanager
+		err = controller.SetupAlertmanagerReconciler(mgr, conf)
+		if err != nil {
+			setupLog.Error(err, "unable to setup controller", "controller", "AlertmanagerReconciler")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 
