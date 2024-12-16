@@ -34,7 +34,7 @@ const (
 	tenantID = "anonymous"
 )
 
-type Job struct {
+type Service struct {
 	alertmanagerURL string
 }
 
@@ -45,15 +45,15 @@ type configRequest struct {
 	AlertmanagerConfig string            `json:"alertmanager_config"`
 }
 
-func New(conf pkgconfig.Config) Job {
-	job := Job{
+func New(conf pkgconfig.Config) Service {
+	service := Service{
 		alertmanagerURL: strings.TrimSuffix(conf.Monitoring.AlertmanagerURL, "/"),
 	}
 
-	return job
+	return service
 }
 
-func (j Job) Configure(ctx context.Context, secret *v1.Secret) error {
+func (s Service) Configure(ctx context.Context, secret *v1.Secret) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("Alertmanager: configuring")
@@ -79,7 +79,7 @@ func (j Job) Configure(ctx context.Context, secret *v1.Secret) error {
 		}
 	}
 
-	err := j.configure(ctx, alertmanagerConfigContent, templates, tenantID)
+	err := s.configure(ctx, alertmanagerConfigContent, templates, tenantID)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to configure: %w", err))
 	}
@@ -90,7 +90,7 @@ func (j Job) Configure(ctx context.Context, secret *v1.Secret) error {
 
 // configure sends the configuration and templates to Mimir Alertmanager's API
 // https://grafana.com/docs/mimir/latest/references/http-api/#set-alertmanager-configuration
-func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
+func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
 	logger := log.FromContext(ctx)
 
 	// Load alertmanager configuration
@@ -114,7 +114,7 @@ func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, te
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to marshal yaml: %w", err))
 	}
 
-	url := j.alertmanagerURL + alertmanagerAPIPath
+	url := s.alertmanagerURL + alertmanagerAPIPath
 	logger.WithValues("url", url, "data_size", len(data), "config_size", len(alertmanagerConfigString), "templates_count", len(templates)).Info("Alertmanager: sending configuration")
 
 	// Send request to Alertmanager's API
