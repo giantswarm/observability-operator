@@ -31,6 +31,7 @@ spec:
         - --management-cluster-pipeline={{ $.Values.managementCluster.pipeline }}
         - --management-cluster-region={{ $.Values.managementCluster.region }}
         # Monitoring configuration
+        - --alertmanager-enabled={{ $.Values.alerting.enabled }}
         - --alertmanager-secret-name={{ include "alertmanager-secret.name" . }}
         - --alertmanager-url={{ $.Values.alerting.alertmanagerURL }}
         - --monitoring-enabled={{ $.Values.monitoring.enabled }}

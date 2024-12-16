@@ -92,6 +92,8 @@ func main() {
 		"The region of the management cluster.")
 
 	// Monitoring configuration flags.
+	flag.BoolVar(&conf.Monitoring.AlertmanagerEnabled, "alertmanager-enabled", false,
+		"Enable Alertmanager controller.")
 	flag.StringVar(&conf.Monitoring.AlertmanagerSecretName, "alertmanager-secret-name", "",
 		"The name of the secret containing the Alertmanager configuration.")
 	flag.StringVar(&conf.Monitoring.AlertmanagerURL, "alertmanager-url", "",
@@ -189,11 +191,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Setup controller for Alertmanager
-	err = controller.SetupAlertmanagerReconciler(mgr, conf)
-	if err != nil {
-		setupLog.Error(err, "unable to setup controller", "controller", "AlertmanagerReconciler")
-		os.Exit(1)
+	if conf.Monitoring.AlertmanagerEnabled {
+		// Setup controller for Alertmanager
+		err = controller.SetupAlertmanagerReconciler(mgr, conf)
+		if err != nil {
+			setupLog.Error(err, "unable to setup controller", "controller", "AlertmanagerReconciler")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

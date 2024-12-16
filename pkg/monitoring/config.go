@@ -17,6 +17,7 @@ type Config struct {
 
 	AlertmanagerSecretName string
 	AlertmanagerURL        string
+	AlertmanagerEnabled    bool
 
 	MonitoringAgent         string
 	DefaultShardingStrategy sharding.Strategy
