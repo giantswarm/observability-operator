@@ -1,6 +1,10 @@
 package grafana
 
-import "strings"
+import (
+	"strings"
+
+	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+)
 
 type Organization struct {
 	ID        int64
@@ -29,7 +33,7 @@ func (d Datasource) buildJSONData() map[string]interface{} {
 	}
 
 	// Add tenant header name
-	d.JSONData["httpHeaderName1"] = "X-Scope-OrgID"
+	d.JSONData["httpHeaderName1"] = common.OrgIDHeader
 
 	return d.JSONData
 }

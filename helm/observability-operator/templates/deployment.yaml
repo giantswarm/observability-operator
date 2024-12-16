@@ -31,6 +31,7 @@ spec:
         - --management-cluster-pipeline={{ $.Values.managementCluster.pipeline }}
         - --management-cluster-region={{ $.Values.managementCluster.region }}
         # Monitoring configuration
+        - --alertmanager-url={{ $.Values.alerting.alertmanagerURL }}
         - --monitoring-enabled={{ $.Values.monitoring.enabled }}
         - --monitoring-agent={{ $.Values.monitoring.agent }}
         - --monitoring-sharding-scale-up-series-count={{ $.Values.monitoring.sharding.scaleUpSeriesCount }}
