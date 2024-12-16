@@ -69,8 +69,6 @@ func podEventHandler(conf config.Config) handler.EventHandler {
 // Reconcile main logic
 func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger = logger.WithValues("controller", "alertmanager")
-	log.IntoContext(ctx, logger)
 
 	logger.Info("Started reconciling")
 	defer logger.Info("Finished reconciling")
