@@ -71,7 +71,6 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 	logger := log.FromContext(ctx)
 
 	logger.Info("Started reconciling")
-	defer logger.Info("Finished reconciling")
 
 	// Retrieve the secret being reconciled
 	secret := &v1.Secret{}
@@ -85,7 +84,14 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 		return ctrl.Result{}, nil
 	}
 
-	return r.reconcileCreate(ctx, secret)
+	result, err := r.reconcileCreate(ctx, secret)
+	if err != nil {
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+
+	logger.Info("Finished reconciling")
+
+	return result, nil
 }
 
 // Handle create and update events
