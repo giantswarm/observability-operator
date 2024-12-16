@@ -75,7 +75,7 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 	// Retrieve the secret being reconciled
 	secret := &v1.Secret{}
 	if err := r.client.Get(ctx, req.NamespacedName, secret); err != nil {
-		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	if !secret.DeletionTimestamp.IsZero() {
