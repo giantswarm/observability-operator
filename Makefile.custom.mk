@@ -34,6 +34,9 @@ docker-compose: ## Download docker-compose locally if necessary.
 	curl -sL "https://github.com/docker/compose/releases/download/$(LATEST_RELEASE)/docker-compose-linux-x86_64" -o $(DOCKER_COMPOSE)
 	chmod +x $(DOCKER_COMPOSE)
 
+local:
+	./hack/bin/run-local.sh
+
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 define go-get-tool

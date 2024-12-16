@@ -19,6 +19,8 @@ make
 
 See `make help` for help.
 
+If you want to run the operator locally against an existing cluster, you can use `make local` which will use `hack/bin/run-local.sh` to setup a local instance for the operator.
+
 ## Architecture
 
 TODO(atlas): Fill this out
