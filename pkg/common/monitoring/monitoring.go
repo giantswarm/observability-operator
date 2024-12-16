@@ -41,6 +41,8 @@ const (
 	RemoteWriteName                = "mimir"
 	RemoteWriteEndpointTemplateURL = "https://mimir.%s/api/v1/push"
 	RemoteWriteTimeout             = "60s"
+
+	OrgIDHeader = "X-Scope-OrgID"
 )
 
 func GetServicePriority(cluster *clusterv1.Cluster) string {
