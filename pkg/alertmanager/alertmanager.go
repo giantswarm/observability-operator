@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
+	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
 )
 
@@ -27,7 +28,6 @@ const (
 	// templatesSuffix is the suffix used to identify the templates in the secret
 	templatesSuffix = ".tmpl"
 
-	orgIDHeader         = "X-Scope-OrgID"
 	alertmanagerAPIPath = "/api/v1/alerts"
 
 	//TODO: get this from somewhere
@@ -122,7 +122,7 @@ func (j Job) configure(ctx context.Context, alertmanagerConfigContent []byte, te
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to create request: %w", err))
 	}
-	req.Header.Set(orgIDHeader, tenantID)
+	req.Header.Set(common.OrgIDHeader, tenantID)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
