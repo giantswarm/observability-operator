@@ -84,23 +84,12 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 		return ctrl.Result{}, nil
 	}
 
-	result, err := r.reconcileCreate(ctx, secret)
+	err := r.alertmanagerService.Configure(ctx, secret)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	logger.Info("Finished reconciling")
-
-	return result, nil
-}
-
-// Handle create and update events
-func (r AlertmanagerReconciler) reconcileCreate(ctx context.Context, secret *v1.Secret) (ctrl.Result, error) { // nolint: unparam
-	// Ensure the configuration is set and up to date in Alertmanager
-	err := r.alertmanagerService.Configure(ctx, secret)
-	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
-	}
 
 	return ctrl.Result{}, nil
 }
