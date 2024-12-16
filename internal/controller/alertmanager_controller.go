@@ -42,7 +42,7 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
 	podPredicate := predicates.NewAlertmanagerPodPredicate()
 
 	// Requeue the Alertmanager secret when the Mimir Alertmanager pod changes
-	p := podEventHandler(conf.Monitoring.AlertmanagerSecretName, conf.Namespace)
+	p := podEventHandler(conf)
 
 	// Setup the controller
 	return ctrl.NewControllerManagedBy(mgr).
@@ -53,13 +53,13 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
 
 // podEventHandler returns an event handler that enqueues requests for the Alertmanager secret only.
 // For now there is only one Alertmanager secret to be reconciled.
-func podEventHandler(secretName, namespace string) handler.EventHandler {
+func podEventHandler(conf config.Config) handler.EventHandler {
 	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
 		return []reconcile.Request{
 			{
 				NamespacedName: types.NamespacedName{
-					Name:      secretName,
-					Namespace: namespace,
+					Name:      conf.Monitoring.AlertmanagerSecretName,
+					Namespace: conf.Namespace,
 				},
 			},
 		}
