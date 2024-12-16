@@ -17,10 +17,8 @@ limitations under the License.
 package controller
 
 import (
-	"cmp"
 	"context"
 	"fmt"
-	"slices"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
@@ -38,13 +36,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/giantswarm/observability-operator/pkg/config"
-	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
+	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller/predicates"
+	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
-	"github.com/giantswarm/observability-operator/pkg/grafana/templating"
+	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
@@ -138,10 +136,6 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 					return []reconcile.Request{}
 				}
 
-				// Sort organizations by orgID to ensure the order is deterministic.
-				// This is important to prevent incorrect ordering of organizations on grafana restarts.
-				slices.SortStableFunc(organizations.Items, compareOrganizationsByID)
-
 				// Reconcile all grafana organizations when the grafana pod is recreated
 				requests := make([]reconcile.Request, 0, len(organizations.Items))
 				for _, organization := range organizations.Items {
@@ -156,19 +150,6 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
-}
-
-func compareOrganizationsByID(i, j v1alpha1.GrafanaOrganization) int {
-	// if both orgs have a nil orgID, they are equal
-	// if one org has a nil orgID, it is higher than the other as it was not created in Grafana yet
-	if i.Status.OrgID == 0 && j.Status.OrgID == 0 {
-		return 0
-	} else if i.Status.OrgID == 0 {
-		return 1
-	} else if j.Status.OrgID == 0 {
-		return -1
-	}
-	return cmp.Compare(i.Status.OrgID, j.Status.OrgID)
 }
 
 // reconcileCreate creates the grafanaOrganization.
@@ -214,7 +195,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Configure Grafana RBAC
-	if err := r.configureGrafana(ctx); err != nil {
+	if err := r.configureGrafanaSSO(ctx); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
@@ -251,6 +232,9 @@ func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.
 		ID:        grafanaOrganization.Status.OrgID,
 		Name:      grafanaOrganization.Spec.DisplayName,
 		TenantIDs: tenantIDs,
+		Admins:    grafanaOrganization.Spec.RBAC.Admins,
+		Editors:   grafanaOrganization.Spec.RBAC.Editors,
+		Viewers:   grafanaOrganization.Spec.RBAC.Viewers,
 	}
 }
 
@@ -343,7 +327,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		}
 	}
 
-	err := r.configureGrafana(ctx)
+	err := r.configureGrafanaSSO(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -367,7 +351,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 }
 
 // configureGrafana ensures the RBAC configuration is set in Grafana.
-func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) error {
+func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	organizationList := v1alpha1.GrafanaOrganizationList{}
@@ -384,34 +368,34 @@ func (r *GrafanaOrganizationReconciler) configureGrafana(ctx context.Context) er
 		},
 	}
 
-	_, err = controllerutil.CreateOrPatch(ctx, r.Client, grafanaConfig, func() error {
-		// We always sort the organizations to ensure the order is deterministic and the configmap is stable
-		// in order to prevent grafana to restarts.
-		slices.SortStableFunc(organizationList.Items, compareOrganizationsByID)
+	// TODO remove after next release start
+	if err = r.Client.Delete(ctx, grafanaConfig); client.IgnoreNotFound(err) != nil {
+		return errors.WithStack(err)
+	}
 
-		config, err := templating.GenerateGrafanaConfiguration(organizationList.Items)
-		if err != nil {
-			logger.Error(err, "failed to generate grafana user configmap values.")
-			return errors.WithStack(err)
-		}
-
-		// TODO: to be removed for next release
-		// cleanup owner references from the config map, see https://github.com/giantswarm/observability-operator/pull/183
-		for _, organization := range organizationList.Items {
-			// nolint:errcheck,gosec // ignore errors, owner references are probably already gone
-			controllerutil.RemoveOwnerReference(&organization, grafanaConfig, r.Scheme)
-		}
-
-		logger.Info("updating grafana-user-values", "config", config)
-
-		grafanaConfig.Data = make(map[string]string)
-		grafanaConfig.Data["values"] = config
-
-		return nil
-	})
-
+	// Retrieve the app.
+	var currentApp appv1.App = appv1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "grafana",
+			Namespace: "giantswarm",
+		},
+	}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: currentApp.GetName(), Namespace: currentApp.GetNamespace()}, &currentApp)
 	if err != nil {
-		logger.Error(err, "failed to configure grafana.")
+		return err
+	}
+	currentApp.Spec.UserConfig = appv1.AppSpecUserConfig{}
+	if err = r.Client.Update(ctx, &currentApp); err != nil {
+		return err
+	}
+
+	// Configure SSO settings in Grafana
+	organizations := make([]grafana.Organization, len(organizationList.Items))
+	for i, organization := range organizationList.Items {
+		organizations[i] = newOrganization(&organization)
+	}
+	err = grafana.ConfigureSSOSettings(ctx, r.GrafanaAPI, organizations)
+	if err != nil {
 		return errors.WithStack(err)
 	}
 
