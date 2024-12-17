@@ -6,7 +6,7 @@ set -euo pipefail
 
 NAMESPACE="monitoring"
 declare -a OLLYOPARGS
-declare PORTFORWARDPID
+declare GRAFANAPORTFORWARDPID MIMIRPORTFORWARDPID
 
 
 # Define the arguments for the observability-operator
@@ -32,14 +32,25 @@ function setEnvFromSecrets {
 }
 
 # Port-forward the Grafana service
-function portForwardGrafana {
+function grafanaPortForward {
   kubectl port-forward -n "$NAMESPACE" svc/grafana 3000:80 &>/dev/null &
-  PORTFORWARDPID="$!"
+  GRAFANAPORTFORWARDPID="$!"
 }
 
 # Stop the Grafana service port-forward
-function stopPortForward {
-  kill "$PORTFORWARDPID"
+function stopGrafanaPortForward {
+  kill "$GRAFANAPORTFORWARDPID"
+}
+
+# Port-forward the mimir service
+function mimirPortForward {
+  kubectl port-forward -n mimir svc/mimir-gateway 8180:80 &>/dev/null &
+  MIMIRPORTFORWARDPID="$!"
+}
+
+# Stop the Grafana service port-forward
+function stopMimirPortForward {
+  kill "$MIMIRPORTFORWARDPID"
 }
 
 # Pause the in-cluster operator
@@ -54,7 +65,8 @@ function resumeInClusterOperator {
 
 # Cleanup function
 function cleanupAtExit {
-  stopPortForward
+  stopGrafanaPortForward
+  stopMimirPortForward
   resumeInClusterOperator
 }
 
@@ -71,13 +83,14 @@ function main {
   echo "### ollyorg args set"
 
   echo "### starting port-forward"
-  portForwardGrafana
+  grafanaPortForward
+  mimirPortForward
 
   echo "### Pausing in-cluster operator"
   pauseInClusterOperator
 
   echo "### Running operator"
-  go run . "${OLLYOPARGS[@]}" -kubeconfig ~/.kube/config
+  go run . "${OLLYOPARGS[@]}"
 
   echo "### Cleanup"
 }
