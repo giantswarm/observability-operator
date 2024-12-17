@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # When developing the observability-operator, it is useful to run it locally against a real cluster.
 # This script sets up the environment and runs the operator locally.
@@ -61,7 +62,7 @@ function cleanupAtExit {
 function main {
 
   # make sure the script restores cluster at exit
-  trap cleanupAtExit SIGINT SIGQUIT SIGABRT SIGTERM
+  trap cleanupAtExit SIGINT SIGQUIT SIGABRT SIGTERM EXIT
 
   echo "### set env vars set"
   setEnvFromSecrets
