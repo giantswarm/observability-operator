@@ -1,7 +1,5 @@
 {{`
-{{ define "__alerturl" }}
-`}}{{ .Values.alerting.grafanaAddress }}{{`/alerting/Mimir/{{ .CommonLabels.alertname }}/find
-{{ end }}
+{{ define "__alerturl" }}`}}{{ .Values.alerting.grafanaAddress }}{{`/alerting/Mimir/{{ .CommonLabels.alertname }}/find{{ end }}
 
 {{ define "__dashboardurl" -}}
 {{ if match "^https://.+" (index .Alerts 0).Annotations.dashboard }}{{ (index .Alerts 0).Annotations.dashboard }}
@@ -10,9 +8,7 @@
 {{ end }}
 {{- end }}
 
-{{ define "__queryurl" }}
-`}}{{ .Values.alerting.grafanaAddress }}{{`/alerting/Mimir/{{ .CommonLabels.alertname }}/find
-{{ end }}
+{{ define "__queryurl" }}{{ grafanaExploreURL "`}}{{ .Values.alerting.grafanaAddress }}{{`" "Mimir Alertmanager" "now-12h" "now" (queryFromGeneratorURL (index .Alerts 0).GeneratorURL) }}{{ end }}
 
 {{ define "__runbookurl" -}}https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/{{ (index .Alerts 0).Annotations.opsrecipe }}{{- end }}
 `}}
