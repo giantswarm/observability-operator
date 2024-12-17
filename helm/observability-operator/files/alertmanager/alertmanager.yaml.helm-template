@@ -10,6 +10,10 @@ global:
   slack_api_url: {{ .Values.alerting.slackAPIURL }}
 {{- end }}
 
+templates:
+  - notification-template.tmpl
+  - url-template.tmpl
+
 route:
   group_by: [alertname, cluster_id, installation, status, team]
   group_interval: 15m
