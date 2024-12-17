@@ -106,7 +106,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to marshal yaml: %w", err))
 	}
-	dateLen := len(data)
+	dataLen := len(data)
 
 	url := s.alertmanagerURL + alertmanagerAPIPath
 	logger.WithValues("url", url, "data_size", dataLen, "config_size", len(alertmanagerConfigContent), "templates_count", len(templates)).Info("Alertmanager: sending configuration")
@@ -117,7 +117,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to create request: %w", err))
 	}
 	req.Header.Set(common.OrgIDHeader, tenantID)
-	req.ContentLength = int64(dateLen)
+	req.ContentLength = int64(dataLen)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
