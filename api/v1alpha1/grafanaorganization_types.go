@@ -31,6 +31,7 @@ type GrafanaOrganizationSpec struct {
 	// DisplayName is the name displayed when viewing the organization in Grafana. It can be different from the actual org's name.
 	// +kubebuilder:example="Giant Swarm"
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:unique=true
 	DisplayName string `json:"displayName"`
 
 	// Access rules defines user permissions for interacting with the organization in Grafana.

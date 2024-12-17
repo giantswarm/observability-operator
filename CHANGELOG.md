@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add Alertmanager controller
 
+### Changed
+
+- Change SSO settings configuration to use the Grafana admin API instead of app user-values.
+
 ## [0.10.1] - 2024-12-12
 
 ### Fixed

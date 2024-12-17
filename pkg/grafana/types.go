@@ -10,6 +10,9 @@ type Organization struct {
 	ID        int64
 	Name      string
 	TenantIDs []string
+	Admins    []string
+	Editors   []string
+	Viewers   []string
 }
 
 type Datasource struct {
