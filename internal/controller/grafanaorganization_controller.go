@@ -385,7 +385,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context)
 		},
 	}
 
-	// TODO remove after next release start
+	// TODO remove after next release (current: 0.10.1)
 	if err = r.Client.Delete(ctx, grafanaConfig); client.IgnoreNotFound(err) != nil {
 		return errors.WithStack(err)
 	}
