@@ -87,11 +87,13 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret) error {
 }
 
 // configure sends the configuration and templates to Mimir Alertmanager's API
+// It is the caller responsibility to make sure templates names are valid (do not contain any path), and that templates are referenced in the configuration.
 // https://grafana.com/docs/mimir/latest/references/http-api/#set-alertmanager-configuration
 func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
 	logger := log.FromContext(ctx)
 
-	// Load alertmanager configuration
+	// Validate Alertmanager configuration
+	// The returned config is not used, as transforming it via String() would produce an invalid configuration with all secrets replaced with <redacted>.
 	_, err := config.Load(string(alertmanagerConfigContent))
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to load configuration: %w", err))
