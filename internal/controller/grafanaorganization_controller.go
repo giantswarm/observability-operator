@@ -17,8 +17,10 @@ limitations under the License.
 package controller
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
@@ -135,6 +137,21 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 					logger.Error(err, "failed to list grafana organization CRs")
 					return []reconcile.Request{}
 				}
+
+				// Sort organizations by orgID to ensure the order is deterministic.
+				// This is important to prevent incorrect ordering of organizations on grafana restarts.
+				slices.SortStableFunc(organizations.Items, func(i, j v1alpha1.GrafanaOrganization) int {
+					// if both orgs have a nil orgID, they are equal
+					// if one org has a nil orgID, it is higher than the other as it was not created in Grafana yet
+					if i.Status.OrgID == 0 && j.Status.OrgID == 0 {
+						return 0
+					} else if i.Status.OrgID == 0 {
+						return 1
+					} else if j.Status.OrgID == 0 {
+						return -1
+					}
+					return cmp.Compare(i.Status.OrgID, j.Status.OrgID)
+				})
 
 				// Reconcile all grafana organizations when the grafana pod is recreated
 				requests := make([]reconcile.Request, 0, len(organizations.Items))
