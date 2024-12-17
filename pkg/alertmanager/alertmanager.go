@@ -5,10 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"path"
-	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -94,28 +92,24 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 	logger := log.FromContext(ctx)
 
 	// Load alertmanager configuration
-	alertmanagerConfig, err := config.Load(string(alertmanagerConfigContent))
+	_, err := config.Load(string(alertmanagerConfigContent))
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to load configuration: %w", err))
 	}
 
-	// Set template names
-	// Values set here must match the keys set in requestData.TemplateFiles
-	alertmanagerConfig.Templates = slices.Collect(maps.Keys(templates))
-	alertmanagerConfigString := alertmanagerConfig.String()
-
 	// Prepare request for Alertmanager API
-	requestData := configRequest{
-		AlertmanagerConfig: alertmanagerConfigString,
+	requestData := &configRequest{
+		AlertmanagerConfig: string(alertmanagerConfigContent),
 		TemplateFiles:      templates,
 	}
 	data, err := yaml.Marshal(requestData)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to marshal yaml: %w", err))
 	}
+	dateLen := len(data)
 
 	url := s.alertmanagerURL + alertmanagerAPIPath
-	logger.WithValues("url", url, "data_size", len(data), "config_size", len(alertmanagerConfigString), "templates_count", len(templates)).Info("Alertmanager: sending configuration")
+	logger.WithValues("url", url, "data_size", dataLen, "config_size", len(alertmanagerConfigContent), "templates_count", len(templates)).Info("Alertmanager: sending configuration")
 
 	// Send request to Alertmanager's API
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
@@ -123,6 +117,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to create request: %w", err))
 	}
 	req.Header.Set(common.OrgIDHeader, tenantID)
+	req.ContentLength = int64(dateLen)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
