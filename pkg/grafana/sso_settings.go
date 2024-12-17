@@ -1,0 +1,83 @@
+package grafana
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/grafana/grafana-openapi-client-go/client"
+	"github.com/grafana/grafana-openapi-client-go/models"
+	"github.com/pkg/errors"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+const (
+	grafanaAdminRole  = "Admin"
+	grafanaEditorRole = "Editor"
+	grafanaViewerRole = "Viewer"
+)
+
+func ConfigureSSOSettings(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organizations []Organization) error {
+	logger := log.FromContext(ctx)
+
+	provider := "generic_oauth"
+	resp, err := grafanaAPI.SsoSettings.GetProviderSettings(provider, nil)
+	if err != nil {
+		logger.Error(err, "failed to get sso provider settings.")
+		return errors.WithStack(err)
+	}
+
+	orgsMapping := generateGrafanaOrgsMapping(organizations)
+	settings := resp.Payload.Settings.(map[string]interface{})
+	settings["role_attribute_path"] = "to_string('Viewer')"
+	settings["org_attribute_path"] = "groups"
+	settings["org_mapping"] = orgsMapping
+
+	logger.Info("Configuring Grafana SSO settings", "provider", provider, "settings", settings)
+
+	// Update the provider settings
+	_, err = grafanaAPI.SsoSettings.UpdateProviderSettings(provider,
+		&models.UpdateProviderSettingsParamsBody{
+			ID:       resp.Payload.ID,
+			Provider: resp.Payload.Provider,
+			Settings: settings,
+		})
+
+	if err != nil {
+		logger.Error(err, "failed to configure grafana sso.")
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func generateGrafanaOrgsMapping(organizations []Organization) string {
+	var orgMappings []string
+	// TODO: We need to be admins to be able to see the private dashboards for now, remove the 2 GS groups once https://github.com/giantswarm/roadmap/issues/3696 is done.
+	// Grant Admin role to Giantswarm users logging in via azure active directory.
+	orgMappings = append(orgMappings, buildOrgMapping(SharedOrg.Name, "giantswarm-ad:giantswarm-admins", grafanaAdminRole))
+	// Grant Admin role to Giantswarm users logging in via github.
+	orgMappings = append(orgMappings, buildOrgMapping(SharedOrg.Name, "giantswarm-github:giantswarm:giantswarm-admins", grafanaAdminRole))
+	// Grant Editor role to every other users.
+	orgMappings = append(orgMappings, fmt.Sprintf(`"*:%s:%s"`, SharedOrg.Name, grafanaEditorRole))
+	for _, organization := range organizations {
+		for _, adminOrgAttribute := range organization.Admins {
+			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, adminOrgAttribute, grafanaAdminRole))
+		}
+		for _, editorOrgAttribute := range organization.Editors {
+			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, editorOrgAttribute, grafanaEditorRole))
+		}
+		for _, viewerOrgAttribute := range organization.Viewers {
+			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, viewerOrgAttribute, grafanaViewerRole))
+		}
+	}
+
+	return strings.Join(orgMappings, " ")
+}
+
+func buildOrgMapping(organizationName, userOrgAttribute, role string) string {
+	// We need to escape the colon in the userOrgAttribute
+	u := strings.ReplaceAll(userOrgAttribute, ":", "\\:")
+	// We add double quotes to the org mapping to support spaces in display names
+	return fmt.Sprintf(`"%s:%s:%s"`, u, organizationName, role)
+}

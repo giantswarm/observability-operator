@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.2] - 2024-12-17
+
 ### Added
 
 - Add Alertmanager controller
+
+### Changed
+
+- Change SSO settings configuration to use the Grafana admin API instead of app user-values.
 
 ## [0.10.1] - 2024-12-12
 
@@ -198,7 +204,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.10.2...HEAD
+[0.10.2]: https://github.com/giantswarm/observability-operator/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/giantswarm/observability-operator/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/giantswarm/observability-operator/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/giantswarm/observability-operator/compare/v0.9.0...v0.9.1
