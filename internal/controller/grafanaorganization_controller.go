@@ -405,6 +405,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context)
 	if err = r.Client.Update(ctx, &currentApp); err != nil {
 		return err
 	}
+	// TODO end of section to be removed after next release (current: 0.10.1)
 
 	// Configure SSO settings in Grafana
 	organizations := make([]grafana.Organization, len(organizationList.Items))
