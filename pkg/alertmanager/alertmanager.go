@@ -100,7 +100,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 	}
 
 	// Prepare request for Alertmanager API
-	requestData := &configRequest{
+	requestData := configRequest{
 		AlertmanagerConfig: string(alertmanagerConfigContent),
 		TemplateFiles:      templates,
 	}
