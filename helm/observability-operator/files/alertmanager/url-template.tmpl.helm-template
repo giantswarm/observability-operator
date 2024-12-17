@@ -8,7 +8,9 @@
 {{- end -}}
 {{- end }}
 
-{{ define "__queryurl" }}{{ grafanaExploreURL "`}}{{ .Values.alerting.grafanaAddress }}{{`" "ce76fwwsnhipsa" "now-1h" "now" (queryFromGeneratorURL (index .Alerts 0).GeneratorURL) }}{{ end }}
+{{ define "__queryurl" -}}
+{{- grafanaExploreURL "`}}{{ .Values.alerting.grafanaAddress }}{{`" "ce76fwwsnhipsa" "now-1h" "now" (queryFromGeneratorURL (index .Alerts 0).GeneratorURL) -}}
+{{- end }}
 
 {{ define "__runbookurl" -}}https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/{{ (index .Alerts 0).Annotations.opsrecipe }}{{- end }}
 `}}
