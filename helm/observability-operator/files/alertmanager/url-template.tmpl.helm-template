@@ -2,10 +2,10 @@
 {{ define "__alerturl" }}`}}{{ .Values.alerting.grafanaAddress }}{{`/alerting/Mimir/{{ .CommonLabels.alertname }}/find{{ end }}
 
 {{ define "__dashboardurl" -}}
-{{ if match "^https://.+" (index .Alerts 0).Annotations.dashboard }}{{ (index .Alerts 0).Annotations.dashboard }}
-{{ else }}
-`}}{{ .Values.alerting.grafanaAddress }}{{`/d/{{ (index .Alerts 0).Annotations.dashboard }}
-{{ end }}
+{{- if match "^https://.+" (index .Alerts 0).Annotations.dashboard }}{{ (index .Alerts 0).Annotations.dashboard -}}
+{{- else -}}
+`}}{{ .Values.alerting.grafanaAddress }}{{`/d/{{ (index .Alerts 0).Annotations.dashboard -}}
+{{- end -}}
 {{- end }}
 
 {{ define "__queryurl" }}{{ grafanaExploreURL "`}}{{ .Values.alerting.grafanaAddress }}{{`" "ce76fwwsnhipsa" "now-1h" "now" (queryFromGeneratorURL (index .Alerts 0).GeneratorURL) }}{{ end }}
