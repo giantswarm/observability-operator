@@ -39,7 +39,7 @@ function grafanaPortForward {
 
 # Stop the Grafana service port-forward
 function stopGrafanaPortForward {
-  kill "$GRAFANAPORTFORWARDPID"
+  kill "$GRAFANAPORTFORWARDPID" || true
 }
 
 # Port-forward the mimir service
@@ -50,7 +50,7 @@ function mimirPortForward {
 
 # Stop the Grafana service port-forward
 function stopMimirPortForward {
-  kill "$MIMIRPORTFORWARDPID"
+  kill "$MIMIRPORTFORWARDPID" || true
 }
 
 # Pause the in-cluster operator
@@ -90,7 +90,7 @@ function main {
   pauseInClusterOperator
 
   echo "### Running operator"
-  go run . "${OLLYOPARGS[@]}"
+  go run . "${OLLYOPARGS[@]}" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180
 
   echo "### Cleanup"
 }
