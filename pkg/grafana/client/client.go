@@ -9,19 +9,18 @@ import (
 
 var grafanaURL *url.URL
 
-func init() {
-	var err error
-	grafanaURL, err = url.Parse("http://grafana.monitoring.svc.cluster.local")
-	if err != nil {
-		panic(fmt.Sprintf("failed to parse grafana url: %v", err))
-	}
-}
-
 const (
 	clientConfigNumRetries = 3
 )
 
-func GenerateGrafanaClient(adminUserCredentials AdminCredentials, tlsConfig TLSConfig) (*grafana.GrafanaHTTPAPI, error) {
+func GenerateGrafanaClient(grafanaURLstring string, adminUserCredentials AdminCredentials, tlsConfig TLSConfig) (*grafana.GrafanaHTTPAPI, error) {
+	var err error
+
+	grafanaURL, err = url.Parse(grafanaURLstring)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse grafana url: %v", err))
+	}
+
 	grafanaTLSConfig, err := tlsConfig.toTLSConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build tls config: %w", err)

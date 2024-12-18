@@ -12,6 +12,7 @@ type Config struct {
 	SecureMetrics        bool
 	EnableHTTP2          bool
 	OperatorNamespace    string
+	GrafanaURL           string
 
 	ManagementCluster common.ManagementCluster
 

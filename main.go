@@ -76,6 +76,8 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&conf.OperatorNamespace, "operator-namespace", "",
 		"The namespace where the observability-operator is running.")
+	flag.StringVar(&conf.GrafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local",
+		"grafana URL")
 
 	// Management cluster configuration flags.
 	flag.StringVar(&conf.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
@@ -187,7 +189,7 @@ func main() {
 	}
 
 	// Setup controller for the GrafanaOrganization resource.
-	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf.Environment)
+	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf)
 	if err != nil {
 		setupLog.Error(err, "unable to setup controller", "controller", "GrafanaOrganizationReconciler")
 		os.Exit(1)
