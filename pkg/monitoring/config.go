@@ -25,6 +25,7 @@ type Config struct {
 	WALTruncateFrequency time.Duration
 	// TODO(atlas): validate prometheus version using SemVer
 	PrometheusVersion string
+	MetricsQueryURL   string
 }
 
 // Monitoring should be enabled when all conditions are met:

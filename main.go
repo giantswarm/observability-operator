@@ -110,6 +110,8 @@ func main() {
 		"The version of Prometheus Agents to deploy.")
 	flag.DurationVar(&conf.Monitoring.WALTruncateFrequency, "monitoring-wal-truncate-frequency", 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
+	flag.StringVar(&conf.Monitoring.MetricsQueryURL, "metrics-query-url", "http://mimir-gateway.mimir.svc/prometheus",
+		"URL to query for cluster metrics")
 	opts := zap.Options{
 		Development: false,
 	}

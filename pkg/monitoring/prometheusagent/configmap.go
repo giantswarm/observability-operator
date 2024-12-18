@@ -46,7 +46,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 
 	// Compute the number of shards based on the number of series.
 	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_agent_active_series{cluster_id="%s"})by(pod))[6h:1h]))`, cluster.Name)
-	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query)
+	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, pas.MonitoringConfig.MetricsQueryURL)
 	if err != nil {
 		logger.Error(err, "failed to query head series")
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
