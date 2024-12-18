@@ -57,7 +57,6 @@ type GrafanaOrganizationReconciler struct {
 func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
 	// Generate Grafana client
 
-	grafanaURL := conf.GrafanaURL
 	// Get grafana admin-password and admin-user
 	grafanaAdminCredentials := grafanaclient.AdminCredentials{
 		Username: conf.Environment.GrafanaAdminUsername,
@@ -74,7 +73,7 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config)
 		Cert: conf.Environment.GrafanaTLSCertFile,
 		Key:  conf.Environment.GrafanaTLSKeyFile,
 	}
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(grafanaURL, grafanaAdminCredentials, grafanaTLSConfig)
+	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(conf.GrafanaURL, grafanaAdminCredentials, grafanaTLSConfig)
 	if err != nil {
 		return fmt.Errorf("unable to create grafana client: %w", err)
 	}
