@@ -54,25 +54,26 @@ type GrafanaOrganizationReconciler struct {
 	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
 }
 
-func SetupGrafanaOrganizationReconciler(mgr manager.Manager, environment config.Environment) error {
+func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
 	// Generate Grafana client
+
 	// Get grafana admin-password and admin-user
 	grafanaAdminCredentials := grafanaclient.AdminCredentials{
-		Username: environment.GrafanaAdminUsername,
-		Password: environment.GrafanaAdminPassword,
+		Username: conf.Environment.GrafanaAdminUsername,
+		Password: conf.Environment.GrafanaAdminPassword,
 	}
 	if grafanaAdminCredentials.Username == "" {
-		return fmt.Errorf("GrafanaAdminUsername not set: %q", environment.GrafanaAdminUsername)
+		return fmt.Errorf("GrafanaAdminUsername not set: %q", conf.Environment.GrafanaAdminUsername)
 	}
 	if grafanaAdminCredentials.Password == "" {
-		return fmt.Errorf("GrafanaAdminPassword not set: %q", environment.GrafanaAdminPassword)
+		return fmt.Errorf("GrafanaAdminPassword not set: %q", conf.Environment.GrafanaAdminPassword)
 	}
 
 	grafanaTLSConfig := grafanaclient.TLSConfig{
-		Cert: environment.GrafanaTLSCertFile,
-		Key:  environment.GrafanaTLSKeyFile,
+		Cert: conf.Environment.GrafanaTLSCertFile,
+		Key:  conf.Environment.GrafanaTLSKeyFile,
 	}
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(grafanaAdminCredentials, grafanaTLSConfig)
+	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(conf.GrafanaURL, grafanaAdminCredentials, grafanaTLSConfig)
 	if err != nil {
 		return fmt.Errorf("unable to create grafana client: %w", err)
 	}
