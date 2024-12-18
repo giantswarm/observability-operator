@@ -64,7 +64,7 @@ func init() {
 }
 
 func main() {
-	var grafanaURLString string
+	var grafanaURL string
 	var err error
 
 	flag.StringVar(&conf.MetricsAddr, "metrics-bind-address", ":8080",
@@ -80,7 +80,7 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&conf.OperatorNamespace, "operator-namespace", "",
 		"The namespace where the observability-operator is running.")
-	flag.StringVar(&grafanaURLString, "grafana-url", "http://grafana.monitoring.svc.cluster.local",
+	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local",
 		"grafana URL")
 
 	// Management cluster configuration flags.
@@ -126,7 +126,7 @@ func main() {
 	flag.Parse()
 
 	// parse grafana URL
-	conf.GrafanaURL, err = url.Parse(grafanaURLString)
+	conf.GrafanaURL, err = url.Parse(grafanaURL)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse grafana url: %v", err))
 	}
