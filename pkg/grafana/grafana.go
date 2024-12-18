@@ -72,7 +72,7 @@ var defaultDatasources = []Datasource{
 func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *Organization) error {
 	logger := log.FromContext(ctx)
 
-	logger.Info("creating organization")
+	logger.Info("creating organization", "Name", organization.Name)
 	err := assertNameIsAvailable(ctx, grafanaAPI, organization)
 	if err != nil {
 		return errors.WithStack(err)
@@ -82,10 +82,10 @@ func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 		Name: organization.Name,
 	})
 	if err != nil {
-		logger.Error(err, "failed to create organization")
+		logger.Error(err, "failed to create organization", "Name", organization.Name)
 		return errors.WithStack(err)
 	}
-	logger.Info("created organization")
+	logger.Info("created organization", "Name", organization.Name, "OrgID", createdOrg.Payload.OrgID)
 
 	organization.ID = *createdOrg.Payload.OrgID
 	return nil
@@ -98,7 +98,7 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	found, err := findByID(grafanaAPI, organization.ID)
 	if err != nil {
 		if isNotFound(err) {
-			logger.Info("organization id not found, creating")
+			logger.Info("organization id not found, creating", "Name", organization.Name, "OrgID", organization.ID)
 			// If the CR orgID does not exist in Grafana, then we create the organization
 			return CreateOrganization(ctx, grafanaAPI, organization)
 		}
@@ -108,7 +108,7 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 
 	// If both name matches, there is nothing to do.
 	if found.Name == organization.Name {
-		logger.Info("the organization already exists in Grafana and does not need to be updated.")
+		logger.Info("the organization already exists in Grafana and does not need to be updated.", "Name", found.Name, "OrgID", found.ID)
 		return nil
 	}
 
@@ -122,11 +122,11 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 		Name: organization.Name,
 	})
 	if err != nil {
-		logger.Error(err, "failed to update organization name")
+		logger.Error(err, "failed to update organization name", "Name", organization.Name, "OrgID", organization.ID)
 		return errors.WithStack(err)
 	}
 
-	logger.Info("updated organization")
+	logger.Info("updated organization", "Name", organization.Name, "OrgID", organization.ID)
 
 	return nil
 }
@@ -134,24 +134,24 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 func DeleteOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) error {
 	logger := log.FromContext(ctx)
 
-	logger.Info("deleting organization")
+	logger.Info("deleting organization", "Name", organization.Name, "OrgID", organization.ID)
 	_, err := findByID(grafanaAPI, organization.ID)
 	if err != nil {
 		if isNotFound(err) {
-			logger.Info("organization id was not found, skipping deletion")
+			logger.Info("organization id was not found, skipping deletion", "Name", organization.Name, "OrgID", organization.ID)
 			// If the CR orgID does not exist in Grafana, then we create the organization
 			return nil
 		}
-		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", organization.ID))
+		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", organization.ID), "Name", organization.Name, "OrgID", organization.ID)
 		return errors.WithStack(err)
 	}
 
 	_, err = grafanaAPI.Orgs.DeleteOrgByID(organization.ID)
 	if err != nil {
-		logger.Error(err, "failed to delete organization")
+		logger.Error(err, "failed to delete organization", "Name", organization.Name, "OrgID", organization.ID)
 		return errors.WithStack(err)
 	}
-	logger.Info("deleted organization")
+	logger.Info("deleted organization", "Name", organization.Name, "OrgID", organization.ID)
 
 	return nil
 }
@@ -164,14 +164,14 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 	var err error
 	// Switch context to the current org
 	if _, err = grafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
-		logger.Error(err, "failed to change current org for signed in user")
+		logger.Error(err, "failed to change current org for signed in user", "OrgName", organization.Name, "OrgID", organization.ID)
 		return nil, errors.WithStack(err)
 	}
 
 	// We always switch back to the shared org
 	defer func() {
 		if _, err = grafanaAPI.SignedInUser.UserSetUsingOrg(SharedOrg.ID); err != nil {
-			logger.Error(err, "failed to change current org for signed in user")
+			logger.Error(err, "failed to change current org for signed in user", "OrgName", SharedOrg.Name, "OrgID", SharedOrg.ID)
 		}
 	}()
 
@@ -291,7 +291,7 @@ func assertNameIsAvailable(ctx context.Context, grafanaAPI *client.GrafanaHTTPAP
 		}
 
 		if found != nil {
-			logger.Error(err, "a grafana organization with the same name already exists. Please choose a different display name.")
+			logger.Error(err, "a grafana organization with the same name already exists. Please choose a different display name.", "Name", found.Name, "OrgID", found.ID)
 			return errors.WithStack(err)
 		}
 	}
