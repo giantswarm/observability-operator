@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
-	"github.com/go-openapi/strfmt"
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
@@ -187,15 +185,9 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, dashboard *v1.
 	return ctrl.Result{}, nil
 }
 
-func getDashboardUID(jsonDashboard string) (string, error) {
+func getDashboardUID(dashboard map[string]interface{}) (string, error) {
 
-	var Dashboard map[string]interface{}
-	err := json.Unmarshal([]byte(jsonDashboard), &Dashboard)
-	if err != nil {
-		return "", err
-	}
-
-	UID, ok := Dashboard["uid"].(string)
+	UID, ok := dashboard["uid"].(string)
 	if !ok {
 		return "", errors.New("dashboard UID not found in configmap")
 	}
@@ -236,7 +228,15 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		}
 	}()
 
-	for _, dashboard := range dashboardCM.Data {
+	for _, dashboardString := range dashboardCM.Data {
+
+		var dashboard map[string]any
+		err = json.Unmarshal([]byte(dashboardString), &dashboard)
+		if err != nil {
+			logger.Info("Failed converting dashboard to json")
+			return errors.WithStack(err)
+		}
+
 		dashboardUID, err := getDashboardUID(dashboard)
 		if err != nil {
 			logger.Info("Skipping dashboard, no UID found")
@@ -254,23 +254,11 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 			return errors.WithStack(err)
 		}
 
-		var dashboardjson interface{}
-		err = json.Unmarshal([]byte(dashboard), &dashboardjson)
-		if err != nil {
-			logger.Info("Failed converting dashboard to json")
-			return errors.WithStack(err)
-		}
-
 		// Create or update dashboard
 		_, err = r.GrafanaAPI.Dashboards.PostDashboard(&models.SaveDashboardCommand{
-			UpdatedAt: strfmt.DateTime(time.Now()),
-			Dashboard: dashboardjson,
-			FolderID:  0,
-			FolderUID: "",
-			IsFolder:  false,
+			Dashboard: any(dashboard),
 			Message:   "Added by observability-operator",
-			Overwrite: true,
-			UserID:    0,
+			Overwrite: true, // allows dashboard to be updated by the same UID
 		})
 		if err != nil {
 			logger.Info("Failed updating dashboard")
@@ -298,7 +286,14 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		return nil
 	}
 
-	for _, dashboard := range dashboardCM.Data {
+	for _, dashboardString := range dashboardCM.Data {
+		var dashboard map[string]interface{}
+		err = json.Unmarshal([]byte(dashboardString), &dashboard)
+		if err != nil {
+			logger.Info("Failed converting dashboard to json")
+			return errors.WithStack(err)
+		}
+
 		dashboardUID, err := getDashboardUID(dashboard)
 		if err != nil {
 			logger.Info("Skipping dashboard, no UID found")
