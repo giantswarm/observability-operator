@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	organizationLabel string = "giantswarm.io/organization"
+	OrganizationLabel string = "giantswarm.io/organization"
 )
 
 type OrganizationRepository interface {
@@ -32,7 +32,7 @@ func (r NamespaceOrganizationRepository) Read(ctx context.Context, cluster *clus
 		return "", err
 	}
 
-	if organization, ok := namespace.Labels[organizationLabel]; ok {
+	if organization, ok := namespace.Labels[OrganizationLabel]; ok {
 		return organization, nil
 	}
 	return "", errors.New("cluster namespace missing organization label")
