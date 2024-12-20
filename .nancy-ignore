@@ -1,0 +1,2 @@
+# pkg:golang/golang.org/x/net@v0.32.0
+CVE-2024-45338 until=2025-03-01
