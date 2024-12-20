@@ -205,15 +205,15 @@ func getDashboardUID(jsonDashboard string) (string, error) {
 func getDashboardCMOrg(dashboard *v1.ConfigMap) (string, error) {
 
 	// Try to look for an annotation first
-	orgName, ok := dashboard.GetAnnotations()[organization.OrganizationLabel]
-	if ok && orgName != "" {
-		return orgName, nil
+	annotations := dashboard.GetAnnotations()
+	if annotations != nil && annotations[organization.OrganizationLabel] != "" {
+		return annotations[organization.OrganizationLabel], nil
 	}
 
 	// Then look for a label
-	orgName, ok = dashboard.GetLabels()[organization.OrganizationLabel]
-	if ok && orgName != "" {
-		return orgName, nil
+	labels := dashboard.GetLabels()
+	if labels != nil && labels[organization.OrganizationLabel] != "" {
+		return labels[organization.OrganizationLabel], nil
 	}
 
 	// Return an error if no label was found
