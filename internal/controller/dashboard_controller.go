@@ -228,30 +228,30 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		}
 	}()
 
+	// Switch context to the dashboards-defined org
+	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
+	if err != nil {
+		logger.Error(err, "failed to find organization", "organization", dashboardOrg)
+		return errors.WithStack(err)
+	}
+	if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
+		logger.Error(err, "failed to change current org for signed in user")
+		return errors.WithStack(err)
+	}
+
 	for _, dashboardString := range dashboardCM.Data {
 
 		var dashboard map[string]any
 		err = json.Unmarshal([]byte(dashboardString), &dashboard)
 		if err != nil {
-			logger.Info("Failed converting dashboard to json")
-			return errors.WithStack(err)
+			logger.Info("Failed converting dashboard to json", "Error", err)
+			continue
 		}
 
 		dashboardUID, err := getDashboardUID(dashboard)
 		if err != nil {
 			logger.Info("Skipping dashboard, no UID found")
 			continue
-		}
-		// Switch context to the current org
-		organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
-		if err != nil {
-			logger.Error(err, "failed to find organization", "organization", dashboardOrg)
-			return errors.WithStack(err)
-		}
-
-		if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
-			logger.Error(err, "failed to change current org for signed in user")
-			return errors.WithStack(err)
 		}
 
 		// Create or update dashboard
@@ -261,8 +261,8 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 			Overwrite: true, // allows dashboard to be updated by the same UID
 		})
 		if err != nil {
-			logger.Info("Failed updating dashboard")
-			return errors.WithStack(err)
+			logger.Info("Failed updating dashboard", "Error", err)
+			continue
 		}
 
 		logger.Info("updated dashboard", "Dashboard UID", dashboardUID, "Dashboard Org", dashboardOrg)
@@ -286,12 +286,30 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		return nil
 	}
 
+	// We always switch back to the shared org
+	defer func() {
+		if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(grafana.SharedOrg.ID); err != nil {
+			logger.Error(err, "failed to change current org for signed in user")
+		}
+	}()
+
+	// Switch context to the dashboards-defined org
+	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
+	if err != nil {
+		logger.Error(err, "failed to find organization", "organization", dashboardOrg)
+		return errors.WithStack(err)
+	}
+	if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
+		logger.Error(err, "failed to change current org for signed in user")
+		return errors.WithStack(err)
+	}
+
 	for _, dashboardString := range dashboardCM.Data {
 		var dashboard map[string]interface{}
 		err = json.Unmarshal([]byte(dashboardString), &dashboard)
 		if err != nil {
-			logger.Info("Failed converting dashboard to json")
-			return errors.WithStack(err)
+			logger.Info("Failed converting dashboard to json", "Error", err)
+			continue
 		}
 
 		dashboardUID, err := getDashboardUID(dashboard)
@@ -301,7 +319,19 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		}
 
 		// TODO: search for dashboard by ID
+		_, err = r.GrafanaAPI.Dashboards.GetDashboardByUID(dashboardUID)
+		if err != nil {
+			logger.Info("Failed getting dashboard", "Error", err)
+			continue
+		}
+
 		// TODO: delete dashboard if it exits
+		_, err = r.GrafanaAPI.Dashboards.DeleteDashboardByUID(dashboardUID)
+		if err != nil {
+			logger.Info("Failed deleting dashboard", "Error", err)
+			continue
+		}
+
 		logger.Info("deleted dashboard", "Dashboard UID", dashboardUID, "Dashboard Org", dashboardOrg)
 	}
 
