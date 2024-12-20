@@ -1,19 +1,3 @@
-/*
-Copyright 2024.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package controller
 
 import (
@@ -41,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
@@ -56,8 +41,9 @@ type DashboardReconciler struct {
 }
 
 const (
-	DashboardFinalizer      = "observability.giantswarm.io/grafanadashboard"
-	DashboardTeamAnnotation = "giantswarm.io/organization"
+	DashboardFinalizer          = "observability.giantswarm.io/grafanadashboard"
+	DashboardSelectorLabelName  = "app.giantswarm.io/kind"
+	DashboardSelectorLabelValue = "dashboard"
 )
 
 func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
@@ -130,12 +116,13 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
-	labelSelectorPredicate, err := predicate.LabelSelectorPredicate(metav1.LabelSelector{MatchLabels: map[string]string{"app.giantswarm.io/kind": "dashboard"}})
+	labelSelectorPredicate, err := predicate.LabelSelectorPredicate(metav1.LabelSelector{MatchLabels: map[string]string{DashboardSelectorLabelName: DashboardSelectorLabelValue}})
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("dashboards").
 		For(&v1.ConfigMap{}, builder.WithPredicates(labelSelectorPredicate)).
 		// Watch for grafana pod's status changes
 		Watches(
@@ -155,7 +142,8 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				for _, dashboard := range dashboards.Items {
 					requests = append(requests, reconcile.Request{
 						NamespacedName: types.NamespacedName{
-							Name: dashboard.Name,
+							Name:      dashboard.Name,
+							Namespace: dashboard.Namespace,
 						},
 					})
 				}
@@ -199,10 +187,10 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, dashboard *v1.
 	return ctrl.Result{}, nil
 }
 
-func getDashboardUID(jsonDashboard string) (UID string, err error) {
+func getDashboardUID(jsonDashboard string) (string, error) {
 
 	var Dashboard map[string]interface{}
-	err = json.Unmarshal([]byte(jsonDashboard), &Dashboard)
+	err := json.Unmarshal([]byte(jsonDashboard), &Dashboard)
 	if err != nil {
 		return "", err
 	}
@@ -214,18 +202,17 @@ func getDashboardUID(jsonDashboard string) (UID string, err error) {
 	return UID, nil
 }
 
-func getDashboardCMOrg(dashboard *v1.ConfigMap) (Org string, err error) {
+func getDashboardCMOrg(dashboard *v1.ConfigMap) (string, error) {
 
 	// Try to look for an annotation first
-	orgName := dashboard.GetAnnotations()[DashboardTeamAnnotation]
-	if orgName != "" {
+	orgName, ok := dashboard.GetAnnotations()[organization.OrganizationLabel]
+	if ok && orgName != "" {
 		return orgName, nil
 	}
 
 	// Then look for a label
-	orgName = dashboard.GetLabels()[DashboardTeamAnnotation]
-
-	if orgName != "" {
+	orgName, ok = dashboard.GetLabels()[organization.OrganizationLabel]
+	if ok && orgName != "" {
 		return orgName, nil
 	}
 
@@ -233,7 +220,7 @@ func getDashboardCMOrg(dashboard *v1.ConfigMap) (Org string, err error) {
 	return "", errors.New("No organization label found in configmap")
 }
 
-func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM *v1.ConfigMap) (err error) {
+func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM *v1.ConfigMap) error {
 	logger := log.FromContext(ctx)
 
 	dashboardOrg, err := getDashboardCMOrg(dashboardCM)
@@ -261,7 +248,6 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 			logger.Error(err, "failed to find organization", "organization", dashboardOrg)
 			return errors.WithStack(err)
 		}
-		logger.Info("Found dashboard org", "Organization", organization)
 
 		if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
 			logger.Error(err, "failed to change current org for signed in user")
@@ -294,8 +280,7 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		logger.Info("updated dashboard", "Dashboard UID", dashboardUID, "Dashboard Org", dashboardOrg)
 	}
 
-	// return nil
-	return errors.New("All good, but not implemented yet")
+	return nil
 }
 
 // reconcileDelete deletes the grafana dashboard.
