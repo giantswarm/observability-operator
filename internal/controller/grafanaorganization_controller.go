@@ -1,19 +1,3 @@
-/*
-Copyright 2024.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package controller
 
 import (
@@ -54,25 +38,26 @@ type GrafanaOrganizationReconciler struct {
 	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
 }
 
-func SetupGrafanaOrganizationReconciler(mgr manager.Manager, environment config.Environment) error {
+func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
 	// Generate Grafana client
+
 	// Get grafana admin-password and admin-user
 	grafanaAdminCredentials := grafanaclient.AdminCredentials{
-		Username: environment.GrafanaAdminUsername,
-		Password: environment.GrafanaAdminPassword,
+		Username: conf.Environment.GrafanaAdminUsername,
+		Password: conf.Environment.GrafanaAdminPassword,
 	}
 	if grafanaAdminCredentials.Username == "" {
-		return fmt.Errorf("GrafanaAdminUsername not set: %q", environment.GrafanaAdminUsername)
+		return fmt.Errorf("GrafanaAdminUsername not set: %q", conf.Environment.GrafanaAdminUsername)
 	}
 	if grafanaAdminCredentials.Password == "" {
-		return fmt.Errorf("GrafanaAdminPassword not set: %q", environment.GrafanaAdminPassword)
+		return fmt.Errorf("GrafanaAdminPassword not set: %q", conf.Environment.GrafanaAdminPassword)
 	}
 
 	grafanaTLSConfig := grafanaclient.TLSConfig{
-		Cert: environment.GrafanaTLSCertFile,
-		Key:  environment.GrafanaTLSKeyFile,
+		Cert: conf.Environment.GrafanaTLSCertFile,
+		Key:  conf.Environment.GrafanaTLSKeyFile,
 	}
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(grafanaAdminCredentials, grafanaTLSConfig)
+	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(conf.GrafanaURL, grafanaAdminCredentials, grafanaTLSConfig)
 	if err != nil {
 		return fmt.Errorf("unable to create grafana client: %w", err)
 	}

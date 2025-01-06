@@ -18,9 +18,9 @@ var (
 )
 
 // QueryTSDBHeadSeries performs an instant query against Mimir.
-func QueryTSDBHeadSeries(ctx context.Context, query string) (float64, error) {
+func QueryTSDBHeadSeries(ctx context.Context, query string, metricsQueryURL string) (float64, error) {
 	config := api.Config{
-		Address: "http://mimir-gateway.mimir.svc/prometheus",
+		Address: metricsQueryURL,
 	}
 
 	// Create new client.

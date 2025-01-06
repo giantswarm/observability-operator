@@ -1,6 +1,8 @@
 package config
 
 import (
+	"net/url"
+
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
@@ -12,6 +14,7 @@ type Config struct {
 	SecureMetrics        bool
 	EnableHTTP2          bool
 	OperatorNamespace    string
+	GrafanaURL           *url.URL
 
 	ManagementCluster common.ManagementCluster
 

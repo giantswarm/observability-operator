@@ -1,25 +1,10 @@
-/*
-Copyright 2024.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package main
 
 import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -63,6 +48,9 @@ func init() {
 }
 
 func main() {
+	var grafanaURL string
+	var err error
+
 	flag.StringVar(&conf.MetricsAddr, "metrics-bind-address", ":8080",
 		"The address the metric endpoint binds to.")
 	flag.StringVar(&conf.ProbeAddr, "health-probe-bind-address", ":8081",
@@ -76,6 +64,8 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&conf.OperatorNamespace, "operator-namespace", "",
 		"The namespace where the observability-operator is running.")
+	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local",
+		"grafana URL")
 
 	// Management cluster configuration flags.
 	flag.StringVar(&conf.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
@@ -110,6 +100,8 @@ func main() {
 		"The version of Prometheus Agents to deploy.")
 	flag.DurationVar(&conf.Monitoring.WALTruncateFrequency, "monitoring-wal-truncate-frequency", 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
+	flag.StringVar(&conf.Monitoring.MetricsQueryURL, "monitoring-metrics-query-url", "http://mimir-gateway.mimir.svc/prometheus",
+		"URL to query for cluster metrics")
 	opts := zap.Options{
 		Development: false,
 	}
@@ -117,10 +109,16 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
+	// parse grafana URL
+	conf.GrafanaURL, err = url.Parse(grafanaURL)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse grafana url: %v", err))
+	}
+
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	// Load environment variables.
-	_, err := env.UnmarshalFromEnviron(&conf.Environment)
+	_, err = env.UnmarshalFromEnviron(&conf.Environment)
 	if err != nil {
 		setupLog.Error(err, "failed to unmarshal environment variables")
 		os.Exit(1)
@@ -185,7 +183,7 @@ func main() {
 	}
 
 	// Setup controller for the GrafanaOrganization resource.
-	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf.Environment)
+	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf)
 	if err != nil {
 		setupLog.Error(err, "unable to setup controller", "controller", "GrafanaOrganizationReconciler")
 		os.Exit(1)
