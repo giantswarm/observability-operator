@@ -9,7 +9,7 @@ It reconciles `cluster.cluster.x-k8s.io` objects and makes sure each `Cluster` i
 
 ## Features
 
-### Grafan dashboards provisioning
+### Grafana dashboards provisioning
 
 It will look for kubernetes `ConfigMaps` and use them as dashboards if they meet these criteria:
 - a label `app.giantswarm.io/kind: "dashboard"`
