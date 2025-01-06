@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
-	"github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -251,11 +250,7 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		}
 
 		// Create or update dashboard
-		_, err = r.GrafanaAPI.Dashboards.PostDashboard(&models.SaveDashboardCommand{
-			Dashboard: any(dashboard),
-			Message:   "Added by observability-operator",
-			Overwrite: true, // allows dashboard to be updated by the same UID
-		})
+		err = grafana.PublishDashboard(r.GrafanaAPI, dashboard)
 		if err != nil {
 			logger.Info("Failed updating dashboard", "Error", err)
 			continue
