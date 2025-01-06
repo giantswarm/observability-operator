@@ -1,6 +1,12 @@
 {{`
+{{/*
+  __alerturl is the link pointing to a page in Grafana with details and source expressiong of the alert.
+/*}}
 {{ define "__alerturl" }}`}}{{ .Values.alerting.grafanaAddress }}{{`/alerting/Mimir/{{ .CommonLabels.alertname }}/find{{ end }}
 
+{{/*
+  __dashboardurl is the link pointing the Grafana dashboard referenced in the alert annotation if any.
+/*}}
 {{ define "__dashboardurl" -}}
 {{- if match "^https://.+" (index .Alerts 0).Annotations.dashboard }}{{ (index .Alerts 0).Annotations.dashboard -}}
 {{- else -}}
@@ -8,9 +14,17 @@
 {{- end -}}
 {{- end }}
 
+{{/*
+  __queryurl is the link pointing to Grafana explore with the alert expression prefilled.
+
+  grafanaExploreURL is a Mimir Alertmanager specific template function: https://grafana.com/docs/mimir/latest/references/architecture/components/alertmanager/#templating, its second argument is the datasource id
+/*}}
 {{ define "__queryurl" -}}
 {{- grafanaExploreURL "`}}{{ .Values.alerting.grafanaAddress }}{{`" "ce76fwwsnhipsa" "now-1h" "now" (queryFromGeneratorURL (index .Alerts 0).GeneratorURL) -}}
 {{- end }}
 
+{{/*
+  __runbookurl is a link to the intranet's opsrecipe referenced in the alert annotation.
+*/}}
 {{ define "__runbookurl" -}}https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/{{ (index .Alerts 0).Annotations.opsrecipe }}{{- end }}
 `}}
