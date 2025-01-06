@@ -113,7 +113,6 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	labelSelectorPredicate, err := predicate.LabelSelectorPredicate(metav1.LabelSelector{MatchLabels: map[string]string{DashboardSelectorLabelName: DashboardSelectorLabelValue}})
 	if err != nil {
 		return errors.WithStack(err)
@@ -186,7 +185,6 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, dashboard *v1.
 }
 
 func getDashboardUID(dashboard map[string]interface{}) (string, error) {
-
 	UID, ok := dashboard["uid"].(string)
 	if !ok {
 		return "", errors.New("dashboard UID not found in configmap")
@@ -195,7 +193,6 @@ func getDashboardUID(dashboard map[string]interface{}) (string, error) {
 }
 
 func getDashboardCMOrg(dashboard *v1.ConfigMap) (string, error) {
-
 	// Try to look for an annotation first
 	annotations := dashboard.GetAnnotations()
 	if annotations != nil && annotations[organization.OrganizationLabel] != "" {
@@ -240,7 +237,6 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 	}
 
 	for _, dashboardString := range dashboardCM.Data {
-
 		var dashboard map[string]any
 		err = json.Unmarshal([]byte(dashboardString), &dashboard)
 		if err != nil {
