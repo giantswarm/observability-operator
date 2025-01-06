@@ -15,15 +15,6 @@
 {{- end }}
 
 {{/*
-  __queryurl is the link pointing to Grafana explore with the alert expression prefilled.
-
-  grafanaExploreURL is a Mimir Alertmanager specific template function: https://grafana.com/docs/mimir/latest/references/architecture/components/alertmanager/#templating, its second argument is the datasource id
-*/}}
-{{ define "__queryurl" -}}
-{{- grafanaExploreURL "`}}{{ .Values.alerting.grafanaAddress }}{{`" "ce76fwwsnhipsa" "now-1h" "now" (queryFromGeneratorURL (index .Alerts 0).GeneratorURL) -}}
-{{- end }}
-
-{{/*
   __runbookurl is a link to the intranet's opsrecipe referenced in the alert annotation.
 */}}
 {{ define "__runbookurl" -}}https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/{{ (index .Alerts 0).Annotations.opsrecipe }}{{- end }}
