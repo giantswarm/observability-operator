@@ -5,16 +5,36 @@ import (
 	"net/url"
 
 	grafana "github.com/grafana/grafana-openapi-client-go/client"
+
+	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 const (
 	clientConfigNumRetries = 3
 )
 
-func GenerateGrafanaClient(grafanaURL *url.URL, adminUserCredentials AdminCredentials, tlsConfig TLSConfig) (*grafana.GrafanaHTTPAPI, error) {
+func GenerateGrafanaClient(grafanaURL *url.URL, conf config.Config) (*grafana.GrafanaHTTPAPI, error) {
 	var err error
 
-	grafanaTLSConfig, err := tlsConfig.toTLSConfig()
+	// Generate Grafana client
+	// Get grafana admin-password and admin-user
+	adminUserCredentials := AdminCredentials{
+		Username: conf.Environment.GrafanaAdminUsername,
+		Password: conf.Environment.GrafanaAdminPassword,
+	}
+	if adminUserCredentials.Username == "" {
+		return nil, fmt.Errorf("GrafanaAdminUsername not set: %q", conf.Environment.GrafanaAdminUsername)
+
+	}
+	if adminUserCredentials.Password == "" {
+		return nil, fmt.Errorf("GrafanaAdminPassword not set: %q", conf.Environment.GrafanaAdminPassword)
+
+	}
+
+	grafanaTLSConfig, err := TLSConfig{
+		Cert: conf.Environment.GrafanaTLSCertFile,
+		Key:  conf.Environment.GrafanaTLSKeyFile,
+	}.toTLSConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build tls config: %w", err)
 	}
