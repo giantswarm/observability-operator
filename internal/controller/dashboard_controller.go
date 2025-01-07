@@ -213,7 +213,7 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 
 	dashboardOrg, err := getDashboardCMOrg(dashboardCM)
 	if err != nil {
-		logger.Info("Skipping dashboard, no organization found")
+		logger.Error(err, "Skipping dashboard, no organization found")
 		return nil
 	}
 
@@ -239,20 +239,20 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		var dashboard map[string]any
 		err = json.Unmarshal([]byte(dashboardString), &dashboard)
 		if err != nil {
-			logger.Info("Failed converting dashboard to json", "Error", err)
+			logger.Error(err, "Failed converting dashboard to json")
 			continue
 		}
 
 		dashboardUID, err := getDashboardUID(dashboard)
 		if err != nil {
-			logger.Info("Skipping dashboard, no UID found")
+			logger.Error(err, "Skipping dashboard, no UID found")
 			continue
 		}
 
 		// Create or update dashboard
 		err = grafana.PublishDashboard(r.GrafanaAPI, dashboard)
 		if err != nil {
-			logger.Info("Failed updating dashboard", "Error", err)
+			logger.Error(err, "Failed updating dashboard")
 			continue
 		}
 
@@ -273,7 +273,7 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 
 	dashboardOrg, err := getDashboardCMOrg(dashboardCM)
 	if err != nil {
-		logger.Info("Skipping dashboard, no organization found")
+		logger.Error(err, "Skipping dashboard, no organization found")
 		return nil
 	}
 
@@ -299,27 +299,25 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		var dashboard map[string]interface{}
 		err = json.Unmarshal([]byte(dashboardString), &dashboard)
 		if err != nil {
-			logger.Info("Failed converting dashboard to json", "Error", err)
+			logger.Error(err, "Failed converting dashboard to json")
 			continue
 		}
 
 		dashboardUID, err := getDashboardUID(dashboard)
 		if err != nil {
-			logger.Info("Skipping dashboard, no UID found")
+			logger.Error(err, "Skipping dashboard, no UID found")
 			continue
 		}
 
-		// TODO: search for dashboard by ID
 		_, err = r.GrafanaAPI.Dashboards.GetDashboardByUID(dashboardUID)
 		if err != nil {
-			logger.Info("Failed getting dashboard", "Error", err)
+			logger.Error(err, "Failed getting dashboard")
 			continue
 		}
 
-		// TODO: delete dashboard if it exits
 		_, err = r.GrafanaAPI.Dashboards.DeleteDashboardByUID(dashboardUID)
 		if err != nil {
-			logger.Info("Failed deleting dashboard", "Error", err)
+			logger.Error(err, "Failed deleting dashboard")
 			continue
 		}
 
