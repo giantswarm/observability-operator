@@ -197,7 +197,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	//+kubebuilder:scaffold:builder
 
 	err = controller.SetupDashboardReconciler(mgr, conf)
 	if err != nil {
