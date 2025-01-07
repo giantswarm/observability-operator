@@ -191,7 +191,7 @@ func getDashboardUID(dashboard map[string]interface{}) (string, error) {
 	return UID, nil
 }
 
-func getDashboardCMOrg(dashboard *v1.ConfigMap) (string, error) {
+func getOrgFromDashboardConfigmap(dashboard *v1.ConfigMap) (string, error) {
 	// Try to look for an annotation first
 	annotations := dashboard.GetAnnotations()
 	if annotations != nil && annotations[organization.OrganizationLabel] != "" {
@@ -211,7 +211,7 @@ func getDashboardCMOrg(dashboard *v1.ConfigMap) (string, error) {
 func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM *v1.ConfigMap) error {
 	logger := log.FromContext(ctx)
 
-	dashboardOrg, err := getDashboardCMOrg(dashboardCM)
+	dashboardOrg, err := getOrgFromDashboardConfigmap(dashboardCM)
 	if err != nil {
 		logger.Error(err, "Skipping dashboard, no organization found")
 		return nil
@@ -271,7 +271,7 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		return nil
 	}
 
-	dashboardOrg, err := getDashboardCMOrg(dashboardCM)
+	dashboardOrg, err := getOrgFromDashboardConfigmap(dashboardCM)
 	if err != nil {
 		logger.Error(err, "Skipping dashboard, no organization found")
 		return nil
