@@ -22,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
@@ -41,6 +40,7 @@ const (
 	DashboardFinalizer          = "observability.giantswarm.io/grafanadashboard"
 	DashboardSelectorLabelName  = "app.giantswarm.io/kind"
 	DashboardSelectorLabelValue = "dashboard"
+	grafanaOrganizationLabel    = "observability.giantswarm.io/organization"
 )
 
 func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
@@ -177,14 +177,14 @@ func getDashboardUID(dashboard map[string]interface{}) (string, error) {
 func getOrgFromDashboardConfigmap(dashboard *v1.ConfigMap) (string, error) {
 	// Try to look for an annotation first
 	annotations := dashboard.GetAnnotations()
-	if annotations != nil && annotations[organization.OrganizationLabel] != "" {
-		return annotations[organization.OrganizationLabel], nil
+	if annotations != nil && annotations[grafanaOrganizationLabel] != "" {
+		return annotations[grafanaOrganizationLabel], nil
 	}
 
 	// Then look for a label
 	labels := dashboard.GetLabels()
-	if labels != nil && labels[organization.OrganizationLabel] != "" {
-		return labels[organization.OrganizationLabel], nil
+	if labels != nil && labels[grafanaOrganizationLabel] != "" {
+		return labels[grafanaOrganizationLabel], nil
 	}
 
 	// Return an error if no label was found
