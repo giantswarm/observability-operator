@@ -13,7 +13,7 @@ It reconciles `cluster.cluster.x-k8s.io` objects and makes sure each `Cluster` i
 
 It will look for kubernetes `ConfigMaps` and use them as dashboards if they meet these criteria:
 - a label `app.giantswarm.io/kind: "dashboard"`
-- an annotation or label `giantswarm.io/organization` set to the organization the dasboard should be loaded in.
+- an annotation or label `observability.giantswarm.io/organization` set to the organization the dasboard should be loaded in.
 
 Current limitations:
 - no support for folders
