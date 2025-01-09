@@ -95,7 +95,7 @@ func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	logger := log.FromContext(ctx)
 
 	logger.Info("updating organization")
-	found, err := findByID(grafanaAPI, organization.ID)
+	found, err := FindOrgByID(grafanaAPI, organization.ID)
 	if err != nil {
 		if isNotFound(err) {
 			logger.Info("organization id not found, creating")
@@ -135,7 +135,7 @@ func DeleteOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	logger := log.FromContext(ctx)
 
 	logger.Info("deleting organization")
-	_, err := findByID(grafanaAPI, organization.ID)
+	_, err := FindOrgByID(grafanaAPI, organization.ID)
 	if err != nil {
 		if isNotFound(err) {
 			logger.Info("organization id was not found, skipping deletion")
@@ -282,7 +282,7 @@ func isNotFound(err error) bool {
 func assertNameIsAvailable(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *Organization) error {
 	logger := log.FromContext(ctx)
 
-	found, err := findByName(grafanaAPI, organization.Name)
+	found, err := FindOrgByName(grafanaAPI, organization.Name)
 	if err != nil {
 		// We only error if we have any error other than a 404
 		if !isNotFound(err) {
@@ -299,8 +299,8 @@ func assertNameIsAvailable(ctx context.Context, grafanaAPI *client.GrafanaHTTPAP
 	return nil
 }
 
-// findByName is a wrapper function used to find a Grafana organization by its name
-func findByName(grafanaAPI *client.GrafanaHTTPAPI, name string) (*Organization, error) {
+// FindOrgByName is a wrapper function used to find a Grafana organization by its name
+func FindOrgByName(grafanaAPI *client.GrafanaHTTPAPI, name string) (*Organization, error) {
 	organization, err := grafanaAPI.Orgs.GetOrgByName(name)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -312,8 +312,8 @@ func findByName(grafanaAPI *client.GrafanaHTTPAPI, name string) (*Organization, 
 	}, nil
 }
 
-// findByID is a wrapper function used to find a Grafana organization by its id
-func findByID(grafanaAPI *client.GrafanaHTTPAPI, orgID int64) (*Organization, error) {
+// FindOrgByID is a wrapper function used to find a Grafana organization by its id
+func FindOrgByID(grafanaAPI *client.GrafanaHTTPAPI, orgID int64) (*Organization, error) {
 	organization, err := grafanaAPI.Orgs.GetOrgByID(orgID)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -323,4 +323,15 @@ func findByID(grafanaAPI *client.GrafanaHTTPAPI, orgID int64) (*Organization, er
 		ID:   organization.Payload.ID,
 		Name: organization.Payload.Name,
 	}, nil
+}
+
+// PublishDashboard creates or updates a dashboard in Grafana
+func PublishDashboard(grafanaAPI *client.GrafanaHTTPAPI, dashboard map[string]any) error {
+	_, err := grafanaAPI.Dashboards.PostDashboard(&models.SaveDashboardCommand{
+		Dashboard: any(dashboard),
+		Message:   "Added by observability-operator",
+		Overwrite: true, // allows dashboard to be updated by the same UID
+
+	})
+	return err
 }

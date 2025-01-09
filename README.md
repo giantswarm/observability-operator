@@ -7,6 +7,18 @@ This operator is in charge of handling the setup and configuration of the Giant 
 It reconciles `cluster.cluster.x-k8s.io` objects and makes sure each `Cluster` is provided with:
 - TODO(atlas) update this section
 
+## Features
+
+### Grafana dashboards provisioning
+
+It will look for kubernetes `ConfigMaps` and use them as dashboards if they meet these criteria:
+- a label `app.giantswarm.io/kind: "dashboard"`
+- an annotation or label `observability.giantswarm.io/organization` set to the organization the dasboard should be loaded in.
+
+Current limitations:
+- no support for folders
+- each dashboard belongs to one and only one organization
+
 ## Getting started
 
 Get the code and build it via:
