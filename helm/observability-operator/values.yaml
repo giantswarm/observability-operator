@@ -19,7 +19,6 @@ alerting:
   enabled: false
   alertmanagerURL: ""
   grafanaAddress: ""
-  proxyURL: ""
   slackAPIToken: ""
   slackAPIURL: ""
 
