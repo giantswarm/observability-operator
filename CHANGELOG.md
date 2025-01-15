@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2025-01-15
+
+### Changed
+
+- Rename datasources to get rid of the olly-op part.
+
+## [0.11.0] - 2025-01-10
+
 ### Added
 
 - command line args to configure mimir and grafana URLs
+- Support for loading dashboards in organizations
 
 ## [0.10.2] - 2024-12-17
 
@@ -208,7 +217,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/giantswarm/observability-operator/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/giantswarm/observability-operator/compare/v0.10.2...v0.11.0
 [0.10.2]: https://github.com/giantswarm/observability-operator/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/giantswarm/observability-operator/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/giantswarm/observability-operator/compare/v0.9.1...v0.10.0
