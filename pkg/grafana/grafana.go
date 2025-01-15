@@ -26,7 +26,7 @@ var SharedOrg = Organization{
 // We need to use a custom name for now until we can replace the existing datasources.
 var defaultDatasources = []Datasource{
 	{
-		Name:      "Alertmanager olly-op",
+		Name:      "Alertmanager",
 		Type:      "alertmanager",
 		IsDefault: true,
 		URL:       "http://alertmanager-operated.monitoring.svc:9093",
@@ -48,7 +48,7 @@ var defaultDatasources = []Datasource{
 		},
 	},
 	{
-		Name:      "Mimir olly-op",
+		Name:      "Mimir",
 		Type:      "prometheus",
 		IsDefault: true,
 		URL:       "http://mimir-gateway.mimir.svc/prometheus",
@@ -62,7 +62,7 @@ var defaultDatasources = []Datasource{
 		},
 	},
 	{
-		Name:   "Loki olly-op",
+		Name:   "Loki",
 		Type:   "loki",
 		URL:    "http://loki-gateway.loki.svc",
 		Access: datasourceProxyAccessMode,
