@@ -9,7 +9,6 @@ import (
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -21,8 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller/predicates"
@@ -337,35 +334,6 @@ func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context)
 		logger.Error(err, "failed to list grafana organizations.")
 		return errors.WithStack(err)
 	}
-
-	grafanaConfig := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "grafana-user-values",
-			Namespace: "giantswarm",
-		},
-	}
-
-	// TODO remove after next release (current: 0.10.1)
-	if err = r.Client.Delete(ctx, grafanaConfig); client.IgnoreNotFound(err) != nil {
-		return errors.WithStack(err)
-	}
-
-	// Retrieve the app.
-	var currentApp appv1.App = appv1.App{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "grafana",
-			Namespace: "giantswarm",
-		},
-	}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: currentApp.GetName(), Namespace: currentApp.GetNamespace()}, &currentApp)
-	if err != nil {
-		return err
-	}
-	currentApp.Spec.UserConfig = appv1.AppSpecUserConfig{}
-	if err = r.Client.Update(ctx, &currentApp); err != nil {
-		return err
-	}
-	// TODO end of section to be removed after next release (current: 0.10.1)
 
 	// Configure SSO settings in Grafana
 	organizations := make([]grafana.Organization, len(organizationList.Items))
