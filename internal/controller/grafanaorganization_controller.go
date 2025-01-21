@@ -189,7 +189,7 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 	sharedOrg := grafana.SharedOrg
 
 	logger.Info("configuring shared organization")
-	if err := grafana.UpdateOrganization(ctx, r.GrafanaAPI, &sharedOrg); err != nil {
+	if err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &sharedOrg); err != nil {
 		logger.Error(err, "failed to rename shared org")
 		return errors.WithStack(err)
 	}
@@ -219,17 +219,11 @@ func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.
 	}
 }
 
-func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (err error) {
+func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 	// Create or update organization in Grafana
 	var organization = newOrganization(grafanaOrganization)
-	if organization.ID == 0 {
-		// if the CR doesn't have an orgID, create the organization in Grafana
-		err = grafana.CreateOrganization(ctx, r.GrafanaAPI, &organization)
-	} else {
-		err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, &organization)
-	}
-
+	err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &organization)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -256,7 +250,6 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 
 	// Create or update organization in Grafana
 	var organization = newOrganization(grafanaOrganization)
-
 	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, organization)
 	if err != nil {
 		return errors.WithStack(err)
