@@ -8,6 +8,7 @@ import (
 
 type Organization struct {
 	ID        int64
+	UID       string
 	Name      string
 	TenantIDs []string
 	Admins    []string
@@ -17,6 +18,7 @@ type Organization struct {
 
 type Datasource struct {
 	ID        int64
+	UID       string
 	Name      string
 	IsDefault bool
 	Type      string
