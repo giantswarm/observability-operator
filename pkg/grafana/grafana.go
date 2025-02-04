@@ -66,7 +66,7 @@ var defaultDatasources = []Datasource{
 	},
 	{
 		Name:   "Loki",
-		UID:    "loki",
+		UID:    "gs-loki",
 		Type:   "loki",
 		URL:    "http://loki-gateway.loki.svc",
 		Access: datasourceProxyAccessMode,
