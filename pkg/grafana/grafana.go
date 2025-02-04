@@ -51,7 +51,7 @@ var defaultDatasources = []Datasource{
 	},
 	{
 		Name:      "Mimir",
-		UID:       "mimir",
+		UID:       "gs-mimir",
 		Type:      "prometheus",
 		IsDefault: true,
 		URL:       "http://mimir-gateway.mimir.svc/prometheus",
