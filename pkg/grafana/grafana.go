@@ -39,7 +39,7 @@ var defaultDatasources = []Datasource{
 	},
 	{
 		Name:      "Mimir Alertmanager",
-		UID:       "mimir-alertmanager",
+		UID:       "gs-mimir-alertmanager",
 		Type:      "alertmanager",
 		IsDefault: false,
 		URL:       "http://mimir-alertmanager.mimir.svc:8080",
