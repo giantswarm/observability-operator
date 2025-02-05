@@ -174,6 +174,12 @@ func getDashboardUID(dashboard map[string]interface{}) (string, error) {
 	return UID, nil
 }
 
+func cleanDashboardID(dashboard map[string]interface{}) {
+	if dashboard["id"] != nil {
+		delete(dashboard, "id")
+	}
+}
+
 func getOrgFromDashboardConfigmap(dashboard *v1.ConfigMap) (string, error) {
 	// Try to look for an annotation first
 	annotations := dashboard.GetAnnotations()
@@ -231,6 +237,9 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 			logger.Error(err, "Skipping dashboard, no UID found")
 			continue
 		}
+
+		// Clean the dashboard ID to avoid conflicts
+		cleanDashboardID(dashboard)
 
 		// Create or update dashboard
 		err = grafana.PublishDashboard(r.GrafanaAPI, dashboard)
@@ -291,6 +300,9 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 			logger.Error(err, "Skipping dashboard, no UID found")
 			continue
 		}
+
+		// Clean the dashboard ID to avoid conflicts
+		cleanDashboardID(dashboard)
 
 		_, err = r.GrafanaAPI.Dashboards.GetDashboardByUID(dashboardUID)
 		if err != nil {
