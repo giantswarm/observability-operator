@@ -210,30 +210,6 @@ func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.
 	}
 }
 
-func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
-	logger := log.FromContext(ctx)
-	// Create or update organization in Grafana
-	var organization = newOrganization(grafanaOrganization)
-	err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &organization)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	// Update CR status if anything was changed
-	if grafanaOrganization.Status.OrgID != organization.ID {
-		logger.Info("updating orgID in the grafanaOrganization status")
-		grafanaOrganization.Status.OrgID = organization.ID
-
-		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to update grafanaOrganization status")
-			return errors.WithStack(err)
-		}
-		logger.Info("updated orgID in the grafanaOrganization status")
-	}
-
-	return nil
-}
-
 func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
