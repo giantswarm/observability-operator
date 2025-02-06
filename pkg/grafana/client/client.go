@@ -61,7 +61,7 @@ func GenerateGrafanaClient(grafanaURL *url.URL, conf config.Config, userLogin st
 	user, err := adminClient.Users.GetUserByLoginOrEmail(userLogin)
 	if err != nil {
 		var loginOrEmailNotFoundErr *users.GetUserByLoginOrEmailNotFound
-		if errors.As(err, loginOrEmailNotFoundErr) {
+		if errors.As(err, &loginOrEmailNotFoundErr) {
 			return nil, fmt.Errorf("unable to get user %q: %w", userLogin, err)
 		}
 
