@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the notFound method to match error using runtime.APIError type and the status code
+- Update Grafana pod predicate to not trigger on pod deletion
+- Less aggressive lastError, to ensure organization is there
+
+### Fixed
+
+- Fix orgId=0 when upserting organization
+- Remove error when the organization name is already taken
+- Fix race condition when switching organization in Grafana client by using WithOrgID method
+
+## [0.13.2] - 2025-02-06
+
 ### Added
 
 - Add datasources UID
@@ -14,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - improved run-local port-forward management
-- Use best effort approach in Grafana Organization controller
+- Fix missing SSO settings in organizations
 
 ### Fixed
 
@@ -247,7 +261,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.13.2...HEAD
+[0.13.2]: https://github.com/giantswarm/observability-operator/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/giantswarm/observability-operator/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/giantswarm/observability-operator/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/giantswarm/observability-operator/compare/v0.11.0...v0.12.0

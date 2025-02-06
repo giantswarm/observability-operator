@@ -206,23 +206,13 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		return nil
 	}
 
-	// We always switch back to the shared org
-	defer func() {
-		if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(grafana.SharedOrg.ID); err != nil {
-			logger.Error(err, "failed to change current org for signed in user")
-		}
-	}()
-
 	// Switch context to the dashboards-defined org
 	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
 	if err != nil {
 		logger.Error(err, "failed to find organization", "organization", dashboardOrg)
 		return errors.WithStack(err)
 	}
-	if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
-		logger.Error(err, "failed to change current org for signed in user")
-		return errors.WithStack(err)
-	}
+	grafanaAPIWithOrgID := r.GrafanaAPI.WithOrgID(organization.ID)
 
 	for _, dashboardString := range dashboardCM.Data {
 		var dashboard map[string]any
@@ -242,7 +232,7 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		cleanDashboardID(dashboard)
 
 		// Create or update dashboard
-		err = grafana.PublishDashboard(r.GrafanaAPI, dashboard)
+		err = grafana.PublishDashboard(grafanaAPIWithOrgID, dashboard)
 		if err != nil {
 			logger.Error(err, "Failed updating dashboard")
 			continue
@@ -269,23 +259,13 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		return nil
 	}
 
-	// We always switch back to the shared org
-	defer func() {
-		if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(grafana.SharedOrg.ID); err != nil {
-			logger.Error(err, "failed to change current org for signed in user")
-		}
-	}()
-
 	// Switch context to the dashboards-defined org
 	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
 	if err != nil {
 		logger.Error(err, "failed to find organization", "organization", dashboardOrg)
 		return errors.WithStack(err)
 	}
-	if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
-		logger.Error(err, "failed to change current org for signed in user")
-		return errors.WithStack(err)
-	}
+	grafanaAPIWithOrgID := r.GrafanaAPI.WithOrgID(organization.ID)
 
 	for _, dashboardString := range dashboardCM.Data {
 		var dashboard map[string]interface{}
@@ -304,13 +284,13 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		// Clean the dashboard ID to avoid conflicts
 		cleanDashboardID(dashboard)
 
-		_, err = r.GrafanaAPI.Dashboards.GetDashboardByUID(dashboardUID)
+		_, err = grafanaAPIWithOrgID.Dashboards.GetDashboardByUID(dashboardUID)
 		if err != nil {
 			logger.Error(err, "Failed getting dashboard")
 			continue
 		}
 
-		_, err = r.GrafanaAPI.Dashboards.DeleteDashboardByUID(dashboardUID)
+		_, err = grafanaAPIWithOrgID.Dashboards.DeleteDashboardByUID(dashboardUID)
 		if err != nil {
 			logger.Error(err, "Failed deleting dashboard")
 			continue

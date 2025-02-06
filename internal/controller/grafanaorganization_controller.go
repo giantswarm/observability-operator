@@ -160,12 +160,12 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, nil
 	}
 
-	var lastError error
-
 	// Configure the shared organization in Grafana
 	if err := r.configureSharedOrg(ctx); err != nil {
-		lastError = err
+		return ctrl.Result{}, errors.WithStack(err)
 	}
+
+	var lastError error
 
 	// Update the datasources in the CR's status
 	if err := r.configureDatasources(ctx, grafanaOrganization); err != nil {
