@@ -144,9 +144,11 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	// TODO using a serviceaccount later would be better as they are scoped to an organization
 
-	grafanaAPIWithOrgID := grafanaAPI.WithOrgID(organization.ID)
+	currentOrgID := grafanaAPI.OrgID()
+	grafanaAPI.WithOrgID(organization.ID)
+	defer grafanaAPI.WithOrgID(currentOrgID)
 
-	configuredDatasourcesInGrafana, err := listDatasourcesForOrganization(ctx, grafanaAPIWithOrgID)
+	configuredDatasourcesInGrafana, err := listDatasourcesForOrganization(ctx, grafanaAPI)
 	if err != nil {
 		logger.Error(err, "failed to list datasources")
 		return nil, errors.WithStack(err)
@@ -174,7 +176,7 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	for index, datasource := range datasourcesToCreate {
 		logger.Info("creating datasource", "datasource", datasource.Name)
-		created, err := grafanaAPIWithOrgID.Datasources.AddDataSource(
+		created, err := grafanaAPI.Datasources.AddDataSource(
 			&models.AddDataSourceCommand{
 				UID:            datasource.UID,
 				Name:           datasource.Name,
@@ -195,7 +197,7 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	for _, datasource := range datasourcesToUpdate {
 		logger.Info("updating datasource", "datasource", datasource.Name)
-		_, err := grafanaAPIWithOrgID.Datasources.UpdateDataSourceByID(
+		_, err := grafanaAPI.Datasources.UpdateDataSourceByID(
 			strconv.FormatInt(datasource.ID, 10),
 			&models.UpdateDataSourceCommand{
 				UID:            datasource.UID,

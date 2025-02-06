@@ -212,7 +212,9 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		logger.Error(err, "failed to find organization", "organization", dashboardOrg)
 		return errors.WithStack(err)
 	}
-	grafanaAPIWithOrgID := r.GrafanaAPI.WithOrgID(organization.ID)
+	currentOrgID := r.GrafanaAPI.OrgID()
+	r.GrafanaAPI.WithOrgID(organization.ID)
+	defer r.GrafanaAPI.WithOrgID(currentOrgID)
 
 	for _, dashboardString := range dashboardCM.Data {
 		var dashboard map[string]any
@@ -232,7 +234,7 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		cleanDashboardID(dashboard)
 
 		// Create or update dashboard
-		err = grafana.PublishDashboard(grafanaAPIWithOrgID, dashboard)
+		err = grafana.PublishDashboard(r.GrafanaAPI, dashboard)
 		if err != nil {
 			logger.Error(err, "Failed updating dashboard")
 			continue
@@ -265,7 +267,9 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		logger.Error(err, "failed to find organization", "organization", dashboardOrg)
 		return errors.WithStack(err)
 	}
-	grafanaAPIWithOrgID := r.GrafanaAPI.WithOrgID(organization.ID)
+	currentOrgID := r.GrafanaAPI.OrgID()
+	r.GrafanaAPI.WithOrgID(organization.ID)
+	defer r.GrafanaAPI.WithOrgID(currentOrgID)
 
 	for _, dashboardString := range dashboardCM.Data {
 		var dashboard map[string]interface{}
@@ -284,13 +288,13 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		// Clean the dashboard ID to avoid conflicts
 		cleanDashboardID(dashboard)
 
-		_, err = grafanaAPIWithOrgID.Dashboards.GetDashboardByUID(dashboardUID)
+		_, err = r.GrafanaAPI.Dashboards.GetDashboardByUID(dashboardUID)
 		if err != nil {
 			logger.Error(err, "Failed getting dashboard")
 			continue
 		}
 
-		_, err = grafanaAPIWithOrgID.Dashboards.DeleteDashboardByUID(dashboardUID)
+		_, err = r.GrafanaAPI.Dashboards.DeleteDashboardByUID(dashboardUID)
 		if err != nil {
 			logger.Error(err, "Failed deleting dashboard")
 			continue
