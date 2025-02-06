@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Create a different Grafana client per controller to avoid race conditions
+
 ## [0.13.2] - 2025-02-06
 
 ### Added

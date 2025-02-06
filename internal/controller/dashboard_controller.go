@@ -44,7 +44,7 @@ const (
 )
 
 func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(conf.GrafanaURL, conf)
+	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(conf.GrafanaURL, conf, "dashboard-controller")
 	if err != nil {
 		return fmt.Errorf("unable to create grafana client: %w", err)
 	}
