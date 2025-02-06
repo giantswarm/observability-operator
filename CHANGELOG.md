@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - improved run-local port-forward management
+- Fix missing SSO settings in organizations
 
 ### Fixed
 

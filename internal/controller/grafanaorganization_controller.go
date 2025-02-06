@@ -160,24 +160,30 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, nil
 	}
 
+	var lastError error
+
 	// Configure the shared organization in Grafana
 	if err := r.configureSharedOrg(ctx); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		lastError = err
 	}
 
 	// Configure the organization in Grafana
 	if err := r.configureOrganization(ctx, grafanaOrganization); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		lastError = err
 	}
 
 	// Update the datasources in the CR's status
 	if err := r.configureDatasources(ctx, grafanaOrganization); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		lastError = err
 	}
 
 	// Configure Grafana RBAC
 	if err := r.configureGrafanaSSO(ctx); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		lastError = err
+	}
+
+	if lastError != nil {
+		return ctrl.Result{}, errors.WithStack(lastError)
 	}
 
 	return ctrl.Result{}, nil
@@ -190,12 +196,12 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 
 	logger.Info("configuring shared organization")
 	if err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &sharedOrg); err != nil {
-		logger.Error(err, "failed to rename shared org")
+		logger.Error(err, "failed to upsert shared org")
 		return errors.WithStack(err)
 	}
 
 	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg); err != nil {
-		logger.Info("failed to configure datasources for shared org")
+		logger.Error(err, "failed to configure datasources for shared org")
 		return errors.WithStack(err)
 	}
 
@@ -225,6 +231,7 @@ func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context
 	var organization = newOrganization(grafanaOrganization)
 	err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &organization)
 	if err != nil {
+		logger.Error(err, "failed to upsert grafanaOrganization")
 		return errors.WithStack(err)
 	}
 
@@ -252,6 +259,7 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 	var organization = newOrganization(grafanaOrganization)
 	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, organization)
 	if err != nil {
+		logger.Error(err, "failed to configure the grafanaOrganization with default datasources")
 		return errors.WithStack(err)
 	}
 
@@ -331,7 +339,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context)
 	organizationList := v1alpha1.GrafanaOrganizationList{}
 	err := r.Client.List(ctx, &organizationList)
 	if err != nil {
-		logger.Error(err, "failed to list grafana organizations.")
+		logger.Error(err, "failed to list grafana organizations")
 		return errors.WithStack(err)
 	}
 
@@ -342,6 +350,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context)
 	}
 	err = grafana.ConfigureSSOSettings(ctx, r.GrafanaAPI, organizations)
 	if err != nil {
+		logger.Error(err, "failed to configure grafanaOrganization with SSO settings")
 		return errors.WithStack(err)
 	}
 
