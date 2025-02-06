@@ -2,7 +2,7 @@ module github.com/giantswarm/observability-operator
 
 go 1.23.0
 
-toolchain go1.23.5
+toolchain go1.23.6
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -15,7 +15,7 @@ require (
 	github.com/onsi/gomega v1.36.2
 	github.com/opsgenie/opsgenie-go-sdk-v2 v1.2.23
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.79.2
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.80.0
 	github.com/prometheus/alertmanager v0.28.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.62.0
@@ -64,7 +64,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.32.0
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
-	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/term v0.28.0 // indirect
@@ -75,7 +75,7 @@ require (
 	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/apiextensions-apiserver v0.32.0 // indirect
+	k8s.io/apiextensions-apiserver v0.32.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20241212222426-2c72e554b1e7 // indirect
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
