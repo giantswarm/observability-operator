@@ -26,18 +26,6 @@ var SharedOrg = Organization{
 // We need to use a custom name for now until we can replace the existing datasources.
 var defaultDatasources = []Datasource{
 	{
-		Name:      "Alertmanager",
-		UID:       "alertmanager",
-		Type:      "alertmanager",
-		IsDefault: true,
-		URL:       "http://alertmanager-operated.monitoring.svc:9093",
-		Access:    datasourceProxyAccessMode,
-		JSONData: map[string]interface{}{
-			"handleGrafanaManagedAlerts": false,
-			"implementation":             "prometheus",
-		},
-	},
-	{
 		Name:      "Mimir Alertmanager",
 		UID:       "gs-mimir-alertmanager",
 		Type:      "alertmanager",
