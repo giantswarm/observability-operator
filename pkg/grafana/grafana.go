@@ -155,6 +155,13 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 		}
 	}()
 
+	user, err := grafanaAPI.SignedInUser.GetSignedInUser()
+	if err != nil {
+		logger.Error(err, "failed to get signed in user")
+		return nil, errors.WithStack(err)
+	}
+	logger.Info("signed in user", "user", user.Payload.Login, "org", user.Payload.OrgID)
+
 	configuredDatasourcesInGrafana, err := listDatasourcesForOrganization(ctx, grafanaAPI)
 	if err != nil {
 		logger.Error(err, "failed to list datasources")
@@ -238,6 +245,7 @@ func listDatasourcesForOrganization(ctx context.Context, grafanaAPI *client.Graf
 
 	datasources := make([]Datasource, len(resp.Payload))
 	for i, datasource := range resp.Payload {
+		logger.Info("found datasource", "datasource", datasource.Name, "id", datasource.ID)
 		datasources[i] = Datasource{
 			ID:        datasource.ID,
 			Name:      datasource.Name,
