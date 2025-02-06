@@ -183,7 +183,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	if lastError != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, errors.WithStack(lastError)
 	}
 
 	return ctrl.Result{}, nil
