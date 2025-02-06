@@ -61,27 +61,32 @@ func GenerateGrafanaClient(grafanaURL *url.URL, conf config.Config, userLogin st
 	user, err := adminClient.Users.GetUserByLoginOrEmail(userLogin)
 	if err != nil {
 		var loginOrEmailNotFoundErr *users.GetUserByLoginOrEmailNotFound
-		if errors.As(err, &loginOrEmailNotFoundErr) {
+		if !errors.As(err, &loginOrEmailNotFoundErr) {
 			return nil, fmt.Errorf("unable to get user %q: %w", userLogin, err)
 		}
-
-		// Create user
-		_, err = adminClient.AdminUsers.AdminCreateUser(&models.AdminCreateUserForm{
-			Login:    userLogin,
-			Email:    fmt.Sprintf("%s@observability-operator", userLogin),
-			Password: models.Password(userPassword),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("unable to create user %q: %w", userLogin, err)
-		}
 	} else {
-		// Update password if user exists
-		_, err = adminClient.AdminUsers.AdminUpdateUserPassword(user.Payload.ID, &models.AdminUpdateUserPasswordForm{
-			Password: models.Password(userPassword),
-		})
+		// Delete user since we can't update the password when login form is disabled
+		_, err = adminClient.AdminUsers.AdminDeleteUser(user.Payload.ID)
 		if err != nil {
-			return nil, fmt.Errorf("unable to update password for user %q: %w", userLogin, err)
+			return nil, fmt.Errorf("unable to delete user %q: %w", userLogin, err)
 		}
+	}
+
+	// Create user
+	adminUser, err := adminClient.AdminUsers.AdminCreateUser(&models.AdminCreateUserForm{
+		Login:    userLogin,
+		Email:    fmt.Sprintf("%s@observability-operator", userLogin),
+		Password: models.Password(userPassword),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to create user %q: %w", userLogin, err)
+	}
+
+	_, err = adminClient.AdminUsers.AdminUpdateUserPermissions(adminUser.Payload.ID, &models.AdminUpdateUserPermissionsForm{
+		IsGrafanaAdmin: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to update permissions for user %q: %w", userLogin, err)
 	}
 
 	// Create grafana client with new credentials
