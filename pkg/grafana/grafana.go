@@ -26,20 +26,10 @@ var SharedOrg = Organization{
 // We need to use a custom name for now until we can replace the existing datasources.
 var defaultDatasources = []Datasource{
 	{
-		Name:      "Alertmanager",
+		Name:      "Mimir Alertmanager",
+		UID:       "gs-mimir-alertmanager",
 		Type:      "alertmanager",
 		IsDefault: true,
-		URL:       "http://alertmanager-operated.monitoring.svc:9093",
-		Access:    datasourceProxyAccessMode,
-		JSONData: map[string]interface{}{
-			"handleGrafanaManagedAlerts": false,
-			"implementation":             "prometheus",
-		},
-	},
-	{
-		Name:      "Mimir Alertmanager",
-		Type:      "alertmanager",
-		IsDefault: false,
 		URL:       "http://mimir-alertmanager.mimir.svc:8080",
 		Access:    datasourceProxyAccessMode,
 		JSONData: map[string]interface{}{
@@ -49,6 +39,7 @@ var defaultDatasources = []Datasource{
 	},
 	{
 		Name:      "Mimir",
+		UID:       "gs-mimir",
 		Type:      "prometheus",
 		IsDefault: true,
 		URL:       "http://mimir-gateway.mimir.svc/prometheus",
@@ -63,6 +54,7 @@ var defaultDatasources = []Datasource{
 	},
 	{
 		Name:   "Loki",
+		UID:    "gs-loki",
 		Type:   "loki",
 		URL:    "http://loki-gateway.loki.svc",
 		Access: datasourceProxyAccessMode,
@@ -193,6 +185,7 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 		logger.Info("creating datasource", "datasource", datasource.Name)
 		created, err := grafanaAPI.Datasources.AddDataSource(
 			&models.AddDataSourceCommand{
+				UID:            datasource.UID,
 				Name:           datasource.Name,
 				Type:           datasource.Type,
 				URL:            datasource.URL,
@@ -214,6 +207,7 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 		_, err := grafanaAPI.Datasources.UpdateDataSourceByID(
 			strconv.FormatInt(datasource.ID, 10),
 			&models.UpdateDataSourceCommand{
+				UID:            datasource.UID,
 				Name:           datasource.Name,
 				Type:           datasource.Type,
 				URL:            datasource.URL,

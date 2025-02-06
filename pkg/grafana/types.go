@@ -17,6 +17,7 @@ type Organization struct {
 
 type Datasource struct {
 	ID        int64
+	UID       string
 	Name      string
 	IsDefault bool
 	Type      string
