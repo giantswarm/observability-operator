@@ -38,7 +38,7 @@ func (GrafanaPodRecreatedPredicate) Update(e event.UpdateEvent) bool {
 		return false
 	}
 
-	if newPod.DeletionTimestamp != nil && !newPod.DeletionTimestamp.IsZero() {
+	if !newPod.DeletionTimestamp.IsZero() {
 		return false
 	}
 
