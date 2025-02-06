@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - improved run-local port-forward management
-- Use best effort approach in Grafana Organization controller
+- Fix missing SSO settings in organizations
 
 ### Fixed
 
