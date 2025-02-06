@@ -141,21 +141,9 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	// TODO using a serviceaccount later would be better as they are scoped to an organization
 
-	var err error
-	// Switch context to the current org
-	if _, err = grafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
-		logger.Error(err, "failed to change current org for signed in user")
-		return nil, errors.WithStack(err)
-	}
+	grafanaAPIWithOrgID := grafanaAPI.WithOrgID(organization.ID)
 
-	// We always switch back to the shared org
-	defer func() {
-		if _, err = grafanaAPI.SignedInUser.UserSetUsingOrg(SharedOrg.ID); err != nil {
-			logger.Error(err, "failed to change current org for signed in user")
-		}
-	}()
-
-	configuredDatasourcesInGrafana, err := listDatasourcesForOrganization(ctx, grafanaAPI)
+	configuredDatasourcesInGrafana, err := listDatasourcesForOrganization(ctx, grafanaAPIWithOrgID)
 	if err != nil {
 		logger.Error(err, "failed to list datasources")
 		return nil, errors.WithStack(err)
@@ -183,7 +171,7 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	for index, datasource := range datasourcesToCreate {
 		logger.Info("creating datasource", "datasource", datasource.Name)
-		created, err := grafanaAPI.Datasources.AddDataSource(
+		created, err := grafanaAPIWithOrgID.Datasources.AddDataSource(
 			&models.AddDataSourceCommand{
 				UID:            datasource.UID,
 				Name:           datasource.Name,
@@ -204,7 +192,7 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	for _, datasource := range datasourcesToUpdate {
 		logger.Info("updating datasource", "datasource", datasource.Name)
-		_, err := grafanaAPI.Datasources.UpdateDataSourceByID(
+		_, err := grafanaAPIWithOrgID.Datasources.UpdateDataSourceByID(
 			strconv.FormatInt(datasource.ID, 10),
 			&models.UpdateDataSourceCommand{
 				UID:            datasource.UID,
