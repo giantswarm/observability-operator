@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the notFound method to match error using runtime.APIError type and the status code
+- Update Grafana pod predicate to not trigger on pod deletion
+- Less aggressive lastError, to ensure organization is there
+
+### Fixed
+
+- Fix orgId=0 when upserting organization
+- Remove error when the organization name is already taken
+- Fix race condition when switching organization in Grafana client by using WithOrgID method
+
 ## [0.13.2] - 2025-02-06
 
 ### Added
