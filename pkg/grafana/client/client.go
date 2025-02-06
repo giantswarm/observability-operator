@@ -79,6 +79,9 @@ func GenerateGrafanaClient(grafanaURL *url.URL, conf config.Config, userLogin st
 		_, err = adminClient.AdminUsers.AdminUpdateUserPassword(user.Payload.ID, &models.AdminUpdateUserPasswordForm{
 			Password: models.Password(userPassword),
 		})
+		if err != nil {
+			return nil, fmt.Errorf("unable to update password for user %q: %w", userLogin, err)
+		}
 	}
 
 	// Create grafana client with new credentials
