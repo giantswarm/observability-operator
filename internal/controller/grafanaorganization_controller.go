@@ -165,11 +165,6 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	// Configure the organization in Grafana
-	if err := r.configureOrganization(ctx, grafanaOrganization); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-
 	var lastError error
 
 	// Update the datasources in the CR's status
@@ -195,10 +190,6 @@ func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) e
 	sharedOrg := grafana.SharedOrg
 
 	logger.Info("configuring shared organization")
-	if err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &sharedOrg); err != nil {
-		logger.Error(err, "failed to upsert shared org")
-		return errors.WithStack(err)
-	}
 
 	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg); err != nil {
 		logger.Error(err, "failed to configure datasources for shared org")
@@ -223,31 +214,6 @@ func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.
 		Editors:   grafanaOrganization.Spec.RBAC.Editors,
 		Viewers:   grafanaOrganization.Spec.RBAC.Viewers,
 	}
-}
-
-func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
-	logger := log.FromContext(ctx)
-	// Create or update organization in Grafana
-	var organization = newOrganization(grafanaOrganization)
-	err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &organization)
-	if err != nil {
-		logger.Error(err, "failed to upsert grafanaOrganization")
-		return errors.WithStack(err)
-	}
-
-	// Update CR status if anything was changed
-	if grafanaOrganization.Status.OrgID != organization.ID {
-		logger.Info("updating orgID in the grafanaOrganization status")
-		grafanaOrganization.Status.OrgID = organization.ID
-
-		if err = r.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to update grafanaOrganization status")
-			return errors.WithStack(err)
-		}
-		logger.Info("updated orgID in the grafanaOrganization status")
-	}
-
-	return nil
 }
 
 func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
