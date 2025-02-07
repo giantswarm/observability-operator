@@ -16,9 +16,9 @@ import (
 
 const (
 	datasourceProxyAccessMode = "proxy"
-
-	orgNotFoundError = errors.New("organization not found")
 )
+
+var orgNotFoundError = errors.New("organization not found")
 
 var SharedOrg = Organization{
 	ID:        1,
