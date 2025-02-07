@@ -20,6 +20,10 @@ func NewAlertmanagerSecretPredicate(conf config.Config) predicate.Predicate {
 			return false
 		}
 
+		if secret == nil {
+			return false
+		}
+
 		if !secret.DeletionTimestamp.IsZero() {
 			return false
 		}
