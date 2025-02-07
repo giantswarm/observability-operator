@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the `notFound` method to match error using runtime.APIError type and the status code
+
+### Fixed
+
+- Remove error handling when the organization name is already taken
+- Fix `failed to find organization with ID: 0` error when creating a new organization
+
 ## [0.13.2] - 2025-02-06
 
 ### Added
