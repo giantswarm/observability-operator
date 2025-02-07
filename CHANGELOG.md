@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated the notFound method to match error using runtime.APIError type and the status code
 - Update Grafana pod predicate to not trigger on pod deletion
-- Less aggressive lastError, to ensure organization is there
+- Ensure organization is created before proceeding with datasources and sso settings
 
 ### Fixed
 
