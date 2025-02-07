@@ -206,23 +206,15 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		return nil
 	}
 
-	// We always switch back to the shared org
-	defer func() {
-		if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(grafana.SharedOrg.ID); err != nil {
-			logger.Error(err, "failed to change current org for signed in user")
-		}
-	}()
-
 	// Switch context to the dashboards-defined org
 	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
 	if err != nil {
 		logger.Error(err, "failed to find organization", "organization", dashboardOrg)
 		return errors.WithStack(err)
 	}
-	if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
-		logger.Error(err, "failed to change current org for signed in user")
-		return errors.WithStack(err)
-	}
+	currentOrgID := r.GrafanaAPI.OrgID()
+	r.GrafanaAPI.WithOrgID(organization.ID)
+	defer r.GrafanaAPI.WithOrgID(currentOrgID)
 
 	for _, dashboardString := range dashboardCM.Data {
 		var dashboard map[string]any
@@ -269,23 +261,15 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		return nil
 	}
 
-	// We always switch back to the shared org
-	defer func() {
-		if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(grafana.SharedOrg.ID); err != nil {
-			logger.Error(err, "failed to change current org for signed in user")
-		}
-	}()
-
 	// Switch context to the dashboards-defined org
 	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
 	if err != nil {
 		logger.Error(err, "failed to find organization", "organization", dashboardOrg)
 		return errors.WithStack(err)
 	}
-	if _, err = r.GrafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
-		logger.Error(err, "failed to change current org for signed in user")
-		return errors.WithStack(err)
-	}
+	currentOrgID := r.GrafanaAPI.OrgID()
+	r.GrafanaAPI.WithOrgID(organization.ID)
+	defer r.GrafanaAPI.WithOrgID(currentOrgID)
 
 	for _, dashboardString := range dashboardCM.Data {
 		var dashboard map[string]interface{}
