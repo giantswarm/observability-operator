@@ -38,7 +38,7 @@ func (GrafanaPodRecreatedPredicate) Update(e event.UpdateEvent) bool {
 		return false
 	}
 
-        // Do not trigger on pod deletion
+	// Do not trigger on pod deletion
 	if !newPod.DeletionTimestamp.IsZero() {
 		return false
 	}
