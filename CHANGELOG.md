@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update Grafana pod predicate to not trigger on pod deletion
+- Ensure organization is created before proceeding with datasources and sso settings
+
 ## [0.13.2] - 2025-02-06
 
 ### Added
