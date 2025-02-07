@@ -12,11 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated the notFound method to match error using runtime.APIError type and the status code
 - Update Grafana pod predicate to not trigger on pod deletion
 - Ensure organization is created before proceeding with datasources and sso settings
+- Remove error handling when the organization name is already taken, this is handled by the Grafana API
 
 ### Fixed
 
-- Fix orgId=0 when upserting organization
-- Remove error when the organization name is already taken
+- Fix `failed to find organization with ID: 0` error when creating a new organization
+- Fix `getOrgByIdForbidden` error when creating a new organization
 
 ### Fixes
 
