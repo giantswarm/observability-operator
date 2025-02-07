@@ -16,6 +16,8 @@ import (
 
 const (
 	datasourceProxyAccessMode = "proxy"
+
+	orgNotFoundError = errors.New("organization not found")
 )
 
 var SharedOrg = Organization{
@@ -67,16 +69,11 @@ func UpsertOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	logger.Info("upserting organization")
 
 	// Get the current organization stored in Grafana
-	var currentOrganization *Organization
-	if organization.ID != 0 {
-		currentOrganization, err = findOrgByID(grafanaAPI, organization.ID)
-	} else {
-		currentOrganization, err = FindOrgByName(grafanaAPI, organization.Name)
-	}
-
+	currentOrganization, err := findOrgByID(grafanaAPI, organization.ID)
 	if err != nil {
-		if isNotFound(err) {
+		if errors.Is(err, orgNotFoundError) {
 			logger.Info("organization id not found, creating")
+
 			// If organization does not exist in Grafana, create it
 			createdOrg, err := grafanaAPI.Orgs.CreateOrg(&models.CreateOrgCommand{
 				Name: organization.Name,
@@ -90,6 +87,7 @@ func UpsertOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 			organization.ID = *createdOrg.Payload.OrgID
 			return nil
 		}
+
 		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", organization.ID))
 		return errors.WithStack(err)
 	}
@@ -272,8 +270,16 @@ func FindOrgByName(grafanaAPI *client.GrafanaHTTPAPI, name string) (*Organizatio
 
 // findOrgByID is a wrapper function used to find a Grafana organization by its id
 func findOrgByID(grafanaAPI *client.GrafanaHTTPAPI, orgID int64) (*Organization, error) {
+	if orgID == 0 {
+		return nil, orgNotFoundError
+	}
+
 	organization, err := grafanaAPI.Orgs.GetOrgByID(orgID)
 	if err != nil {
+		if isNotFound(err) {
+			return nil, fmt.Errorf("%w: %w", orgNotFoundError, err)
+		}
+
 		return nil, errors.WithStack(err)
 	}
 
