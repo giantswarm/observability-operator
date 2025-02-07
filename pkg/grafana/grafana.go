@@ -141,19 +141,9 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	// TODO using a serviceaccount later would be better as they are scoped to an organization
 
-	var err error
-	// Switch context to the current org
-	if _, err = grafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
-		logger.Error(err, "failed to change current org for signed in user")
-		return nil, errors.WithStack(err)
-	}
-
-	// We always switch back to the shared org
-	defer func() {
-		if _, err = grafanaAPI.SignedInUser.UserSetUsingOrg(SharedOrg.ID); err != nil {
-			logger.Error(err, "failed to change current org for signed in user")
-		}
-	}()
+	currentOrgID := grafanaAPI.OrgID()
+	grafanaAPI.WithOrgID(organization.ID)
+	defer grafanaAPI.WithOrgID(currentOrgID)
 
 	configuredDatasourcesInGrafana, err := listDatasourcesForOrganization(ctx, grafanaAPI)
 	if err != nil {
