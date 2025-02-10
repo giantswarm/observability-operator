@@ -47,7 +47,7 @@ prometheus.remote_write "default" {
       capacity             = {{ .QueueConfigCapacity }}
       max_shards           = {{ .QueueConfigMaxShards }}
       max_samples_per_send = {{ .QueueConfigMaxSamplesPerSend }}
-      sample_age_limit     = {{ .QueueConfigSampleAgeLimit }}
+      sample_age_limit     = "{{ .QueueConfigSampleAgeLimit }}"
     }
   }
   wal {

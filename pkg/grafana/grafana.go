@@ -14,16 +14,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var SharedOrg = Organization{
-	ID:   1,
-	Name: "Shared Org",
-}
-
 const (
 	datasourceProxyAccessMode = "proxy"
 )
 
 var orgNotFoundError = errors.New("organization not found")
+
+var SharedOrg = Organization{
+	ID:   1,
+	Name: "Shared Org",
+}
 
 // We need to use a custom name for now until we can replace the existing datasources.
 var defaultDatasources = []Datasource{
