@@ -190,8 +190,14 @@ func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.
 		tenantIDs[i] = string(tenant)
 	}
 
+	orgID := grafanaOrganization.Status.OrgID
+	// Shared Org is the only exception to the rule as we know it's ID will always be 1
+	if grafanaOrganization.Spec.DisplayName == grafana.SharedOrg.Name {
+		orgID = grafana.SharedOrg.ID
+	}
+
 	return grafana.Organization{
-		ID:        grafanaOrganization.Status.OrgID,
+		ID:        orgID,
 		Name:      grafanaOrganization.Spec.DisplayName,
 		TenantIDs: tenantIDs,
 		Admins:    grafanaOrganization.Spec.RBAC.Admins,
