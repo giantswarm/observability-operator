@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2025-02-10
+
 ### Removed
 
 - Clean up `Shared org` specific code that is not needed anymore since we moved the organization declaration to a custom resource (https://github.com/giantswarm/roadmap/issues/3860).
@@ -274,7 +276,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/giantswarm/observability-operator/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/giantswarm/observability-operator/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/giantswarm/observability-operator/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/giantswarm/observability-operator/compare/v0.13.1...v0.13.2
