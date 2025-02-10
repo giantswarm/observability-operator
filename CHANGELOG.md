@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Clean up `Shared org` specific code that is not needed anymore since we moved the organization declaration to a custom resource (https://github.com/giantswarm/roadmap/issues/3860).
+
+## [0.14.0] - 2025-02-10
+
+### Changed
+
+- Configure Alloy-metrics `sample_age_config` so that alloy does not indefinitely retry to send old and rejected samples.
+
+## [0.13.3] - 2025-02-10
+
+### Changed
+
+- Updated the notFound method to match error using runtime.APIError type and the status code
+- Update Grafana pod predicate to not trigger on pod deletion
+- Ensure organization is created before proceeding with datasources and sso settings
+- Remove error handling when the organization name is already taken, this is handled by the Grafana API
+
+### Fixed
+
+- Fix `failed to find organization with ID: 0` error when creating a new organization
+- Fix `getOrgByIdForbidden` error when creating a new organization
+- Fix race condition when switching organization in Grafana client by using WithOrgID method
+
+## [0.13.2] - 2025-02-06
+
+### Added
+
+- Add datasources UID
+
+### Changed
+
+- improved run-local port-forward management
+- Fix missing SSO settings in organizations
+
+### Fixed
+
+- fixed loading dashboards when they have an `id` defined
+
+### Removed
+
+- Remove turtle related Alertmanager configuration
+- Remove Alertmanager datasource
+
+## [0.13.1] - 2025-01-30
+
+### Removed
+
+- Remove deprecated code that target an older release.
+
+## [0.13.0] - 2025-01-16
+
 ### Added
 
 - Add Alertmanager config and templates in Helm chart (#188)
@@ -221,7 +274,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/giantswarm/observability-operator/compare/v0.13.3...v0.14.0
+[0.13.3]: https://github.com/giantswarm/observability-operator/compare/v0.13.2...v0.13.3
+[0.13.2]: https://github.com/giantswarm/observability-operator/compare/v0.13.1...v0.13.2
+[0.13.1]: https://github.com/giantswarm/observability-operator/compare/v0.13.0...v0.13.1
+[0.13.0]: https://github.com/giantswarm/observability-operator/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/giantswarm/observability-operator/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/giantswarm/observability-operator/compare/v0.10.2...v0.11.0
 [0.10.2]: https://github.com/giantswarm/observability-operator/compare/v0.10.1...v0.10.2

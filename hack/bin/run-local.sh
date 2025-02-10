@@ -33,24 +33,32 @@ function setEnvFromSecrets {
 
 # Port-forward the Grafana service
 function grafanaPortForward {
-  kubectl port-forward -n "$NAMESPACE" svc/grafana 3000:80 &>/dev/null &
+  while true; do
+    kubectl port-forward -n "$NAMESPACE" svc/grafana 3000:80 &>/dev/null || true
+  done &
   GRAFANAPORTFORWARDPID="$!"
 }
 
 # Stop the Grafana service port-forward
 function stopGrafanaPortForward {
+  childpids=$(ps -o pid= --ppid "$GRAFANAPORTFORWARDPID")
   kill "$GRAFANAPORTFORWARDPID" || true
+  kill $childpids || true
 }
 
 # Port-forward the mimir service
 function mimirPortForward {
-  kubectl port-forward -n mimir svc/mimir-gateway 8180:80 &>/dev/null &
+  while true; do
+    kubectl port-forward -n mimir svc/mimir-gateway 8180:80 &>/dev/null || true
+  done &
   MIMIRPORTFORWARDPID="$!"
 }
 
 # Stop the Grafana service port-forward
 function stopMimirPortForward {
+  childpids=$(ps -o pid= --ppid "$MIMIRPORTFORWARDPID")
   kill "$MIMIRPORTFORWARDPID" || true
+  kill $childpids || true
 }
 
 # Pause the in-cluster operator
@@ -90,7 +98,7 @@ function main {
   pauseInClusterOperator
 
   echo "### Running operator"
-  go run . "${OLLYOPARGS[@]}" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180
+  go run . "${OLLYOPARGS[@]}" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180/prometheus
 
   echo "### Cleanup"
 }

@@ -150,13 +150,6 @@ route:
     - team="rocket"
     continue: false
 
-  # Team Turtles Slack
-  - receiver: team_turtles_slack
-    matchers:
-    - severity=~"page|notify"
-    - team="turtles"
-    continue: false
-
   # Team Honeybadger Slack
   - receiver: team_honeybadger_slack
     matchers:
@@ -284,23 +277,6 @@ receivers:
 - name: team_shield_slack
   slack_configs:
   - channel: '#alert-shield'
-    http_config:
-      {{- if .Values.alerting.slackAPIToken }}
-      authorization:
-        type: Bearer
-        credentials: {{ .Values.alerting.slackAPIToken }}
-      {{- end }}
-      proxy_from_environment: true
-    send_resolved: true
-    actions: *slack-actions
-
-- name: team_turtles_slack
-  slack_configs:
-  {{- if eq .Values.managementCluster.pipeline "stable" }}
-  - channel: '#alert-turtles'
-  {{- else }}
-  - channel: '#alert-turtles-test'
-  {{- end }}
     http_config:
       {{- if .Values.alerting.slackAPIToken }}
       authorization:

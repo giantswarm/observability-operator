@@ -9,7 +9,6 @@ import (
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -21,8 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller/predicates"
@@ -163,47 +160,28 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, nil
 	}
 
-	// Configure the shared organization in Grafana
-	if err := r.configureSharedOrg(ctx); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-
 	// Configure the organization in Grafana
 	if err := r.configureOrganization(ctx, grafanaOrganization); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	var lastError error
+
 	// Update the datasources in the CR's status
 	if err := r.configureDatasources(ctx, grafanaOrganization); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		lastError = err
 	}
 
 	// Configure Grafana RBAC
 	if err := r.configureGrafanaSSO(ctx); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		lastError = err
+	}
+
+	if lastError != nil {
+		return ctrl.Result{}, errors.WithStack(lastError)
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) error {
-	logger := log.FromContext(ctx)
-
-	sharedOrg := grafana.SharedOrg
-
-	logger.Info("configuring shared organization")
-	if err := grafana.UpdateOrganization(ctx, r.GrafanaAPI, &sharedOrg); err != nil {
-		logger.Error(err, "failed to rename shared org")
-		return errors.WithStack(err)
-	}
-
-	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg); err != nil {
-		logger.Info("failed to configure datasources for shared org")
-		return errors.WithStack(err)
-	}
-
-	logger.Info("configured shared org")
-	return nil
 }
 
 func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.Organization {
@@ -212,8 +190,14 @@ func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.
 		tenantIDs[i] = string(tenant)
 	}
 
+	orgID := grafanaOrganization.Status.OrgID
+	// Shared Org is the only exception to the rule as we know it's ID will always be 1
+	if grafanaOrganization.Spec.DisplayName == grafana.SharedOrg.Name {
+		orgID = grafana.SharedOrg.ID
+	}
+
 	return grafana.Organization{
-		ID:        grafanaOrganization.Status.OrgID,
+		ID:        orgID,
 		Name:      grafanaOrganization.Spec.DisplayName,
 		TenantIDs: tenantIDs,
 		Admins:    grafanaOrganization.Spec.RBAC.Admins,
@@ -222,18 +206,13 @@ func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.
 	}
 }
 
-func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (err error) {
+func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 	// Create or update organization in Grafana
 	var organization = newOrganization(grafanaOrganization)
-	if organization.ID == 0 {
-		// if the CR doesn't have an orgID, create the organization in Grafana
-		err = grafana.CreateOrganization(ctx, r.GrafanaAPI, &organization)
-	} else {
-		err = grafana.UpdateOrganization(ctx, r.GrafanaAPI, &organization)
-	}
-
+	err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &organization)
 	if err != nil {
+		logger.Error(err, "failed to upsert grafanaOrganization")
 		return errors.WithStack(err)
 	}
 
@@ -259,9 +238,9 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 
 	// Create or update organization in Grafana
 	var organization = newOrganization(grafanaOrganization)
-
 	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, organization)
 	if err != nil {
+		logger.Error(err, "failed to configure the grafanaOrganization with default datasources")
 		return errors.WithStack(err)
 	}
 
@@ -341,38 +320,9 @@ func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context)
 	organizationList := v1alpha1.GrafanaOrganizationList{}
 	err := r.Client.List(ctx, &organizationList)
 	if err != nil {
-		logger.Error(err, "failed to list grafana organizations.")
+		logger.Error(err, "failed to list grafana organizations")
 		return errors.WithStack(err)
 	}
-
-	grafanaConfig := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "grafana-user-values",
-			Namespace: "giantswarm",
-		},
-	}
-
-	// TODO remove after next release (current: 0.10.1)
-	if err = r.Client.Delete(ctx, grafanaConfig); client.IgnoreNotFound(err) != nil {
-		return errors.WithStack(err)
-	}
-
-	// Retrieve the app.
-	var currentApp appv1.App = appv1.App{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "grafana",
-			Namespace: "giantswarm",
-		},
-	}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: currentApp.GetName(), Namespace: currentApp.GetNamespace()}, &currentApp)
-	if err != nil {
-		return err
-	}
-	currentApp.Spec.UserConfig = appv1.AppSpecUserConfig{}
-	if err = r.Client.Update(ctx, &currentApp); err != nil {
-		return err
-	}
-	// TODO end of section to be removed after next release (current: 0.10.1)
 
 	// Configure SSO settings in Grafana
 	organizations := make([]grafana.Organization, len(organizationList.Items))
@@ -381,6 +331,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context)
 	}
 	err = grafana.ConfigureSSOSettings(ctx, r.GrafanaAPI, organizations)
 	if err != nil {
+		logger.Error(err, "failed to configure grafanaOrganization with SSO settings")
 		return errors.WithStack(err)
 	}
 

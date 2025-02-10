@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-// GrafanaPodRecreatedPredicate implements an eevent handler predicate function.
+// GrafanaPodRecreatedPredicate implements an event handler predicate function.
 // This predicate is used to trigger a reconciliation when the Grafana pod is recreated to ensure the Grafana instance is up to date.
 type GrafanaPodRecreatedPredicate struct {
 	predicate.Funcs
@@ -33,6 +33,16 @@ func (GrafanaPodRecreatedPredicate) Update(e event.UpdateEvent) bool {
 	if !ok {
 		return false
 	}
+
+	if newPod == nil {
+		return false
+	}
+
+	// Do not trigger on pod deletion
+	if !newPod.DeletionTimestamp.IsZero() {
+		return false
+	}
+
 	return isGrafanaPod(newPod) && isPodReady(newPod)
 }
 

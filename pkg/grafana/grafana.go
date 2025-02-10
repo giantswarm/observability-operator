@@ -4,9 +4,10 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"net/http"
 	"strconv"
-	"strings"
 
+	"github.com/go-openapi/runtime"
 	"github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
@@ -17,29 +18,20 @@ const (
 	datasourceProxyAccessMode = "proxy"
 )
 
+var orgNotFoundError = errors.New("organization not found")
+
 var SharedOrg = Organization{
-	ID:        1,
-	Name:      "Shared Org",
-	TenantIDs: []string{"giantswarm"},
+	ID:   1,
+	Name: "Shared Org",
 }
 
 // We need to use a custom name for now until we can replace the existing datasources.
 var defaultDatasources = []Datasource{
 	{
-		Name:      "Alertmanager",
+		Name:      "Mimir Alertmanager",
+		UID:       "gs-mimir-alertmanager",
 		Type:      "alertmanager",
 		IsDefault: true,
-		URL:       "http://alertmanager-operated.monitoring.svc:9093",
-		Access:    datasourceProxyAccessMode,
-		JSONData: map[string]interface{}{
-			"handleGrafanaManagedAlerts": false,
-			"implementation":             "prometheus",
-		},
-	},
-	{
-		Name:      "Mimir Alertmanager",
-		Type:      "alertmanager",
-		IsDefault: false,
 		URL:       "http://mimir-alertmanager.mimir.svc:8080",
 		Access:    datasourceProxyAccessMode,
 		JSONData: map[string]interface{}{
@@ -49,6 +41,7 @@ var defaultDatasources = []Datasource{
 	},
 	{
 		Name:      "Mimir",
+		UID:       "gs-mimir",
 		Type:      "prometheus",
 		IsDefault: true,
 		URL:       "http://mimir-gateway.mimir.svc/prometheus",
@@ -63,58 +56,45 @@ var defaultDatasources = []Datasource{
 	},
 	{
 		Name:   "Loki",
+		UID:    "gs-loki",
 		Type:   "loki",
 		URL:    "http://loki-gateway.loki.svc",
 		Access: datasourceProxyAccessMode,
 	},
 }
 
-func CreateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *Organization) error {
+func UpsertOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *Organization) (err error) {
 	logger := log.FromContext(ctx)
+	logger.Info("upserting organization")
 
-	logger.Info("creating organization")
-	err := assertNameIsAvailable(ctx, grafanaAPI, organization)
+	// Get the current organization stored in Grafana
+	currentOrganization, err := findOrgByID(grafanaAPI, organization.ID)
 	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	createdOrg, err := grafanaAPI.Orgs.CreateOrg(&models.CreateOrgCommand{
-		Name: organization.Name,
-	})
-	if err != nil {
-		logger.Error(err, "failed to create organization")
-		return errors.WithStack(err)
-	}
-	logger.Info("created organization")
-
-	organization.ID = *createdOrg.Payload.OrgID
-	return nil
-}
-
-func UpdateOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *Organization) error {
-	logger := log.FromContext(ctx)
-
-	logger.Info("updating organization")
-	found, err := FindOrgByID(grafanaAPI, organization.ID)
-	if err != nil {
-		if isNotFound(err) {
+		if errors.Is(err, orgNotFoundError) {
 			logger.Info("organization id not found, creating")
-			// If the CR orgID does not exist in Grafana, then we create the organization
-			return CreateOrganization(ctx, grafanaAPI, organization)
+
+			// If organization does not exist in Grafana, create it
+			createdOrg, err := grafanaAPI.Orgs.CreateOrg(&models.CreateOrgCommand{
+				Name: organization.Name,
+			})
+			if err != nil {
+				logger.Error(err, "failed to create organization")
+				return errors.WithStack(err)
+			}
+			logger.Info("created organization")
+
+			organization.ID = *createdOrg.Payload.OrgID
+			return nil
 		}
+
 		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", organization.ID))
 		return errors.WithStack(err)
 	}
 
 	// If both name matches, there is nothing to do.
-	if found.Name == organization.Name {
+	if currentOrganization.Name == organization.Name {
 		logger.Info("the organization already exists in Grafana and does not need to be updated.")
 		return nil
-	}
-
-	err = assertNameIsAvailable(ctx, grafanaAPI, organization)
-	if err != nil {
-		return errors.WithStack(err)
 	}
 
 	// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
@@ -135,7 +115,7 @@ func DeleteOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	logger := log.FromContext(ctx)
 
 	logger.Info("deleting organization")
-	_, err := FindOrgByID(grafanaAPI, organization.ID)
+	_, err := findOrgByID(grafanaAPI, organization.ID)
 	if err != nil {
 		if isNotFound(err) {
 			logger.Info("organization id was not found, skipping deletion")
@@ -161,19 +141,9 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	// TODO using a serviceaccount later would be better as they are scoped to an organization
 
-	var err error
-	// Switch context to the current org
-	if _, err = grafanaAPI.SignedInUser.UserSetUsingOrg(organization.ID); err != nil {
-		logger.Error(err, "failed to change current org for signed in user")
-		return nil, errors.WithStack(err)
-	}
-
-	// We always switch back to the shared org
-	defer func() {
-		if _, err = grafanaAPI.SignedInUser.UserSetUsingOrg(SharedOrg.ID); err != nil {
-			logger.Error(err, "failed to change current org for signed in user")
-		}
-	}()
+	currentOrgID := grafanaAPI.OrgID()
+	grafanaAPI.WithOrgID(organization.ID)
+	defer grafanaAPI.WithOrgID(currentOrgID)
 
 	configuredDatasourcesInGrafana, err := listDatasourcesForOrganization(ctx, grafanaAPI)
 	if err != nil {
@@ -205,6 +175,7 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 		logger.Info("creating datasource", "datasource", datasource.Name)
 		created, err := grafanaAPI.Datasources.AddDataSource(
 			&models.AddDataSourceCommand{
+				UID:            datasource.UID,
 				Name:           datasource.Name,
 				Type:           datasource.Type,
 				URL:            datasource.URL,
@@ -226,6 +197,7 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 		_, err := grafanaAPI.Datasources.UpdateDataSourceByID(
 			strconv.FormatInt(datasource.ID, 10),
 			&models.UpdateDataSourceCommand{
+				UID:            datasource.UID,
 				Name:           datasource.Name,
 				Type:           datasource.Type,
 				URL:            datasource.URL,
@@ -274,29 +246,12 @@ func isNotFound(err error) bool {
 		return false
 	}
 
-	// Parsing error message to find out the error code
-	return strings.Contains(err.Error(), "(status 404)")
-}
-
-// assertNameIsAvailable is a helper function to check if the organization name is available in Grafana
-func assertNameIsAvailable(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *Organization) error {
-	logger := log.FromContext(ctx)
-
-	found, err := FindOrgByName(grafanaAPI, organization.Name)
-	if err != nil {
-		// We only error if we have any error other than a 404
-		if !isNotFound(err) {
-			logger.Error(err, fmt.Sprintf("failed to find organization with name: %s", organization.Name))
-			return errors.WithStack(err)
-		}
-
-		if found != nil {
-			logger.Error(err, "a grafana organization with the same name already exists. Please choose a different display name.")
-			return errors.WithStack(err)
-		}
+	var apiErr *runtime.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.IsCode(http.StatusNotFound)
 	}
 
-	return nil
+	return false
 }
 
 // FindOrgByName is a wrapper function used to find a Grafana organization by its name
@@ -312,10 +267,18 @@ func FindOrgByName(grafanaAPI *client.GrafanaHTTPAPI, name string) (*Organizatio
 	}, nil
 }
 
-// FindOrgByID is a wrapper function used to find a Grafana organization by its id
-func FindOrgByID(grafanaAPI *client.GrafanaHTTPAPI, orgID int64) (*Organization, error) {
+// findOrgByID is a wrapper function used to find a Grafana organization by its id
+func findOrgByID(grafanaAPI *client.GrafanaHTTPAPI, orgID int64) (*Organization, error) {
+	if orgID == 0 {
+		return nil, orgNotFoundError
+	}
+
 	organization, err := grafanaAPI.Orgs.GetOrgByID(orgID)
 	if err != nil {
+		if isNotFound(err) {
+			return nil, fmt.Errorf("%w: %w", orgNotFoundError, err)
+		}
+
 		return nil, errors.WithStack(err)
 	}
 

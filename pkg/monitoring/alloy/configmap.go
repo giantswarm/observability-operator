@@ -125,6 +125,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		QueueConfigCapacity          int
 		QueueConfigMaxSamplesPerSend int
 		QueueConfigMaxShards         int
+		QueueConfigSampleAgeLimit    string
 
 		WALTruncateFrequency string
 
@@ -140,6 +141,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		QueueConfigCapacity:          commonmonitoring.QueueConfigCapacity,
 		QueueConfigMaxSamplesPerSend: commonmonitoring.QueueConfigMaxSamplesPerSend,
 		QueueConfigMaxShards:         commonmonitoring.QueueConfigMaxShards,
+		QueueConfigSampleAgeLimit:    commonmonitoring.QueueConfigSampleAgeLimit,
 
 		WALTruncateFrequency: a.MonitoringConfig.WALTruncateFrequency.String(),
 
