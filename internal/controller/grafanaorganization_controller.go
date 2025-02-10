@@ -160,11 +160,6 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, nil
 	}
 
-	// Configure the shared organization in Grafana
-	if err := r.configureSharedOrg(ctx); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-
 	// Configure the organization in Grafana
 	if err := r.configureOrganization(ctx, grafanaOrganization); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
@@ -189,34 +184,20 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	return ctrl.Result{}, nil
 }
 
-func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) error {
-	logger := log.FromContext(ctx)
-
-	sharedOrg := grafana.SharedOrg
-
-	logger.Info("configuring shared organization")
-	if err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &sharedOrg); err != nil {
-		logger.Error(err, "failed to upsert shared org")
-		return errors.WithStack(err)
-	}
-
-	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg); err != nil {
-		logger.Error(err, "failed to configure datasources for shared org")
-		return errors.WithStack(err)
-	}
-
-	logger.Info("configured shared org")
-	return nil
-}
-
 func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.Organization {
 	tenantIDs := make([]string, len(grafanaOrganization.Spec.Tenants))
 	for i, tenant := range grafanaOrganization.Spec.Tenants {
 		tenantIDs[i] = string(tenant)
 	}
 
+	orgID := grafanaOrganization.Status.OrgID
+	// Shared Org is the only exception to the rule as we know it's ID will always be 1
+	if grafanaOrganization.Spec.DisplayName == grafana.SharedOrg.Name {
+		orgID = grafana.SharedOrg.ID
+	}
+
 	return grafana.Organization{
-		ID:        grafanaOrganization.Status.OrgID,
+		ID:        orgID,
 		Name:      grafanaOrganization.Spec.DisplayName,
 		TenantIDs: tenantIDs,
 		Admins:    grafanaOrganization.Spec.RBAC.Admins,
