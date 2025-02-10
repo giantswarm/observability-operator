@@ -20,9 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix `failed to find organization with ID: 0` error when creating a new organization
 - Fix `getOrgByIdForbidden` error when creating a new organization
-
-### Fixes
-
 - Fix race condition when switching organization in Grafana client by using WithOrgID method
 
 ## [0.13.2] - 2025-02-06
