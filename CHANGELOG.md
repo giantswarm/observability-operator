@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.3] - 2025-02-10
+
 ### Changed
 
 - Updated the notFound method to match error using runtime.APIError type and the status code
@@ -18,9 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix `failed to find organization with ID: 0` error when creating a new organization
 - Fix `getOrgByIdForbidden` error when creating a new organization
-
-### Fixes
-
 - Fix race condition when switching organization in Grafana client by using WithOrgID method
 
 ## [0.13.2] - 2025-02-06
@@ -265,7 +264,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.13.2...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.13.3...HEAD
+[0.13.3]: https://github.com/giantswarm/observability-operator/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/giantswarm/observability-operator/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/giantswarm/observability-operator/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/giantswarm/observability-operator/compare/v0.12.0...v0.13.0
