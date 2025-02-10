@@ -2,7 +2,7 @@ prometheus.operator.servicemonitors "default" {
   forward_to = [prometheus.remote_write.default.receiver]
   selector {
     match_expression {
-      key = "application.giantswarm.io/team"
+      key      = "application.giantswarm.io/team"
       operator = "Exists"
     }
   }
@@ -18,7 +18,7 @@ prometheus.operator.podmonitors "default" {
   forward_to = [prometheus.remote_write.default.receiver]
   selector {
     match_expression {
-      key = "application.giantswarm.io/team"
+      key      = "application.giantswarm.io/team"
       operator = "Exists"
     }
   }
@@ -32,9 +32,9 @@ prometheus.operator.podmonitors "default" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = env("{{ .RemoteWriteURLEnvVarName }}")
-    name = env("{{ .RemoteWriteNameEnvVarName }}")
-    enable_http2 = false
+    url            = env("{{ .RemoteWriteURLEnvVarName }}")
+    name           = env("{{ .RemoteWriteNameEnvVarName }}")
+    enable_http2   = false
     remote_timeout = "{{ .RemoteWriteTimeout }}"
     basic_auth {
       username = env("{{ .RemoteWriteBasicAuthUsernameEnvVarName }}")
@@ -44,9 +44,10 @@ prometheus.remote_write "default" {
       insecure_skip_verify = {{ .RemoteWriteTLSInsecureSkipVerify }}
     }
     queue_config {
-      capacity = {{ .QueueConfigCapacity }}
+      capacity             = {{ .QueueConfigCapacity }}
+      max_shards           = {{ .QueueConfigMaxShards }}
       max_samples_per_send = {{ .QueueConfigMaxSamplesPerSend }}
-      max_shards = {{ .QueueConfigMaxShards }}
+      sample_age_limit     = {{ .QueueConfigSampleAgeLimit }}
     }
   }
   wal {
