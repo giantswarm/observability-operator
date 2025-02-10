@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Configure Alloy-metrics `sample_age_config` so that alloy does not indefinitely retry to send old and rejected samples.
+
 ## [0.13.3] - 2025-02-10
 
 ### Changed

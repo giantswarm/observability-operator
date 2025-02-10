@@ -37,6 +37,7 @@ const (
 	QueueConfigCapacity          = 30000
 	QueueConfigMaxSamplesPerSend = 150000
 	QueueConfigMaxShards         = 10
+	QueueConfigSampleAgeLimit    = "30m"
 
 	RemoteWriteName                = "mimir"
 	RemoteWriteEndpointTemplateURL = "https://mimir.%s/api/v1/push"
