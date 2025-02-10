@@ -160,11 +160,6 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, nil
 	}
 
-	// Configure the shared organization in Grafana
-	if err := r.configureSharedOrg(ctx); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-
 	// Configure the organization in Grafana
 	if err := r.configureOrganization(ctx, grafanaOrganization); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
@@ -187,26 +182,6 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func (r GrafanaOrganizationReconciler) configureSharedOrg(ctx context.Context) error {
-	logger := log.FromContext(ctx)
-
-	sharedOrg := grafana.SharedOrg
-
-	logger.Info("configuring shared organization")
-	if err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &sharedOrg); err != nil {
-		logger.Error(err, "failed to upsert shared org")
-		return errors.WithStack(err)
-	}
-
-	if _, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, sharedOrg); err != nil {
-		logger.Error(err, "failed to configure datasources for shared org")
-		return errors.WithStack(err)
-	}
-
-	logger.Info("configured shared org")
-	return nil
 }
 
 func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.Organization {

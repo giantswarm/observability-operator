@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Clean up `Shared org` specific code that is not needed anymore since we moved the organization declaration to a custom resource (https://github.com/giantswarm/roadmap/issues/3860).
+
 ## [0.14.0] - 2025-02-10
 
 ### Changed
