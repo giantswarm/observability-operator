@@ -17,35 +17,39 @@ const (
 	grafanaViewerRole = "Viewer"
 )
 
+var ssoProviders = []string{
+	"generic_oauth",
+	"jwt",
+}
+
 func ConfigureSSOSettings(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organizations []Organization) error {
 	logger := log.FromContext(ctx)
 
-	provider := "generic_oauth"
-	resp, err := grafanaAPI.SsoSettings.GetProviderSettings(provider, nil)
-	if err != nil {
-		logger.Error(err, "failed to get sso provider settings.")
-		return errors.WithStack(err)
-	}
-
 	orgsMapping := generateGrafanaOrgsMapping(organizations)
-	settings := resp.Payload.Settings.(map[string]interface{})
-	settings["role_attribute_path"] = "to_string('Viewer')"
-	settings["org_attribute_path"] = "groups"
-	settings["org_mapping"] = orgsMapping
 
-	logger.Info("Configuring Grafana SSO settings", "provider", provider, "settings", settings)
+	for _, provider := range ssoProviders {
+		resp, err := grafanaAPI.SsoSettings.GetProviderSettings(provider, nil)
+		if err != nil {
+			logger.Error(err, "failed to get sso provider settings.")
+			return errors.WithStack(err)
+		}
 
-	// Update the provider settings
-	_, err = grafanaAPI.SsoSettings.UpdateProviderSettings(provider,
-		&models.UpdateProviderSettingsParamsBody{
-			ID:       resp.Payload.ID,
-			Provider: resp.Payload.Provider,
-			Settings: settings,
-		})
+		settings := resp.Payload.Settings.(map[string]interface{})
+		settings["org_mapping"] = orgsMapping
 
-	if err != nil {
-		logger.Error(err, "failed to configure grafana sso.")
-		return errors.WithStack(err)
+		logger.Info("configuring grafana sso settings", "provider", provider, "settings", settings)
+		// Update the provider settings
+		_, err = grafanaAPI.SsoSettings.UpdateProviderSettings(provider,
+			&models.UpdateProviderSettingsParamsBody{
+				ID:       resp.Payload.ID,
+				Provider: resp.Payload.Provider,
+				Settings: settings,
+			})
+
+		if err != nil {
+			logger.Error(err, "failed to configure grafana sso.")
+			return errors.WithStack(err)
+		}
 	}
 
 	return nil
