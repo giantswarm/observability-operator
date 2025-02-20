@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2025-02-20
+
 ### Changed
 
 - update the notification template to take into account the new alert annotations
@@ -285,7 +287,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/giantswarm/observability-operator/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/giantswarm/observability-operator/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/giantswarm/observability-operator/compare/v0.13.3...v0.14.0
 [0.13.3]: https://github.com/giantswarm/observability-operator/compare/v0.13.2...v0.13.3
