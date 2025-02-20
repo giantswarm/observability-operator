@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - update the notification template to take into account the new alert annotations
   - `opsrecipe` => `runbook_url`
   - `dashboard` => `dashboardUid`
+- improve alert names in opsgenie by:
+  - removing the service name if is is not needed
+  - removing the cluster-id if the alert targets the installation
 
 ## [0.15.0] - 2025-02-10
 
