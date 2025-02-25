@@ -1,5 +1,8 @@
 {{ define "__alertmanager" }}Alertmanager{{ end }}
 
+# __runbook_url is a link to the intranet's runbook referenced in the alert annotation.
+{{ define "__runbook_url" -}}{{ (index .Alerts 0).Annotations.runbook_url }}{{- end }}
+
 {{ define "slack.default.title" }}{{ .Status | toUpper }}[{{ if eq .Status "firing" }}{{ .Alerts.Firing | len }}{{- else }}{{ .Alerts.Resolved | len }}{{- end }}] {{ (index .Alerts 0).Labels.alertname }} - Team {{ (index .Alerts 0).Labels.team }}{{ end }}
 {{ define "slack.default.username" }}{{ template "__alertmanager" . }}{{ end }}
 {{ define "slack.default.fallback" }}{{ template "slack.default.title" . }} | {{ template "slack.default.titlelink" . }}{{ end }}
@@ -29,7 +32,7 @@
 {{ else -}}
 📗 Runbook: ⚠️ There is no **runbook** for this alert, time to get your pen.
 {{- end }}
-{{ if (index .Alerts 0).Annotations.dashboardUid -}}
+{{ if or ((index .Alerts 0).Annotations.__dashboardUid__) ((index .Alerts 0).Annotations.dashboardExternalUrl) -}}
 📈 Dashboard: {{ template "__dashboard_url" . }}
 {{ else -}}
 📈 Dashboard: ⚠️ There is no **dashboard** for this alert, time to sketch.

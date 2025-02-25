@@ -8,14 +8,10 @@
   __dashboard_url is the link pointing the Grafana dashboard referenced in the alert annotation if any.
 */}}
 {{ define "__dashboard_url" -}}
-{{- if match "^https://.+" (index .Alerts 0).Annotations.dashboardUid }}{{ (index .Alerts 0).Annotations.dashboardUid -}}
+{{- if (index .Alerts 0).Annotations.dashboardExternalUrl }}
+{{- (index .Alerts 0).Annotations.dashboardExternalUrl -}}
 {{- else -}}
-`}}{{ .Values.alerting.grafanaAddress }}{{`/d/{{ (index .Alerts 0).Annotations.dashboardUid -}}
+`}}{{ .Values.alerting.grafanaAddress }}{{`/d/{{ (index .Alerts 0).Annotations.__dashboardUid__ }}?{{ (index .Alerts 0).Annotations.dashboardQueryParams -}}
 {{- end -}}
 {{- end }}
-
-{{/*
-  __runbook_url is a link to the intranet's runbook referenced in the alert annotation.
-*/}}
-{{ define "__runbook_url" -}}https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/{{ (index .Alerts 0).Annotations.runbook_url }}{{- end }}
 `}}
