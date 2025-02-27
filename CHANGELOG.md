@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use smaller dockerfile to reduce build time as ABS already generates the go binary.
+
 ## [0.17.0] - 2025-02-25
 
 ### Changed
