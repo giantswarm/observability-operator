@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Replace the anonymous tenant with the giantswarm tenant for Mimir and Alertmanager.
+
 ## [0.17.0] - 2025-02-25
 
 ### Changed

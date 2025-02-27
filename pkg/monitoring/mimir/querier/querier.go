@@ -3,11 +3,14 @@ package querier
 import (
 	"context"
 	"errors"
+	"net/http"
 	"time"
 
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+
+	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
 )
 
 var (
@@ -17,10 +20,38 @@ var (
 	ErrorFailedToGetTimeSeries        = errors.New("failed to get time series")
 )
 
+// tenantRoundTripper is a custom HTTP transport that adds tenant identification
+// to outgoing requests. It wraps an existing http.RoundTripper and injects
+// the organization ID header required by Mimir for multi-tenancy.
+type tenantRoundTripper struct {
+	rt http.RoundTripper // The underlying RoundTripper to perform the actual HTTP request
+}
+
+// RoundTrip implements the http.RoundTripper interface.
+// It creates a copy of the original request, preserves all existing headers,
+// and adds the tenant organization ID header before forwarding the request
+// to the underlying transport.
+func (t tenantRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Create a new request to avoid modifying the original
+	reqCopy := req.Clone(req.Context())
+
+	// Ensure headers are initialized
+	if reqCopy.Header == nil {
+		reqCopy.Header = make(http.Header)
+	}
+
+	// Set the tenant organization ID header
+	reqCopy.Header.Set(monitoring.OrgIDHeader, monitoring.DefaultTenantID)
+
+	// Forward the request to the underlying transport
+	return t.rt.RoundTrip(reqCopy)
+}
+
 // QueryTSDBHeadSeries performs an instant query against Mimir.
 func QueryTSDBHeadSeries(ctx context.Context, query string, metricsQueryURL string) (float64, error) {
 	config := api.Config{
-		Address: metricsQueryURL,
+		Address:      metricsQueryURL,
+		RoundTripper: tenantRoundTripper{api.DefaultRoundTripper},
 	}
 
 	// Create new client.
