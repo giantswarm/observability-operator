@@ -40,6 +40,9 @@ prometheus.remote_write "default" {
       username = env("{{ .RemoteWriteBasicAuthUsernameEnvVarName }}")
       password = env("{{ .RemoteWriteBasicAuthPasswordEnvVarName }}")
     }
+    headers = {
+      "X-Scope-OrgID" = {{ .DefaultTenantID }},
+    }
     tls_config {
       insecure_skip_verify = {{ .RemoteWriteTLSInsecureSkipVerify }}
     }
