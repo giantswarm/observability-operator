@@ -45,7 +45,7 @@ const (
 
 	OrgIDHeader        = "X-Scope-OrgID"
 	DefaultReadTenants = "anonymous|giantswarm"
-	DefaultWriteTenant = "anonymous"
+	DefaultWriteTenant = "giantswarm"
 )
 
 func GetServicePriority(cluster *clusterv1.Cluster) string {
