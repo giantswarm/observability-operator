@@ -28,6 +28,8 @@ const (
 	templatesSuffix = ".tmpl"
 
 	alertmanagerAPIPath = "/api/v1/alerts"
+
+	rulerTenantDeletionUrl = "http://mimir-gateway.mimir.svc/ruler/delete_tenant_config"
 )
 
 type Service struct {
@@ -180,8 +182,7 @@ func (s Service) deleteTenantConfiguration(ctx context.Context, tenantID string)
 	}
 	defer resp.Body.Close() // nolint: errcheck
 
-
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusOK {
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return errors.WithStack(fmt.Errorf("alertmanager: failed to read response: %w", err))
@@ -195,7 +196,7 @@ func (s Service) deleteTenantConfiguration(ctx context.Context, tenantID string)
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete tenant configuration: %w", e))
 	}
 
-	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: tenant configurationdeleted")
+	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: tenant configuration deleted")
 
 	return nil
 }
@@ -204,11 +205,10 @@ func (s Service) deleteTenantConfiguration(ctx context.Context, tenantID string)
 func (s Service) deleteRules(ctx context.Context, tenantID string) error {
 	logger := log.FromContext(ctx)
 
-	url := "http://mimir-gateway.mimir.svc/ruler/delete_tenant_config"
-	logger.WithValues("url", url, "tenant", tenantID).Info("Alertmanager: delete rules for tenant")
+	logger.WithValues("url", rulerTenantDeletionUrl, "tenant", tenantID).Info("Alertmanager: delete rules for tenant")
 
 	// Send request to Alertmanager's API
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequest(http.MethodPost, rulerTenantDeletionUrl, nil)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to create request: %w", err))
 	}
@@ -221,8 +221,7 @@ func (s Service) deleteRules(ctx context.Context, tenantID string) error {
 	}
 	defer resp.Body.Close() // nolint: errcheck
 
-
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusOK {
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return errors.WithStack(fmt.Errorf("alertmanager: failed to read response: %w", err))
