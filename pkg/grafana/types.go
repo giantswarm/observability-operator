@@ -44,9 +44,12 @@ func (d Datasource) buildJSONData() map[string]interface{} {
 
 func (d Datasource) buildSecureJSONData(organization Organization) map[string]string {
 	tenantIDs := organization.TenantIDs
-	if d.Type != "loki" {
+	if d.UID == mimirDatasourceUID {
 		// We do not support multi-tenancy for Mimir yet
-		tenantIDs = []string{"anonymous"}
+		tenantIDs = common.DefaultReadTenants
+	} else if d.UID == mimirAlertmanagerDatasourceUID {
+		// Alertmanager does not support multi-tenancy
+		tenantIDs = []string{common.DefaultWriteTenant}
 	}
 	return map[string]string{
 		"httpHeaderValue1": strings.Join(tenantIDs, "|"),
