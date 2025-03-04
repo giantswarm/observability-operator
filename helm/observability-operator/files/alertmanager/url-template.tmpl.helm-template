@@ -12,8 +12,10 @@
 {{ define "__dashboard_url" -}}
 {{- if (index .Alerts 0).Annotations.dashboardExternalUrl }}
 {{- (index .Alerts 0).Annotations.dashboardExternalUrl -}}
-{{- else -}}
+{{- else if (index .Alerts 0).Annotations.__dashboardUid__ -}}
 {{ template "__grafana_url" }}/d/{{ (index .Alerts 0).Annotations.__dashboardUid__ }}?{{ (index .Alerts 0).Annotations.dashboardQueryParams -}}
+{{- else -}}
+{{ template "__grafana_url" }}
 {{- end -}}
 {{- end }}
 `}}
