@@ -43,7 +43,9 @@ const (
 	RemoteWriteEndpointTemplateURL = "https://mimir.%s/api/v1/push"
 	RemoteWriteTimeout             = "60s"
 
-	OrgIDHeader = "X-Scope-OrgID"
+	OrgIDHeader        = "X-Scope-OrgID"
+	DefaultReadTenants = "anonymous|giantswarm"
+	DefaultWriteTenant = "anonymous"
 )
 
 func GetServicePriority(cluster *clusterv1.Cluster) string {

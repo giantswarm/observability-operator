@@ -122,6 +122,8 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		RemoteWriteTimeout                     string
 		RemoteWriteTLSInsecureSkipVerify       bool
 
+		DefaultTenantID string
+
 		QueueConfigCapacity          int
 		QueueConfigMaxSamplesPerSend int
 		QueueConfigMaxShards         int
@@ -137,6 +139,8 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		RemoteWriteBasicAuthPasswordEnvVarName: AlloyRemoteWriteBasicAuthPasswordEnvVarName,
 		RemoteWriteTimeout:                     commonmonitoring.RemoteWriteTimeout,
 		RemoteWriteTLSInsecureSkipVerify:       a.ManagementCluster.InsecureCA,
+
+		DefaultTenantID: commonmonitoring.DefaultWriteTenant,
 
 		QueueConfigCapacity:          commonmonitoring.QueueConfigCapacity,
 		QueueConfigMaxSamplesPerSend: commonmonitoring.QueueConfigMaxSamplesPerSend,

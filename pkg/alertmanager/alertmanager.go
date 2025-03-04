@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
+	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
 )
@@ -27,9 +28,6 @@ const (
 	templatesSuffix = ".tmpl"
 
 	alertmanagerAPIPath = "/api/v1/alerts"
-
-	//TODO: get this from somewhere
-	tenantID = "anonymous"
 )
 
 type Service struct {
@@ -77,7 +75,7 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret) error {
 		}
 	}
 
-	err := s.configure(ctx, alertmanagerConfigContent, templates, tenantID)
+	err := s.configure(ctx, alertmanagerConfigContent, templates, monitoring.DefaultWriteTenant)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to configure: %w", err))
 	}
