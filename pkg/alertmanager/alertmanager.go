@@ -201,7 +201,7 @@ func (s Service) deleteTenantConfiguration(ctx context.Context, tenantID string)
 	return nil
 }
 
-// deleteRules deletes all rules for a tenant using the to Mimir Alertmanager's API
+// deleteRules deletes all rules for a tenant using the Mimir Alertmanager's API
 func (s Service) deleteRules(ctx context.Context, tenantID string) error {
 	logger := log.FromContext(ctx)
 
