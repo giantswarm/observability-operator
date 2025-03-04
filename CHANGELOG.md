@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Add cleanup for Mimir Alertmanager anonymous tenant's configuration.
-- - Add cleanup for Mimir Ruler anonymous tenant's rules.
+- Add cleanup for Mimir Ruler anonymous tenant's rules.
 
 ## [0.17.0] - 2025-02-25
 
