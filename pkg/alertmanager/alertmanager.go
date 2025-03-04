@@ -180,7 +180,6 @@ func (s Service) deleteTenantConfiguration(ctx context.Context, tenantID string)
 	}
 	defer resp.Body.Close() // nolint: errcheck
 
-	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: tenant configurationdeleted")
 
 	if resp.StatusCode != http.StatusCreated {
 		respBody, err := io.ReadAll(resp.Body)
@@ -195,6 +194,8 @@ func (s Service) deleteTenantConfiguration(ctx context.Context, tenantID string)
 
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete tenant configuration: %w", e))
 	}
+
+	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: tenant configurationdeleted")
 
 	return nil
 }
