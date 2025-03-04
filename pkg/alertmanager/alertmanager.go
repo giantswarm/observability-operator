@@ -221,7 +221,6 @@ func (s Service) deleteRules(ctx context.Context, tenantID string) error {
 	}
 	defer resp.Body.Close() // nolint: errcheck
 
-	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: delete rules for tenant")
 
 	if resp.StatusCode != http.StatusCreated {
 		respBody, err := io.ReadAll(resp.Body)
@@ -236,6 +235,8 @@ func (s Service) deleteRules(ctx context.Context, tenantID string) error {
 
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete rules for tenant: %w", e))
 	}
+
+	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: deleted rules for tenant")
 
 	return nil
 }
