@@ -41,7 +41,7 @@ func (t tenantRoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 	}
 
 	// Set the tenant organization ID header
-	reqCopy.Header.Set(monitoring.OrgIDHeader, monitoring.DefaultReadTenants)
+	reqCopy.Header.Set(monitoring.OrgIDHeader, strings.Join(monitoring.DefaultReadTenants, "|"))
 
 	// Forward the request to the underlying transport
 	return t.rt.RoundTrip(reqCopy)
