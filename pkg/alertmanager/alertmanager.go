@@ -161,7 +161,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 	return nil
 }
 
-// deleteTenantConfiguration deletes a tenant using the to Mimir Alertmanager's API
+// deleteTenantConfiguration deletes a tenant using the Mimir Alertmanager's API
 func (s Service) deleteTenantConfiguration(ctx context.Context, tenantID string) error {
 	logger := log.FromContext(ctx)
 
