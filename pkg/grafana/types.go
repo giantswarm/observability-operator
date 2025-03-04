@@ -46,7 +46,7 @@ func (d Datasource) buildSecureJSONData(organization Organization) map[string]st
 	tenantIDs := organization.TenantIDs
 	if d.UID == "gs-mimir" {
 		// We do not support multi-tenancy for Mimir yet
-		tenantIDs = strings.Split(common.DefaultReadTenants, "|")
+		tenantIDs = common.DefaultReadTenants
 	} else if d.UID == "gs-mimir-alertmanager" {
 		// Alertmanager does not support multi-tenancy
 		tenantIDs = []string{common.DefaultWriteTenant}
