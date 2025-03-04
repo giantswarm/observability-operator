@@ -10,9 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Use smaller dockerfile to reduce build time as ABS already generates the go binary.
-- Read metrics from both anonymous and giantswarm tenant at once.
+- read metrics from both anonymous and giantswarm tenant at once.
 - refactor hardcoded tenant values to prepare the switch from the anonymous to the giantswarm tenant.
-- switch the alerting component 
+- switch the alerting component from the anonymous to the giantswarm tenant.
+
+### Removed
+
+- remove configuration from alertmanager for the anonymous tenant.
+- remove rules from the mimir ruler for the anonymous tenant.
 
 ## [0.17.0] - 2025-02-25
 
