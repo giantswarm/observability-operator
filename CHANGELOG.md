@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add cleanup for Mimir Alertmanager anonymous tenant's configuration.
+- Add cleanup for Mimir Ruler anonymous tenant's rules.
+
 ### Changed
 
 - Use smaller dockerfile to reduce build time as ABS already generates the go binary.
@@ -14,11 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor hardcoded tenant values to prepare the switch from the anonymous to the giantswarm tenant.
 - Switch the alerting component from the anonymous to the giantswarm tenant.
 - Add Grafana url when there's no dashboard in the alert notification template.
-
-### Removed
-
-- Add cleanup for Mimir Alertmanager anonymous tenant's configuration.
-- Add cleanup for Mimir Ruler anonymous tenant's rules.
 
 ## [0.17.0] - 2025-02-25
 
