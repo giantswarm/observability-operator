@@ -12,7 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use smaller dockerfile to reduce build time as ABS already generates the go binary.
 - Read metrics from both anonymous and giantswarm tenant at once.
 - refactor hardcoded tenant values to prepare the switch from the anonymous to the giantswarm tenant.
-- switch the alerting component 
 - Add Grafana url when there's no dashboard in the alert notification template.
 
 ## [0.17.0] - 2025-02-25
