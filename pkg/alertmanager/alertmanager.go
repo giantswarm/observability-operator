@@ -29,7 +29,7 @@ const (
 
 	alertmanagerAPIPath = "/api/v1/alerts"
 
-	rulerTenantDeletionUrl = "http://mimir-ruler.mimir.svc/ruler/delete_tenant_config"
+	rulerTenantDeletionUrl = "http://mimir-ruler.mimir.svc:8080/ruler/delete_tenant_config"
 )
 
 type Service struct {
