@@ -15,9 +15,8 @@ import (
 )
 
 const (
-	datasourceProxyAccessMode      = "proxy"
-	mimirAlertmanagerDatasourceUID = "gs-mimir-alertmanager"
-	mimirDatasourceUID             = "gs-mimir"
+	datasourceProxyAccessMode = "proxy"
+	mimirOldDatasourceUID     = "gs-mimir-old"
 )
 
 var orgNotFoundError = errors.New("organization not found")
@@ -31,7 +30,7 @@ var SharedOrg = Organization{
 var defaultDatasources = []Datasource{
 	{
 		Name:      "Mimir Alertmanager",
-		UID:       mimirAlertmanagerDatasourceUID,
+		UID:       "gs-mimir-alertmanager",
 		Type:      "alertmanager",
 		IsDefault: true,
 		URL:       "http://mimir-alertmanager.mimir.svc:8080",
@@ -42,8 +41,23 @@ var defaultDatasources = []Datasource{
 		},
 	},
 	{
+		Name:      "Mimir (old tenant data)",
+		UID:       mimirOldDatasourceUID,
+		Type:      "prometheus",
+		IsDefault: true,
+		URL:       "http://mimir-gateway.mimir.svc/prometheus",
+		Access:    datasourceProxyAccessMode,
+		JSONData: map[string]interface{}{
+			"cacheLevel":     "None",
+			"httpMethod":     "POST",
+			"mimirVersion":   "2.14.0",
+			"prometheusType": "Mimir",
+			"timeInterval":   "60s",
+		},
+	},
+	{
 		Name:      "Mimir",
-		UID:       mimirDatasourceUID,
+		UID:       "gs-mimir",
 		Type:      "prometheus",
 		IsDefault: true,
 		URL:       "http://mimir-gateway.mimir.svc/prometheus",
