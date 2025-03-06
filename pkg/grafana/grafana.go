@@ -41,11 +41,11 @@ var defaultDatasources = []Datasource{
 		},
 	},
 	{
-		Name:      "Mimir (old tenant data)",
-		UID:       mimirOldDatasourceUID,
-		Type:      "prometheus",
-		URL:       "http://mimir-gateway.mimir.svc/prometheus",
-		Access:    datasourceProxyAccessMode,
+		Name:   "Mimir (old tenant data)",
+		UID:    mimirOldDatasourceUID,
+		Type:   "prometheus",
+		URL:    "http://mimir-gateway.mimir.svc/prometheus",
+		Access: datasourceProxyAccessMode,
 		JSONData: map[string]interface{}{
 			"cacheLevel":     "None",
 			"httpMethod":     "POST",
