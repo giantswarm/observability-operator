@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2025-03-06
+
 ### Changed
 
 - Revert tenant switch and clean up giantswarm tenant
@@ -320,7 +322,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.19.1...HEAD
+[0.19.1]: https://github.com/giantswarm/observability-operator/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/giantswarm/observability-operator/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/giantswarm/observability-operator/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/giantswarm/observability-operator/compare/v0.16.0...v0.17.0
