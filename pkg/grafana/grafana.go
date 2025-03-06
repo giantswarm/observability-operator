@@ -44,7 +44,6 @@ var defaultDatasources = []Datasource{
 		Name:      "Mimir (old tenant data)",
 		UID:       mimirOldDatasourceUID,
 		Type:      "prometheus",
-		IsDefault: true,
 		URL:       "http://mimir-gateway.mimir.svc/prometheus",
 		Access:    datasourceProxyAccessMode,
 		JSONData: map[string]interface{}{
