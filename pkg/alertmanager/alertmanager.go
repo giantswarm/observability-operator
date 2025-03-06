@@ -28,6 +28,8 @@ const (
 	templatesSuffix = ".tmpl"
 
 	alertmanagerAPIPath = "/api/v1/alerts"
+
+	rulerTenantDeletionUrl = "http://mimir-ruler.mimir.svc:8080/ruler/delete_tenant_config"
 )
 
 type Service struct {
@@ -81,6 +83,21 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret) error {
 	}
 
 	logger.Info("Alertmanager: configured")
+
+	// TODO Clean up the anonymous tenant alertmanager deletion code in the next release
+	logger.Info("Alertmanager: cleaning up anonymous tenant")
+
+	err = s.deleteTenantConfiguration(ctx, "anonymous")
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete the alertmanager anonymous tenant configuration: %w", err))
+	}
+
+	err = s.deleteRules(ctx, "anonymous")
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete rules for the anonymous tenant: %w", err))
+	}
+
+	logger.Info("Alertmanager: anonymous tenant cleaned up")
 	return nil
 }
 
@@ -140,6 +157,85 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to send configuration: %w", e))
 	}
+
+	return nil
+}
+
+// deleteTenantConfiguration deletes a tenant using the Mimir Alertmanager's API
+func (s Service) deleteTenantConfiguration(ctx context.Context, tenantID string) error {
+	logger := log.FromContext(ctx)
+
+	url := s.alertmanagerURL + alertmanagerAPIPath
+	logger.WithValues("url", url, "tenant", tenantID).Info("Alertmanager: deleting tenant")
+
+	// Send request to Alertmanager's API
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to create request: %w", err))
+	}
+
+	req.Header.Set(common.OrgIDHeader, tenantID)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to send request: %w", err))
+	}
+	defer resp.Body.Close() // nolint: errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return errors.WithStack(fmt.Errorf("alertmanager: failed to read response: %w", err))
+		}
+
+		e := APIError{
+			Code:    resp.StatusCode,
+			Message: string(respBody),
+		}
+
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete tenant configuration: %w", e))
+	}
+
+	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: tenant configuration deleted")
+
+	return nil
+}
+
+// deleteRules deletes all rules for a tenant using the Mimir Alertmanager's API
+func (s Service) deleteRules(ctx context.Context, tenantID string) error {
+	logger := log.FromContext(ctx)
+
+	logger.WithValues("url", rulerTenantDeletionUrl, "tenant", tenantID).Info("Alertmanager: delete rules for tenant")
+
+	// Send request to Alertmanager's API
+	req, err := http.NewRequest(http.MethodPost, rulerTenantDeletionUrl, nil)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to create request: %w", err))
+	}
+
+	req.Header.Set(common.OrgIDHeader, tenantID)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to send request: %w", err))
+	}
+	defer resp.Body.Close() // nolint: errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return errors.WithStack(fmt.Errorf("alertmanager: failed to read response: %w", err))
+		}
+
+		e := APIError{
+			Code:    resp.StatusCode,
+			Message: string(respBody),
+		}
+
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete rules for tenant: %w", e))
+	}
+
+	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: deleted rules for tenant")
 
 	return nil
 }
