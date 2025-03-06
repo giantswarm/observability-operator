@@ -44,10 +44,10 @@ const (
 	RemoteWriteTimeout             = "60s"
 
 	OrgIDHeader        = "X-Scope-OrgID"
-	DefaultWriteTenant = "giantswarm"
+	DefaultWriteTenant = "anonymous"
 )
 
-var DefaultReadTenants = []string{"anonymous", "giantswarm"}
+var DefaultReadTenants = []string{"anonymous"}
 
 func GetServicePriority(cluster *clusterv1.Cluster) string {
 	if servicePriority, ok := cluster.GetLabels()[servicePriorityLabel]; ok && servicePriority != "" {
