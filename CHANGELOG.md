@@ -7,16 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Revert tenant switch and clean up giantswarm tenant.
+
 ## [0.19.0] - 2025-03-06
 
 ### Added
 
 - Add cleanup for Mimir Alertmanager anonymous tenant's configuration.
 - Add cleanup for Mimir Ruler anonymous tenant's rules.
-
-### Fixed
-
-- Fix default read tenant to anonymous to ensure grafana rules pages work until the tenant switch is released.
 
 ## [0.18.0] - 2025-03-05
 
@@ -25,7 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use smaller dockerfile to reduce build time as ABS already generates the go binary.
 - Read metrics from both anonymous and giantswarm tenant at once.
 - Refactor hardcoded tenant values to prepare the switch from the anonymous to the giantswarm tenant.
-- Switch the alerting component from the anonymous to the giantswarm tenant.
 - Add Grafana url when there's no dashboard in the alert notification template.
 
 ## [0.17.0] - 2025-02-25

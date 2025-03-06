@@ -44,7 +44,7 @@ const (
 	RemoteWriteTimeout             = "60s"
 
 	OrgIDHeader        = "X-Scope-OrgID"
-	DefaultWriteTenant = "giantswarm"
+	DefaultWriteTenant = "anonymous"
 )
 
 var DefaultReadTenants = []string{"anonymous", "giantswarm"}
