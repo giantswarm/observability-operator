@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Replace deprecated update datasource by id with update datasource by uid Grafana API call.
+
 ## [0.18.0] - 2025-03-05
 
 ### Changed
