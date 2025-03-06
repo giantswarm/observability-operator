@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add cleanup for Mimir Alertmanager anonymous tenant's configuration.
 - Add cleanup for Mimir Ruler anonymous tenant's rules.
 
+### Fixed
+
+- Fix default read tenant to anonymous to ensure grafana rules pages work until the tenant switch is released.
+
 ## [0.18.0] - 2025-03-05
 
 ### Changed
