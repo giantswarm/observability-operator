@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/go-openapi/runtime"
 	"github.com/grafana/grafana-openapi-client-go/client"
@@ -209,8 +208,8 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	for _, datasource := range datasourcesToUpdate {
 		logger.Info("updating datasource", "datasource", datasource.Name)
-		_, err := grafanaAPI.Datasources.UpdateDataSourceByID(
-			strconv.FormatInt(datasource.ID, 10),
+		_, err := grafanaAPI.Datasources.UpdateDataSourceByUID(
+			datasource.UID,
 			&models.UpdateDataSourceCommand{
 				UID:            datasource.UID,
 				Name:           datasource.Name,
