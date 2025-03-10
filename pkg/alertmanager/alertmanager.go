@@ -84,20 +84,20 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret) error {
 
 	logger.Info("Alertmanager: configured")
 
-	// TODO Clean up the giantswarm tenant alertmanager deletion code in the next release
-	logger.Info("Alertmanager: cleaning up giantswarm tenant")
+	// TODO Clean up the anonymous tenant alertmanager deletion code in the next release
+	logger.Info("Alertmanager: cleaning up anonymous tenant")
 
-	err = s.deleteTenantConfiguration(ctx, "giantswarm")
+	err = s.deleteTenantConfiguration(ctx, "anonymous")
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete the alertmanager giantswarm tenant configuration: %w", err))
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete the alertmanager anonymous tenant configuration: %w", err))
 	}
 
-	err = s.deleteRules(ctx, "giantswarm")
+	err = s.deleteRules(ctx, "anonymous")
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete rules for the giantswarm tenant: %w", err))
+		return errors.WithStack(fmt.Errorf("alertmanager: failed to delete rules for the anonymous tenant: %w", err))
 	}
 
-	logger.Info("Alertmanager: giantswarm tenant cleaned up")
+	logger.Info("Alertmanager: anonymous tenant cleaned up")
 	return nil
 }
 

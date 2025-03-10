@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Switch mimir default tenant from `anonymous` to `giantswarm` once again.
 - Replace deprecated update datasource by id with update datasource by uid Grafana API call.
 
 ## [0.19.1] - 2025-03-06
