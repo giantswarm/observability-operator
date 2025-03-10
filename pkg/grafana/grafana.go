@@ -35,7 +35,7 @@ var defaultDatasources = []Datasource{
 		URL:       "http://mimir-alertmanager.mimir.svc:8080",
 		Access:    datasourceProxyAccessMode,
 		JSONData: map[string]interface{}{
-			"handleGrafanaManagedAlerts": false,
+			"handleGrafanaManagedAlerts": true,
 			"implementation":             "mimir",
 		},
 	},
