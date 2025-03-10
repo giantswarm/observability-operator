@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Replace deprecated update datasource by id with update datasource by uid Grafana API call.
 
+## [0.19.1] - 2025-03-06
+
+### Changed
+
+- Revert tenant switch and clean up giantswarm tenant
+
+## [0.19.0] - 2025-03-06
+
+### Added
+
+- Add cleanup for Mimir Alertmanager anonymous tenant's configuration.
+- Add cleanup for Mimir Ruler anonymous tenant's rules.
+
+### Fixed
+
+- Fix default read tenant to anonymous to ensure grafana rules pages work until the tenant switch is released.
+
 ## [0.18.0] - 2025-03-05
 
 ### Changed
@@ -18,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use smaller dockerfile to reduce build time as ABS already generates the go binary.
 - Read metrics from both anonymous and giantswarm tenant at once.
 - Refactor hardcoded tenant values to prepare the switch from the anonymous to the giantswarm tenant.
+- Switch the alerting component from the anonymous to the giantswarm tenant.
 - Add Grafana url when there's no dashboard in the alert notification template.
 
 ## [0.17.0] - 2025-02-25
@@ -308,7 +326,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.19.1...HEAD
+[0.19.1]: https://github.com/giantswarm/observability-operator/compare/v0.19.0...v0.19.1
+[0.19.0]: https://github.com/giantswarm/observability-operator/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/giantswarm/observability-operator/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/giantswarm/observability-operator/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/giantswarm/observability-operator/compare/v0.15.0...v0.16.0
