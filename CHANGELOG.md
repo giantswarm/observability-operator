@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Stop caching helm secrets in the operator to reduce resource usage.
+
 ## [0.19.2] - 2025-03-10
 
 ### Changed
