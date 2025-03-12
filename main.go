@@ -153,6 +153,16 @@ func main() {
 		setupLog.Error(err, "failed to parse label selector")
 		os.Exit(1)
 	}
+	grafanaPodSelector, err := labels.Parse("app.kubernetes.io/name = grafana")
+	if err != nil {
+		setupLog.Error(err, "failed to parse label selector")
+		os.Exit(1)
+	}
+	mimirAlertmanagerPodSelector, err := labels.Parse("app.kubernetes.io/component = alertmanager, app.kubernetes.io/instance = mimir")
+	if err != nil {
+		setupLog.Error(err, "failed to parse label selector")
+		os.Exit(1)
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
@@ -181,6 +191,17 @@ func main() {
 				&v1.Secret{}: {
 					// Do not cache any helm secrets to reduce memory usage.
 					Label: discardHelmSecretsSelector,
+				},
+				&v1.Pod{}: {
+					// Only cache the grafana and alertmanager pods to reduce memory usage.
+					Namespaces: map[string]cache.Config{
+						"monitoring": {
+							LabelSelector: grafanaPodSelector,
+						},
+						"mimir": {
+							LabelSelector: mimirAlertmanagerPodSelector,
+						},
+					},
 				},
 			},
 		},
