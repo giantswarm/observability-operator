@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Stop caching helm secrets in the operator to reduce resource usage.
+- Cache only the dashboards configmap in the operator to reduce resource usage.
+- Cache only the alertmanager and grafana pods in the operator to reduce resource usage.
 
 ## [0.19.2] - 2025-03-10
 
