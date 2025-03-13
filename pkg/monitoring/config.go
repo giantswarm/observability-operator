@@ -23,9 +23,8 @@ type Config struct {
 	DefaultShardingStrategy sharding.Strategy
 	// WALTruncateFrequency is the frequency at which the WAL segments should be truncated.
 	WALTruncateFrequency time.Duration
-	// TODO(atlas): validate prometheus version using SemVer
-	PrometheusVersion string
-	MetricsQueryURL   string
+	PrometheusVersion    string
+	MetricsQueryURL      string
 }
 
 // Monitoring should be enabled when all conditions are met:

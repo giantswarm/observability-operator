@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cache only the dashboards configmap in the operator to reduce resource usage.
 - Cache only the alertmanager and grafana pods in the operator to reduce resource usage.
 
+### Removed
+
+- Remove cleanup code for Mimir Alertmanager anonymous tenant's configuration.
+- Remove cleanup code for Mimir Ruler anonymous tenant's rules.
+
 ## [0.19.2] - 2025-03-10
 
 ### Changed
