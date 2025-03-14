@@ -148,23 +148,7 @@ func main() {
 		TLSOpts: tlsOpts,
 	})
 
-	dashboardConfigmapSelector, err := labels.Parse(fmt.Sprintf("%s = %s", controller.DashboardSelectorLabelName, controller.DashboardSelectorLabelValue))
-	if err != nil {
-		setupLog.Error(err, "failed to parse label selector")
-		os.Exit(1)
-	}
-
 	discardHelmSecretsSelector, err := labels.Parse("owner notin (helm,Helm)")
-	if err != nil {
-		setupLog.Error(err, "failed to parse label selector")
-		os.Exit(1)
-	}
-	grafanaPodSelector, err := labels.Parse("app.kubernetes.io/name = grafana")
-	if err != nil {
-		setupLog.Error(err, "failed to parse label selector")
-		os.Exit(1)
-	}
-	mimirAlertmanagerPodSelector, err := labels.Parse("app.kubernetes.io/component = alertmanager, app.kubernetes.io/instance = mimir")
 	if err != nil {
 		setupLog.Error(err, "failed to parse label selector")
 		os.Exit(1)
@@ -194,24 +178,9 @@ func main() {
 		// LeaderElectionReleaseOnCancel: true,
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
-				&v1.ConfigMap{}: {
-					// Cache only the dashboards configmaps to reduce memory usage.
-					Label: dashboardConfigmapSelector,
-				},
 				&v1.Secret{}: {
 					// Do not cache any helm secrets to reduce memory usage.
 					Label: discardHelmSecretsSelector,
-				},
-				&v1.Pod{}: {
-					// Only cache the grafana and alertmanager pods to reduce memory usage.
-					Namespaces: map[string]cache.Config{
-						"monitoring": {
-							LabelSelector: grafanaPodSelector,
-						},
-						"mimir": {
-							LabelSelector: mimirAlertmanagerPodSelector,
-						},
-					},
 				},
 			},
 		},

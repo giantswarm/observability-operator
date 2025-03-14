@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Revert caching tuning for configmaps and pods because it was causing api false answers.
+
 ## [0.19.3] - 2025-03-13
 
 ### Changed
