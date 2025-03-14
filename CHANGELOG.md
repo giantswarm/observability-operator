@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.4] - 2025-03-14
+
 ### Changed
 
 - Revert caching tuning for configmaps and pods because it was causing api false answers.
@@ -346,7 +348,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.19.3...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.19.4...HEAD
+[0.19.4]: https://github.com/giantswarm/observability-operator/compare/v0.19.3...v0.19.4
 [0.19.3]: https://github.com/giantswarm/observability-operator/compare/v0.19.2...v0.19.3
 [0.19.2]: https://github.com/giantswarm/observability-operator/compare/v0.19.1...v0.19.2
 [0.19.1]: https://github.com/giantswarm/observability-operator/compare/v0.19.0...v0.19.1
