@@ -60,7 +60,7 @@ alloy:
         memory: 256Mi
       requests:
         cpu: 25m
-        memory: 128Mi
+        memory: 512Mi
   controller:
     type: statefulset
     replicas: {{ .Replicas }}
