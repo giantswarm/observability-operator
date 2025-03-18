@@ -57,7 +57,7 @@ alloy:
     resources:
       limits:
         cpu: 100m
-        memory: 256Mi
+        memory: 1024Mi
       requests:
         cpu: 25m
         memory: 512Mi
