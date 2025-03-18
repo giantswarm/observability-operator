@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2025-03-18
+
 ### Changed
 
 - Send `severity: page` alerts for Tenet to Opsgenie instead of Slack
@@ -352,7 +354,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.19.4...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/giantswarm/observability-operator/compare/v0.19.4...v0.20.0
 [0.19.4]: https://github.com/giantswarm/observability-operator/compare/v0.19.3...v0.19.4
 [0.19.3]: https://github.com/giantswarm/observability-operator/compare/v0.19.2...v0.19.3
 [0.19.2]: https://github.com/giantswarm/observability-operator/compare/v0.19.1...v0.19.2
