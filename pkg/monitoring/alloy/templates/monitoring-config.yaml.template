@@ -101,5 +101,5 @@ verticalPodAutoscaler:
       maxAllowed: 
         cpu: 500m
       minAllowed:
-        cpu: 100m
+        cpu: 25m
         memory: 512Mi
