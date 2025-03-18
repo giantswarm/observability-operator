@@ -73,7 +73,7 @@ route:
   - receiver: team_tenet_slack
     repeat_interval: 14d
     matchers:
-    - severity=~"page|notify"
+    - severity=~"notify"
     - team=~"tenet|tinkerers"
     continue: false
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Send `severity: page` alerts for Tenet to Opsgenie instead of Slack
+
 ## [0.19.4] - 2025-03-14
 
 ### Changed
