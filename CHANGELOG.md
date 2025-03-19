@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Fine-tune alloy-metrics resource usage configuration to avoid causing issues for customer workload and cluster tests.
+
 ## [0.20.0] - 2025-03-18
 
 ### Changed
