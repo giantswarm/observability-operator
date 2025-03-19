@@ -39,7 +39,7 @@ func init() {
 	alloyMonitoringConfigTemplate = template.Must(template.New("monitoring-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringConfig))
 }
 
-func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, currentState *v1.ConfigMap, cluster *clusterv1.Cluster) (map[string]string, error) {
+func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, currentState *v1.ConfigMap, cluster *clusterv1.Cluster, tenants []string) (map[string]string, error) {
 	logger := log.FromContext(ctx)
 
 	// Get current number of shards from Alloy's config.
@@ -72,7 +72,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	shardingStrategy := a.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
 	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
-	alloyConfig, err := a.generateAlloyConfig(ctx, cluster)
+	alloyConfig, err := a.generateAlloyConfig(ctx, cluster, tenants)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	return configMapData, nil
 }
 
-func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
+func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster, tenants []string) (string, error) {
 	var values bytes.Buffer
 
 	organization, err := a.OrganizationRepository.Read(ctx, cluster)
