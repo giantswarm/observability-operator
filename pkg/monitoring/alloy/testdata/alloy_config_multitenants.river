@@ -1,0 +1,75 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+prometheus.operator.servicemonitors "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+  selector {
+    match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.operator.podmonitors "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+  selector {
+    match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url            = env("REMOTE_WRITE_URL")
+    name           = env("REMOTE_WRITE_NAME")
+    enable_http2   = false
+    remote_timeout = "60s"
+    basic_auth {
+      username = env("BASIC_AUTH_USERNAME")
+      password = env("BASIC_AUTH_PASSWORD")
+    }
+    headers = {
+      "X-Scope-OrgID" = "giantswarm",
+    }
+    tls_config {
+      insecure_skip_verify = false
+    }
+    queue_config {
+      capacity             = 30000
+      max_shards           = 10
+      max_samples_per_send = 150000
+      sample_age_limit     = "30m"
+    }
+  }
+  wal {
+    truncate_frequency = "1m0s"
+  }
+  external_labels = {
+    "cluster_id" = "test-cluster",
+    "cluster_type" = "workload_cluster",
+    "customer" = "dummy-customer",
+    "installation" = "dummy-cluster",
+    "organization" = "dummy-org",
+    "pipeline" = "dummy-pipeline",
+    "provider" = "capa",
+    "region" = "dummy-region",
+    "service_priority" = "highest",
+  }
+}
