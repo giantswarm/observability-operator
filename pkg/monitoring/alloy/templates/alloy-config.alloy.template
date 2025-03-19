@@ -4,7 +4,7 @@ logging {
 }
 
 prometheus.operator.servicemonitors "giantswarm_legacy" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  forward_to = [prometheus.relabel.giantswarm.receiver]
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
@@ -29,7 +29,7 @@ prometheus.operator.servicemonitors "giantswarm_legacy" {
 }
 
 prometheus.operator.podmonitors "giantswarm_legacy" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  forward_to = [prometheus.relabel.giantswarm.receiver]
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
@@ -56,7 +56,7 @@ prometheus.operator.podmonitors "giantswarm_legacy" {
 prometheus.operator.servicemonitors "giantswarm" {
   forward_to = [
     {{- range .Tenants }}
-    prometheus.remote_write.{{ . }}.receiver,
+    prometheus.relabel.{{ . }}.receiver,
     {{- end }}
   ]
   selector {
@@ -86,7 +86,7 @@ prometheus.operator.servicemonitors "giantswarm" {
 prometheus.operator.podmonitors "giantswarm" {
   forward_to = [
     {{- range .Tenants }}
-    prometheus.remote_write.{{ . }}.receiver,
+    prometheus.relabel.{{ . }}.receiver,
     {{- end }}
   ]
   selector {
@@ -116,7 +116,7 @@ prometheus.operator.podmonitors "giantswarm" {
 {{ range .Tenants -}}
 // remote write pipeline configuration for tenant {{ . }}
 prometheus.relabel "{{ . }}" {
-  forward_to = [prometheus.remote_write.{{.}}.receiver]
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
   // keep only the metrics that have the tenant {{ . }}
   rule {
     action        = "keep"

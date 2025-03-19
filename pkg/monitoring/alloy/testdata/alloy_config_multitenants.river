@@ -4,7 +4,7 @@ logging {
 }
 
 prometheus.operator.servicemonitors "giantswarm_legacy" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  forward_to = [prometheus.relabel.giantswarm.receiver]
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
@@ -29,7 +29,7 @@ prometheus.operator.servicemonitors "giantswarm_legacy" {
 }
 
 prometheus.operator.podmonitors "giantswarm_legacy" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  forward_to = [prometheus.relabel.giantswarm.receiver]
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
@@ -55,8 +55,8 @@ prometheus.operator.podmonitors "giantswarm_legacy" {
 
 prometheus.operator.servicemonitors "giantswarm" {
   forward_to = [
-    prometheus.remote_write.tenant1.receiver,
-    prometheus.remote_write.tenant2.receiver,
+    prometheus.relabel.tenant1.receiver,
+    prometheus.relabel.tenant2.receiver,
   ]
   selector {
     match_expression {
@@ -83,8 +83,8 @@ prometheus.operator.servicemonitors "giantswarm" {
 
 prometheus.operator.podmonitors "giantswarm" {
   forward_to = [
-    prometheus.remote_write.tenant1.receiver,
-    prometheus.remote_write.tenant2.receiver,
+    prometheus.relabel.tenant1.receiver,
+    prometheus.relabel.tenant2.receiver,
   ]
   selector {
     match_expression {
