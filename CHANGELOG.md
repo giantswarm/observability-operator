@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add multi-tenancy support to alloy remote write by creating a custom remote-write section per tenant defined in Grafana Organization CRs.
-- Add `listTenants` function in alloy service to be able to list the available observability tenants.
+- Add pod and service monitor discovery of both the old giantswarm team label and the new tenant label.
 
 ### Changed
 
