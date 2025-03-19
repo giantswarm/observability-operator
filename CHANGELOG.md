@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add multi-tenancy support to alloy remote write by creating a custom remote-write section per tenant defined in Grafana Organization CRs.
+
 ### Changed
 
 - Fine-tune alloy-metrics resource usage configuration to avoid causing issues for customer workload and cluster tests.

@@ -1,69 +1,111 @@
-prometheus.operator.servicemonitors "default" {
-  forward_to = [prometheus.remote_write.default.receiver]
-  selector {
-    match_expression {
-      key      = "application.giantswarm.io/team"
-      operator = "Exists"
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
-prometheus.operator.podmonitors "default" {
-  forward_to = [prometheus.remote_write.default.receiver]
-  selector {
-    match_expression {
-      key      = "application.giantswarm.io/team"
-      operator = "Exists"
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
-prometheus.remote_write "default" {
-  endpoint {
-    url            = env("{{ .RemoteWriteURLEnvVarName }}")
-    name           = env("{{ .RemoteWriteNameEnvVarName }}")
-    enable_http2   = false
-    remote_timeout = "{{ .RemoteWriteTimeout }}"
-    basic_auth {
-      username = env("{{ .RemoteWriteBasicAuthUsernameEnvVarName }}")
-      password = env("{{ .RemoteWriteBasicAuthPasswordEnvVarName }}")
-    }
-    headers = {
-      "X-Scope-OrgID" = "{{ .DefaultTenantID }}",
-    }
-    tls_config {
-      insecure_skip_verify = {{ .RemoteWriteTLSInsecureSkipVerify }}
-    }
-    queue_config {
-      capacity             = {{ .QueueConfigCapacity }}
-      max_shards           = {{ .QueueConfigMaxShards }}
-      max_samples_per_send = {{ .QueueConfigMaxSamplesPerSend }}
-      sample_age_limit     = "{{ .QueueConfigSampleAgeLimit }}"
-    }
-  }
-  wal {
-    truncate_frequency = "{{ .WALTruncateFrequency }}"
-  }
-  external_labels = {
-    {{- range $key, $value := .ExternalLabels }}
-    "{{ $key }}" = "{{ $value }}",
-    {{- end }}
-  }
-}
-
 logging {
   level  = "info"
   format = "logfmt"
 }
+
+prometheus.operator.servicemonitors "default" {
+  forward_to = [prometheus.relabel.default.receiver]
+  selector {
+    match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+  rule {
+    action       = "replace"
+    replacement  = "{{ .DefaultTenantID }}"
+    target_label = "giantswarm_observability_tenant"
+  }
+}
+
+prometheus.operator.podmonitors "default" {
+  forward_to = [prometheus.relabel.default.receiver]
+  selector {
+    match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+  rule {
+    action       = "replace"
+    replacement  = "{{ .DefaultTenantID }}"
+    target_label = "giantswarm_observability_tenant"
+  }
+}
+
+prometheus.relabel "default" {
+  forward_to = [
+    {{- range .Tenants -}}
+    prometheus.remote_write.{{ . }}.receiver,
+    {{- end -}}
+  ]
+  // keep only log lines with tenants specified in the regex.
+  rule {
+      action:       = "keep"
+      source_labels = ["giantswarm_observability_tenant"]
+      regex         = "^({{ join "|" .Tenants }})$"
+  }
+}
+
+{{- range .Tenants }}
+prometheus.relabel "{{ . }}" {
+  forward_to = [prometheus.remote_write.{{.}}.receiver]
+  // keep only the metrics that have the tenant {{ . }}
+  rule {
+    action        = "keep"
+    source_labels = ["giantswarm_observability_tenant"]
+    regex         = "^{{ . }}$"
+  }
+
+  // drop the tenant label to not have it ingested in mimir
+  rule {
+    action        = "labeldrop"
+    source_labels = ["giantswarm_observability_tenant"]
+  }
+}
+
+prometheus.remote_write "{{ . }}" {
+  endpoint {
+    url            = env("{{ $.RemoteWriteURLEnvVarName }}")
+    name           = env("{{ $.RemoteWriteNameEnvVarName }}")
+    enable_http2   = false
+    remote_timeout = "{{ $.RemoteWriteTimeout }}"
+    basic_auth {
+      username = env("{{ $.RemoteWriteBasicAuthUsernameEnvVarName }}")
+      password = env("{{ $.RemoteWriteBasicAuthPasswordEnvVarName }}")
+    }
+    headers = {
+      "X-Scope-OrgID" = "{{ . }}",
+    }
+    tls_config {
+      insecure_skip_verify = {{ $.RemoteWriteTLSInsecureSkipVerify }}
+    }
+    queue_config {
+      capacity             = {{ $.QueueConfigCapacity }}
+      max_shards           = {{ $.QueueConfigMaxShards }}
+      max_samples_per_send = {{ $.QueueConfigMaxSamplesPerSend }}
+      sample_age_limit     = "{{ $.QueueConfigSampleAgeLimit }}"
+    }
+  }
+  wal {
+    truncate_frequency = "{{ $.WALTruncateFrequency }}"
+  }
+  external_labels = {
+    {{- range $key, $value := $.ExternalLabels }}
+    "{{ $key }}" = "{{ $value }}",
+    {{- end }}
+  }
+}
+{{- end }}
