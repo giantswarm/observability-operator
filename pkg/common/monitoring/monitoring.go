@@ -2,7 +2,6 @@ package monitoring
 
 import (
 	"context"
-	"slices"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -13,7 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/yaml"
 
-	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
 )
 
@@ -115,28 +113,4 @@ func GetClusterShardingStrategy(cluster metav1.Object) (*sharding.Strategy, erro
 		ScaleUpSeriesCount:  scaleUpSeriesCount,
 		ScaleDownPercentage: scaleDownPercentage,
 	}, nil
-}
-
-func ListTenants(k8sClient client.Client, ctx context.Context) ([]string, error) {
-	tenants := make([]string, 0)
-	var grafanaOrganizations v1alpha1.GrafanaOrganizationList
-
-	err := k8sClient.List(ctx, &grafanaOrganizations)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, organization := range grafanaOrganizations.Items {
-		if !organization.DeletionTimestamp.IsZero() {
-			continue
-		}
-
-		for _, tenant := range organization.Spec.Tenants {
-			if !slices.Contains(tenants, string(tenant)) {
-				tenants = append(tenants, string(tenant))
-			}
-		}
-	}
-
-	return tenants, nil
 }

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `ListTenants` function in commonmonitoring package and.
+- Add `listTenants` function in alloy service.
 
 ### Changed
 
