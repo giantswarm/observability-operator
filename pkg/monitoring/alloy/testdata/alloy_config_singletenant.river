@@ -37,33 +37,39 @@ prometheus.operator.podmonitors "default" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url            = env("{{ .RemoteWriteURLEnvVarName }}")
-    name           = env("{{ .RemoteWriteNameEnvVarName }}")
+    url            = env("REMOTE_WRITE_URL")
+    name           = env("REMOTE_WRITE_NAME")
     enable_http2   = false
-    remote_timeout = "{{ .RemoteWriteTimeout }}"
+    remote_timeout = "60s"
     basic_auth {
-      username = env("{{ .RemoteWriteBasicAuthUsernameEnvVarName }}")
-      password = env("{{ .RemoteWriteBasicAuthPasswordEnvVarName }}")
+      username = env("BASIC_AUTH_USERNAME")
+      password = env("BASIC_AUTH_PASSWORD")
     }
     headers = {
-      "X-Scope-OrgID" = "{{ .DefaultTenantID }}",
+      "X-Scope-OrgID" = "giantswarm",
     }
     tls_config {
-      insecure_skip_verify = {{ .RemoteWriteTLSInsecureSkipVerify }}
+      insecure_skip_verify = false
     }
     queue_config {
-      capacity             = {{ .QueueConfigCapacity }}
-      max_shards           = {{ .QueueConfigMaxShards }}
-      max_samples_per_send = {{ .QueueConfigMaxSamplesPerSend }}
-      sample_age_limit     = "{{ .QueueConfigSampleAgeLimit }}"
+      capacity             = 30000
+      max_shards           = 10
+      max_samples_per_send = 150000
+      sample_age_limit     = "30m"
     }
   }
   wal {
-    truncate_frequency = "{{ .WALTruncateFrequency }}"
+    truncate_frequency = "1m0s"
   }
   external_labels = {
-    {{- range $key, $value := .ExternalLabels }}
-    "{{ $key }}" = "{{ $value }}",
-    {{- end }}
+    "cluster_id" = "single-tenant-cluster",
+    "cluster_type" = "workload_cluster",
+    "customer" = "dummy-customer",
+    "installation" = "dummy-cluster",
+    "organization" = "dummy-org",
+    "pipeline" = "dummy-pipeline",
+    "provider" = "capz",
+    "region" = "dummy-region",
+    "service_priority" = "highest",
   }
 }
