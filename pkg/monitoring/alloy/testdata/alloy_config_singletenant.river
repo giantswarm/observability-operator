@@ -10,7 +10,7 @@ prometheus.operator.servicemonitors "giantswarm_legacy" {
       key      = "application.giantswarm.io/team"
       operator = "Exists"
     }
-    match_expressions {
+    match_expression {
       key      = "observability.giantswarm.io/tenant"
       operator = "DoesNotExist"
     }
@@ -35,7 +35,7 @@ prometheus.operator.podmonitors "giantswarm_legacy" {
       key      = "application.giantswarm.io/team"
       operator = "Exists"
     }
-    match_expressions {
+    match_expression {
       key      = "observability.giantswarm.io/tenant"
       operator = "DoesNotExist"
     }
@@ -62,7 +62,7 @@ prometheus.operator.servicemonitors "giantswarm" {
       key      = "observability.giantswarm.io/tenant"
       operator = "In"
       values   = [
-        tenant1,
+        "tenant1",
       ]
     }
   }
@@ -88,7 +88,7 @@ prometheus.operator.podmonitors "giantswarm" {
       key      = "observability.giantswarm.io/tenant"
       operator = "In"
       values   = [
-        tenant1,
+        "tenant1",
       ]
     }
   }
@@ -117,8 +117,8 @@ prometheus.relabel "tenant1" {
 
   // drop the tenant label to not have it ingested in mimir
   rule {
-    action        = "labeldrop"
-    source_labels = ["giantswarm_observability_tenant"]
+    action = "labeldrop"
+    regex  = "giantswarm_observability_tenant"
   }
 }
 
