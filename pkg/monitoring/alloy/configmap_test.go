@@ -96,6 +96,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				if err := os.MkdirAll(filepath.Dir(tt.goldenPath), 0755); err != nil {
 					t.Fatalf("failed to create golden directory: %v", err)
 				}
+				//nolint:gosec
 				if err := os.WriteFile(tt.goldenPath, []byte(got), 0644); err != nil {
 					t.Fatalf("failed to update golden file: %v", err)
 				}
