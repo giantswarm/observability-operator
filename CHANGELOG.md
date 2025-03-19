@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `ListTenants` function in commonmonitoring package.
+
 ## [0.20.0] - 2025-03-18
 
 ### Changed
