@@ -47,9 +47,9 @@ prometheus.operator.podmonitors "default" {
 
 prometheus.relabel "default" {
   forward_to = [
-    {{- range .Tenants -}}
+    {{- range .Tenants }}
     prometheus.remote_write.{{ . }}.receiver,
-    {{- end -}}
+    {{- end }}
   ]
   // keep only log lines with tenants specified in the regex.
   rule {
@@ -59,7 +59,8 @@ prometheus.relabel "default" {
   }
 }
 
-{{- range .Tenants }}
+{{ range .Tenants -}}
+// remote write pipeline configuration for tenant {{ . }}
 prometheus.relabel "{{ . }}" {
   forward_to = [prometheus.remote_write.{{.}}.receiver]
   // keep only the metrics that have the tenant {{ . }}
@@ -108,4 +109,5 @@ prometheus.remote_write "{{ . }}" {
     {{- end }}
   }
 }
-{{- end }}
+
+{{ end -}}

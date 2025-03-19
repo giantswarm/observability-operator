@@ -4,7 +4,7 @@ logging {
 }
 
 prometheus.operator.servicemonitors "default" {
-  forward_to = [prometheus.remote_write.default.receiver]
+  forward_to = [prometheus.relabel.default.receiver]
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
@@ -16,11 +16,16 @@ prometheus.operator.servicemonitors "default" {
   }
   clustering {
     enabled = true
+  }
+  rule {
+    action       = "replace"
+    replacement  = "giantswarm"
+    target_label = "giantswarm_observability_tenant"
   }
 }
 
 prometheus.operator.podmonitors "default" {
-  forward_to = [prometheus.remote_write.default.receiver]
+  forward_to = [prometheus.relabel.default.receiver]
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
@@ -33,9 +38,43 @@ prometheus.operator.podmonitors "default" {
   clustering {
     enabled = true
   }
+  rule {
+    action       = "replace"
+    replacement  = "giantswarm"
+    target_label = "giantswarm_observability_tenant"
+  }
 }
 
-prometheus.remote_write "default" {
+prometheus.relabel "default" {
+  forward_to = [
+    prometheus.remote_write.tenant1.receiver,
+  ]
+  // keep only log lines with tenants specified in the regex.
+  rule {
+      action:       = "keep"
+      source_labels = ["giantswarm_observability_tenant"]
+      regex         = "^(tenant1)$"
+  }
+}
+
+// remote write pipeline configuration for tenant tenant1
+prometheus.relabel "tenant1" {
+  forward_to = [prometheus.remote_write.tenant1.receiver]
+  // keep only the metrics that have the tenant tenant1
+  rule {
+    action        = "keep"
+    source_labels = ["giantswarm_observability_tenant"]
+    regex         = "^tenant1$"
+  }
+
+  // drop the tenant label to not have it ingested in mimir
+  rule {
+    action        = "labeldrop"
+    source_labels = ["giantswarm_observability_tenant"]
+  }
+}
+
+prometheus.remote_write "tenant1" {
   endpoint {
     url            = env("REMOTE_WRITE_URL")
     name           = env("REMOTE_WRITE_NAME")
@@ -46,7 +85,7 @@ prometheus.remote_write "default" {
       password = env("BASIC_AUTH_PASSWORD")
     }
     headers = {
-      "X-Scope-OrgID" = "giantswarm",
+      "X-Scope-OrgID" = "tenant1",
     }
     tls_config {
       insecure_skip_verify = false
@@ -73,3 +112,4 @@ prometheus.remote_write "default" {
     "service_priority" = "highest",
   }
 }
+
