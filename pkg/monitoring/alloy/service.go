@@ -37,7 +37,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	logger.Info("alloy-service - ensuring alloy is configured")
 
 	// Get list of tenants
-	var tenants = []string{}
+	var tenants []string
 	tenants, err := commonmonitoring.ListTenants(a.Client, ctx)
 	if err != nil {
 		return errors.WithStack(err)
