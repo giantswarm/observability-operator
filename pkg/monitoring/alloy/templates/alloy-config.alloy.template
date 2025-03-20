@@ -5,7 +5,7 @@ logging {
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
 {{ range .Tenants }}
-
+// remote write pipeline configuration for tenant {{ . }}
 {{- if eq . $.DefaultTenantID }}
 prometheus.operator.servicemonitors "{{ . }}_legacy" {
   forward_to = [prometheus.remote_write.{{ . }}.receiver]
@@ -46,8 +46,8 @@ prometheus.operator.podmonitors "{{ . }}_legacy" {
     enabled = true
   }
 }
+{{ end }}
 
-// remote write pipeline configuration for tenant {{ . }}
 prometheus.operator.servicemonitors "{{ . }}" {
   forward_to = [prometheus.remote_write.{{ . }}.receiver]
   selector {
@@ -64,7 +64,6 @@ prometheus.operator.servicemonitors "{{ . }}" {
     enabled = true
   }
 }
-{{ end }}
 
 prometheus.operator.podmonitors "{{ . }}" {
   forward_to = [prometheus.remote_write.{{ . }}.receiver]

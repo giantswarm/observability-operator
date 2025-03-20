@@ -5,6 +5,24 @@ logging {
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
 
+// remote write pipeline configuration for tenant tenant1
+
+prometheus.operator.servicemonitors "tenant1" {
+  forward_to = [prometheus.remote_write.tenant1.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["tenant1"]
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
 
 prometheus.operator.podmonitors "tenant1" {
   forward_to = [prometheus.remote_write.tenant1.receiver]

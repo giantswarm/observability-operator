@@ -5,6 +5,7 @@ logging {
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
 
+// remote write pipeline configuration for tenant giantswarm
 prometheus.operator.servicemonitors "giantswarm_legacy" {
   forward_to = [prometheus.remote_write.giantswarm.receiver]
   selector {
@@ -45,7 +46,7 @@ prometheus.operator.podmonitors "giantswarm_legacy" {
   }
 }
 
-// remote write pipeline configuration for tenant giantswarm
+
 prometheus.operator.servicemonitors "giantswarm" {
   forward_to = [prometheus.remote_write.giantswarm.receiver]
   selector {
@@ -62,7 +63,6 @@ prometheus.operator.servicemonitors "giantswarm" {
     enabled = true
   }
 }
-
 
 prometheus.operator.podmonitors "giantswarm" {
   forward_to = [prometheus.remote_write.giantswarm.receiver]
