@@ -3,12 +3,20 @@ logging {
   format = "logfmt"
 }
 
-prometheus.operator.servicemonitors "default" {
-  forward_to = [prometheus.remote_write.default.receiver]
+// we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
+{{ range .Tenants }}
+// remote write pipeline configuration for tenant {{ . }}
+{{- if eq . $.DefaultTenantID }}
+prometheus.operator.servicemonitors "{{ . }}_legacy" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
       operator = "Exists"
+    }
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "DoesNotExist"
     }
   }
   scrape {
@@ -19,12 +27,34 @@ prometheus.operator.servicemonitors "default" {
   }
 }
 
-prometheus.operator.podmonitors "default" {
-  forward_to = [prometheus.remote_write.default.receiver]
+prometheus.operator.podmonitors "{{ . }}_legacy" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
       operator = "Exists"
+    }
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "DoesNotExist"
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+{{ end }}
+
+prometheus.operator.servicemonitors "{{ . }}" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["{{ . }}"]
     }
   }
   scrape {
@@ -35,35 +65,55 @@ prometheus.operator.podmonitors "default" {
   }
 }
 
-prometheus.remote_write "default" {
+prometheus.operator.podmonitors "{{ . }}" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["{{ . }}"]
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+// remote write pipeline configuration for tenant {{ . }}
+prometheus.remote_write "{{ . }}" {
   endpoint {
-    url            = env("{{ .RemoteWriteURLEnvVarName }}")
-    name           = env("{{ .RemoteWriteNameEnvVarName }}")
+    url            = env("{{ $.RemoteWriteURLEnvVarName }}")
+    name           = env("{{ $.RemoteWriteNameEnvVarName }}")
     enable_http2   = false
-    remote_timeout = "{{ .RemoteWriteTimeout }}"
+    remote_timeout = "{{ $.RemoteWriteTimeout }}"
     basic_auth {
-      username = env("{{ .RemoteWriteBasicAuthUsernameEnvVarName }}")
-      password = env("{{ .RemoteWriteBasicAuthPasswordEnvVarName }}")
+      username = env("{{ $.RemoteWriteBasicAuthUsernameEnvVarName }}")
+      password = env("{{ $.RemoteWriteBasicAuthPasswordEnvVarName }}")
     }
     headers = {
-      "X-Scope-OrgID" = "{{ .DefaultTenantID }}",
+      "X-Scope-OrgID" = "{{ . }}",
     }
     tls_config {
-      insecure_skip_verify = {{ .RemoteWriteTLSInsecureSkipVerify }}
+      insecure_skip_verify = {{ $.RemoteWriteTLSInsecureSkipVerify }}
     }
     queue_config {
-      capacity             = {{ .QueueConfigCapacity }}
-      max_shards           = {{ .QueueConfigMaxShards }}
-      max_samples_per_send = {{ .QueueConfigMaxSamplesPerSend }}
-      sample_age_limit     = "{{ .QueueConfigSampleAgeLimit }}"
+      capacity             = {{ $.QueueConfigCapacity }}
+      max_shards           = {{ $.QueueConfigMaxShards }}
+      max_samples_per_send = {{ $.QueueConfigMaxSamplesPerSend }}
+      sample_age_limit     = "{{ $.QueueConfigSampleAgeLimit }}"
     }
   }
   wal {
-    truncate_frequency = "{{ .WALTruncateFrequency }}"
+    truncate_frequency = "{{ $.WALTruncateFrequency }}"
   }
   external_labels = {
-    {{- range $key, $value := .ExternalLabels }}
+    {{- range $key, $value := $.ExternalLabels }}
     "{{ $key }}" = "{{ $value }}",
     {{- end }}
   }
 }
+
+{{ end }}

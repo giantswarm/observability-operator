@@ -13,6 +13,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
+	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
@@ -65,6 +66,22 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			},
 			tenants:    []string{"tenant1"},
 			goldenPath: filepath.Join("testdata", "alloy_config_singletenant.river"),
+		},
+		{
+			name: "DefaultTenantRendersLegacyConfig",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:    []string{commonmonitoring.DefaultWriteTenant},
+			goldenPath: filepath.Join("testdata", "alloy_config_defaulttenant.river"),
 		},
 	}
 

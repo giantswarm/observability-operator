@@ -5,15 +5,17 @@ logging {
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
 
-// remote write pipeline configuration for tenant tenant1
-
-prometheus.operator.servicemonitors "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver]
+// remote write pipeline configuration for tenant giantswarm
+prometheus.operator.servicemonitors "giantswarm_legacy" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
   selector {
     match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+    match_expression {
       key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant1"]
+      operator = "DoesNotExist"
     }
   }
   scrape {
@@ -24,13 +26,16 @@ prometheus.operator.servicemonitors "tenant1" {
   }
 }
 
-prometheus.operator.podmonitors "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver]
+prometheus.operator.podmonitors "giantswarm_legacy" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
   selector {
     match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+    match_expression {
       key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant1"]
+      operator = "DoesNotExist"
     }
   }
   scrape {
@@ -41,8 +46,43 @@ prometheus.operator.podmonitors "tenant1" {
   }
 }
 
-// remote write pipeline configuration for tenant tenant1
-prometheus.remote_write "tenant1" {
+
+prometheus.operator.servicemonitors "giantswarm" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["giantswarm"]
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.operator.podmonitors "giantswarm" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["giantswarm"]
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+// remote write pipeline configuration for tenant giantswarm
+prometheus.remote_write "giantswarm" {
   endpoint {
     url            = env("REMOTE_WRITE_URL")
     name           = env("REMOTE_WRITE_NAME")
@@ -53,7 +93,7 @@ prometheus.remote_write "tenant1" {
       password = env("BASIC_AUTH_PASSWORD")
     }
     headers = {
-      "X-Scope-OrgID" = "tenant1",
+      "X-Scope-OrgID" = "giantswarm",
     }
     tls_config {
       insecure_skip_verify = false
@@ -69,7 +109,7 @@ prometheus.remote_write "tenant1" {
     truncate_frequency = "1m0s"
   }
   external_labels = {
-    "cluster_id" = "single-tenant-cluster",
+    "cluster_id" = "default-tenant-cluster",
     "cluster_type" = "workload_cluster",
     "customer" = "dummy-customer",
     "installation" = "dummy-cluster",

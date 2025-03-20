@@ -122,6 +122,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		RemoteWriteTimeout                     string
 		RemoteWriteTLSInsecureSkipVerify       bool
 
+		Tenants         []string
 		DefaultTenantID string
 
 		QueueConfigCapacity          int
@@ -140,6 +141,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		RemoteWriteTimeout:                     commonmonitoring.RemoteWriteTimeout,
 		RemoteWriteTLSInsecureSkipVerify:       a.ManagementCluster.InsecureCA,
 
+		Tenants:         tenants,
 		DefaultTenantID: commonmonitoring.DefaultWriteTenant,
 
 		QueueConfigCapacity:          commonmonitoring.QueueConfigCapacity,
