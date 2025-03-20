@@ -3,48 +3,50 @@ logging {
   format = "logfmt"
 }
 
-prometheus.operator.servicemonitors "giantswarm_legacy" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
-  selector {
-    match_expression {
-      key      = "application.giantswarm.io/team"
-      operator = "Exists"
-    }
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "DoesNotExist"
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
-prometheus.operator.podmonitors "giantswarm_legacy" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
-  selector {
-    match_expression {
-      key      = "application.giantswarm.io/team"
-      operator = "Exists"
-    }
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "DoesNotExist"
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
 {{ range .Tenants }}
+
+{{- if eq . $.DefaultTenantID }}
+prometheus.operator.servicemonitors "{{ . }}_legacy" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  selector {
+    match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "DoesNotExist"
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.operator.podmonitors "{{ . }}_legacy" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  selector {
+    match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "DoesNotExist"
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
 // remote write pipeline configuration for tenant {{ . }}
 prometheus.operator.servicemonitors "{{ . }}" {
   forward_to = [prometheus.remote_write.{{ . }}.receiver]
@@ -52,7 +54,7 @@ prometheus.operator.servicemonitors "{{ . }}" {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
       operator = "In"
-      values   = [{{ . | quote }}]
+      values   = ["{{ . }}"]
     }
   }
   scrape {
@@ -62,6 +64,7 @@ prometheus.operator.servicemonitors "{{ . }}" {
     enabled = true
   }
 }
+{{ end }}
 
 prometheus.operator.podmonitors "{{ . }}" {
   forward_to = [prometheus.remote_write.{{ . }}.receiver]
@@ -69,7 +72,7 @@ prometheus.operator.podmonitors "{{ . }}" {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
       operator = "In"
-      values   = [{{ . | quote }}]
+      values   = ["{{ . }}"]
     }
   }
   scrape {
@@ -80,6 +83,7 @@ prometheus.operator.podmonitors "{{ . }}" {
   }
 }
 
+// remote write pipeline configuration for tenant {{ . }}
 prometheus.remote_write "{{ . }}" {
   endpoint {
     url            = env("{{ $.RemoteWriteURLEnvVarName }}")

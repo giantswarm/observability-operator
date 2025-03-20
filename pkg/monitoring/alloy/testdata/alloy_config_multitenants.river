@@ -3,65 +3,8 @@ logging {
   format = "logfmt"
 }
 
-prometheus.operator.servicemonitors "giantswarm_legacy" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
-  selector {
-    match_expression {
-      key      = "application.giantswarm.io/team"
-      operator = "Exists"
-    }
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "DoesNotExist"
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
-prometheus.operator.podmonitors "giantswarm_legacy" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
-  selector {
-    match_expression {
-      key      = "application.giantswarm.io/team"
-      operator = "Exists"
-    }
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "DoesNotExist"
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
 
-// remote write pipeline configuration for tenant tenant1
-prometheus.operator.servicemonitors "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver]
-  selector {
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant1"]
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
 
 prometheus.operator.podmonitors "tenant1" {
   forward_to = [prometheus.remote_write.tenant1.receiver]
@@ -80,6 +23,7 @@ prometheus.operator.podmonitors "tenant1" {
   }
 }
 
+// remote write pipeline configuration for tenant tenant1
 prometheus.remote_write "tenant1" {
   endpoint {
     url            = env("REMOTE_WRITE_URL")
@@ -120,23 +64,6 @@ prometheus.remote_write "tenant1" {
 }
 
 
-// remote write pipeline configuration for tenant tenant2
-prometheus.operator.servicemonitors "tenant2" {
-  forward_to = [prometheus.remote_write.tenant2.receiver]
-  selector {
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant2"]
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
 
 prometheus.operator.podmonitors "tenant2" {
   forward_to = [prometheus.remote_write.tenant2.receiver]
@@ -155,6 +82,7 @@ prometheus.operator.podmonitors "tenant2" {
   }
 }
 
+// remote write pipeline configuration for tenant tenant2
 prometheus.remote_write "tenant2" {
   endpoint {
     url            = env("REMOTE_WRITE_URL")
