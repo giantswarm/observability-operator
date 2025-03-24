@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add multi-tenancy support to alertmanager config loading.
+
 ## [0.21.1] - 2025-03-24
 
 ### Fixed

@@ -15,7 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
-	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
 )
@@ -49,7 +48,7 @@ func New(conf pkgconfig.Config) Service {
 	return service
 }
 
-func (s Service) Configure(ctx context.Context, secret *v1.Secret) error {
+func (s Service) Configure(ctx context.Context, secret *v1.Secret, tenantID string) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("Alertmanager: configuring")
@@ -75,7 +74,7 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret) error {
 		}
 	}
 
-	err := s.configure(ctx, alertmanagerConfigContent, templates, monitoring.DefaultWriteTenant)
+	err := s.configure(ctx, alertmanagerConfigContent, templates, tenantID)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("alertmanager: failed to configure: %w", err))
 	}

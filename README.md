@@ -9,6 +9,16 @@ It reconciles `cluster.cluster.x-k8s.io` objects and makes sure each `Cluster` i
 
 ## Features
 
+### Alertmanager config provisioning
+
+It will look for kubernetes `Secrets` and use them as alertmanager configis if they meet these criteria:
+- a label `observability.giantswarm.io/kind: "alertmanager-config"`
+- an annotation or label `observability.giantswarm.io/tenant` set to the tenant that the alertmanager config should be loaded in.
+
+Current limitations:
+- no support for duplicate configs for the same tenant
+- each alertmanager config belongs to one and only one tenant
+
 ### Grafana dashboards provisioning
 
 It will look for kubernetes `ConfigMaps` and use them as dashboards if they meet these criteria:
