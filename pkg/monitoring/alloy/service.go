@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
@@ -33,7 +34,7 @@ type Service struct {
 	MonitoringConfig monitoring.Config
 }
 
-func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-service - ensuring alloy is configured")
 
@@ -46,7 +47,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 
 	configmap := ConfigMap(cluster)
 	_, err = controllerutil.CreateOrUpdate(ctx, a.Client, configmap, func() error {
-		data, err := a.GenerateAlloyMonitoringConfigMapData(ctx, configmap, cluster, tenants)
+		data, err := a.GenerateAlloyMonitoringConfigMapData(ctx, configmap, cluster, tenants, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "alloy-service - failed to generate alloy monitoring configmap")
 			return errors.WithStack(err)

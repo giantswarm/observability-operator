@@ -212,7 +212,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			}
 		case commonmonitoring.MonitoringAgentAlloy:
 			// Create or update Alloy monitoring configuration.
-			err = r.AlloyService.ReconcileCreate(ctx, cluster)
+			err = r.AlloyService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 			if err != nil {
 				logger.Error(err, "failed to create or update alloy monitoring config")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
