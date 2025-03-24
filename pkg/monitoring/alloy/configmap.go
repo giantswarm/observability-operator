@@ -34,7 +34,7 @@ var (
 	alloyMonitoringConfig         string
 	alloyMonitoringConfigTemplate *template.Template
 
-	supportVPA = semver.MustParse("1.7.0")
+	versionSupportingVPA = semver.MustParse("1.7.0")
 )
 
 func init() {
@@ -86,7 +86,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		Replicas          int
 		SecretName        string
 
-		SupportVPA bool
+		IsSupportingVPA bool
 	}{
 		AlloyConfig:       alloyConfig,
 		PriorityClassName: commonmonitoring.PriorityClassName,
@@ -94,7 +94,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		SecretName:        commonmonitoring.AlloyMonitoringAgentAppName,
 
 		// Observability bundle in older versions do not support VPA
-		SupportVPA: observabilityBundleVersion.GE(supportVPA),
+		IsSupportingVPA: observabilityBundleVersion.GE(versionSupportingVPA),
 	}
 
 	var values bytes.Buffer
