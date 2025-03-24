@@ -107,8 +107,12 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 		return ctrl.Result{}, nil
 	}
 
-	tenant := secret.Labels[tenancy.TenantSelectorLabel]
-
+	tenant, tenantLabelExists := secret.Labels[tenancy.TenantSelectorLabel]
+	if !tenantLabelExists {
+		// Tenant label is missing, skipping reconciliation
+		logger.Info("Tenant label is missing, skipping reconciliation")
+		return ctrl.Result{}, nil
+	}
 	// Get list of tenants
 	var tenants []string
 	tenants, err := tenancy.ListTenants(ctx, r.client)
