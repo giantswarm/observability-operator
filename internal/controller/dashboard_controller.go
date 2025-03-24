@@ -37,7 +37,8 @@ type DashboardReconciler struct {
 }
 
 const (
-	DashboardFinalizer          = "observability.giantswarm.io/grafanadashboard"
+	DashboardFinalizer = "observability.giantswarm.io/grafanadashboard"
+	// TODO migrate to observability.giantswarm.io/kind
 	DashboardSelectorLabelName  = "app.giantswarm.io/kind"
 	DashboardSelectorLabelValue = "dashboard"
 	grafanaOrganizationLabel    = "observability.giantswarm.io/organization"
@@ -95,7 +96,13 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	labelSelectorPredicate, err := predicate.LabelSelectorPredicate(metav1.LabelSelector{MatchLabels: map[string]string{DashboardSelectorLabelName: DashboardSelectorLabelValue}})
+	labelSelectorPredicate, err := predicate.LabelSelectorPredicate(
+		metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				DashboardSelectorLabelName: DashboardSelectorLabelValue,
+			},
+			// TODO add match expressions to filter by the tenant label instead of the organization annotation
+		})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -110,7 +117,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				var logger = log.FromContext(ctx)
 				var dashboards v1.ConfigMapList
 
-				err := mgr.GetClient().List(ctx, &dashboards, client.MatchingLabels{"app.giantswarm.io/kind": "dashboard"})
+				err := mgr.GetClient().List(ctx, &dashboards, client.MatchingLabels{DashboardSelectorLabelName: DashboardSelectorLabelValue})
 				if err != nil {
 					logger.Error(err, "failed to list grafana dashboard configmaps")
 					return []reconcile.Request{}
@@ -205,6 +212,8 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		logger.Error(err, "Skipping dashboard, no organization found")
 		return nil
 	}
+
+	// TODO Tenant Governance: Filter the dashboards with the list of authorized tenants
 
 	// Switch context to the dashboards-defined org
 	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
