@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add multi-tenancy support to alertmanager config loading.
 
+### Changed
+
+- updated run-local.sh to port-forward mimir alertmanager
+
 ## [0.21.1] - 2025-03-24
 
 ### Fixed
