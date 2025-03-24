@@ -11,6 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - updated run-local.sh to port-forward mimir alertmanager
 
+## [0.21.1] - 2025-03-24
+
+### Fixed
+
+- Set default resources for alloy-metrics only when VPA is enabled.
+
+## [0.21.0] - 2025-03-24
+
+### Added
+
+- Add multi-tenancy support to alloy remote write by creating a custom remote-write section per tenant defined in Grafana Organization CRs.
+- Add pod and service monitor discovery of both the old giantswarm team label and the new tenant label.
+
+### Changed
+
+- Fine-tune alloy-metrics resource usage configuration to avoid causing issues for customer workload and cluster tests.
+
+## [0.20.0] - 2025-03-18
+
+### Changed
+
+- Send `severity: page` alerts for Tenet to Opsgenie instead of Slack
+
 ## [0.19.4] - 2025-03-14
 
 ### Changed
@@ -352,7 +375,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.19.4...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.21.1...HEAD
+[0.21.1]: https://github.com/giantswarm/observability-operator/compare/v0.21.0...v0.21.1
+[0.21.0]: https://github.com/giantswarm/observability-operator/compare/v0.20.0...v0.21.0
+[0.20.0]: https://github.com/giantswarm/observability-operator/compare/v0.19.4...v0.20.0
 [0.19.4]: https://github.com/giantswarm/observability-operator/compare/v0.19.3...v0.19.4
 [0.19.3]: https://github.com/giantswarm/observability-operator/compare/v0.19.2...v0.19.3
 [0.19.2]: https://github.com/giantswarm/observability-operator/compare/v0.19.1...v0.19.2
