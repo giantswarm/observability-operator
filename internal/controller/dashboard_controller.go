@@ -213,7 +213,7 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		return nil
 	}
 
-	// TODO Tenant Governance: Filter the dashboards by tenant
+	// TODO Tenant Governance: Filter the dashboards with the list of authorized tenants
 
 	// Switch context to the dashboards-defined org
 	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
