@@ -37,7 +37,7 @@ type DashboardReconciler struct {
 }
 
 const (
-	DashboardFinalizer          = "observability.giantswarm.io/grafanadashboard"
+	DashboardFinalizer = "observability.giantswarm.io/grafanadashboard"
 	// TODO migrate to observability.giantswarm.io/kind
 	DashboardSelectorLabelName  = "app.giantswarm.io/kind"
 	DashboardSelectorLabelValue = "dashboard"
