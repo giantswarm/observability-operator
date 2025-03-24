@@ -101,7 +101,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			MatchLabels: map[string]string{
 				DashboardSelectorLabelName: DashboardSelectorLabelValue,
 			},
-			// TODO migrate to filter by the tenant label instead of the organization annotation
+			// TODO add match expressions to filter by the tenant label instead of the organization annotation
 		})
 	if err != nil {
 		return errors.WithStack(err)
