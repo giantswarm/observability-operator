@@ -12,7 +12,7 @@ It reconciles `cluster.cluster.x-k8s.io` objects and makes sure each `Cluster` i
 ### Alertmanager config provisioning
 
 It will look for kubernetes `Secrets` and use them as alertmanager configs if they meet these criteria:
-- a label `observability.giantswarm.io/kind: "alertmanager-config"`
+- a label `observability.giantswarm.io/kind: alertmanager-config`
 - an annotation or label `observability.giantswarm.io/tenant` set to the tenant that the alertmanager config should be loaded in.
 
 Current limitations:
