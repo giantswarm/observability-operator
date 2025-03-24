@@ -101,7 +101,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			MatchLabels: map[string]string{
 				DashboardSelectorLabelName: DashboardSelectorLabelValue,
 			},
-			// TODO migrate to filter by the tenant label instead of the organization annotation
+			// TODO add match expressions to filter by the tenant label instead of the organization annotation
 		})
 	if err != nil {
 		return errors.WithStack(err)
@@ -213,7 +213,7 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		return nil
 	}
 
-	// TODO Tenant Governance: Filter the dashboards by tenant
+	// TODO Tenant Governance: Filter the dashboards with the list of authorized tenants
 
 	// Switch context to the dashboards-defined org
 	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
