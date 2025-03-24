@@ -53,6 +53,7 @@ alloy:
     envFrom:
     - secretRef:
         name: {{ .SecretName }}
+    {{- if .IsSupportingVPA }}
     # We decided to configure the alloy-metrics resources as such after some investigation done https://github.com/giantswarm/giantswarm/issues/32655#issuecomment-2729636063
     resources:
       limits:
@@ -61,6 +62,7 @@ alloy:
       requests:
         cpu: 25m
         memory: 512Mi
+    {{- end }}
   controller:
     type: statefulset
     replicas: {{ .Replicas }}
@@ -88,6 +90,7 @@ alloy:
               - alloy
           topologyKey: kubernetes.io/hostname
         weight: 50
+{{- if .IsSupportingVPA }}
 # We decided to configure the alloy-metrics vertical pod autoscaler as such after some investigation done https://github.com/giantswarm/giantswarm/issues/32655#issuecomment-2729636063
 verticalPodAutoscaler:
   enabled: true
@@ -103,3 +106,4 @@ verticalPodAutoscaler:
       minAllowed:
         cpu: 25m
         memory: 512Mi
+{{- end }}

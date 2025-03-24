@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
@@ -32,6 +33,8 @@ var (
 	//go:embed templates/monitoring-config.yaml.template
 	alloyMonitoringConfig         string
 	alloyMonitoringConfigTemplate *template.Template
+
+	versionSupportingVPA = semver.MustParse("1.7.0")
 )
 
 func init() {
@@ -39,7 +42,7 @@ func init() {
 	alloyMonitoringConfigTemplate = template.Must(template.New("monitoring-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringConfig))
 }
 
-func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, currentState *v1.ConfigMap, cluster *clusterv1.Cluster, tenants []string) (map[string]string, error) {
+func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, currentState *v1.ConfigMap, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version) (map[string]string, error) {
 	logger := log.FromContext(ctx)
 
 	// Get current number of shards from Alloy's config.
@@ -82,11 +85,16 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		PriorityClassName string
 		Replicas          int
 		SecretName        string
+
+		IsSupportingVPA bool
 	}{
 		AlloyConfig:       alloyConfig,
 		PriorityClassName: commonmonitoring.PriorityClassName,
 		Replicas:          shards,
 		SecretName:        commonmonitoring.AlloyMonitoringAgentAppName,
+
+		// Observability bundle in older versions do not support VPA
+		IsSupportingVPA: observabilityBundleVersion.GE(versionSupportingVPA),
 	}
 
 	var values bytes.Buffer
