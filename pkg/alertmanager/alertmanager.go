@@ -27,9 +27,6 @@ const (
 	templatesSuffix = ".tmpl"
 
 	alertmanagerAPIPath = "/api/v1/alerts"
-
-	//TODO: get this from somewhere
-	tenantID = "anonymous"
 )
 
 type Service struct {
@@ -51,7 +48,7 @@ func New(conf pkgconfig.Config) Service {
 	return service
 }
 
-func (s Service) Configure(ctx context.Context, secret *v1.Secret) error {
+func (s Service) Configure(ctx context.Context, secret *v1.Secret, tenantID string) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("Alertmanager: configuring")

@@ -73,7 +73,7 @@ route:
   - receiver: team_tenet_slack
     repeat_interval: 14d
     matchers:
-    - severity=~"page|notify"
+    - severity=~"notify"
     - team=~"tenet|tinkerers"
     continue: false
 
@@ -189,18 +189,18 @@ receivers:
     send_resolved: true
     actions: &slack-actions
     - type: button
-      text: ':green_book: OpsRecipe'
-      url: '{{`{{ template "__runbookurl" . }}`}}'
+      text: ':green_book: Runbook'
+      url: '{{`{{ template "__runbook_url" . }}`}}'
       style: '{{`{{ if eq .Status "firing" }}primary{{ else }}default{{ end }}`}}'
     - type: button
       text: ':coffin: Linked PMs'
       url: '{{`{{ template "__alert_linked_postmortems" . }}`}}'
     - type: button
       text: ':mag: Query'
-      url: '{{`{{ template "__alerturl" . }}`}}'
+      url: '{{`{{ template "__alert_url" . }}`}}'
     - type: button
       text: ':grafana: Dashboard'
-      url: '{{`{{ template "__dashboardurl" . }}`}}'
+      url: '{{`{{ template "__dashboard_url" . }}`}}'
     - type: button
       text: ':no_bell: Silence'
       url: '{{`{{ template "__alert_silence_link" .}}`}}'

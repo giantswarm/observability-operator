@@ -10,11 +10,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
+	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
@@ -31,13 +33,20 @@ type Service struct {
 	MonitoringConfig monitoring.Config
 }
 
-func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-service - ensuring alloy is configured")
 
+	// Get list of tenants
+	var tenants []string
+	tenants, err := tenancy.ListTenants(ctx, a.Client)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	configmap := ConfigMap(cluster)
-	_, err := controllerutil.CreateOrUpdate(ctx, a.Client, configmap, func() error {
-		data, err := a.GenerateAlloyMonitoringConfigMapData(ctx, configmap, cluster)
+	_, err = controllerutil.CreateOrUpdate(ctx, a.Client, configmap, func() error {
+		data, err := a.GenerateAlloyMonitoringConfigMapData(ctx, configmap, cluster, tenants, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "alloy-service - failed to generate alloy monitoring configmap")
 			return errors.WithStack(err)

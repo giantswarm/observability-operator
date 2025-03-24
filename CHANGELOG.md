@@ -7,6 +7,123 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add multi-tenancy support to alertmanager config loading.
+
+### Changed
+
+- updated run-local.sh to port-forward mimir alertmanager
+
+## [0.21.1] - 2025-03-24
+
+### Fixed
+
+- Set default resources for alloy-metrics only when VPA is enabled.
+
+## [0.21.0] - 2025-03-24
+
+### Added
+
+- Add multi-tenancy support to alloy remote write by creating a custom remote-write section per tenant defined in Grafana Organization CRs.
+- Add pod and service monitor discovery of both the old giantswarm team label and the new tenant label.
+
+### Changed
+
+- Fine-tune alloy-metrics resource usage configuration to avoid causing issues for customer workload and cluster tests.
+
+## [0.20.0] - 2025-03-18
+
+### Changed
+
+- Send `severity: page` alerts for Tenet to Opsgenie instead of Slack
+
+## [0.19.4] - 2025-03-14
+
+### Changed
+
+- Revert caching tuning for configmaps and pods because it was causing api false answers.
+
+## [0.19.3] - 2025-03-13
+
+### Changed
+
+- Stop caching helm secrets in the operator to reduce resource usage.
+- Cache only the dashboards configmap in the operator to reduce resource usage.
+- Cache only the alertmanager and grafana pods in the operator to reduce resource usage.
+
+### Removed
+
+- Remove cleanup code for Mimir Alertmanager anonymous tenant's configuration.
+- Remove cleanup code for Mimir Ruler anonymous tenant's rules.
+
+## [0.19.2] - 2025-03-10
+
+### Changed
+
+- Switch mimir default tenant from `anonymous` to `giantswarm` once again.
+- Replace deprecated update datasource by id with update datasource by uid Grafana API call.
+
+## [0.19.1] - 2025-03-06
+
+### Changed
+
+- Revert tenant switch and clean up giantswarm tenant
+
+## [0.19.0] - 2025-03-06
+
+### Added
+
+- Add cleanup for Mimir Alertmanager anonymous tenant's configuration.
+- Add cleanup for Mimir Ruler anonymous tenant's rules.
+
+### Fixed
+
+- Fix default read tenant to anonymous to ensure grafana rules pages work until the tenant switch is released.
+
+## [0.18.0] - 2025-03-05
+
+### Changed
+
+- Use smaller dockerfile to reduce build time as ABS already generates the go binary.
+- Read metrics from both anonymous and giantswarm tenant at once.
+- Refactor hardcoded tenant values to prepare the switch from the anonymous to the giantswarm tenant.
+- Switch the alerting component from the anonymous to the giantswarm tenant.
+- Add Grafana url when there's no dashboard in the alert notification template.
+
+## [0.17.0] - 2025-02-25
+
+### Changed
+
+- update the notification template to take into account the changes in the alert annotations
+  - `runbook_url` is now the full url to the runbook
+  - `dashboardUid` is now split between `__dashboardUid__` and `dashboardQueryParams`.
+
+## [0.16.0] - 2025-02-20
+
+### Changed
+
+- update the notification template to take into account the new alert annotations
+  - `opsrecipe` => `runbook_url`
+  - `dashboard` => `dashboardUid`
+- improve alert names in opsgenie by:
+  - removing the service name if is is not needed
+  - removing the cluster-id if the alert targets the installation
+
+## [0.15.0] - 2025-02-10
+
+### Removed
+
+- Clean up `Shared org` specific code that is not needed anymore since we moved the organization declaration to a custom resource (https://github.com/giantswarm/roadmap/issues/3860).
+
+## [0.14.0] - 2025-02-10
+
+### Changed
+
+- Configure Alloy-metrics `sample_age_config` so that alloy does not indefinitely retry to send old and rejected samples.
+
+## [0.13.3] - 2025-02-10
+
 ### Changed
 
 - Updated the notFound method to match error using runtime.APIError type and the status code
@@ -18,9 +135,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix `failed to find organization with ID: 0` error when creating a new organization
 - Fix `getOrgByIdForbidden` error when creating a new organization
-
-### Fixes
-
 - Fix race condition when switching organization in Grafana client by using WithOrgID method
 
 ## [0.13.2] - 2025-02-06
@@ -265,7 +379,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.13.2...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.21.1...HEAD
+[0.21.1]: https://github.com/giantswarm/observability-operator/compare/v0.21.0...v0.21.1
+[0.21.0]: https://github.com/giantswarm/observability-operator/compare/v0.20.0...v0.21.0
+[0.20.0]: https://github.com/giantswarm/observability-operator/compare/v0.19.4...v0.20.0
+[0.19.4]: https://github.com/giantswarm/observability-operator/compare/v0.19.3...v0.19.4
+[0.19.3]: https://github.com/giantswarm/observability-operator/compare/v0.19.2...v0.19.3
+[0.19.2]: https://github.com/giantswarm/observability-operator/compare/v0.19.1...v0.19.2
+[0.19.1]: https://github.com/giantswarm/observability-operator/compare/v0.19.0...v0.19.1
+[0.19.0]: https://github.com/giantswarm/observability-operator/compare/v0.18.0...v0.19.0
+[0.18.0]: https://github.com/giantswarm/observability-operator/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/giantswarm/observability-operator/compare/v0.16.0...v0.17.0
+[0.16.0]: https://github.com/giantswarm/observability-operator/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/giantswarm/observability-operator/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/giantswarm/observability-operator/compare/v0.13.3...v0.14.0
+[0.13.3]: https://github.com/giantswarm/observability-operator/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/giantswarm/observability-operator/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/giantswarm/observability-operator/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/giantswarm/observability-operator/compare/v0.12.0...v0.13.0

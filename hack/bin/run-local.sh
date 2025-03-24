@@ -6,7 +6,7 @@ set -euo pipefail
 
 NAMESPACE="monitoring"
 declare -a OLLYOPARGS
-declare GRAFANAPORTFORWARDPID MIMIRPORTFORWARDPID
+declare GRAFANAPORTFORWARDPID MIMIRPORTFORWARDPID ALERTMANAGERPORTFORWARDPID
 
 
 # Define the arguments for the observability-operator
@@ -58,10 +58,25 @@ function mimirPortForward {
   MIMIRPORTFORWARDPID="$!"
 }
 
-# Stop the Grafana service port-forward
+# Stop the mimir service port-forward
 function stopMimirPortForward {
   childpids=$(ps -o pid= --ppid "$MIMIRPORTFORWARDPID")
   kill "$MIMIRPORTFORWARDPID" || true
+  kill $childpids || true
+}
+
+# Port-forward the alertmanager service
+function alertmanagerPortForward {
+  while true; do
+    kubectl port-forward -n mimir svc/mimir-alertmanager-headless 8181:8080 &>/dev/null || true
+  done &
+  ALERTMANAGERPORTFORWARDPID="$!"
+}
+
+# Stop the alertmanager service port-forward
+function stopAlertmanagerPortForward {
+  childpids=$(ps -o pid= --ppid "$ALERTMANAGERPORTFORWARDPID")
+  kill "$ALERTMANAGERPORTFORWARDPID" || true
   kill $childpids || true
 }
 
@@ -79,6 +94,7 @@ function resumeInClusterOperator {
 function cleanupAtExit {
   stopGrafanaPortForward
   stopMimirPortForward
+  stopAlertmanagerPortForward
   resumeInClusterOperator
 }
 
@@ -97,12 +113,13 @@ function main {
   echo "### starting port-forward"
   grafanaPortForward
   mimirPortForward
+  alertmanagerPortForward
 
   echo "### Pausing in-cluster operator"
   pauseInClusterOperator
 
   echo "### Running operator"
-  go run . "${OLLYOPARGS[@]}" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180/prometheus
+  go run . "${OLLYOPARGS[@]}" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180/prometheus -alertmanager-url http://localhost:8181
 
   echo "### Cleanup"
 }

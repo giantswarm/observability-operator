@@ -53,13 +53,6 @@ func ConfigureSSOSettings(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI
 
 func generateGrafanaOrgsMapping(organizations []Organization) string {
 	var orgMappings []string
-	// TODO: We need to be admins to be able to see the private dashboards for now, remove the 2 GS groups once https://github.com/giantswarm/roadmap/issues/3696 is done.
-	// Grant Admin role to Giantswarm users logging in via azure active directory.
-	orgMappings = append(orgMappings, buildOrgMapping(SharedOrg.Name, "giantswarm-ad:giantswarm-admins", grafanaAdminRole))
-	// Grant Admin role to Giantswarm users logging in via github.
-	orgMappings = append(orgMappings, buildOrgMapping(SharedOrg.Name, "giantswarm-github:giantswarm:giantswarm-admins", grafanaAdminRole))
-	// Grant Editor role to every other users.
-	orgMappings = append(orgMappings, fmt.Sprintf(`"*:%s:%s"`, SharedOrg.Name, grafanaEditorRole))
 	for _, organization := range organizations {
 		for _, adminOrgAttribute := range organization.Admins {
 			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, adminOrgAttribute, grafanaAdminRole))

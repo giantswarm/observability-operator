@@ -37,13 +37,17 @@ const (
 	QueueConfigCapacity          = 30000
 	QueueConfigMaxSamplesPerSend = 150000
 	QueueConfigMaxShards         = 10
+	QueueConfigSampleAgeLimit    = "30m"
 
 	RemoteWriteName                = "mimir"
 	RemoteWriteEndpointTemplateURL = "https://mimir.%s/api/v1/push"
 	RemoteWriteTimeout             = "60s"
 
-	OrgIDHeader = "X-Scope-OrgID"
+	OrgIDHeader        = "X-Scope-OrgID"
+	DefaultWriteTenant = "giantswarm"
 )
+
+var DefaultReadTenants = []string{"anonymous", "giantswarm"}
 
 func GetServicePriority(cluster *clusterv1.Cluster) string {
 	if servicePriority, ok := cluster.GetLabels()[servicePriorityLabel]; ok && servicePriority != "" {

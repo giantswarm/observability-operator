@@ -44,8 +44,8 @@ func (d Datasource) buildJSONData() map[string]interface{} {
 
 func (d Datasource) buildSecureJSONData(organization Organization) map[string]string {
 	tenantIDs := organization.TenantIDs
-	if d.Type != "loki" {
-		// We do not support multi-tenancy for Mimir yet
+	if d.UID == mimirOldDatasourceUID {
+		// For the old Mimir datasource, we need to use the anonymous tenant
 		tenantIDs = []string{"anonymous"}
 	}
 	return map[string]string{

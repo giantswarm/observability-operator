@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/go-openapi/runtime"
 	"github.com/grafana/grafana-openapi-client-go/client"
@@ -16,14 +15,14 @@ import (
 
 const (
 	datasourceProxyAccessMode = "proxy"
+	mimirOldDatasourceUID     = "gs-mimir-old"
 )
 
 var orgNotFoundError = errors.New("organization not found")
 
 var SharedOrg = Organization{
-	ID:        1,
-	Name:      "Shared Org",
-	TenantIDs: []string{"giantswarm"},
+	ID:   1,
+	Name: "Shared Org",
 }
 
 // We need to use a custom name for now until we can replace the existing datasources.
@@ -38,6 +37,20 @@ var defaultDatasources = []Datasource{
 		JSONData: map[string]interface{}{
 			"handleGrafanaManagedAlerts": false,
 			"implementation":             "mimir",
+		},
+	},
+	{
+		Name:   "Mimir (old tenant data)",
+		UID:    mimirOldDatasourceUID,
+		Type:   "prometheus",
+		URL:    "http://mimir-gateway.mimir.svc/prometheus",
+		Access: datasourceProxyAccessMode,
+		JSONData: map[string]interface{}{
+			"cacheLevel":     "None",
+			"httpMethod":     "POST",
+			"mimirVersion":   "2.14.0",
+			"prometheusType": "Mimir",
+			"timeInterval":   "60s",
 		},
 	},
 	{
@@ -195,8 +208,8 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	for _, datasource := range datasourcesToUpdate {
 		logger.Info("updating datasource", "datasource", datasource.Name)
-		_, err := grafanaAPI.Datasources.UpdateDataSourceByID(
-			strconv.FormatInt(datasource.ID, 10),
+		_, err := grafanaAPI.Datasources.UpdateDataSourceByUID(
+			datasource.UID,
 			&models.UpdateDataSourceCommand{
 				UID:            datasource.UID,
 				Name:           datasource.Name,

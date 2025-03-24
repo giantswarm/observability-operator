@@ -6,8 +6,7 @@
 #
 
 # Directories.
-# default to api, fall back to pkg/apis
-API_DIR := $(shell [ -d api ] &&  echo api || echo pkg/apis)
+API_DIR := $(shell [ -d api ] &&  echo api || echo pkg/apis)# default to api, fall back to pkg/apis
 CRD_DIR := config/crd
 SCRIPTS_DIR := hack
 GOBIN_DIR := $(abspath hack/bin)

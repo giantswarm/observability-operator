@@ -1,21 +1,21 @@
 {{`
-{{/*
-  __alerturl is the link pointing to a page in Grafana with details and source expressiong of the alert.
-*/}}
-{{ define "__alerturl" }}`}}{{ .Values.alerting.grafanaAddress }}{{`/alerting/Mimir/{{ .CommonLabels.alertname }}/find{{ end }}
+{{ define "__grafana_url" }}`}}{{ .Values.alerting.grafanaAddress }}{{`{{ end }}
 
 {{/*
-  __dashboardurl is the link pointing the Grafana dashboard referenced in the alert annotation if any.
+  __alert_url is the link pointing to a page in Grafana with details and source expressiong of the alert.
 */}}
-{{ define "__dashboardurl" -}}
-{{- if match "^https://.+" (index .Alerts 0).Annotations.dashboard }}{{ (index .Alerts 0).Annotations.dashboard -}}
+{{ define "__alert_url" }}{{ template "__grafana_url" }}/alerting/Mimir/{{ .CommonLabels.alertname }}/find{{ end }}
+
+{{/*
+  __dashboard_url is the link pointing the Grafana dashboard referenced in the alert annotation if any.
+*/}}
+{{ define "__dashboard_url" -}}
+{{- if (index .Alerts 0).Annotations.dashboardExternalUrl }}
+{{- (index .Alerts 0).Annotations.dashboardExternalUrl -}}
+{{- else if (index .Alerts 0).Annotations.__dashboardUid__ -}}
+{{ template "__grafana_url" }}/d/{{ (index .Alerts 0).Annotations.__dashboardUid__ }}?{{ (index .Alerts 0).Annotations.dashboardQueryParams -}}
 {{- else -}}
-`}}{{ .Values.alerting.grafanaAddress }}{{`/d/{{ (index .Alerts 0).Annotations.dashboard -}}
+{{ template "__grafana_url" }}
 {{- end -}}
 {{- end }}
-
-{{/*
-  __runbookurl is a link to the intranet's opsrecipe referenced in the alert annotation.
-*/}}
-{{ define "__runbookurl" -}}https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/{{ (index .Alerts 0).Annotations.opsrecipe }}{{- end }}
 `}}
