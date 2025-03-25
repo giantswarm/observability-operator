@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix alloy-metrics sharding after we renamed `prometheus.remote_write.default` to `prometheus.remote_write.giantswarm` in alloy config.
+
 ## [0.22.0] - 2025-03-24
 
 ### Added
