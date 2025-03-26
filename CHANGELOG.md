@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add multi-tenancy support to alerting and recording rules loading by setting up the alloy-rules config.
+
 ## [0.22.1] - 2025-03-25
 
 ### Fixed

@@ -70,7 +70,7 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 		return errors.Errorf("unsupported monitoring agent %q", monitoringAgent)
 	}
 
-	logger.Info("creating or updating observability-bundle configmap")
+	logger.Info("create or update observability-bundle configmap")
 	err := s.createOrUpdateObservabilityBundleConfigMap(ctx, cluster, bundleConfiguration)
 	if err != nil {
 		return errors.WithStack(err)
