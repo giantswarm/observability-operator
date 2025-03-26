@@ -51,22 +51,28 @@ alloy:
           address = "http://mimir-ruler.mimir.svc:8080/"
           tenant_id = "{{ . }}"
           rule_selector {
-              match_expression {
-                key = "application.giantswarm.io/prometheus-rule-kind"
-                operator = "NotIn"
-                values = ["loki"]
-              }
+            match_labels = {
+              "observability.giantswarm.io/tenant" = "{{ . }}",
+            }
+            match_expression {
+              key = "application.giantswarm.io/prometheus-rule-kind"
+              operator = "NotIn"
+              values = ["loki"]
+            }
           }
         }
         loki.rules.kubernetes "{{ . }}" {
           address = "http://loki-backend.loki.svc:3100/"
           tenant_id = "{{ . }}"
           rule_selector {
-              match_expression {
-                key = "application.giantswarm.io/prometheus-rule-kind"
-                operator = "In"
-                values = ["loki"]
-              }
+            match_labels = {
+              "observability.giantswarm.io/tenant" = "{{ . }}",
+            }
+            match_expression {
+              key = "application.giantswarm.io/prometheus-rule-kind"
+              operator = "In"
+              values = ["loki"]
+            }
           }
         }
         {{- end }}

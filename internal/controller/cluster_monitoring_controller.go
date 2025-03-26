@@ -201,7 +201,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// Management cluster specific configuration
 	if cluster.Name == r.ManagementCluster.Name {
-		result := r.reconcileManagementCluster(ctx, cluster)
+		result := r.reconcileManagementCluster(ctx)
 		if result != nil {
 			return *result, nil
 		}
@@ -289,7 +289,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// Management cluster specific configuration
 		if cluster.Name == r.ManagementCluster.Name {
-			err := r.tearDown(ctx, cluster)
+			err := r.tearDown(ctx)
 			if err != nil {
 				logger.Error(err, "failed to tear down the monitoring stack")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -346,7 +346,7 @@ func (r *ClusterMonitoringReconciler) removeFinalizer(ctx context.Context, clust
 	return nil
 }
 
-func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Context, cluster *clusterv1.Cluster) *ctrl.Result {
+func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Context) *ctrl.Result {
 	logger := log.FromContext(ctx)
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
@@ -363,13 +363,13 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
 		}
 
-		err = r.AlloyRulesService.Configure(ctx, *cluster)
+		err = r.AlloyRulesService.Configure(ctx)
 		if err != nil {
 			logger.Error(err, "failed to configure alloy-rules")
 			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
 		}
 	} else {
-		err := r.tearDown(ctx, cluster)
+		err := r.tearDown(ctx)
 		if err != nil {
 			logger.Error(err, "failed to tear down the monitoring stack")
 			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
@@ -380,7 +380,7 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 }
 
 // tearDown tears down the monitoring stack management cluster specific components like the hearbeat, mimir secrets and so on.
-func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	err := r.HeartbeatRepository.Delete(ctx)
@@ -395,7 +395,7 @@ func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context, cluster *clu
 		return err
 	}
 
-	err = r.AlloyRulesService.CleanUp(ctx, *cluster)
+	err = r.AlloyRulesService.CleanUp(ctx)
 	if err != nil {
 		logger.Error(err, "failed to clean up alloy-rules config")
 		return err

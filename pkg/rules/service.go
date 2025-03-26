@@ -12,12 +12,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
@@ -44,12 +43,12 @@ type Service struct {
 	client.Client
 }
 
-func (s *Service) Configure(ctx context.Context, cluster clusterv1.Cluster) error {
+func (s *Service) Configure(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	logger.Info("configuring alloy-rules")
 
 	logger.Info("create or update alloy rules configmap")
-	err := s.createOrUpdateConfigMap(ctx, cluster)
+	err := s.createOrUpdateConfigMap(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -65,7 +64,7 @@ func (s *Service) Configure(ctx context.Context, cluster clusterv1.Cluster) erro
 	return nil
 }
 
-func (s *Service) CleanUp(ctx context.Context, cluster clusterv1.Cluster) error {
+func (s *Service) CleanUp(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	logger.Info("deleting alloy-rules config")
 
@@ -94,7 +93,7 @@ func configMap() *v1.ConfigMap {
 	return configmap
 }
 
-func (s Service) createOrUpdateConfigMap(ctx context.Context, cluster clusterv1.Cluster) error {
+func (s Service) createOrUpdateConfigMap(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	// Get list of tenants
 	var tenants []string
