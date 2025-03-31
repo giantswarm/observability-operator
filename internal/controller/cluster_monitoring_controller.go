@@ -140,6 +140,7 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager, managem
 			}),
 			builder.WithPredicates(predicates.AlloyRulesAppChangedPredicate{}),
 		).
+		// Reconcile all clusters when the grafana organizations have changed
 		Watches(&v1alpha1.GrafanaOrganization{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
 
