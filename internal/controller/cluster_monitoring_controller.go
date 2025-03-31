@@ -152,7 +152,6 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager, managem
 					return []reconcile.Request{}
 				}
 
-				// Reconcile all clusters when the grafana organizations have changed
 				requests := make([]reconcile.Request, 0, len(clusters.Items))
 				for _, cluster := range clusters.Items {
 					requests = append(requests, reconcile.Request{
