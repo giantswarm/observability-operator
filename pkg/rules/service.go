@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"maps"
 	"text/template"
 
 	"github.com/blang/semver"
@@ -24,10 +25,12 @@ import (
 )
 
 const (
-	alloyRulesAppCatalog    = "giantswarm"
-	alloyRulesAppName       = "alloy-rules"
-	alloyRulesAppNamespace  = "giantswarm"
-	alloyRulesConfigMapName = "alloy-rules-config"
+	alloyRulesAppCatalog        = "giantswarm"
+	alloyRulesAppName           = "alloy-rules"
+	alloyRulesAppNamespace      = "giantswarm"
+	alloyRulesChartName         = "alloy"
+	alloyRulesDeployInNamespace = "monitoring"
+	alloyRulesConfigMapName     = "alloy-rules-config"
 )
 
 var (
@@ -101,7 +104,7 @@ func configMap() *v1.ConfigMap {
 }
 
 func app() *appv1.App {
-	labels := labels.Common
+	labels := maps.Clone(labels.Common)
 	labels["app-operator.giantswarm.io/version"] = "0.0.0"
 	return &appv1.App{
 		ObjectMeta: metav1.ObjectMeta{
@@ -165,19 +168,20 @@ func (s Service) configureApp(ctx context.Context) error {
 
 	app := app()
 	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, app, func() error {
-		spec := app.Spec
-		spec.Catalog = alloyRulesAppCatalog
-		spec.Name = "alloy"
-		spec.Namespace = "monitoring"
-		spec.Version = s.AlloyAppVersion.String()
-		spec.Config = appv1.AppSpecConfig{
-			ConfigMap: appv1.AppSpecConfigConfigMap{
-				Name:      alloyRulesConfigMapName,
-				Namespace: alloyRulesAppNamespace,
+		app.Spec = appv1.AppSpec{
+			Catalog:   alloyRulesAppCatalog,
+			Name:      alloyRulesChartName,
+			Namespace: alloyRulesDeployInNamespace,
+			Version:   s.AlloyAppVersion.String(),
+			Config: appv1.AppSpecConfig{
+				ConfigMap: appv1.AppSpecConfigConfigMap{
+					Name:      alloyRulesConfigMapName,
+					Namespace: alloyRulesAppNamespace,
+				},
 			},
-		}
-		spec.KubeConfig = appv1.AppSpecKubeConfig{
-			InCluster: true,
+			KubeConfig: appv1.AppSpecKubeConfig{
+				InCluster: true,
+			},
 		}
 
 		return nil

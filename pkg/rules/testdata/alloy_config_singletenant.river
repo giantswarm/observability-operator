@@ -50,6 +50,9 @@ alloy:
           address = "http://mimir-ruler.mimir.svc:8080/"
           tenant_id = "tenant1"
           rule_selector {
+              match_labels = {
+                observability.giantswarm.io/tenant = "tenant1"
+              }
               match_expression {
                 key = "application.giantswarm.io/prometheus-rule-kind"
                 operator = "NotIn"
@@ -61,6 +64,9 @@ alloy:
           address = "http://loki-backend.loki.svc:3100/"
           tenant_id = "tenant1"
           rule_selector {
+              match_labels = {
+                observability.giantswarm.io/tenant = "tenant1"
+              }
               match_expression {
                 key = "application.giantswarm.io/prometheus-rule-kind"
                 operator = "In"

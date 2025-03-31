@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller/predicates"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common"
@@ -126,7 +127,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager, managementClusterName string) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&clusterv1.Cluster{}).
-		// This ensures we run the reconcile loop when the alloy-rules app is redeployed from prometheus-rules.
+		// This ensures we run the reconcile loop when the alloy-rules app is changed.
 		Watches(
 			&appv1alpha1.App{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
@@ -139,6 +140,30 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager, managem
 			}),
 			builder.WithPredicates(predicates.AlloyRulesAppChangedPredicate{}),
 		).
+		Watches(&v1alpha1.GrafanaOrganization{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
+
+				var logger = log.FromContext(ctx)
+				var clusters clusterv1.ClusterList
+
+				err := mgr.GetClient().List(ctx, &clusters)
+				if err != nil {
+					logger.Error(err, "failed to list cluster CRs")
+					return []reconcile.Request{}
+				}
+
+				// Reconcile all clusters when the grafana organizations have changed
+				requests := make([]reconcile.Request, 0, len(clusters.Items))
+				for _, cluster := range clusters.Items {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name:      cluster.Name,
+							Namespace: cluster.Namespace,
+						},
+					})
+				}
+				return requests
+			})).
 		Complete(r)
 }
 
