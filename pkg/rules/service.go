@@ -25,6 +25,7 @@ import (
 )
 
 const (
+	alloyRulesAppCatalog    = "giantswarm"
 	alloyRulesAppName       = "alloy-rules"
 	alloyRulesAppNamespace  = "giantswarm"
 	alloyRulesConfigMapName = "alloy-rules-config"
@@ -42,7 +43,7 @@ func init() {
 }
 
 type Service struct {
-	client.Client
+	Client          client.Client
 	AlloyAppVersion semver.Version
 }
 
@@ -109,7 +110,6 @@ func app() *appv1.App {
 			Namespace: alloyRulesAppNamespace,
 			Labels:    labels,
 		},
-		Spec: appv1.AppSpec{},
 	}
 }
 
@@ -166,15 +166,19 @@ func (s Service) configureApp(ctx context.Context) error {
 
 	app := app()
 	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, app, func() error {
-		app.Spec.Catalog = "giantswarm"
-		app.Spec.Name = "alloy"
-		app.Spec.Namespace = "monitoring"
-		app.Spec.Version = s.AlloyAppVersion.String()
-		app.Spec.Config = appv1.AppSpecConfig{
+		spec := app.Spec
+		spec.Catalog = alloyRulesAppCatalog
+		spec.Name = "alloy"
+		spec.Namespace = "monitoring"
+		spec.Version = s.AlloyAppVersion.String()
+		spec.Config = appv1.AppSpecConfig{
 			ConfigMap: appv1.AppSpecConfigConfigMap{
 				Name:      alloyRulesConfigMapName,
 				Namespace: alloyRulesAppNamespace,
 			},
+		}
+		spec.KubeConfig = appv1.AppSpecKubeConfig{
+			InCluster: true,
 		}
 
 		return nil

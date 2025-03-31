@@ -14,7 +14,7 @@ type AlloyRulesAppChangedPredicate struct {
 	predicate.Funcs
 }
 
-func (AlloyRulesAppChangedPredicate) Delete(e event.CreateEvent) bool {
+func (AlloyRulesAppChangedPredicate) Delete(e event.DeleteEvent) bool {
 	if e.Object == nil {
 		return false
 	}
