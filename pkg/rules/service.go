@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
-	"reflect"
 	"text/template"
 
+	"github.com/blang/semver"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,12 +36,14 @@ var (
 	appConfigTemplate *template.Template
 )
 
+// init initializes the template for the alloy-rules configmap.
 func init() {
 	appConfigTemplate = template.Must(template.New("alloy-rules.yaml").Funcs(sprig.FuncMap()).Parse(appConfig))
 }
 
 type Service struct {
 	client.Client
+	AlloyAppVersion semver.Version
 }
 
 func (s *Service) Configure(ctx context.Context, cluster clusterv1.Cluster) error {
@@ -67,31 +69,48 @@ func (s *Service) Configure(ctx context.Context, cluster clusterv1.Cluster) erro
 
 func (s *Service) CleanUp(ctx context.Context, cluster clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
-	logger.Info("deleting alloy-rules config")
+	logger.Info("deleting alloy-rules")
 
 	configmap := configMap()
 
 	err := s.Client.Delete(ctx, configmap)
 	if err != nil && !apierrors.IsNotFound(err) {
-		logger.Error(err, "failed to delete %s", alloyRulesConfigMapName)
+		logger.Error(err, "failed to delete configmap %s", alloyRulesConfigMapName)
 		return errors.WithStack(err)
 	}
 
-	logger.Info("deleted alloy-rules config")
-	return nil
+	app := app()
+	err = s.Client.Delete(ctx, app)
+	if err != nil && !apierrors.IsNotFound(err) {
+		logger.Error(err, "failed to delete app %s", alloyRulesAppName)
+		return errors.WithStack(err)
+	}
 
+	logger.Info("deleted alloy-rules")
+	return nil
 }
 
 func configMap() *v1.ConfigMap {
-	configmap := &v1.ConfigMap{
+	return &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      alloyRulesConfigMapName,
 			Namespace: alloyRulesAppNamespace,
 			Labels:    labels.Common,
 		},
 	}
+}
 
-	return configmap
+func app() *appv1.App {
+	labels := labels.Common
+	labels["app-operator.giantswarm.io/version"] = "0.0.0"
+	return &appv1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      alloyRulesAppName,
+			Namespace: alloyRulesAppNamespace,
+			Labels:    labels,
+		},
+		Spec: appv1.AppSpec{},
+	}
 }
 
 func (s Service) createOrUpdateConfigMap(ctx context.Context, cluster clusterv1.Cluster) error {
@@ -120,7 +139,7 @@ func (s Service) createOrUpdateConfigMap(ctx context.Context, cluster clusterv1.
 	})
 
 	if err != nil {
-		logger.Error(err, "failed to create or update %s", alloyRulesConfigMapName)
+		logger.Error(err, "failed to create or update configmap %s", alloyRulesConfigMapName)
 		return errors.WithStack(err)
 	}
 
@@ -143,34 +162,27 @@ func (s *Service) generateAlloyConfig(ctx context.Context, tenants []string) (st
 }
 
 func (s Service) configureApp(ctx context.Context) error {
-	configmap := configMap()
+	logger := log.FromContext(ctx)
 
-	// Get observability bundle app metadata.
-	appObjectKey := types.NamespacedName{
-		Name:      alloyRulesAppName,
-		Namespace: alloyRulesAppNamespace,
-	}
-
-	var current appv1.App
-	err := s.Client.Get(ctx, appObjectKey, &current)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	desired := current.DeepCopy()
-
-	desired.Spec.Config = appv1.AppSpecConfig{
-		ConfigMap: appv1.AppSpecConfigConfigMap{
-			Name:      configmap.Name,
-			Namespace: configmap.Namespace,
-		},
-	}
-
-	if !reflect.DeepEqual(current, *desired) {
-		err := s.Client.Update(ctx, desired)
-		if err != nil {
-			return errors.WithStack(err)
+	app := app()
+	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, app, func() error {
+		app.Spec.Catalog = "giantswarm"
+		app.Spec.Name = "alloy"
+		app.Spec.Namespace = "monitoring"
+		app.Spec.Version = s.AlloyAppVersion.String()
+		app.Spec.Config = appv1.AppSpecConfig{
+			ConfigMap: appv1.AppSpecConfigConfigMap{
+				Name:      alloyRulesConfigMapName,
+				Namespace: alloyRulesAppNamespace,
+			},
 		}
+
+		return nil
+	})
+
+	if err != nil {
+		logger.Error(err, "failed to create or update app %s", alloyRulesAppName)
+		return errors.WithStack(err)
 	}
 
 	return nil

@@ -99,7 +99,8 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 	}
 
 	alloyRulesService := rules.Service{
-		Client: managerClient,
+		Client:          managerClient,
+		AlloyAppVersion: conf.AlloyAppVersion,
 	}
 
 	r := &ClusterMonitoringReconciler{

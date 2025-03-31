@@ -14,6 +14,23 @@ type AlloyRulesAppChangedPredicate struct {
 	predicate.Funcs
 }
 
+func (AlloyRulesAppChangedPredicate) Delete(e event.CreateEvent) bool {
+	if e.Object == nil {
+		return false
+	}
+
+	if !strings.Contains(e.Object.GetName(), "alloy-rules") {
+		return false
+	}
+
+	var ok bool
+	if _, ok = e.Object.(*appv1alpha1.App); !ok {
+		return false
+	}
+
+	return true
+}
+
 // Update implements default UpdateEvent filter for validating resource version change.
 func (AlloyRulesAppChangedPredicate) Update(e event.UpdateEvent) bool {
 	if e.ObjectOld == nil {
