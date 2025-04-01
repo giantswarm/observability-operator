@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update Silence link in notification-template to point to the new GitOps approach.
+
 ### Fixed
 
 - Make sure we shard alloy-metrics based on all metrics for all tenants and not for the giantswarm tenant only.
