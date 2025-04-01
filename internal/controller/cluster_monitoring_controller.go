@@ -115,6 +115,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&clusterv1.Cluster{}).
+		// Reconcile all clusters when the grafana organizations have changed
 		Watches(&v1alpha1.GrafanaOrganization{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
 
@@ -127,7 +128,6 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					return []reconcile.Request{}
 				}
 
-				// Reconcile all clusters when the grafana organizations have changed
 				requests := make([]reconcile.Request, 0, len(clusters.Items))
 				for _, cluster := range clusters.Items {
 					requests = append(requests, reconcile.Request{
