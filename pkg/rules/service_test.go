@@ -61,7 +61,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			}
 			want := string(wantBytes)
 			if got != want {
-				t.Errorf("generated config does not match golden file for %s.\nGot:\n%s\n\nWant:\n%s", tt.name, got, want)
+				t.Errorf("generated config does not match golden file for %s.\n%s\n", tt.name, cmp.Diff(got, want))
 			}
 		})
 	}
