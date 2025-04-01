@@ -6,14 +6,12 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	appv1alpha1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -22,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
-	"github.com/giantswarm/observability-operator/internal/controller/predicates"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
@@ -34,7 +31,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
-	"github.com/giantswarm/observability-operator/pkg/rules"
 )
 
 var (
@@ -48,8 +44,6 @@ type ClusterMonitoringReconciler struct {
 	common.ManagementCluster
 	// PrometheusAgentService is the service for managing PrometheusAgent resources.
 	prometheusagent.PrometheusAgentService
-	// AlloyRulesService is the service used to configure the alloy-rules instance.
-	AlloyRulesService rules.Service
 	// AlloyService is the service which manages Alloy monitoring agent configuration.
 	AlloyService alloy.Service
 	// HeartbeatRepository is the repository for managing heartbeats.
@@ -98,24 +92,18 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 		ManagementCluster: conf.ManagementCluster,
 	}
 
-	alloyRulesService := rules.Service{
-		Client:          managerClient,
-		AlloyAppVersion: conf.AlloyAppVersion,
-	}
-
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
 		ManagementCluster:          conf.ManagementCluster,
 		HeartbeatRepository:        heartbeatRepository,
 		PrometheusAgentService:     prometheusAgentService,
-		AlloyRulesService:          alloyRulesService,
 		AlloyService:               alloyService,
 		MimirService:               mimirService,
 		MonitoringConfig:           conf.Monitoring,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, conf.Monitoring),
 	}
 
-	err = r.SetupWithManager(mgr, conf.ManagementCluster.Name)
+	err = r.SetupWithManager(mgr)
 	if err != nil {
 		return err
 	}
@@ -124,22 +112,9 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager, managementClusterName string) error {
+func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&clusterv1.Cluster{}).
-		// This ensures we run the reconcile loop when the alloy-rules app is changed.
-		Watches(
-			&appv1alpha1.App{},
-			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
-				return []reconcile.Request{
-					{NamespacedName: types.NamespacedName{
-						Name:      managementClusterName,
-						Namespace: "org-giantswarm",
-					}},
-				}
-			}),
-			builder.WithPredicates(predicates.AlloyRulesAppChangedPredicate{}),
-		).
 		Watches(&v1alpha1.GrafanaOrganization{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
 
@@ -227,7 +202,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// Management cluster specific configuration
 	if cluster.Name == r.ManagementCluster.Name {
-		result := r.reconcileManagementCluster(ctx, cluster)
+		result := r.reconcileManagementCluster(ctx)
 		if result != nil {
 			return *result, nil
 		}
@@ -315,7 +290,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// Management cluster specific configuration
 		if cluster.Name == r.ManagementCluster.Name {
-			err := r.tearDown(ctx, cluster)
+			err := r.tearDown(ctx)
 			if err != nil {
 				logger.Error(err, "failed to tear down the monitoring stack")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -372,7 +347,7 @@ func (r *ClusterMonitoringReconciler) removeFinalizer(ctx context.Context, clust
 	return nil
 }
 
-func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Context, cluster *clusterv1.Cluster) *ctrl.Result {
+func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Context) *ctrl.Result {
 	logger := log.FromContext(ctx)
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
@@ -389,13 +364,8 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
 		}
 
-		err = r.AlloyRulesService.Configure(ctx, *cluster)
-		if err != nil {
-			logger.Error(err, "failed to configure alloy-rules")
-			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
-		}
 	} else {
-		err := r.tearDown(ctx, cluster)
+		err := r.tearDown(ctx)
 		if err != nil {
 			logger.Error(err, "failed to tear down the monitoring stack")
 			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
@@ -406,7 +376,7 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 }
 
 // tearDown tears down the monitoring stack management cluster specific components like the hearbeat, mimir secrets and so on.
-func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	err := r.HeartbeatRepository.Delete(ctx)
@@ -418,12 +388,6 @@ func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context, cluster *clu
 	err = r.MimirService.DeleteMimirSecrets(ctx)
 	if err != nil {
 		logger.Error(err, "failed to delete mimir ingress secret")
-		return err
-	}
-
-	err = r.AlloyRulesService.CleanUp(ctx, *cluster)
-	if err != nil {
-		logger.Error(err, "failed to clean up alloy-rules config")
 		return err
 	}
 

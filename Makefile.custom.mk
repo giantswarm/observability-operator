@@ -6,9 +6,13 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+generate-golden-files: ## Generate golden files for tests
+	@echo "Generating golden files"
+	@UPDATE_GOLDEN_FILES=true go test -v ./...
+
 .PHONY: test-unit
 test-unit: ginkgo generate fmt vet envtest ## Run unit tests
-	UPDATE_GOLDEN_FILES=true KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GINKGO) -p --nodes 4 -r -randomize-all --randomize-suites --skip-package=tests --cover --coverpkg=`go list ./... | grep -v fakes | tr '\n' ','` ./...
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GINKGO) -p --nodes 4 -r -randomize-all --randomize-suites --skip-package=tests --cover --coverpkg=`go list ./... | grep -v fakes | tr '\n' ','` ./...
 
 .PHONY: test
 test: test-unit ## Run all tests

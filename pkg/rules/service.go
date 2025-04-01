@@ -10,9 +10,7 @@ import (
 	"github.com/blang/semver"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,7 +24,7 @@ import (
 
 const (
 	alloyRulesAppCatalog        = "giantswarm"
-	alloyRulesAppName           = "alloy-rules"
+	AlloyRulesAppName           = "alloy-rules"
 	alloyRulesAppNamespace      = "giantswarm"
 	alloyRulesChartName         = "alloy"
 	alloyRulesDeployInNamespace = "monitoring"
@@ -49,12 +47,12 @@ type Service struct {
 	AlloyAppVersion semver.Version
 }
 
-func (s *Service) Configure(ctx context.Context, cluster clusterv1.Cluster) error {
+func (s *Service) Configure(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	logger.Info("configuring alloy-rules")
 
 	logger.Info("create or update alloy rules configmap")
-	err := s.createOrUpdateConfigMap(ctx, cluster)
+	err := s.createOrUpdateConfigMap(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -70,52 +68,7 @@ func (s *Service) Configure(ctx context.Context, cluster clusterv1.Cluster) erro
 	return nil
 }
 
-func (s *Service) CleanUp(ctx context.Context, cluster clusterv1.Cluster) error {
-	logger := log.FromContext(ctx)
-	logger.Info("deleting alloy-rules")
-
-	configmap := configMap()
-
-	err := s.Client.Delete(ctx, configmap)
-	if err != nil && !apierrors.IsNotFound(err) {
-		logger.Error(err, "failed to delete configmap %s", alloyRulesConfigMapName)
-		return errors.WithStack(err)
-	}
-
-	app := app()
-	err = s.Client.Delete(ctx, app)
-	if err != nil && !apierrors.IsNotFound(err) {
-		logger.Error(err, "failed to delete app %s", alloyRulesAppName)
-		return errors.WithStack(err)
-	}
-
-	logger.Info("deleted alloy-rules")
-	return nil
-}
-
-func configMap() *v1.ConfigMap {
-	return &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      alloyRulesConfigMapName,
-			Namespace: alloyRulesAppNamespace,
-			Labels:    labels.Common,
-		},
-	}
-}
-
-func app() *appv1.App {
-	labels := maps.Clone(labels.Common)
-	labels["app-operator.giantswarm.io/version"] = "0.0.0"
-	return &appv1.App{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      alloyRulesAppName,
-			Namespace: alloyRulesAppNamespace,
-			Labels:    labels,
-		},
-	}
-}
-
-func (s Service) createOrUpdateConfigMap(ctx context.Context, cluster clusterv1.Cluster) error {
+func (s Service) createOrUpdateConfigMap(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	// Get list of tenants
 	var tenants []string
@@ -124,7 +77,14 @@ func (s Service) createOrUpdateConfigMap(ctx context.Context, cluster clusterv1.
 		return errors.WithStack(err)
 	}
 
-	configmap := configMap()
+	configmap := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      alloyRulesConfigMapName,
+			Namespace: alloyRulesAppNamespace,
+			Labels:    labels.Common,
+		},
+	}
+
 	_, err = controllerutil.CreateOrUpdate(ctx, s.Client, configmap, func() error {
 		values, err := s.generateAlloyConfig(ctx, tenants)
 		if err != nil {
@@ -166,7 +126,16 @@ func (s *Service) generateAlloyConfig(ctx context.Context, tenants []string) (st
 func (s Service) configureApp(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
-	app := app()
+	labels := maps.Clone(labels.Common)
+	labels["app-operator.giantswarm.io/version"] = "0.0.0"
+	app := &appv1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      AlloyRulesAppName,
+			Namespace: alloyRulesAppNamespace,
+			Labels:    labels,
+		},
+	}
+
 	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, app, func() error {
 		app.Spec = appv1.AppSpec{
 			Catalog:   alloyRulesAppCatalog,
@@ -188,7 +157,7 @@ func (s Service) configureApp(ctx context.Context) error {
 	})
 
 	if err != nil {
-		logger.Error(err, "failed to create or update app %s", alloyRulesAppName)
+		logger.Error(err, "failed to create or update app %s", AlloyRulesAppName)
 		return errors.WithStack(err)
 	}
 
