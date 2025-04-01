@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add validation script using amtool to validate alertmanager config works.
+
 ### Fixed
 
 - Make sure we shard alloy-metrics based on all metrics for all tenants and not for the giantswarm tenant only.
