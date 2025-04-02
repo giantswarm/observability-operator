@@ -1,0 +1,27 @@
+# permissions for end users to edit grafanaorganizations.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: observability-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: grafanaorganization-editor-role
+rules:
+- apiGroups:
+  - observability.giantswarm.io
+  resources:
+  - grafanaorganizations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - observability.giantswarm.io
+  resources:
+  - grafanaorganizations/status
+  verbs:
+  - get

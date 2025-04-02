@@ -17,10 +17,12 @@ spec:
     viewers:
     - my-awesome-viewers
     - other-viewers
+  tenants:
+  - giantswarm
 status:
   orgID: 2
   dataSources:
   - name: "mimir"
-    id: 1
+    ID: 1
   - name: "loki"
-    id: 2
+    ID: 2
