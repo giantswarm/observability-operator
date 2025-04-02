@@ -18,10 +18,35 @@ jobs:
     - checkout
     - run: cd helm/observability-operator && helm dep up
     - run: helm template helm/observability-operator
-
+  validate-alertmanager-config:
+    executor: architect/architect
+    steps:
+    - checkout
+    - run:
+        name: Validate Alertmanager Config
+        command: make validate-alertmanager-config
 workflows:
   build:
     jobs:
+    # This job is used to build the Helm chart and make sure it is valid.
+    - template-chart:
+        name: template-chart
+        filters:
+          tags:
+            only: /^v.*/
+
+    # This job is used to validate the Alertmanager config.
+    # It requires the template-chart job to be run first because it needs 
+    # the chart to be a valid Helm chart to generate the Alertmanager config to validate.
+    - validate-alertmanager-config:
+        name: validate-alertmanager-config
+        requires:
+        - template-chart
+        filters:
+          tags:
+            only: /^v.*/
+
+    # This job is used to run go unit tests.
     - unit-tests:
         filters:
           tags:
@@ -31,15 +56,8 @@ workflows:
         name: go-build
         requires:
         - unit-tests
+        - validate-alertmanager-config
         binary: observability-operator
-        filters:
-          tags:
-            only: /^v.*/
-
-    - template-chart:
-        name: template-chart
-        requires:
-        - go-build
         filters:
           tags:
             only: /^v.*/
@@ -48,15 +66,15 @@ workflows:
         context: architect
         name: push-to-registries
         requires:
-        - template-chart
+        - go-build
         filters:
           tags:
             only: /^v.*/
-
           branches:
             ignore:
             - main
             - master
+
     - architect/push-to-app-catalog:
         context: architect
         executor: app-build-suite
@@ -70,11 +88,11 @@ workflows:
         filters:
           tags:
             only: /^v.*/
-
           branches:
             ignore:
             - main
             - master
+
     - architect/run-tests-with-ats:
         name: run-chart-tests-with-ats
         filters:

@@ -1,10 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
+ALERTMANAGER_VERSION="0.28.1"
+
 TARGET_DIR="$(dirname "$0")"
 # Download amtool if not present
 if ! command -v "$TARGET_DIR"/amtool >/dev/null 2>&1; then
-  echo "amtool not found, downloading latest Alertmanager release..."
+  echo "amtool not found, downloading Alertmanager $ALERTMANAGER_VERSION release..."
   # Determine OS and architecture
   OS=$(uname | tr '[:upper:]' '[:lower:]')
   ARCH=$(uname -m)
@@ -12,15 +14,9 @@ if ! command -v "$TARGET_DIR"/amtool >/dev/null 2>&1; then
     ARCH="amd64"
   fi
 
-  # Get the download URL for the appropriate tarball from GitHub releases
-  DOWNLOAD_URL=$(curl -sL https://api.github.com/repos/prometheus/alertmanager/releases/latest | \
-    grep "browser_download_url" | grep "$OS-$ARCH" | cut -d '"' -f4)
-    
-  if [ -z "$DOWNLOAD_URL" ]; then
-    echo "Could not find a download URL for your platform: $OS-$ARCH"
-    exit 1
-  fi
-
+  # Construct the download URL for Alertmanager
+  DOWNLOAD_URL="https://github.com/prometheus/alertmanager/releases/download/v$ALERTMANAGER_VERSION/alertmanager-$ALERTMANAGER_VERSION.$OS-$ARCH.tar.gz"
+  
   TMP_DIR=$(mktemp -d)
   TAR_FILE="$TMP_DIR/alertmanager.tar.gz"
   
@@ -38,7 +34,7 @@ if ! command -v "$TARGET_DIR"/amtool >/dev/null 2>&1; then
     exit 1
   fi
   
-  # Move the amtool binary to the hack/bin directory (assumes the script is located there)
+  # Move the amtool binary to the hack/bin directory
   mv "$AMTOOL_PATH" "$TARGET_DIR/amtool"
   chmod +x "$TARGET_DIR/amtool"
   
@@ -48,7 +44,7 @@ fi
 
 # Template the helm chart
 echo "Rendering helm chart..."
-helm template observability-operator /home/quentin/Documents/code/observability-operator/helm/observability-operator --namespace alertmanager --set alerting.slackAPIURL="https://gigantic.slack.com" --set monitoring.opsgenieApiKey="apikey" > rendered.yaml
+helm template observability-operator helm/observability-operator --namespace alertmanager --set alerting.slackAPIURL="https://gigantic.slack.com" --set monitoring.opsgenieApiKey="apikey" > rendered.yaml
 
 # Extract the secret that contains the Alertmanager configuration
 # This assumes that the secret's labels include observability.giantswarm.io/kind: alertmanager-config
@@ -66,7 +62,7 @@ if [ -z "$CONFIG_B64" ]; then
 fi
 
 # Decode the configuration
-echo "$CONFIG_B64" | base64 --decode > alertmanager.yaml
+echo "$CONFIG_B64" | base64 -d > alertmanager.yaml
 
 # Validate the configuration using amtool
 echo "Validating Alertmanager configuration..."
