@@ -20,23 +20,17 @@ if ! command -v "$TARGET_DIR"/amtool >/dev/null 2>&1; then
   TMP_DIR="$(mktemp -d -t validate-alertmanager-config.XXXXXX)"
   trap 'rm -rf "$TMPDIR"' EXIT
   TAR_FILE="$TMP_DIR/alertmanager.tar.gz"
+  ARCHIVE_DIRECTORY="$TMP_DIR/alertmanager"
   
   echo "Downloading from $DOWNLOAD_URL..."
   curl -L "$DOWNLOAD_URL" -o "$TAR_FILE"
   
   # Extract the tarball
-  tar -xzf "$TAR_FILE" -C "$TMP_DIR"
-  
-  # Find the amtool binary in the extracted contents
-  AMTOOL_PATH=$(find "$TMP_DIR" -type f -name 'amtool' | head -n1)
-  if [ -z "$AMTOOL_PATH" ]; then
-    echo "amtool binary not found in the downloaded archive."
-    rm -rf "$TMP_DIR"
-    exit 1
-  fi
+  mkdir -p "$TMP_DIR/alertmanager"
+  tar -xzf "$TAR_FILE" -C "$ARCHIVE_DIRECTORY"
   
   # Move the amtool binary to the hack/bin directory
-  mv "$AMTOOL_PATH" "$TARGET_DIR/amtool"
+  mv "$ARCHIVE_DIRECTORY/amtool" "$TARGET_DIR/amtool"
   chmod +x "$TARGET_DIR/amtool"
   
   echo "amtool downloaded and installed to $TARGET_DIR/amtool"
