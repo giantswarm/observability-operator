@@ -1,3 +1,7 @@
+###############################################################################
+# Go Formatting and Code Quality
+###############################################################################
+
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	go fmt ./...
@@ -6,51 +10,71 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+###############################################################################
+# Testing & Coverage
+###############################################################################
+
 generate-golden-files: ## Generate golden files for tests
 	@echo "Generating golden files"
 	@UPDATE_GOLDEN_FILES=true go test -v ./...
 
 .PHONY: test-unit
 test-unit: ginkgo generate fmt vet envtest ## Run unit tests
+	# Set up environment for Kubernetes and run Ginkgo concurrently.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GINKGO) -p --nodes 4 -r -randomize-all --randomize-suites --skip-package=tests --cover --coverpkg=`go list ./... | grep -v fakes | tr '\n' ','` ./...
 
 .PHONY: test
-test: test-unit ## Run all tests
+test: test-unit ## Run all tests by default (currently only unit tests).
 
 .PHONY: coverage-html
-coverage-html: test
+coverage-html: test ## Generate HTML coverage report.
 	go tool cover -html coverprofile.out
 
+# Define the location of the envtest setup script.
 ENVTEST = $(shell pwd)/bin/setup-envtest
 .PHONY: envtest
 envtest: ## Download envtest-setup locally if necessary.
 	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
 
+# Define the location of the ginkgo testing binary.
 GINKGO = $(shell pwd)/bin/ginkgo
 .PHONY: ginkgo
 ginkgo: ## Download ginkgo locally if necessary.
 	$(call go-get-tool,$(GINKGO),github.com/onsi/ginkgo/v2/ginkgo@latest)
 
-DOCKER_COMPOSE = $(shell pwd)/bin/docker-compose
-.PHONY: docker-compose
-docker-compose: ## Download docker-compose locally if necessary.
-	$(eval LATEST_RELEASE = $(shell curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r '.tag_name'))
-	curl -sL "https://github.com/docker/compose/releases/download/$(LATEST_RELEASE)/docker-compose-linux-x86_64" -o $(DOCKER_COMPOSE)
-	chmod +x $(DOCKER_COMPOSE)
+###############################################################################
+# Linting and Validation
+###############################################################################
 
-local:
+.PHONY: validate-alertmanager-config
+validate-alertmanager-config: ## Validate Alertmanager config.
+	./hack/bin/validate-alertmanager-config.sh
+
+###############################################################################
+# Local Development
+###############################################################################
+
+.PHONY: run-local
+run-local: ## Run the application in local mode.
 	./hack/bin/run-local.sh
 
-# go-get-tool will 'go get' any package $2 and install it to $1.
+###############################################################################
+# Helper Functions
+###############################################################################
+
+# PROJECT_DIR is the directory of this Makefile.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# go-get-tool fetches and installs a Go tool if it is not present.
+# $1: Target binary path.
+# $2: Go package path with version.
 define go-get-tool
 @[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
-rm -rf $$TMP_DIR ;\
+	set -e ;\
+	TMP_DIR=$$(mktemp -d) ;\
+	cd $$TMP_DIR ;\
+	echo "Downloading $(2)" ;\
+	GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
+	rm -rf $$TMP_DIR ;\
 }
 endef

@@ -114,6 +114,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("cluster").
 		For(&clusterv1.Cluster{}).
 		// Reconcile all clusters when the grafana organizations have changed to update agents configs with the new list of tenants where metrics are sent to.
 		Watches(&v1alpha1.GrafanaOrganization{},

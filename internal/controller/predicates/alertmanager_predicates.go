@@ -1,12 +1,19 @@
 package predicates
 
 import (
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 )
 
 const (
+	alertmanagerConfigSelectorLabelName  = "observability.giantswarm.io/kind"
+	alertmanagerConfigSelectorLabelValue = "alertmanager-config"
+
 	mimirNamespace             = "mimir"
 	mimirInstance              = "mimir"
 	mimirAlertmanagerComponent = "alertmanager"
@@ -42,4 +49,24 @@ func NewAlertmanagerPodPredicate() predicate.Predicate {
 	p := predicate.NewPredicateFuncs(filter)
 
 	return p
+}
+
+// Filter only the Alertmanager configuration secrets
+func NewAlertmanagerConfigSecretsPredicate() (predicate.Predicate, error) {
+	predicate, err := predicate.LabelSelectorPredicate(
+		metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				alertmanagerConfigSelectorLabelName: alertmanagerConfigSelectorLabelValue,
+			},
+			MatchExpressions: []metav1.LabelSelectorRequirement{
+				{
+					Key:      tenancy.TenantSelectorLabel,
+					Operator: metav1.LabelSelectorOpExists,
+				},
+			},
+		})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return predicate, nil
 }

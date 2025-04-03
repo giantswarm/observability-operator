@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add multi-tenancy support to alerting and recording rules loading by setting up the alloy-rules config.
+- Add validation script using amtool to validate alertmanager config works.
 
 ### Fixed
 

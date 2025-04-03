@@ -98,6 +98,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 // SetupWithManager sets up the controller with the Manager.
 func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("grafanaorganization").
 		For(&v1alpha1.GrafanaOrganization{}).
 		// Watch for grafana pod's status changes
 		Watches(
