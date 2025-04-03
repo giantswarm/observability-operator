@@ -44,7 +44,7 @@ fi
 
 # Template the helm chart
 echo "Rendering helm chart..."
-helm template observability-operator helm/observability-operator --namespace alertmanager --set alerting.slackAPIURL="https://gigantic.slack.com" --set monitoring.opsgenieApiKey="apikey" > rendered.yaml
+helm template observability-operator helm/observability-operator --namespace alertmanager --set alerting.slackAPIURL="https://gigantic.slack.com" --set monitoring.opsgenieApiKey="apikey" > "$TMPDIR/rendered.yaml"
 
 # Extract the secret that contains the Alertmanager configuration
 # This assumes that the secret's labels include observability.giantswarm.io/kind: alertmanager-config
