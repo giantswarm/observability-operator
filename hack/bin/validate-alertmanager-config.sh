@@ -69,10 +69,3 @@ echo "Validating Alertmanager configuration..."
 "$TARGET_DIR"/amtool check-config alertmanager.yaml
 
 echo "Alertmanager configuration is valid."
-
-
-# Clean up
-rm alertmanager.yaml rendered.yaml
-echo "Temporary files cleaned up."
-echo "Done."
-# End of script
