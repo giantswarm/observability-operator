@@ -43,7 +43,7 @@ ginkgo: ## Download ginkgo locally if necessary.
 ###############################################################################
 
 .PHONY: validate-alertmanager-config
-validate-alertmanager-config: ## Validate Giantswarm Alertmanager config.
+validate-alertmanager-config: ## Validate Alertmanager config.
 	./hack/bin/validate-alertmanager-config.sh
 
 ###############################################################################
