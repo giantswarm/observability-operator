@@ -22,7 +22,6 @@ import (
 
 	"github.com/prometheus/alertmanager/config"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -37,14 +36,9 @@ import (
 
 // log is for logging in this package.
 var log = logf.Log.WithName("alertmanager-config-secrets-resource")
-var alertmanagerConfigSecretLabelSelector labels.Selector
 
 // SetupAlertmanagerConfigSecretWebhookWithManager registers the webhook for Secret in the manager.
 func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) (err error) {
-	alertmanagerConfigSecretLabelSelector, err = metav1.LabelSelectorAsSelector(&predicates.AlertmanagerConfigSecretLabelSelector)
-	if err != nil {
-		return fmt.Errorf("failed to convert label selector: %w", err)
-	}
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&corev1.Secret{}).
 		WithValidator(&AlertmanagerConfigSecretCustomValidator{
@@ -76,10 +70,8 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateCreate(ctx context.Con
 	}
 	log.Info("Validation for Secret upon creation", "name", secret.GetName())
 
-	if !alertmanagerConfigSecretLabelSelector.Matches(labels.Set(secret.GetLabels())) {
-		log.Info("Skipping validation for Secret creation")
-		return nil, nil
-	}
+	// TODO Validate tenant is in the list of accepted tenants
+
 	if err := v.validateNoDuplicateTenant(ctx, secret); err != nil {
 		return nil, err
 	}
@@ -120,10 +112,9 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateUpdate(ctx context.Con
 	}
 	log.Info("Validation for Secret upon update", "name", secret.GetName())
 
-	if !alertmanagerConfigSecretLabelSelector.Matches(labels.Set(secret.GetLabels())) {
-		log.Info("Skipping validation for Secret creation")
-		return nil, nil
-	}
+	// TODO Validate tenant is in the list of accepted tenants
+
+	// TODO check for duplicates if the secret is being updated with a different tenant
 
 	return nil, validateAlertmanagerConfig(ctx, secret)
 }

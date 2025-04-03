@@ -9,6 +9,7 @@ image:
 
 managementCluster:
   baseDomain: domain
+  clusterIssuer: letsencrypt-giantswarm
   customer: customer
   insecureCA: false
   name: name
