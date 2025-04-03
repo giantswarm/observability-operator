@@ -39,7 +39,6 @@ if ! command -v "$TARGET_DIR"/amtool >/dev/null 2>&1; then
   mv "$AMTOOL_PATH" "$TARGET_DIR/amtool"
   chmod +x "$TARGET_DIR/amtool"
   
-  rm -rf "$TMP_DIR"
   echo "amtool downloaded and installed to $TARGET_DIR/amtool"
 fi
 
