@@ -72,7 +72,7 @@ func main() {
 		"The namespace where the observability-operator is running.")
 	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local",
 		"grafana URL")
-	flag.StringVar(&alloyAppVersion, "alloy-app-version", "0.9.0", "Version of the alloy to use")
+	flag.StringVar(&alloyAppVersion, "alloy-rules-app-version", "0.9.0", "Version of the alloy to use for alloy-rules")
 
 	// Management cluster configuration flags.
 	flag.StringVar(&conf.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
