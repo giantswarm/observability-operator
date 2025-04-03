@@ -15,6 +15,12 @@ managementCluster:
   pipeline: pipeline
   region: region
 
+alloy:
+  # -- Configures the Alloy version to be used
+  # used by renovate
+  # repo: giantswarm/alloy
+  appVersion: 0.9.0
+
 alerting:
   enabled: false
   alertmanagerURL: ""

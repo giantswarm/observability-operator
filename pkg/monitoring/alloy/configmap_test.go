@@ -2,7 +2,6 @@ package alloy
 
 import (
 	"context"
-	"flag"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,10 +14,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
-)
-
-var (
-	update = flag.Bool("update", false, "update .golden files")
 )
 
 // dummyOrgRepo implements a minimal OrganizationRepository.
@@ -109,7 +104,8 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				t.Fatalf("generateAlloyConfig failed: %v", err)
 			}
 
-			if *update {
+			if os.Getenv("UPDATE_GOLDEN_FILES") == "true" {
+				t.Logf("Environment variable UPDATE_GOLDEN_FILES=true detected, updating golden files")
 				if err := os.MkdirAll(filepath.Dir(tt.goldenPath), 0755); err != nil {
 					t.Fatalf("failed to create golden directory: %v", err)
 				}

@@ -13,6 +13,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/Netflix/go-env"
+	"github.com/blang/semver"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -53,6 +54,7 @@ func init() {
 
 func main() {
 	var grafanaURL string
+	var alloyAppVersion string
 	var err error
 
 	flag.StringVar(&conf.MetricsAddr, "metrics-bind-address", ":8080",
@@ -70,6 +72,7 @@ func main() {
 		"The namespace where the observability-operator is running.")
 	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local",
 		"grafana URL")
+	flag.StringVar(&alloyAppVersion, "alloy-rules-app-version", "0.9.0", "Version of the alloy to use for alloy-rules")
 
 	// Management cluster configuration flags.
 	flag.StringVar(&conf.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
@@ -117,6 +120,11 @@ func main() {
 	conf.GrafanaURL, err = url.Parse(grafanaURL)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse grafana url: %v", err))
+	}
+
+	conf.AlloyAppVersion, err = semver.Parse(alloyAppVersion)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse alloy app version: %v", err))
 	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))

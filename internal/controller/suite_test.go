@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -17,7 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
-	"github.com/giantswarm/observability-operator/pkg/tests"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -34,10 +34,20 @@ func TestControllers(t *testing.T) {
 	RunSpecs(t, "Controller Suite")
 }
 
+func getEnvOrSkip(env string) string {
+	value := os.Getenv(env)
+	if value == "" {
+		Skip(fmt.Sprintf("%s not exported", env))
+	}
+
+	return value
+}
+
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
-	tests.GetEnvOrSkip("KUBEBUILDER_ASSETS")
+	getEnvOrSkip("KUBEBUILDER_ASSETS")
+
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},

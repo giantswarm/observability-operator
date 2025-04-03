@@ -14,16 +14,20 @@ vet: ## Run go vet against code.
 # Testing & Coverage
 ###############################################################################
 
+generate-golden-files: ## Generate golden files for tests
+	@echo "Generating golden files"
+	@UPDATE_GOLDEN_FILES=true go test -v ./...
+
 .PHONY: test-unit
 test-unit: ginkgo generate fmt vet envtest ## Run unit tests
 	# Set up environment for Kubernetes and run Ginkgo concurrently.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GINKGO) -p --nodes 4 -r -randomize-all --randomize-suites --skip-package=tests --cover --coverpkg=`go list ./... | grep -v fakes | tr '\n' ','` ./...
 
-.PHONY: test-all
-test-all: test-unit ## Run all tests by default (currently only unit tests).
+.PHONY: test
+test: test-unit ## Run all tests by default (currently only unit tests).
 
 .PHONY: coverage-html
-coverage-html: test-unit ## Generate HTML coverage report.
+coverage-html: test ## Generate HTML coverage report.
 	go tool cover -html coverprofile.out
 
 # Define the location of the envtest setup script.
