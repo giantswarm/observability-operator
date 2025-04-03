@@ -66,6 +66,6 @@ echo "$CONFIG_B64" | base64 -d > alertmanager.yaml
 
 # Validate the configuration using amtool
 echo "Validating Alertmanager configuration..."
-"$TARGET_DIR"/amtool check-config alertmanager.yaml
+"$TARGET_DIR"/amtool check-config "$TMPDIR/alertmanager.yaml"
 
 echo "Alertmanager configuration is valid."
