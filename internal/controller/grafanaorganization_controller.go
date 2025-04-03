@@ -314,7 +314,6 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 
 	// Configure up the alloy-rules app
 	if err := r.AlloyRulesService.Configure(ctx); err != nil {
-		logger.Error(err, "failed to configure alloy-rules")
 		errs = append(errs, err)
 	}
 
