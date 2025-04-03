@@ -3,7 +3,7 @@ set -euo pipefail
 
 ALERTMANAGER_VERSION="0.28.1"
 
-TARGET_DIR="$(dirname "$0")"
+TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd -P)"
 # Download amtool if not present
 if ! command -v "$TARGET_DIR"/amtool >/dev/null 2>&1; then
   echo "amtool not found, downloading Alertmanager $ALERTMANAGER_VERSION release..."
