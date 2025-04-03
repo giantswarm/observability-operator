@@ -17,7 +17,8 @@ if ! command -v "$TARGET_DIR"/amtool >/dev/null 2>&1; then
   # Construct the download URL for Alertmanager
   DOWNLOAD_URL="https://github.com/prometheus/alertmanager/releases/download/v$ALERTMANAGER_VERSION/alertmanager-$ALERTMANAGER_VERSION.$OS-$ARCH.tar.gz"
   
-  TMP_DIR=$(mktemp -d)
+  TMP_DIR="$(mktemp -d -t validate-alertmanager-config.XXXXXX)"
+  trap 'rm -rf "$TMPDIR"' EXIT
   TAR_FILE="$TMP_DIR/alertmanager.tar.gz"
   
   echo "Downloading from $DOWNLOAD_URL..."
