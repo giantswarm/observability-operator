@@ -48,7 +48,7 @@ helm template observability-operator helm/observability-operator --namespace ale
 
 # Extract the secret that contains the Alertmanager configuration
 # This assumes that the secret's labels include observability.giantswarm.io/kind: alertmanager-config
-SECRET_NAME=$(yq eval 'select(.metadata.labels."observability.giantswarm.io/kind" == "alertmanager-config") | .metadata.name' rendered.yaml | head -n1)
+SECRET_NAME="$(yq eval 'select(.metadata.labels."observability.giantswarm.io/kind" == "alertmanager-config") | .metadata.name' "$TMPDIR/rendered.yaml" | head -n1)"
 if [ -z "$SECRET_NAME" ]; then
   echo "Alertmanager secret not found in rendered templates."
   exit 1
