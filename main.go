@@ -31,6 +31,7 @@ import (
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller"
+	webhookcorev1 "github.com/giantswarm/observability-operator/internal/webhook/v1"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	//+kubebuilder:scaffold:imports
@@ -62,6 +63,8 @@ func main() {
 	flag.BoolVar(&conf.EnableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&conf.WebhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
+		"Path to the directory where the webhook server will store its TLS certificate and key.")
 	flag.BoolVar(&conf.SecureMetrics, "metrics-secure", false,
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&conf.EnableHTTP2, "enable-http2", false,
@@ -146,6 +149,7 @@ func main() {
 
 	webhookServer := webhook.NewServer(webhook.Options{
 		TLSOpts: tlsOpts,
+		CertDir: conf.WebhookCertPath,
 	})
 
 	discardHelmSecretsSelector, err := labels.Parse("owner notin (helm,Helm)")
@@ -220,6 +224,13 @@ func main() {
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Dashboard")
 		os.Exit(1)
+	}
+	// nolint:goconst
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = webhookcorev1.SetupAlertmanagerConfigSecretWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Secret")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

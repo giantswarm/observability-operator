@@ -86,8 +86,15 @@ spec:
         - containerPort: 8081
           name: http-healthz
           protocol: TCP
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
         resources: {{ toYaml .Values.operator.resources | nindent 10 }}
-      serviceAccountName: {{ include "resource.default.name"  . }}
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: webhook-certs
+          readOnly: true
+      serviceAccountName: {{ include "resource.default.name" . }}
       securityContext:
         {{- with .Values.operator.podSecurityContext }}
           {{- . | toYaml | nindent 8 }}
@@ -95,7 +102,10 @@ spec:
     volumes:
       - name: {{ include "name" . }}
         configMap:
-          name: {{ include "resource.default.name"  . }}
+          name: {{ include "resource.default.name" . }}
           items:
           - key: config.yml
             path: config.yml
+      - name: webhook-certs
+        secret:
+          secretName: {{ include "resource.default.name" . }}-webhook-server-cert
