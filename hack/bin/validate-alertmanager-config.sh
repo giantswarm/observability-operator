@@ -8,8 +8,8 @@ TARGET_DIR="$(dirname "$0")"
 if ! command -v "$TARGET_DIR"/amtool >/dev/null 2>&1; then
   echo "amtool not found, downloading Alertmanager $ALERTMANAGER_VERSION release..."
   # Determine OS and architecture
-  OS=$(uname | tr '[:upper:]' '[:lower:]')
-  ARCH=$(uname -m)
+  OS="$(uname | tr '[:upper:]' '[:lower:]')"
+  ARCH="$(uname -m)"
   if [ "$ARCH" = "x86_64" ]; then
     ARCH="amd64"
   fi
