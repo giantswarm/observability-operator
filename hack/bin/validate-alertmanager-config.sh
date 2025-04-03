@@ -62,7 +62,7 @@ if [ -z "$CONFIG_B64" ]; then
 fi
 
 # Decode the configuration
-echo "$CONFIG_B64" | base64 -d > alertmanager.yaml
+echo "$CONFIG_B64" | base64 -d > "$TMPDIR/alertmanager.yaml"
 
 # Validate the configuration using amtool
 echo "Validating Alertmanager configuration..."
