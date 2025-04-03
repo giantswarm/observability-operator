@@ -111,6 +111,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("cluster").
 		For(&clusterv1.Cluster{}).
 		Complete(r)
 }
