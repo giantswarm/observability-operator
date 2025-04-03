@@ -55,7 +55,7 @@ if [ -z "$SECRET_NAME" ]; then
 fi
 
 # Assuming the alertmanager config is stored under the key "alertmanager.yaml"
-CONFIG_B64=$(yq eval "select(.metadata.name==\"$SECRET_NAME\") | .data.\"alertmanager.yaml\"" rendered.yaml | head -n1)
+CONFIG_B64="$(yq eval 'select(.metadata.name == "'"$SECRET_NAME"'") | .data."alertmanager.yaml"' "$TMPDIR/rendered.yaml" | head -n1)"
 if [ -z "$CONFIG_B64" ]; then
   echo "No alertmanager.yaml key found in secret $SECRET_NAME."
   exit 1
