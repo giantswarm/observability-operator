@@ -18,7 +18,7 @@ resources:
   path: github.com/giantswarm/observability-operator/api/v1alpha1
   version: v1alpha1
 - controller: true
-  domain: giantswarm.io
+  domain: x-k8s.io
   group: cluster
   kind: Cluster
   version: v1beta1
