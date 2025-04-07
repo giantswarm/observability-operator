@@ -15,6 +15,7 @@ type Config struct {
 	ProbeAddr            string
 	SecureMetrics        bool
 	EnableHTTP2          bool
+	WebhookCertPath      string
 	OperatorNamespace    string
 	GrafanaURL           *url.URL
 

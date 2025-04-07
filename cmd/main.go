@@ -69,6 +69,8 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&conf.EnableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&conf.WebhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
+		"Path to the directory where the webhook server will store its TLS certificate and key.")
 	flag.StringVar(&conf.OperatorNamespace, "operator-namespace", "",
 		"The namespace where the observability-operator is running.")
 	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local",
@@ -155,6 +157,7 @@ func main() {
 
 	webhookServer := webhook.NewServer(webhook.Options{
 		TLSOpts: tlsOpts,
+		CertDir: conf.WebhookCertPath,
 	})
 
 	discardHelmSecretsSelector, err := labels.Parse("owner notin (helm,Helm)")

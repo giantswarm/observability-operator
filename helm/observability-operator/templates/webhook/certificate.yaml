@@ -11,5 +11,5 @@ spec:
   - {{ include "resource.default.name" . }}-webhook.{{ include "resource.default.namespace" . }}.svc.cluster.local
   issuerRef:
     kind: ClusterIssuer
-    name: letsencrypt-giantswarm
+    name: {{ .Values.managementCluster.clusterIssuer }}
   secretName: {{ include "resource.default.name" . }}-webhook-server-cert
