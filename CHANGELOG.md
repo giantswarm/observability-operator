@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix `alloy-rules` app version flag rename forgotten after review.
+
 ## [0.23.0] - 2025-04-07
 
 ### Added
