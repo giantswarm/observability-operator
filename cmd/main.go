@@ -32,6 +32,7 @@ import (
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller"
+	webhookcorev1 "github.com/giantswarm/observability-operator/internal/webhook/v1"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	//+kubebuilder:scaffold:imports
@@ -228,6 +229,13 @@ func main() {
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Dashboard")
 		os.Exit(1)
+	}
+	// nolint:goconst
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = webhookcorev1.SetupAlertmanagerConfigSecretWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Secret")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 
