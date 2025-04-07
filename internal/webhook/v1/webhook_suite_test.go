@@ -53,6 +53,15 @@ var (
 	testEnv   *envtest.Environment
 )
 
+func getEnvOrSkip(env string) string {
+	value := os.Getenv(env)
+	if value == "" {
+		Skip(fmt.Sprintf("%s not exported", env))
+	}
+
+	return value
+}
+
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -61,6 +70,8 @@ func TestAPIs(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+
+	getEnvOrSkip("KUBEBUILDER_ASSETS")
 
 	ctx, cancel = context.WithCancel(context.TODO())
 
@@ -134,6 +145,7 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
+	getEnvOrSkip("KUBEBUILDER_ASSETS")
 	cancel()
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())

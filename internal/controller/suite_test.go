@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -49,6 +50,15 @@ var (
 	k8sClient client.Client
 )
 
+func getEnvOrSkip(env string) string {
+	value := os.Getenv(env)
+	if value == "" {
+		Skip(fmt.Sprintf("%s not exported", env))
+	}
+
+	return value
+}
+
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -57,6 +67,8 @@ func TestControllers(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+
+	getEnvOrSkip("KUBEBUILDER_ASSETS")
 
 	ctx, cancel = context.WithCancel(context.TODO())
 
@@ -92,6 +104,7 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
+	getEnvOrSkip("KUBEBUILDER_ASSETS")
 	cancel()
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
