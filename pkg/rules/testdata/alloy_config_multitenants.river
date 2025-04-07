@@ -51,7 +51,7 @@ alloy:
           tenant_id = "tenant1"
           rule_selector {
               match_labels = {
-                observability.giantswarm.io/tenant = "tenant1"
+                "observability.giantswarm.io/tenant" = "tenant1",
               }
               match_expression {
                 key = "application.giantswarm.io/prometheus-rule-kind"
@@ -65,7 +65,7 @@ alloy:
           tenant_id = "tenant1"
           rule_selector {
               match_labels = {
-                observability.giantswarm.io/tenant = "tenant1"
+                "observability.giantswarm.io/tenant" = "tenant1",
               }
               match_expression {
                 key = "application.giantswarm.io/prometheus-rule-kind"
@@ -80,7 +80,7 @@ alloy:
           tenant_id = "tenant2"
           rule_selector {
               match_labels = {
-                observability.giantswarm.io/tenant = "tenant2"
+                "observability.giantswarm.io/tenant" = "tenant2",
               }
               match_expression {
                 key = "application.giantswarm.io/prometheus-rule-kind"
@@ -94,7 +94,7 @@ alloy:
           tenant_id = "tenant2"
           rule_selector {
               match_labels = {
-                observability.giantswarm.io/tenant = "tenant2"
+                "observability.giantswarm.io/tenant" = "tenant2",
               }
               match_expression {
                 key = "application.giantswarm.io/prometheus-rule-kind"
