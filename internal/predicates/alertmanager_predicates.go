@@ -19,18 +19,6 @@ const (
 	mimirAlertmanagerComponent = "alertmanager"
 )
 
-var AlertmanagerConfigSecretLabelSelector = metav1.LabelSelector{
-	MatchLabels: map[string]string{
-		AlertmanagerConfigSelectorLabelName: AlertmanagerConfigSelectorLabelValue,
-	},
-	MatchExpressions: []metav1.LabelSelectorRequirement{
-		{
-			Key:      tenancy.TenantSelectorLabel,
-			Operator: metav1.LabelSelectorOpExists,
-		},
-	},
-}
-
 // NewAlertmanagerPodPredicate returns a predicate that filters only the Mimir Alertmanager pod.
 func NewAlertmanagerPodPredicate() predicate.Predicate {
 	filter := func(object client.Object) bool {
@@ -65,7 +53,18 @@ func NewAlertmanagerPodPredicate() predicate.Predicate {
 
 // Filter only the Alertmanager configuration secrets
 func NewAlertmanagerConfigSecretsPredicate() (predicate.Predicate, error) {
-	predicate, err := predicate.LabelSelectorPredicate(AlertmanagerConfigSecretLabelSelector)
+	predicate, err := predicate.LabelSelectorPredicate(
+		metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				AlertmanagerConfigSelectorLabelName: AlertmanagerConfigSelectorLabelValue,
+			},
+			MatchExpressions: []metav1.LabelSelectorRequirement{
+				{
+					Key:      tenancy.TenantSelectorLabel,
+					Operator: metav1.LabelSelectorOpExists,
+				},
+			},
+		})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

@@ -19,6 +19,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/prometheus/alertmanager/config"
 	corev1 "k8s.io/api/core/v1"
@@ -44,12 +45,13 @@ func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) (err erro
 		WithValidator(&AlertmanagerConfigSecretCustomValidator{
 			client: mgr.GetClient(),
 		}).
+		WithCustomPath("/validate-alertmanager-config").
 		Complete()
 }
 
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
-// +kubebuilder:webhook:path=/validate--v1-secret,mutating=false,failurePolicy=fail,sideEffects=None,groups="",resources=secrets,verbs=create;update,versions=v1,name=vsecret-v1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-alertmanager-config,mutating=false,failurePolicy=fail,sideEffects=None,groups="",resources=secrets,verbs=create;update,versions=v1,name=vsecret-v1.kb.io,admissionReviewVersions=v1
 
 // SecretCustomValidator struct is responsible for validating the Secret resource
 // when it is created, updated, or deleted.
@@ -70,12 +72,27 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateCreate(ctx context.Con
 	}
 	log.Info("Validation for Secret upon creation", "name", secret.GetName())
 
-	// TODO Validate tenant is in the list of accepted tenants
-
+	if err := v.validateConfiguredTenant(ctx, secret); err != nil {
+		return nil, err
+	}
 	if err := v.validateNoDuplicateTenant(ctx, secret); err != nil {
 		return nil, err
 	}
 	return nil, validateAlertmanagerConfig(ctx, secret)
+}
+
+func (v *AlertmanagerConfigSecretCustomValidator) validateConfiguredTenant(ctx context.Context, secret *corev1.Secret) error {
+	tenants, err := tenancy.ListTenants(ctx, v.client)
+	if err != nil {
+		return fmt.Errorf("failed to list tenants: %w", err)
+	}
+
+	if tenant, ok := secret.Labels[tenancy.TenantSelectorLabel]; !ok {
+		return fmt.Errorf("tenant label is required")
+	} else if !slices.Contains(tenants, tenant) {
+		return fmt.Errorf("tenant %s is not in the list of accepted tenants", tenant)
+	}
+	return nil
 }
 
 // validateNoDuplicateTenant ensures that no other secret with the same tenant label exists.
@@ -98,7 +115,8 @@ func (v *AlertmanagerConfigSecretCustomValidator) validateNoDuplicateTenant(ctx 
 		return fmt.Errorf("failed to list secrets for tenant %s: %w", tenant, err)
 	}
 
-	if len(secretList.Items) > 0 {
+	if len(secretList.Items) > 0 && (secretList.Items[0].Name != secret.Name ||
+		secretList.Items[0].Namespace != secret.Namespace) {
 		return fmt.Errorf("a secret for tenant %s already exists", tenant)
 	}
 	return nil
@@ -112,10 +130,12 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateUpdate(ctx context.Con
 	}
 	log.Info("Validation for Secret upon update", "name", secret.GetName())
 
-	// TODO Validate tenant is in the list of accepted tenants
-
-	// TODO check for duplicates if the secret is being updated with a different tenant
-
+	if err := v.validateConfiguredTenant(ctx, secret); err != nil {
+		return nil, err
+	}
+	if err := v.validateNoDuplicateTenant(ctx, secret); err != nil {
+		return nil, err
+	}
 	return nil, validateAlertmanagerConfig(ctx, secret)
 }
 
@@ -137,7 +157,7 @@ func validateAlertmanagerConfig(ctx context.Context, secret *corev1.Secret) erro
 	if !found {
 		return fmt.Errorf("missing alertmanager.yaml in the secret")
 	}
-	cfg, err := config.Load(string(alertmanagerConfig))
+	_, err := config.Load(string(alertmanagerConfig))
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
