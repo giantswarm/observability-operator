@@ -65,8 +65,6 @@ func main() {
 	flag.BoolVar(&conf.EnableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&conf.WebhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
-		"Path to the directory where the webhook server will store its TLS certificate and key.")
 	flag.BoolVar(&conf.SecureMetrics, "metrics-secure", false,
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&conf.EnableHTTP2, "enable-http2", false,
