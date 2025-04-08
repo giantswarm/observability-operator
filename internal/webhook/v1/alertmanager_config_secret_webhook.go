@@ -142,6 +142,6 @@ func validateAlertmanagerConfig(ctx context.Context, secret *corev1.Secret) erro
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 	// TODO add more validation on the templates directly
-	log.Info("alertmanager config validation successful", "config", cfg)
+	log.Info("alertmanager config validation successful")
 	return nil
 }
