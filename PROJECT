@@ -10,12 +10,11 @@ repo: github.com/giantswarm/observability-operator
 resources:
 - api:
     crdVersion: v1
-    namespaced: true
   controller: true
   domain: giantswarm.io
   group: observability
   kind: GrafanaOrganization
-  path: github.com/giantswarm/observability-operator/api/v1
+  path: github.com/giantswarm/observability-operator/api/v1alpha1
   version: v1alpha1
 - controller: true
   domain: x-k8s.io
@@ -23,6 +22,7 @@ resources:
   kind: Cluster
   version: v1beta1
 - controller: true
+  core: true
   group: core
   kind: ConfigMap
   path: k8s.io/api/core/v1
