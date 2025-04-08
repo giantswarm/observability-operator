@@ -9,8 +9,8 @@ image:
 
 managementCluster:
   baseDomain: domain
-  customer: customer
   clusterIssuer: selfsigned-giantswarm
+  customer: customer
   insecureCA: false
   name: name
   pipeline: pipeline
