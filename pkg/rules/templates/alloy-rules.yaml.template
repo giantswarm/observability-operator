@@ -52,7 +52,7 @@ alloy:
           tenant_id = "{{ . }}"
           rule_selector {
               match_labels = {
-                observability.giantswarm.io/tenant = "{{ . }}"
+                "observability.giantswarm.io/tenant" = "{{ . }}",
               }
               match_expression {
                 key = "application.giantswarm.io/prometheus-rule-kind"
@@ -66,7 +66,7 @@ alloy:
           tenant_id = "{{ . }}"
           rule_selector {
               match_labels = {
-                observability.giantswarm.io/tenant = "{{ . }}"
+                "observability.giantswarm.io/tenant" = "{{ . }}",
               }
               match_expression {
                 key = "application.giantswarm.io/prometheus-rule-kind"
