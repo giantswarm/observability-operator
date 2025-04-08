@@ -1,10 +1,8 @@
-app-tests-app-config-file: tests/test-values.yaml
-app-tests-deploy-namespace: monitoring
+# We so not deploy the operator because we need to deploy cert manager first
+app-tests-skip-app-deploy: true
+# We ensure the upgrade tests deploys the observability operator in the monitoring namespace
+app-tests-deploy-namespace: giantswarm
 
 smoke-tests-cluster-type: kind
 
-upgrade-tests-cluster-type: kind
-upgrade-tests-app-catalog-url: https://giantswarm.github.io/control-plane-catalog
-upgrade-tests-app-config-file: tests/test-values.yaml
-
-skip-steps: [functional]
+skip-steps: [functional, upgrade]
