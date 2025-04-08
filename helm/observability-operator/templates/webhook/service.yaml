@@ -12,4 +12,3 @@ spec:
       targetPort: 9443
   selector:
     {{- include "labels.selector" . | nindent 4 }}
-
