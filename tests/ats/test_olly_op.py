@@ -1,37 +1,66 @@
 import logging
 from typing import List
 
+import os
 import pykube
 import pytest
 
 from pytest_helm_charts.clusters import Cluster
+from pytest_helm_charts.giantswarm_app_platform.app import (
+  AppFactoryFunc,
+  ConfiguredApp
+)
 from pytest_helm_charts.k8s.deployment import wait_for_deployments_to_run
+from pytest_helm_charts.k8s.namespace import ensure_namespace_exists
 
 logger = logging.getLogger(__name__)
 
-namespace_name = "monitoring"
-deployment_name = "observability-operator"
-timeout: int = 560
+timeout: int = 300
 
-@pytest.mark.smoke
-def test_api_working(kube_cluster: Cluster) -> None:
-    """
-    Testing apiserver availability.
-    """
-    assert kube_cluster.kube_client is not None
-    assert len(pykube.Node.objects(kube_cluster.kube_client)) >= 1
+monitoring_namespace = "monitoring"
+giantswarm_namespace = "giantswarm"
+deployment_name = "observability-operator"
 
 @pytest.fixture(scope="module")
-def deployments(kube_cluster: Cluster) -> List[pykube.Deployment]:
-    logger.info("create mandatory secrets for deployment")
+def certmanager(app_factory: AppFactoryFunc) -> ConfiguredApp:
+    """
+    Deploy cert-manager.
+    """
+    app_factory(
+        "cert-manager-app",
+        "3.9.0",
+        catalog_name="giantswarm-catalog",
+        catalog_namespace=giantswarm_namespace,
+        catalog_url="https://giantswarm.github.io/giantswarm-catalog/",
+        namespace=giantswarm_namespace,
+        deployment_namespace="kube-system",
+    )
 
+@pytest.fixture(scope="module")
+def observabilityOperator(kube_cluster: Cluster, app_factory: AppFactoryFunc, certmanager: ConfiguredApp) -> ConfiguredApp:
+    """
+    Deploy observability-operator.
+    """
+    ensure_namespace_exists(kube_cluster.kube_client, monitoring_namespace)
+    app_factory(
+        deployment_name,
+        os.environ["ATS_CHART_VERSION"],
+        catalog_name="control-plane-test-catalog",
+        catalog_namespace=giantswarm_namespace,
+        catalog_url="https://giantswarm.github.io/control-plane-test-catalog",
+        namespace=giantswarm_namespace,
+        deployment_namespace=giantswarm_namespace,
+    )
 
+@pytest.fixture(scope="module")
+def deployments(kube_cluster: Cluster, observabilityOperator: ConfiguredApp) -> List[pykube.Deployment]:
+    logger.info("create mandatory grafana secrets for deployment")
     grafanaSecretObject = {
     "apiVersion": "v1",
     "kind": "Secret",
     "metadata": {
         "name": "grafana",
-        "namespace": "monitoring"
+        "namespace": monitoring_namespace
     },
     "type": "Opaque",
     "data": {
@@ -50,7 +79,7 @@ def deployments(kube_cluster: Cluster) -> List[pykube.Deployment]:
     "kind": "Secret",
     "metadata": {
         "name": "grafana-tls",
-        "namespace": "monitoring"
+        "namespace": monitoring_namespace
     },
     "type": "Opaque",
     "data": {
@@ -67,33 +96,38 @@ def deployments(kube_cluster: Cluster) -> List[pykube.Deployment]:
     deployment_ready = wait_for_deployments_to_run(
         kube_cluster.kube_client,
         [deployment_name],
-        namespace_name,
+        monitoring_namespace,
         timeout,
     )
     logger.info("observability-operator deployment is ready")
 
     return deployment_ready
 
-
 @pytest.fixture(scope="module")
 def pods(kube_cluster: Cluster, deployments: List[pykube.Deployment]) -> List[pykube.Pod]:
     pods = pykube.Pod.objects(kube_cluster.kube_client)
 
     pods = pods.filter(
-        namespace=namespace_name,
+        namespace=monitoring_namespace,
         selector={
-            "app.kubernetes.io/name": "observability-operator",
-            "app.kubernetes.io/instance": "observability-operator",
+            "app.kubernetes.io/name": deployment_name,
+            "app.kubernetes.io/instance": deployment_name,
         },
     )
 
     return pods
 
-# when we start the tests on circleci, we have to wait for pods to be available, hence
-# this additional delay and retries
 @pytest.mark.smoke
 @pytest.mark.upgrade
-@pytest.mark.flaky(reruns=5, reruns_delay=10)
-def test_pods_available(deployments: List[pykube.Deployment]):
+def test_api_working(kube_cluster: Cluster) -> None:
+    """
+    Testing apiserver availability.
+    """
+    assert kube_cluster.kube_client is not None
+    assert len(pykube.Node.objects(kube_cluster.kube_client)) >= 1
+
+@pytest.mark.smoke
+@pytest.mark.upgrade
+def test_pods_available(deployments: List[pykube.Deployment], pods: List[pykube.Pod]) -> None:
     for s in deployments:
         assert int(s.obj["status"]["readyReplicas"]) == int(s.obj["spec"]["replicas"])
