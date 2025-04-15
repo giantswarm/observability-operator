@@ -1,6 +1,0 @@
-global:
-  podSecurityStandards:
-    enforced: true
-monitoring:
-  enabled: true
-  opsgenieApiKey: "opsgenieApiKey"

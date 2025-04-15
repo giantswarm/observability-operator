@@ -1,0 +1,15 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  name: {{ include "resource.default.name" . }}-webhook-cert
+  namespace: {{ include "resource.default.namespace" . }}
+spec:
+  dnsNames:
+  - {{ include "resource.default.name" . }}-webhook.{{ include "resource.default.namespace" . }}.svc
+  - {{ include "resource.default.name" . }}-webhook.{{ include "resource.default.namespace" . }}.svc.cluster.local
+  issuerRef:
+    kind: ClusterIssuer
+    name: {{ .Values.managementCluster.clusterIssuer }}
+  secretName: {{ include "resource.default.name" . }}-webhook-server-cert
