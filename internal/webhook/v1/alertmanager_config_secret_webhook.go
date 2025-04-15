@@ -18,6 +18,7 @@ package v1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -74,54 +75,10 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateCreate(ctx context.Con
 
 	log.Info("Validation for Secret upon creation", "name", secret.GetName())
 
-	if err := v.validateConfiguredTenant(ctx, secret); err != nil {
-		return nil, err
-	}
-	if err := v.validateNoDuplicateTenant(ctx, secret); err != nil {
+	if err := v.validateTenant(ctx, secret); err != nil {
 		return nil, err
 	}
 	return nil, validateAlertmanagerConfig(ctx, secret)
-}
-
-func (v *AlertmanagerConfigSecretCustomValidator) validateConfiguredTenant(ctx context.Context, secret *corev1.Secret) error {
-	tenants, err := tenancy.ListTenants(ctx, v.client)
-	if err != nil {
-		return fmt.Errorf("failed to list tenants: %w", err)
-	}
-
-	if tenant, ok := secret.Labels[tenancy.TenantSelectorLabel]; !ok {
-		return fmt.Errorf("tenant label is required")
-	} else if !slices.Contains(tenants, tenant) {
-		return fmt.Errorf("tenant %s is not in the list of accepted tenants", tenant)
-	}
-	return nil
-}
-
-// validateNoDuplicateTenant ensures that no other secret with the same tenant label exists.
-func (v *AlertmanagerConfigSecretCustomValidator) validateNoDuplicateTenant(ctx context.Context, secret *corev1.Secret) error {
-	tenant, ok := secret.Labels[tenancy.TenantSelectorLabel]
-	if !ok {
-		return fmt.Errorf("tenant label is required")
-	}
-
-	var secretList corev1.SecretList
-	if err := v.client.List(ctx, &secretList, client.InNamespace(""),
-		client.MatchingLabelsSelector{
-			Selector: labels.SelectorFromSet(
-				labels.Set{
-					predicates.AlertmanagerConfigSelectorLabelName: predicates.AlertmanagerConfigSelectorLabelValue,
-					tenancy.TenantSelectorLabel:                    tenant,
-				},
-			),
-		}); err != nil {
-		return fmt.Errorf("failed to list secrets for tenant %s: %w", tenant, err)
-	}
-
-	if len(secretList.Items) > 0 && (secretList.Items[0].Name != secret.Name ||
-		secretList.Items[0].Namespace != secret.Namespace) {
-		return fmt.Errorf("a secret for tenant %s already exists", tenant)
-	}
-	return nil
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Secret.
@@ -133,10 +90,7 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateUpdate(ctx context.Con
 
 	log.Info("Validation for Secret upon update", "name", secret.GetName())
 
-	if err := v.validateConfiguredTenant(ctx, secret); err != nil {
-		return nil, err
-	}
-	if err := v.validateNoDuplicateTenant(ctx, secret); err != nil {
+	if err := v.validateTenant(ctx, secret); err != nil {
 		return nil, err
 	}
 	return nil, validateAlertmanagerConfig(ctx, secret)
@@ -144,15 +98,52 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateUpdate(ctx context.Con
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type Secret.
 func (v *AlertmanagerConfigSecretCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	secret, ok := obj.(*corev1.Secret)
-	if !ok {
-		return nil, fmt.Errorf("expected a Secret object but got %T", obj)
-	}
-
-	log.Info("Validation for Secret upon deletion", "name", secret.GetName())
-
 	// We have nothing to validate on deletion
 	return nil, nil
+}
+
+func (v *AlertmanagerConfigSecretCustomValidator) validateTenant(ctx context.Context, secret *corev1.Secret) error {
+	// Check that the secret has the correct labels.
+	tenant, ok := secret.Labels[tenancy.TenantSelectorLabel]
+	if !ok {
+		return fmt.Errorf("tenant label is required")
+	}
+
+	// Check that the tenant is defined in a Grafana Organization.
+	tenants, err := tenancy.ListTenants(ctx, v.client)
+	if err != nil {
+		return fmt.Errorf("failed to list tenants: %w", err)
+	}
+	if !slices.Contains(tenants, tenant) {
+		return fmt.Errorf("tenant %s is not in the list of accepted tenants", tenant)
+	}
+
+	// Check that there is only one alertmanager config for the tenant.
+	var secretList corev1.SecretList
+	err = v.client.List(ctx, &secretList, client.InNamespace(""),
+		client.MatchingLabelsSelector{
+			Selector: labels.SelectorFromSet(
+				labels.Set{
+					predicates.AlertmanagerConfigSelectorLabelName: predicates.AlertmanagerConfigSelectorLabelValue,
+					tenancy.TenantSelectorLabel:                    tenant,
+				},
+			),
+		})
+	if err != nil {
+		return fmt.Errorf("failed to list secrets for tenant %s: %w", tenant, err)
+	}
+
+	if len(secretList.Items) > 0 {
+		err = nil
+		for _, s := range secretList.Items {
+			if s.Name != secret.Name || s.Namespace != secret.Namespace {
+				err = errors.Join(err, fmt.Errorf("secret %s/%s for tenant %s already exists", s.Name, s.Namespace, tenant))
+			}
+		}
+		return err
+	}
+
+	return nil
 }
 
 func validateAlertmanagerConfig(ctx context.Context, secret *corev1.Secret) error {
