@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Update Silence link in notification-template to point to the new GitOps approach.
 - Add `helm.sh/resource-policy: keep` annotation on the grafana organization CRD to prevent it's deletion.
 
 ## [0.23.2] - 2025-04-07
