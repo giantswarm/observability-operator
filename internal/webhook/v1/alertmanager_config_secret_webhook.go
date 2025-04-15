@@ -58,6 +58,7 @@ func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) (err erro
 //
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
+
 type AlertmanagerConfigSecretCustomValidator struct {
 	client client.Client
 }
@@ -70,6 +71,7 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateCreate(ctx context.Con
 	if !ok {
 		return nil, fmt.Errorf("expected a Secret object but got %T", obj)
 	}
+
 	log.Info("Validation for Secret upon creation", "name", secret.GetName())
 
 	if err := v.validateConfiguredTenant(ctx, secret); err != nil {
@@ -128,6 +130,7 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateUpdate(ctx context.Con
 	if !ok {
 		return nil, fmt.Errorf("expected a Secret object for the newObj but got %T", newObj)
 	}
+
 	log.Info("Validation for Secret upon update", "name", secret.GetName())
 
 	if err := v.validateConfiguredTenant(ctx, secret); err != nil {
@@ -145,6 +148,7 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateDelete(ctx context.Con
 	if !ok {
 		return nil, fmt.Errorf("expected a Secret object but got %T", obj)
 	}
+
 	log.Info("Validation for Secret upon deletion", "name", secret.GetName())
 
 	// We have nothing to validate on deletion
