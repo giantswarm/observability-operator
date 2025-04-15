@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add validation webhook to validate the alertmanager config before it is send to the alertmanager.
+
 ## [0.23.2] - 2025-04-07
 
 ### Fixed
