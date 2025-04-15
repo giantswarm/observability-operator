@@ -123,12 +123,16 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 	}
 
 	data := struct {
+		RulerAPIURLEnvVarName                  string
 		RemoteWriteURLEnvVarName               string
 		RemoteWriteNameEnvVarName              string
 		RemoteWriteBasicAuthUsernameEnvVarName string
 		RemoteWriteBasicAuthPasswordEnvVarName string
 		RemoteWriteTimeout                     string
 		RemoteWriteTLSInsecureSkipVerify       bool
+
+		ClusterName       string
+		IsWorkloadCluster bool
 
 		Tenants         []string
 		DefaultTenantID string
@@ -142,12 +146,16 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		ExternalLabels map[string]string
 	}{
+		RulerAPIURLEnvVarName:                  AlloyRulerAPIURLEnvVarName,
 		RemoteWriteURLEnvVarName:               AlloyRemoteWriteURLEnvVarName,
 		RemoteWriteNameEnvVarName:              AlloyRemoteWriteNameEnvVarName,
 		RemoteWriteBasicAuthUsernameEnvVarName: AlloyRemoteWriteBasicAuthUsernameEnvVarName,
 		RemoteWriteBasicAuthPasswordEnvVarName: AlloyRemoteWriteBasicAuthPasswordEnvVarName,
 		RemoteWriteTimeout:                     commonmonitoring.RemoteWriteTimeout,
 		RemoteWriteTLSInsecureSkipVerify:       a.ManagementCluster.InsecureCA,
+
+		ClusterName:       cluster.Name,
+		IsWorkloadCluster: common.IsWorkloadCluster(cluster, a.ManagementCluster),
 
 		Tenants:         tenants,
 		DefaultTenantID: commonmonitoring.DefaultWriteTenant,

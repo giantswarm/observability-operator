@@ -47,11 +47,15 @@ type ManagementCluster struct {
 	Region string
 }
 
+func IsWorkloadCluster(cluster *clusterv1.Cluster, mc ManagementCluster) bool {
+	return cluster.Name != mc.Name
+}
+
 func GetClusterType(cluster *clusterv1.Cluster, mc ManagementCluster) string {
-	if cluster.Name == mc.Name {
-		return "management_cluster"
+	if IsWorkloadCluster(cluster, mc) {
+		return "workload_cluster"
 	}
-	return "workload_cluster"
+	return "management_cluster"
 }
 
 func GetClusterProvider(cluster *clusterv1.Cluster) (string, error) {

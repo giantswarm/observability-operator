@@ -40,7 +40,8 @@ const (
 	QueueConfigSampleAgeLimit    = "30m"
 
 	RemoteWriteName                = "mimir"
-	RemoteWriteEndpointTemplateURL = "https://mimir.%s/api/v1/push"
+	MimirBaseUrl                   = "https://mimir.%s"
+	RemoteWriteEndpointTemplateURL = MimirBaseUrl + "/api/v1/push"
 	RemoteWriteTimeout             = "60s"
 
 	OrgIDHeader        = "X-Scope-OrgID"

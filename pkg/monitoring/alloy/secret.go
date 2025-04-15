@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	AlloyRulerAPIURLEnvVarName                  = "RULER_API_URL"
 	AlloyRemoteWriteURLEnvVarName               = "REMOTE_WRITE_URL"
 	AlloyRemoteWriteNameEnvVarName              = "REMOTE_WRITE_NAME"
 	AlloyRemoteWriteBasicAuthUsernameEnvVarName = "BASIC_AUTH_USERNAME"
@@ -36,17 +37,20 @@ func init() {
 }
 
 func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string][]byte, error) {
-	url := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointTemplateURL, a.ManagementCluster.BaseDomain)
+	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointTemplateURL, a.ManagementCluster.BaseDomain)
 	password, err := commonmonitoring.GetMimirIngressPassword(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
+	mimirRulerUrl := fmt.Sprintf(commonmonitoring.MimirBaseUrl, a.ManagementCluster.BaseDomain)
+
 	data := []struct {
 		Name  string
 		Value string
 	}{
-		{Name: AlloyRemoteWriteURLEnvVarName, Value: url},
+		{Name: AlloyRulerAPIURLEnvVarName, Value: mimirRulerUrl},
+		{Name: AlloyRemoteWriteURLEnvVarName, Value: remoteWriteUrl},
 		{Name: AlloyRemoteWriteNameEnvVarName, Value: commonmonitoring.RemoteWriteName},
 		{Name: AlloyRemoteWriteBasicAuthUsernameEnvVarName, Value: a.ManagementCluster.Name},
 		{Name: AlloyRemoteWriteBasicAuthPasswordEnvVarName, Value: password},
