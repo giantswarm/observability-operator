@@ -26,7 +26,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 
-	"github.com/giantswarm/observability-operator/internal/controller/predicates"
+	"github.com/giantswarm/observability-operator/internal/predicates"
 )
 
 // DashboardReconciler reconciles a Dashboard object
@@ -108,7 +108,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Named("dashboards").
+		Named("dashboard").
 		For(&v1.ConfigMap{}, builder.WithPredicates(labelSelectorPredicate)).
 		// Watch for grafana pod's status changes
 		Watches(

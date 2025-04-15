@@ -5,27 +5,20 @@ import (
 	"slices"
 
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pkg/errors"
 
-	"github.com/giantswarm/observability-operator/internal/controller/predicates"
+	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/alertmanager"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
-)
-
-const (
-	AlertmanagerConfigSelectorLabelName  = "observability.giantswarm.io/kind"
-	AlertmanagerConfigSelectorLabelValue = "alertmanager-config"
 )
 
 // AlertmanagerReconciler reconciles the Alertmanager secret created by the observability-operator Helm chart
@@ -44,23 +37,10 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
 		alertmanagerService: alertmanager.New(conf),
 	}
 
-	// Filter only the Alertmanager configuration secrets
-	alertmanagerConfigSecretsPredicate, err := predicate.LabelSelectorPredicate(
-		metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				AlertmanagerConfigSelectorLabelName: AlertmanagerConfigSelectorLabelValue,
-			},
-			MatchExpressions: []metav1.LabelSelectorRequirement{
-				{
-					Key:      tenancy.TenantSelectorLabel,
-					Operator: metav1.LabelSelectorOpExists,
-				},
-			},
-		})
+	alertmanagerConfigSecretsPredicate, err := predicates.NewAlertmanagerConfigSecretsPredicate()
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	// Filter only the Mimir Alertmanager pod
 	podPredicate := predicates.NewAlertmanagerPodPredicate()
 
 	// Requeue the Alertmanager secret when the Mimir Alertmanager pod changes
@@ -69,7 +49,9 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
 	// Setup the controller
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("alertmanager").
+		// Reconcile only the Alertmanager secret
 		For(&v1.Secret{}, builder.WithPredicates(alertmanagerConfigSecretsPredicate)).
+		// Watch only the Mimir Alertmanager pod
 		Watches(&v1.Pod{}, p, builder.WithPredicates(podPredicate)).
 		Complete(r)
 }

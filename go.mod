@@ -2,7 +2,7 @@ module github.com/giantswarm/observability-operator
 
 go 1.23.0
 
-toolchain go1.24.1
+toolchain go1.24.2
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -12,13 +12,13 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/go-openapi/runtime v0.28.0
 	github.com/grafana/grafana-openapi-client-go v0.0.0-20250108132429-8d7e1f158f65
-	github.com/onsi/ginkgo/v2 v2.23.3
-	github.com/onsi/gomega v1.36.3
+	github.com/onsi/ginkgo/v2 v2.23.4
+	github.com/onsi/gomega v1.37.0
 	github.com/opsgenie/opsgenie-go-sdk-v2 v1.2.23
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.81.0
 	github.com/prometheus/alertmanager v0.28.1
-	github.com/prometheus/client_golang v1.21.1
+	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common v0.63.0
 	github.com/sirupsen/logrus v1.9.3
 	k8s.io/api v0.32.3
@@ -46,9 +46,9 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/go-cmp v0.7.0
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
+	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
@@ -63,15 +63,15 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.37.0
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/term v0.30.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/term v0.31.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
-	golang.org/x/tools v0.30.0 // indirect
+	golang.org/x/tools v0.31.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
@@ -103,7 +103,6 @@ require (
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
@@ -119,7 +118,8 @@ require (
 	go.opentelemetry.io/otel v1.35.0 // indirect
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
+	go.uber.org/automaxprocs v1.6.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
@@ -128,4 +128,7 @@ require (
 replace (
 	github.com/hashicorp/go-cleanhttp => github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-retryablehttp => github.com/hashicorp/go-retryablehttp v0.7.7
+
+	// Needed to fix CVE CVE-2025-22872 (TODO remove when fixed upstream in github.com/prometheus/common/config)
+	golang.org/x/net v0.37.0 => golang.org/x/net v0.39.0
 )

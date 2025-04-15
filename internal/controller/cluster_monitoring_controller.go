@@ -8,15 +8,18 @@ import (
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
@@ -111,7 +114,32 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("cluster").
 		For(&clusterv1.Cluster{}).
+		// Reconcile all clusters when the grafana organizations have changed to update agents configs with the new list of tenants where metrics are sent to.
+		Watches(&v1alpha1.GrafanaOrganization{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
+
+				var logger = log.FromContext(ctx)
+				var clusters clusterv1.ClusterList
+
+				err := mgr.GetClient().List(ctx, &clusters)
+				if err != nil {
+					logger.Error(err, "failed to list cluster CRs")
+					return []reconcile.Request{}
+				}
+
+				requests := make([]reconcile.Request, 0, len(clusters.Items))
+				for _, cluster := range clusters.Items {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name:      cluster.Name,
+							Namespace: cluster.Namespace,
+						},
+					})
+				}
+				return requests
+			})).
 		Complete(r)
 }
 
@@ -336,6 +364,7 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 			logger.Error(err, "failed to configure mimir")
 			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
 		}
+
 	} else {
 		err := r.tearDown(ctx)
 		if err != nil {

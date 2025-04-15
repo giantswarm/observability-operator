@@ -3,6 +3,7 @@ package controller
 import (
 	"cmp"
 	"context"
+	stderrors "errors"
 	"fmt"
 	"slices"
 
@@ -22,10 +23,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
-	"github.com/giantswarm/observability-operator/internal/controller/predicates"
+	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
+	"github.com/giantswarm/observability-operator/pkg/rules"
 )
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
@@ -33,6 +35,8 @@ type GrafanaOrganizationReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
+	// AlloyRulesService is the service used to configure the alloy-rules instance.
+	AlloyRulesService rules.Service
 }
 
 func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
@@ -41,10 +45,16 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config)
 		return fmt.Errorf("unable to create grafana client: %w", err)
 	}
 
+	alloyRulesService := rules.Service{
+		Client:          mgr.GetClient(),
+		AlloyAppVersion: conf.AlloyAppVersion,
+	}
+
 	r := &GrafanaOrganizationReconciler{
-		Client:     mgr.GetClient(),
-		Scheme:     mgr.GetScheme(),
-		GrafanaAPI: grafanaAPI,
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		GrafanaAPI:        grafanaAPI,
+		AlloyRulesService: alloyRulesService,
 	}
 
 	err = r.SetupWithManager(mgr)
@@ -88,6 +98,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 // SetupWithManager sets up the controller with the Manager.
 func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("grafanaorganization").
 		For(&v1alpha1.GrafanaOrganization{}).
 		// Watch for grafana pod's status changes
 		Watches(
@@ -165,20 +176,25 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	var lastError error
+	var errs []error
 
 	// Update the datasources in the CR's status
 	if err := r.configureDatasources(ctx, grafanaOrganization); err != nil {
-		lastError = err
+		errs = append(errs, err)
 	}
 
 	// Configure Grafana RBAC
 	if err := r.configureGrafanaSSO(ctx); err != nil {
-		lastError = err
+		errs = append(errs, err)
 	}
 
-	if lastError != nil {
-		return ctrl.Result{}, errors.WithStack(lastError)
+	// Configure up the alloy-rules app
+	if err := r.AlloyRulesService.Configure(ctx); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return ctrl.Result{}, errors.WithStack(stderrors.Join(errs...))
 	}
 
 	return ctrl.Result{}, nil
@@ -290,9 +306,20 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		}
 	}
 
-	err := r.configureGrafanaSSO(ctx)
-	if err != nil {
-		return errors.WithStack(err)
+	var errs []error
+
+	// Configure Grafana RBAC
+	if err := r.configureGrafanaSSO(ctx); err != nil {
+		errs = append(errs, err)
+	}
+
+	// Configure up the alloy-rules app
+	if err := r.AlloyRulesService.Configure(ctx); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return errors.WithStack(stderrors.Join(errs...))
 	}
 
 	// Finalizer handling needs to come last.

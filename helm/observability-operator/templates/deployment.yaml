@@ -24,6 +24,7 @@ spec:
         image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ default .Chart.Version .Values.image.tag }}"
         args:
         - --leader-elect
+        - --alloy-rules-app-version={{ .Values.alloy.appVersion }}
         - --management-cluster-base-domain={{ $.Values.managementCluster.baseDomain }}
         - --management-cluster-customer={{ $.Values.managementCluster.customer }}
         - --management-cluster-insecure-ca={{ $.Values.managementCluster.insecureCA }}
