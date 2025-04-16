@@ -50,10 +50,14 @@ alloy:
           address = "http://mimir-ruler.mimir.svc:8080/"
           tenant_id = "tenant1"
           rule_selector {
-              match_labels = {
-                "observability.giantswarm.io/tenant" = "tenant1",
-              }
-              match_expression {
+            // We use a non existing label to make sure this alloy instance does not match with any Prometheus Rules crs
+            // This will make sure that the existing alerts loaded under the alloy namespace are now deleted as they are loaded by another alloy.
+            match_expression {
+              key = "nonexisting"
+              operator = "In"
+              values = ["nonexistant"]
+            }
+            match_expression {
                 key = "application.giantswarm.io/prometheus-rule-kind"
                 operator = "NotIn"
                 values = ["loki"]

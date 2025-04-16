@@ -3,10 +3,10 @@ logging {
   format = "logfmt"
 }
 
-{{- if $.IsWorkloadCluster }}
 {{- range .Tenants }}
 // load rules for tenant {{ . }}
 mimir.rules.kubernetes "{{ . }}" {
+  {{- if $.IsWorkloadCluster }}
   address = env("{{ $.RulerAPIURLEnvVarName }}")
   basic_auth {
     username = env("{{ $.RemoteWriteBasicAuthUsernameEnvVarName }}")
@@ -19,6 +19,9 @@ mimir.rules.kubernetes "{{ . }}" {
         value = "{{ $.ClusterName }}"
     }
   }
+  {{- else }}
+  address = "http://mimir-ruler.mimir.svc:8080/"
+  {{- end }}
   mimir_namespace_prefix = "{{ $.ClusterName }}"
   tenant_id = "{{ . }}"
   rule_selector {
@@ -32,7 +35,6 @@ mimir.rules.kubernetes "{{ . }}" {
       }
   }
 }
-{{- end }}
 {{- end }}
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.

@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add support for loading rules in a tenant in the Mimir Ruler from Workload Clusters.
+- Add support for loading Prometheus Rules in the Mimir Ruler from workload clusters.
+
+### Changed
+
+- Load Prometheus Rules in the Mimir Ruler via Alloy Metrics instead of Alloy Rules on management clusters.
 
 ## [0.24.0] - 2025-04-15
 
