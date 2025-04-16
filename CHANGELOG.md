@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Load Prometheus Rules in the Mimir Ruler via Alloy Metrics instead of Alloy Rules on management clusters.
 
+### Removed
+
+- Remove loading of log-based alerts into the Loki Ruler via Alloy Rules as it is now managed by Alloy Logs.
+
 ## [0.24.0] - 2025-04-15
 
 ### Changed

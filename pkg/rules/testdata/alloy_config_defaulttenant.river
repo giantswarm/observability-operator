@@ -57,25 +57,19 @@ alloy:
               operator = "In"
               values = ["nonexistant"]
             }
-            match_expression {
-                key = "application.giantswarm.io/prometheus-rule-kind"
-                operator = "NotIn"
-                values = ["loki"]
-              }
           }
         }
         loki.rules.kubernetes "giantswarm" {
           address = "http://loki-backend.loki.svc:3100/"
           tenant_id = "giantswarm"
           rule_selector {
-              match_labels = {
-                "observability.giantswarm.io/tenant" = "giantswarm",
-              }
-              match_expression {
-                key = "application.giantswarm.io/prometheus-rule-kind"
-                operator = "In"
-                values = ["loki"]
-              }
+            // We use a non existing label to make sure this alloy instance does not match with any Prometheus Rules crs
+            // This will make sure that the existing alerts loaded under the alloy namespace are now deleted as they are loaded by another alloy.
+            match_expression {
+              key = "nonexisting"
+              operator = "In"
+              values = ["nonexistant"]
+            }
           }
         }
   controller:
