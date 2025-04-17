@@ -131,7 +131,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		RemoteWriteTimeout                     string
 		RemoteWriteTLSInsecureSkipVerify       bool
 
-		ClusterName       string
+		ClusterID         string
 		IsWorkloadCluster bool
 
 		Tenants         []string
@@ -154,7 +154,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		RemoteWriteTimeout:                     commonmonitoring.RemoteWriteTimeout,
 		RemoteWriteTLSInsecureSkipVerify:       a.ManagementCluster.InsecureCA,
 
-		ClusterName:       cluster.Name,
+		ClusterID:         cluster.Name,
 		IsWorkloadCluster: common.IsWorkloadCluster(cluster, a.ManagementCluster),
 
 		Tenants:         tenants,

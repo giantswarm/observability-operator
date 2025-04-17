@@ -96,5 +96,6 @@ func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluste
 	}
 
 	logger.Info("alloy-service - ensured alloy is removed")
+
 	return nil
 }
