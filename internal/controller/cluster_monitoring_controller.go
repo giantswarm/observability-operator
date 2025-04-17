@@ -81,7 +81,6 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 	alloyService := alloy.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
-		PasswordManager:        password.SimpleManager{},
 		ManagementCluster:      conf.ManagementCluster,
 		MonitoringConfig:       conf.Monitoring,
 	}

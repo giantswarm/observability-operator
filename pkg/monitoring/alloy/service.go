@@ -15,7 +15,6 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
-	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
@@ -28,7 +27,6 @@ const (
 type Service struct {
 	client.Client
 	organization.OrganizationRepository
-	PasswordManager password.Manager
 	common.ManagementCluster
 	MonitoringConfig monitoring.Config
 }
