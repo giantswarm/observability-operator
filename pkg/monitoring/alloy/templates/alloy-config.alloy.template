@@ -16,10 +16,10 @@ mimir.rules.kubernetes "{{ . }}" {
     matcher {
         name = "cluster_id"
         match_type = "="
-        value = "{{ $.ClusterName }}"
+        value = "{{ $.ClusterID }}"
     }
   }
-  mimir_namespace_prefix = "{{ $.ClusterName }}"
+  mimir_namespace_prefix = "{{ $.ClusterID }}"
   tenant_id = "{{ . }}"
   rule_selector {
       match_labels = {
