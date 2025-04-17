@@ -282,12 +282,21 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// Cluster specific configuration
 		if r.MonitoringConfig.IsMonitored(cluster) {
+			// Delete PrometheusAgent remote write configuration.
 			err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete prometheus agent remote write config")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
+			// Delete Alloy monitoring configuration.
+			err = r.AlloyService.ReconcileDelete(ctx, cluster)
+			if err != nil {
+				logger.Error(err, "failed to delete alloy monitoring config")
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			}
 		}
+
+		// TODO add deletion of rules in the Mimir ruler on cluster deletion
 
 		// Management cluster specific configuration
 		if cluster.Name == r.ManagementCluster.Name {

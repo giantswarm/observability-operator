@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add support for loading rules in a tenant in the Mimir Ruler from Workload Clusters.
+
 ## [0.24.0] - 2025-04-15
 
 ### Changed
