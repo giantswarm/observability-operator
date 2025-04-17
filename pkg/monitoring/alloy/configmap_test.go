@@ -16,6 +16,8 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
+var managementClusterName = "dummy-cluster"
+
 // dummyOrgRepo implements a minimal OrganizationRepository.
 type dummyOrgRepo struct{}
 
@@ -31,7 +33,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 		goldenPath string
 	}{
 		{
-			name: "TwoTenants",
+			name: "TwoTenantsInWC",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
@@ -44,10 +46,26 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:    []string{"tenant1", "tenant2"},
-			goldenPath: filepath.Join("testdata", "alloy_config_multitenants.river"),
+			goldenPath: filepath.Join("testdata", "alloy_config_multitenants.wc.river"),
 		},
 		{
-			name: "SingleTenant",
+			name: "TwoTenantsInMC",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:    []string{"tenant1", "tenant2"},
+			goldenPath: filepath.Join("testdata", "alloy_config_multitenants.mc.river"),
+		},
+		{
+			name: "SingleTenantInWC",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "single-tenant-cluster",
@@ -60,10 +78,26 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:    []string{"tenant1"},
-			goldenPath: filepath.Join("testdata", "alloy_config_singletenant.river"),
+			goldenPath: filepath.Join("testdata", "alloy_config_singletenant.wc.river"),
 		},
 		{
-			name: "DefaultTenantRendersLegacyConfig",
+			name: "SingleTenantInMC",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:    []string{"tenant1"},
+			goldenPath: filepath.Join("testdata", "alloy_config_singletenant.mc.river"),
+		},
+		{
+			name: "DefaultTenantRendersLegacyConfigInWC",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "default-tenant-cluster",
@@ -76,7 +110,23 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath: filepath.Join("testdata", "alloy_config_defaulttenant.river"),
+			goldenPath: filepath.Join("testdata", "alloy_config_defaulttenant.wc.river"),
+		},
+		{
+			name: "DefaultTenantRendersLegacyConfigInMC",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:    []string{commonmonitoring.DefaultWriteTenant},
+			goldenPath: filepath.Join("testdata", "alloy_config_defaulttenant.mc.river"),
 		},
 	}
 

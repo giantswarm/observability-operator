@@ -39,9 +39,10 @@ const (
 	QueueConfigMaxShards         = 10
 	QueueConfigSampleAgeLimit    = "30m"
 
-	RemoteWriteName                = "mimir"
-	RemoteWriteEndpointTemplateURL = "https://mimir.%s/api/v1/push"
-	RemoteWriteTimeout             = "60s"
+	RemoteWriteName              = "mimir"
+	MimirBaseURLFormat           = "https://mimir.%s"
+	RemoteWriteEndpointURLFormat = MimirBaseURLFormat + "/api/v1/push"
+	RemoteWriteTimeout           = "60s"
 
 	OrgIDHeader        = "X-Scope-OrgID"
 	DefaultWriteTenant = "giantswarm"

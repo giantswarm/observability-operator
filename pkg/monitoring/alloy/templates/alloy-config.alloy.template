@@ -3,8 +3,40 @@ logging {
   format = "logfmt"
 }
 
+{{- if $.IsWorkloadCluster }}
+{{- range .Tenants }}
+// load rules for tenant {{ . }}
+mimir.rules.kubernetes "{{ . }}" {
+  address = env("{{ $.RulerAPIURLEnvVarName }}")
+  basic_auth {
+    username = env("{{ $.RemoteWriteBasicAuthUsernameEnvVarName }}")
+    password = env("{{ $.RemoteWriteBasicAuthPasswordEnvVarName }}")
+  }
+  extra_query_matchers {
+    matcher {
+        name = "cluster_id"
+        match_type = "="
+        value = "{{ $.ClusterID }}"
+    }
+  }
+  mimir_namespace_prefix = "{{ $.ClusterID }}"
+  tenant_id = "{{ . }}"
+  rule_selector {
+      match_labels = {
+        "observability.giantswarm.io/tenant" = "{{ . }}",
+      }
+      match_expression {
+        key = "application.giantswarm.io/prometheus-rule-kind"
+        operator = "NotIn"
+        values = ["loki"]
+      }
+  }
+}
+{{- end }}
+{{- end }}
+
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
-{{ range .Tenants }}
+{{- range .Tenants }}
 // remote write pipeline configuration for tenant {{ . }}
 {{- if eq . $.DefaultTenantID }}
 prometheus.operator.servicemonitors "{{ . }}_legacy" {
