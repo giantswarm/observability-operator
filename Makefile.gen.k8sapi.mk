@@ -35,8 +35,7 @@ all: generate
 
 $(CONTROLLER_GEN):
 	@echo "$(BUILD_COLOR)Building controller-gen$(NO_COLOR)"
-	GOBIN=$(GOBIN_DIR) go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0
-
+	GOBIN=$(GOBIN_DIR) go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest
 .PHONY: generate
 generate:
 	@$(MAKE) generate-deepcopy
