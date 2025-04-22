@@ -49,7 +49,6 @@ func New(conf pkgconfig.Config) Service {
 }
 
 func ExtractAlertmanagerConfig(ctx context.Context, secret *v1.Secret) ([]byte, error) {
-	logger := log.FromContext(ctx)
 	// Check that the secret contains an "alertmanager.yaml" file.
 	alertmanagerConfig, found := secret.Data[alertmanagerConfigKey]
 	if !found {
@@ -61,7 +60,6 @@ func ExtractAlertmanagerConfig(ctx context.Context, secret *v1.Secret) ([]byte, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
-	logger.Info("alertmanager config validation successful")
 	return alertmanagerConfig, nil
 }
 
