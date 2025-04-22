@@ -51,6 +51,7 @@ func (s Service) deleteConfigMap(ctx context.Context) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      alloyRulesConfigMapName,
 			Namespace: alloyRulesAppNamespace,
+			Labels:    labels.Common,
 		},
 	}
 
