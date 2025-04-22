@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/prometheus/alertmanager/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/giantswarm/observability-operator/internal/predicates"
+	"github.com/giantswarm/observability-operator/pkg/alertmanager"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 )
 
@@ -146,16 +146,10 @@ func (v *AlertmanagerConfigSecretCustomValidator) validateTenant(ctx context.Con
 }
 
 func validateAlertmanagerConfig(ctx context.Context, secret *corev1.Secret) error {
-	// Check that the secret contains an "alertmanager.yaml" file.
-	alertmanagerConfig, found := secret.Data["alertmanager.yaml"]
-	if !found {
-		return fmt.Errorf("missing alertmanager.yaml in the secret")
-	}
-	_, err := config.Load(string(alertmanagerConfig))
+	_, err := alertmanager.ExtractAlertmanagerConfig(ctx, secret)
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
-	// TODO add more validation on the templates directly
 	log.Info("alertmanager config validation successful")
 	return nil
 }
