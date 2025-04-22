@@ -21,20 +21,19 @@ import (
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
-	// TODO (user): Add any additional imports if needed
 )
 
 var _ = Describe("Secret Webhook", func() {
 	var (
 		obj       *corev1.Secret
 		oldObj    *corev1.Secret
-		validator SecretCustomValidator
+		validator AlertmanagerConfigSecretCustomValidator
 	)
 
 	BeforeEach(func() {
 		obj = &corev1.Secret{}
 		oldObj = &corev1.Secret{}
-		validator = SecretCustomValidator{}
+		validator = AlertmanagerConfigSecretCustomValidator{}
 		Expect(validator).NotTo(BeNil(), "Expected validator to be initialized")
 		Expect(oldObj).NotTo(BeNil(), "Expected oldObj to be initialized")
 		Expect(obj).NotTo(BeNil(), "Expected obj to be initialized")
