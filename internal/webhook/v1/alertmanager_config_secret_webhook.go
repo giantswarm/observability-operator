@@ -134,7 +134,6 @@ func (v *AlertmanagerConfigSecretCustomValidator) validateTenant(ctx context.Con
 	}
 
 	if len(secretList.Items) > 0 {
-		err = nil
 		for _, s := range secretList.Items {
 			if s.Name != secret.Name || s.Namespace != secret.Namespace {
 				err = errors.Join(err, fmt.Errorf("tenant %q already exists in secret %s/%s", tenant, s.Name, s.Namespace))
