@@ -142,7 +142,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			name: "TwoTenantsWithOldBundleVersionInMC",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
+					Name:      managementClusterName,
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
@@ -152,7 +152,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.170.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.170.mc.river"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
 		},
 		{

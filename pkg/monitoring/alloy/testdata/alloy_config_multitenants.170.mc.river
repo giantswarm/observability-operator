@@ -68,8 +68,8 @@ prometheus.remote_write "tenant1" {
     truncate_frequency = "1m0s"
   }
   external_labels = {
-    "cluster_id" = "test-cluster",
-    "cluster_type" = "workload_cluster",
+    "cluster_id" = "dummy-cluster",
+    "cluster_type" = "management_cluster",
     "customer" = "dummy-customer",
     "installation" = "dummy-cluster",
     "organization" = "dummy-org",
@@ -145,8 +145,8 @@ prometheus.remote_write "tenant2" {
     truncate_frequency = "1m0s"
   }
   external_labels = {
-    "cluster_id" = "test-cluster",
-    "cluster_type" = "workload_cluster",
+    "cluster_id" = "dummy-cluster",
+    "cluster_type" = "management_cluster",
     "customer" = "dummy-customer",
     "installation" = "dummy-cluster",
     "organization" = "dummy-org",
