@@ -66,6 +66,8 @@ func (s Service) deleteConfigMap(ctx context.Context) error {
 func (s Service) deleteApp(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
+        labels := maps.Clone(labels.Common)
+	labels["app-operator.giantswarm.io/version"] = "0.0.0"
 	app := &appv1.App{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      alloyRulesAppName,
