@@ -56,7 +56,7 @@ func (s Service) deleteConfigMap(ctx context.Context) error {
 
 	err := s.Client.Delete(ctx, configmap)
 	if client.IgnoreNotFound(err) != nil {
-		logger.Error(err, "failed to delete configmap %s", alloyRulesConfigMapName)
+		logger.Error(err, "failed to delete configmap", "configmap", alloyRulesConfigMapName)
 		return errors.WithStack(err)
 	}
 	return nil
@@ -74,7 +74,7 @@ func (s Service) deleteApp(ctx context.Context) error {
 
 	err := s.Client.Delete(ctx, app)
 	if client.IgnoreNotFound(err) != nil {
-		logger.Error(err, "failed to delete app %s", alloyRulesAppName)
+		logger.Error(err, "failed to delete app", "app", alloyRulesAppName)
 		return errors.WithStack(err)
 	}
 
