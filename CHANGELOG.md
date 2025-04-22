@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add validation webhook to validate the alertmanager config before it is send to the alertmanager.
 - Add support for loading Prometheus Rules in the Mimir Ruler from workload clusters.
 
 ### Changed

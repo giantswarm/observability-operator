@@ -48,23 +48,40 @@ func New(conf pkgconfig.Config) Service {
 	return service
 }
 
+func ExtractAlertmanagerConfig(ctx context.Context, secret *v1.Secret) ([]byte, error) {
+	logger := log.FromContext(ctx)
+	// Check that the secret contains an "alertmanager.yaml" file.
+	alertmanagerConfig, found := secret.Data[alertmanagerConfigKey]
+	if !found {
+		return nil, fmt.Errorf("missing %s in the secret", alertmanagerConfig)
+	}
+	// Validate Alertmanager configuration
+	// The returned config is not used, as transforming it via String() would produce an invalid configuration with all secrets replaced with <redacted>.
+	_, err := config.Load(string(alertmanagerConfig))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+	logger.Info("alertmanager config validation successful")
+	return alertmanagerConfig, nil
+}
+
 func (s Service) Configure(ctx context.Context, secret *v1.Secret, tenantID string) error {
 	logger := log.FromContext(ctx)
 
-	logger.Info("Alertmanager: configuring")
-
+	logger.Info("configuring alertmanager")
 	if secret == nil {
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to get secret"))
+		return errors.WithStack(fmt.Errorf("failed to get secret"))
 	}
 
-	// Retrieve Alertmanager configuration from secret
-	alertmanagerConfigContent, ok := secret.Data[alertmanagerConfigKey]
-	if !ok {
-		return errors.WithStack(fmt.Errorf("alertmanager: config not found"))
+	// Retrieve and Validate alertmanager configuration from secret
+	alertmanagerConfig, err := ExtractAlertmanagerConfig(ctx, secret)
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	// Retrieve all alertmanager templates from secret
 	templates := make(map[string]string)
+	// TODO Validate templates (and add it in the validating webhook)
 	for key, value := range secret.Data {
 		if strings.HasSuffix(key, templatesSuffix) {
 			// Template key/name should not be a path otherwise the request will fail with:
@@ -74,12 +91,12 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret, tenantID stri
 		}
 	}
 
-	err := s.configure(ctx, alertmanagerConfigContent, templates, tenantID)
+	err = s.configure(ctx, alertmanagerConfig, templates, tenantID)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to configure: %w", err))
+		return errors.WithStack(fmt.Errorf("failed to configure alertmanager: %w", err))
 	}
 
-	logger.Info("Alertmanager: configured")
+	logger.Info("configured alertmanager")
 	return nil
 }
 
@@ -88,13 +105,6 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret, tenantID stri
 // https://grafana.com/docs/mimir/latest/references/http-api/#set-alertmanager-configuration
 func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
 	logger := log.FromContext(ctx)
-
-	// Validate Alertmanager configuration
-	// The returned config is not used, as transforming it via String() would produce an invalid configuration with all secrets replaced with <redacted>.
-	_, err := config.Load(string(alertmanagerConfigContent))
-	if err != nil {
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to load configuration: %w", err))
-	}
 
 	// Prepare request for Alertmanager API
 	requestData := configRequest{
