@@ -115,7 +115,7 @@ func (v *AlertmanagerConfigSecretCustomValidator) validateTenant(ctx context.Con
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}
 	if !slices.Contains(tenants, tenant) {
-		return fmt.Errorf("tenant %s is not in the list of accepted tenants", tenant)
+		return fmt.Errorf("tenant %q is not in the list of accepted tenants defined in GrafanaOrganizations", tenant)
 	}
 
 	// Check that there is only one alertmanager config for the tenant.
