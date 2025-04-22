@@ -106,7 +106,7 @@ func (v *AlertmanagerConfigSecretCustomValidator) validateTenant(ctx context.Con
 	// Check that the secret has the correct labels.
 	tenant, ok := secret.Labels[tenancy.TenantSelectorLabel]
 	if !ok {
-		return fmt.Errorf("tenant label is required")
+		return fmt.Errorf("%s label is required", tenancy.TenantSelectorLabel)
 	}
 
 	// Check that the tenant is defined in a Grafana Organization.
