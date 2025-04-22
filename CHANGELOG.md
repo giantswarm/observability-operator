@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add validation webhook to validate the alertmanager config before it is send to the alertmanager.
+
+### Removed
+
+- Clean up alloy-rules app and configmap because rules are loaded by alloy-logs and alloy-metrics.
+
 ## [0.25.0] - 2025-04-22
 
 ### Added
 
-- Add validation webhook to validate the alertmanager config before it is send to the alertmanager.
 - Add support for loading Prometheus Rules in the Mimir Ruler from workload clusters.
 
 ### Changed
@@ -21,10 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Remove loading of Prometheus Rules for logs into the Loki Ruler via Alloy Rules as it is now managed by Alloy Logs.
-
-### Removed
-
-- Clean up alloy-rules app and configmap because rules are loaded by alloy-logs and alloy-metrics.
 
 ## [0.24.0] - 2025-04-15
 
