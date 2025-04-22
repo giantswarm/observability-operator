@@ -3,14 +3,16 @@ package rules
 import (
 	"context"
 	_ "embed"
+	"maps"
 
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/pkg/errors"
+	"github.com/giantswarm/observability-operator/pkg/common/labels"
 )
 
 const (
@@ -66,13 +68,13 @@ func (s Service) deleteConfigMap(ctx context.Context) error {
 func (s Service) deleteApp(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
-        labels := maps.Clone(labels.Common)
+	labels := maps.Clone(labels.Common)
 	labels["app-operator.giantswarm.io/version"] = "0.0.0"
 	app := &appv1.App{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      alloyRulesAppName,
 			Namespace: alloyRulesAppNamespace,
-			Labels:  labels,
+			Labels:    labels,
 		},
 	}
 
