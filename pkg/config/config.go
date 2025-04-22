@@ -3,8 +3,6 @@ package config
 import (
 	"net/url"
 
-	"github.com/blang/semver"
-
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
@@ -24,8 +22,6 @@ type Config struct {
 	Monitoring monitoring.Config
 
 	Environment Environment
-
-	AlloyAppVersion semver.Version
 }
 
 type Environment struct {

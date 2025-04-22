@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove loading of Prometheus Rules for logs into the Loki Ruler via Alloy Rules as it is now managed by Alloy Logs.
 
+### Removed
+
+- Clean up alloy-rules app and configmap because rules are loaded by alloy-logs and alloy-metrics.
+
 ## [0.24.0] - 2025-04-15
 
 ### Changed
