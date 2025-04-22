@@ -1,6 +1,6 @@
 module github.com/giantswarm/observability-operator
 
-go 1.23.0
+go 1.24
 
 toolchain go1.24.2
 
@@ -16,7 +16,7 @@ require (
 	github.com/onsi/gomega v1.37.0
 	github.com/opsgenie/opsgenie-go-sdk-v2 v1.2.23
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.81.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.0
 	github.com/prometheus/alertmanager v0.28.1
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common v0.63.0
@@ -65,7 +65,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.37.0
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/term v0.31.0 // indirect
@@ -81,7 +81,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	k8s.io/utils v0.0.0-20250321185631-1f6e0b77f77e
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.6.0 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 )
 
 require (
@@ -91,7 +91,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go v1.55.6 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
-	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.8.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/analysis v0.23.0 // indirect
 	github.com/go-openapi/errors v0.22.1 // indirect
