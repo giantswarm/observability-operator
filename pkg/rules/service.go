@@ -72,6 +72,7 @@ func (s Service) deleteApp(ctx context.Context) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      alloyRulesAppName,
 			Namespace: alloyRulesAppNamespace,
+			Labels:  labels,
 		},
 	}
 
