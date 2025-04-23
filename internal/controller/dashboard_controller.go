@@ -80,7 +80,7 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	defer logger.Info("Finished reconciling Grafana Dashboard Configmaps")
 
 	dashboard := &v1.ConfigMap{}
-	err := r.Client.Get(ctx, req.NamespacedName, dashboard)
+	err := r.Get(ctx, req.NamespacedName, dashboard)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
