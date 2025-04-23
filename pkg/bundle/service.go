@@ -126,7 +126,7 @@ func (s BundleConfigurationService) createOrUpdateObservabilityBundleConfigMap(
 	}
 
 	if !reflect.DeepEqual(current.Data, desired.Data) ||
-		!reflect.DeepEqual(current.ObjectMeta.Labels, desired.ObjectMeta.Labels) {
+		!reflect.DeepEqual(current.Labels, desired.Labels) {
 		err := s.client.Update(ctx, &desired)
 		if err != nil {
 			return errors.WithStack(err)

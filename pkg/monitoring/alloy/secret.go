@@ -37,13 +37,13 @@ func init() {
 }
 
 func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string][]byte, error) {
-	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, a.ManagementCluster.BaseDomain)
+	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, a.BaseDomain)
 	password, err := commonmonitoring.GetMimirIngressPassword(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	mimirRulerUrl := fmt.Sprintf(commonmonitoring.MimirBaseURLFormat, a.ManagementCluster.BaseDomain)
+	mimirRulerUrl := fmt.Sprintf(commonmonitoring.MimirBaseURLFormat, a.BaseDomain)
 
 	data := []struct {
 		Name  string
@@ -52,7 +52,7 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		{Name: AlloyRulerAPIURLEnvVarName, Value: mimirRulerUrl},
 		{Name: AlloyRemoteWriteURLEnvVarName, Value: remoteWriteUrl},
 		{Name: AlloyRemoteWriteNameEnvVarName, Value: commonmonitoring.RemoteWriteName},
-		{Name: AlloyRemoteWriteBasicAuthUsernameEnvVarName, Value: a.ManagementCluster.Name},
+		{Name: AlloyRemoteWriteBasicAuthUsernameEnvVarName, Value: a.Name},
 		{Name: AlloyRemoteWriteBasicAuthPasswordEnvVarName, Value: password},
 	}
 
