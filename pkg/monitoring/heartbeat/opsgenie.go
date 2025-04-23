@@ -40,15 +40,15 @@ func NewOpsgenieHeartbeatRepository(apiKey string, mc common.ManagementCluster) 
 func (r OpsgenieHeartbeatRepository) makeHeartbeat() *heartbeat.Heartbeat {
 	tags := []string{
 		"team: atlas",
-		fmt.Sprintf("installation: %s", r.ManagementCluster.Name),
+		fmt.Sprintf("installation: %s", r.Name),
 		"managed-by: observability-operator",
-		fmt.Sprintf("pipeline: %s", r.ManagementCluster.Pipeline),
+		fmt.Sprintf("pipeline: %s", r.Pipeline),
 	}
 	// Tags need to be sorted alphabetically to avoid unnecessary heartbeat updates
 	sort.Strings(tags)
 
 	return &heartbeat.Heartbeat{
-		Name:         r.ManagementCluster.Name,
+		Name:         r.Name,
 		Description:  "📗 Runbook: https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/heartbeat-expired/",
 		Interval:     60,
 		IntervalUnit: string(heartbeat.Minutes),
@@ -59,7 +59,7 @@ func (r OpsgenieHeartbeatRepository) makeHeartbeat() *heartbeat.Heartbeat {
 		},
 		AlertTags:     tags,
 		AlertPriority: "P3",
-		AlertMessage:  fmt.Sprintf("Heartbeat [%s] is expired.", r.ManagementCluster.Name),
+		AlertMessage:  fmt.Sprintf("Heartbeat [%s] is expired.", r.Name),
 	}
 }
 
@@ -71,7 +71,7 @@ func (r *OpsgenieHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 	// By default, we consider the heartbeat exists
 	var heartbeatExists = true
 	logger.Info("checking if heartbeat is already configured")
-	getResult, err := r.Client.Get(ctx, hb.Name)
+	getResult, err := r.Get(ctx, hb.Name)
 	if err != nil {
 		apiErr, ok := err.(*client.ApiError)
 		// If the error is not a 404, we return it
@@ -116,7 +116,7 @@ func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("checking if heartbeat exists")
-	_, err := r.Client.Get(ctx, r.ManagementCluster.Name)
+	_, err := r.Get(ctx, r.Name)
 	if err != nil {
 		apiErr, ok := err.(*client.ApiError)
 		if ok && apiErr.StatusCode == http.StatusNotFound {
@@ -129,14 +129,14 @@ func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
 
 	// The final ping to the heartbeat cleans up any opened heartbeat alerts for the cluster being deleted.
 	logger.Info("triggering final heartbeat ping")
-	_, err = r.Client.Ping(ctx, r.ManagementCluster.Name)
+	_, err = r.Ping(ctx, r.Name)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	logger.Info("triggered final heartbeat ping")
 
 	logger.Info("deleting heartbeat")
-	_, err = r.Client.Delete(ctx, r.ManagementCluster.Name)
+	_, err = r.Client.Delete(ctx, r.Name)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -157,13 +157,13 @@ func (r *OpsgenieHeartbeatRepository) createHeartbeat(ctx context.Context, h *he
 		AlertTag:      h.AlertTags,
 		AlertPriority: h.AlertPriority,
 	}
-	_, err := r.Client.Add(ctx, req)
+	_, err := r.Add(ctx, req)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	// We ping the heartbeat to active it and make sure it pages.
-	_, err = r.Client.Ping(ctx, h.Name)
+	_, err = r.Ping(ctx, h.Name)
 	if err != nil {
 		return errors.WithStack(err)
 	}

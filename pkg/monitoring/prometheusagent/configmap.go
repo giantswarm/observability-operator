@@ -20,7 +20,7 @@ import (
 func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 	cluster *clusterv1.Cluster, logger logr.Logger, currentShards int) (*corev1.ConfigMap, error) {
 
-	organization, err := pas.OrganizationRepository.Read(ctx, cluster)
+	organization, err := pas.Read(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to get cluster organization")
 		return nil, errors.WithStack(err)
@@ -35,12 +35,12 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 	externalLabels := map[string]string{
 		"cluster_id":       cluster.Name,
 		"cluster_type":     common.GetClusterType(cluster, pas.ManagementCluster),
-		"customer":         pas.ManagementCluster.Customer,
-		"installation":     pas.ManagementCluster.Name,
+		"customer":         pas.Customer,
+		"installation":     pas.Name,
 		"organization":     organization,
-		"pipeline":         pas.ManagementCluster.Pipeline,
+		"pipeline":         pas.Pipeline,
 		"provider":         provider,
-		"region":           pas.ManagementCluster.Region,
+		"region":           pas.Region,
 		"service_priority": commonmonitoring.GetServicePriority(cluster),
 	}
 

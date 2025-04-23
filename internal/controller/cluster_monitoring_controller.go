@@ -40,18 +40,18 @@ var (
 // ClusterMonitoringReconciler reconciles a Cluster object
 type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
-	client.Client
-	common.ManagementCluster
+	Client            client.Client
+	ManagementCluster common.ManagementCluster
 	// PrometheusAgentService is the service for managing PrometheusAgent resources.
-	prometheusagent.PrometheusAgentService
+	PrometheusAgentService prometheusagent.PrometheusAgentService
 	// AlloyService is the service which manages Alloy monitoring agent configuration.
 	AlloyService alloy.Service
 	// HeartbeatRepository is the repository for managing heartbeats.
-	heartbeat.HeartbeatRepository
+	HeartbeatRepository heartbeat.HeartbeatRepository
 	// MimirService is the service for managing mimir configuration.
-	mimir.MimirService
+	MimirService mimir.MimirService
 	// BundleConfigurationService is the service for configuring the observability bundle.
-	*bundle.BundleConfigurationService
+	BundleConfigurationService *bundle.BundleConfigurationService
 	// MonitoringConfig is the configuration for the monitoring package.
 	MonitoringConfig monitoring.Config
 }
@@ -179,7 +179,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	// Handle deletion reconciliation loop.
-	if !cluster.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !cluster.DeletionTimestamp.IsZero() {
 		logger.Info("handling deletion for cluster")
 		return r.reconcileDelete(ctx, cluster)
 	}

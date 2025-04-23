@@ -200,7 +200,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 
 			if os.Getenv("UPDATE_GOLDEN_FILES") == "true" {
 				t.Logf("Environment variable UPDATE_GOLDEN_FILES=true detected, updating golden files")
-				if err := os.MkdirAll(filepath.Dir(tt.goldenPath), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Dir(tt.goldenPath), 0750); err != nil {
 					t.Fatalf("failed to create golden directory: %v", err)
 				}
 				//nolint:gosec
