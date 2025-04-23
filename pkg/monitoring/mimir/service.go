@@ -60,7 +60,7 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 	}
 
 	current := &corev1.Secret{}
-	err := ms.Client.Get(ctx, objectKey, current)
+	err := ms.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		// First all secrets using the password from the mimirApiKey secret are deleted
 		// to ensure that they won't use an outdated password.
@@ -72,7 +72,7 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 		}
 
 		clusterList := &clusterv1.ClusterList{}
-		err = ms.Client.List(ctx, clusterList)
+		err = ms.List(ctx, clusterList)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -96,7 +96,7 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 		secret := secret.GenerateGenericSecret(
 			mimirApiKey, mimirNamespace, "credentials", password)
 
-		err = ms.Client.Create(ctx, secret)
+		err = ms.Create(ctx, secret)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -118,7 +118,7 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 	}
 
 	current := &corev1.Secret{}
-	err := ms.Client.Get(ctx, objectKey, current)
+	err := ms.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		logger.Info("building ingress secret")
 
@@ -127,14 +127,14 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 			return errors.WithStack(err)
 		}
 
-		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(ms.ManagementCluster.Name, password)
+		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(ms.Name, password)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
 		secret := secret.GenerateGenericSecret(ingressAuthSecretName, mimirNamespace, "auth", htpasswd)
 
-		err = ms.Client.Create(ctx, secret)
+		err = ms.Create(ctx, secret)
 		if err != nil {
 			return errors.WithStack(err)
 		}
