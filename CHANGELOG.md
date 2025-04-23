@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Clean up alloy-rules app and configmap because rules are loaded by alloy-logs and alloy-metrics.
+
+## [0.26.0] - 2025-04-23
+
 ### Added
 
 - Add validation webhook to validate the alertmanager config before it is send to the alertmanager.
 
-### Removed
+### Fixed
 
-- Clean up alloy-rules app and configmap because rules are loaded by alloy-logs and alloy-metrics.
+- Ensure support for loading Prometheus Rules in the Mimir Ruler from workload clusters is only enabled for observability-bundle version 1.9.0 and above (extra query matchers have been added in alloy 1.5.0).
 
 ## [0.25.0] - 2025-04-22
 
@@ -439,7 +445,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.26.0...HEAD
+[0.26.0]: https://github.com/giantswarm/observability-operator/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/giantswarm/observability-operator/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/giantswarm/observability-operator/compare/v0.23.2...v0.24.0
 [0.23.2]: https://github.com/giantswarm/observability-operator/compare/v0.23.1...v0.23.2

@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
@@ -34,7 +34,8 @@ var (
 	alloyMonitoringConfig         string
 	alloyMonitoringConfigTemplate *template.Template
 
-	versionSupportingVPA = semver.MustParse("1.7.0")
+	versionSupportingVPA                = semver.MustParse("1.7.0")
+	versionSupportingExtraQueryMatchers = semver.MustParse("1.9.0")
 )
 
 func init() {
@@ -75,7 +76,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	shardingStrategy := a.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
 	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
-	alloyConfig, err := a.generateAlloyConfig(ctx, cluster, tenants)
+	alloyConfig, err := a.generateAlloyConfig(ctx, cluster, tenants, observabilityBundleVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +110,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	return configMapData, nil
 }
 
-func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster, tenants []string) (string, error) {
+func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version) (string, error) {
 	var values bytes.Buffer
 
 	organization, err := a.OrganizationRepository.Read(ctx, cluster)
@@ -145,6 +146,8 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		WALTruncateFrequency string
 
 		ExternalLabels map[string]string
+
+		IsSupportingExtraQueryMatchers bool
 	}{
 		RulerAPIURLEnvVarName:                  AlloyRulerAPIURLEnvVarName,
 		RemoteWriteURLEnvVarName:               AlloyRemoteWriteURLEnvVarName,
@@ -154,8 +157,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		RemoteWriteTimeout:                     commonmonitoring.RemoteWriteTimeout,
 		RemoteWriteTLSInsecureSkipVerify:       a.ManagementCluster.InsecureCA,
 
-		ClusterID:         cluster.Name,
-		IsWorkloadCluster: common.IsWorkloadCluster(cluster, a.ManagementCluster),
+		ClusterID: cluster.Name,
 
 		Tenants:         tenants,
 		DefaultTenantID: commonmonitoring.DefaultWriteTenant,
@@ -178,6 +180,9 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 			"region":           a.ManagementCluster.Region,
 			"service_priority": commonmonitoring.GetServicePriority(cluster),
 		},
+
+		IsWorkloadCluster:              common.IsWorkloadCluster(cluster, a.ManagementCluster),
+		IsSupportingExtraQueryMatchers: observabilityBundleVersion.GE(versionSupportingExtraQueryMatchers),
 	}
 
 	err = alloyConfigTemplate.Execute(&values, data)
