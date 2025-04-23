@@ -80,7 +80,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	defer logger.Info("Finished reconciling Grafana Organization")
 
 	grafanaOrganization := &v1alpha1.GrafanaOrganization{}
-	err := r.Client.Get(ctx, req.NamespacedName, grafanaOrganization)
+	err := r.Get(ctx, req.NamespacedName, grafanaOrganization)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
@@ -344,7 +344,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context)
 	logger := log.FromContext(ctx)
 
 	organizationList := v1alpha1.GrafanaOrganizationList{}
-	err := r.Client.List(ctx, &organizationList)
+	err := r.List(ctx, &organizationList)
 	if err != nil {
 		logger.Error(err, "failed to list grafana organizations")
 		return errors.WithStack(err)

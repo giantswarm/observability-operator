@@ -113,7 +113,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version) (string, error) {
 	var values bytes.Buffer
 
-	organization, err := a.OrganizationRepository.Read(ctx, cluster)
+	organization, err := a.Read(ctx, cluster)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -155,7 +155,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		RemoteWriteBasicAuthUsernameEnvVarName: AlloyRemoteWriteBasicAuthUsernameEnvVarName,
 		RemoteWriteBasicAuthPasswordEnvVarName: AlloyRemoteWriteBasicAuthPasswordEnvVarName,
 		RemoteWriteTimeout:                     commonmonitoring.RemoteWriteTimeout,
-		RemoteWriteTLSInsecureSkipVerify:       a.ManagementCluster.InsecureCA,
+		RemoteWriteTLSInsecureSkipVerify:       a.InsecureCA,
 
 		ClusterID: cluster.Name,
 
@@ -172,12 +172,12 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		ExternalLabels: map[string]string{
 			"cluster_id":       cluster.Name,
 			"cluster_type":     common.GetClusterType(cluster, a.ManagementCluster),
-			"customer":         a.ManagementCluster.Customer,
-			"installation":     a.ManagementCluster.Name,
+			"customer":         a.Customer,
+			"installation":     a.Name,
 			"organization":     organization,
-			"pipeline":         a.ManagementCluster.Pipeline,
+			"pipeline":         a.Pipeline,
 			"provider":         provider,
-			"region":           a.ManagementCluster.Region,
+			"region":           a.Region,
 			"service_priority": commonmonitoring.GetServicePriority(cluster),
 		},
 

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Clean up alloy-rules app and configmap because rules are loaded by alloy-logs and alloy-metrics.
 
+### Fixed
+
+- Fix golangci-lint v2 problems.
+
 ## [0.26.0] - 2025-04-23
 
 ### Added

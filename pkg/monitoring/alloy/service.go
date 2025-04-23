@@ -84,13 +84,13 @@ func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluste
 	logger.Info("alloy-service - ensuring alloy is removed")
 
 	configmap := ConfigMap(cluster)
-	err := a.Client.Delete(ctx, configmap)
+	err := a.Delete(ctx, configmap)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
 
 	secret := Secret(cluster)
-	err = a.Client.Delete(ctx, secret)
+	err = a.Delete(ctx, secret)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
