@@ -40,18 +40,18 @@ var (
 // ClusterMonitoringReconciler reconciles a Cluster object
 type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
-	client.Client
-	common.ManagementCluster
+	Client            client.Client
+	ManagementCluster common.ManagementCluster
 	// PrometheusAgentService is the service for managing PrometheusAgent resources.
-	prometheusagent.PrometheusAgentService
+	PrometheusAgentService prometheusagent.PrometheusAgentService
 	// AlloyService is the service which manages Alloy monitoring agent configuration.
 	AlloyService alloy.Service
 	// HeartbeatRepository is the repository for managing heartbeats.
-	heartbeat.HeartbeatRepository
+	HeartbeatRepository heartbeat.HeartbeatRepository
 	// MimirService is the service for managing mimir configuration.
-	mimir.MimirService
+	MimirService mimir.MimirService
 	// BundleConfigurationService is the service for configuring the observability bundle.
-	*bundle.BundleConfigurationService
+	BundleConfigurationService *bundle.BundleConfigurationService
 	// MonitoringConfig is the configuration for the monitoring package.
 	MonitoringConfig monitoring.Config
 }
@@ -154,7 +154,7 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	// Fetch the Cluster instance.
 	cluster := &clusterv1.Cluster{}
-	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
+	if err := r.Client.Get(ctx, req.NamespacedName, cluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
@@ -167,7 +167,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Linting is disabled for the following line as otherwise it fails with the following error:
 	// "should not use built-in type string as key for value"
-	logger := log.FromContext(ctx).WithValues("installation", r.Name) // nolint
+	logger := log.FromContext(ctx).WithValues("installation", r.ManagementCluster.Name) // nolint
 	ctx = log.IntoContext(ctx, logger)
 
 	if !r.MonitoringConfig.Enabled {
@@ -201,7 +201,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Management cluster specific configuration
-	if cluster.Name == r.Name {
+	if cluster.Name == r.ManagementCluster.Name {
 		result := r.reconcileManagementCluster(ctx)
 		if result != nil {
 			return *result, nil
@@ -221,7 +221,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
-	err = r.Configure(ctx, cluster, monitoringAgent)
+	err = r.BundleConfigurationService.Configure(ctx, cluster, monitoringAgent)
 	if err != nil {
 		logger.Error(err, "failed to configure the observability-bundle")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -232,7 +232,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		switch monitoringAgent {
 		case commonmonitoring.MonitoringAgentPrometheus:
 			// Create or update PrometheusAgent remote write configuration.
-			err = r.ReconcileRemoteWriteConfiguration(ctx, cluster)
+			err = r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to create or update prometheus agent remote write config")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -249,7 +249,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 	} else {
 		// clean up any existing prometheus agent configuration
-		err := r.DeleteRemoteWriteConfiguration(ctx, cluster)
+		err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete prometheus agent remote write config")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -273,7 +273,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 	// We do not need to delete anything if there is no finalizer on the cluster
 	if controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
 		// We always remove the bundle configure, even if monitoring is disabled for the cluster.
-		err := r.RemoveConfiguration(ctx, cluster)
+		err := r.BundleConfigurationService.RemoveConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to remove the observability-bundle configuration")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -282,7 +282,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		// Cluster specific configuration
 		if r.MonitoringConfig.IsMonitored(cluster) {
 			// Delete PrometheusAgent remote write configuration.
-			err := r.DeleteRemoteWriteConfiguration(ctx, cluster)
+			err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete prometheus agent remote write config")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -298,7 +298,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		// TODO add deletion of rules in the Mimir ruler on cluster deletion
 
 		// Management cluster specific configuration
-		if cluster.Name == r.Name {
+		if cluster.Name == r.ManagementCluster.Name {
 			err := r.tearDown(ctx)
 			if err != nil {
 				logger.Error(err, "failed to tear down the monitoring stack")
@@ -361,13 +361,13 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
 	if r.MonitoringConfig.Enabled {
-		err := r.CreateOrUpdate(ctx)
+		err := r.HeartbeatRepository.CreateOrUpdate(ctx)
 		if err != nil {
 			logger.Error(err, "failed to create or update heartbeat")
 			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
 		}
 
-		err = r.ConfigureMimir(ctx)
+		err = r.MimirService.ConfigureMimir(ctx)
 		if err != nil {
 			logger.Error(err, "failed to configure mimir")
 			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
@@ -394,7 +394,7 @@ func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
 		return err
 	}
 
-	err = r.DeleteMimirSecrets(ctx)
+	err = r.MimirService.DeleteMimirSecrets(ctx)
 	if err != nil {
 		logger.Error(err, "failed to delete mimir ingress secret")
 		return err
