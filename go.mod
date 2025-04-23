@@ -7,7 +7,6 @@ toolchain go1.24.2
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/Netflix/go-env v0.1.2
-	github.com/blang/semver v3.5.1+incompatible
 	github.com/giantswarm/apiextensions-application v0.6.2
 	github.com/go-logr/logr v1.4.2
 	github.com/go-openapi/runtime v0.28.0
@@ -31,7 +30,7 @@ require (
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/blang/semver/v4 v4.0.0
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect

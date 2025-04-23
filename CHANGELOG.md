@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add validation webhook to validate the alertmanager config before it is send to the alertmanager.
+
+### Fixed
+
+- Ensure support for loading Prometheus Rules in the Mimir Ruler from workload clusters is only enabled for observability-bundle version 1.9.0 and above (extra query matchers have been added in alloy 1.5.0).
+
 ## [0.25.0] - 2025-04-22
 
 ### Added
 
-- Add validation webhook to validate the alertmanager config before it is send to the alertmanager.
 - Add support for loading Prometheus Rules in the Mimir Ruler from workload clusters.
 
 ### Changed

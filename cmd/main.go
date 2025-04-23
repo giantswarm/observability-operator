@@ -13,7 +13,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/Netflix/go-env"
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"

@@ -3,7 +3,7 @@ package config
 import (
 	"net/url"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
