@@ -201,7 +201,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Management cluster specific configuration
-²	if cluster.Name == r.Name {
+	if cluster.Name == r.Name {
 		result := r.reconcileManagementCluster(ctx)
 		if result != nil {
 			return *result, nil
