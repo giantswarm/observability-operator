@@ -1,81 +1,53 @@
 package rules
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
 	"maps"
-	"text/template"
 
-	"github.com/blang/semver/v4"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/Masterminds/sprig/v3"
-	"github.com/pkg/errors"
-
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
-	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 )
 
 const (
-	alloyRulesAppCatalog        = "giantswarm"
-	AlloyRulesAppName           = "alloy-rules"
-	alloyRulesAppNamespace      = "giantswarm"
-	alloyRulesChartName         = "alloy"
-	alloyRulesDeployInNamespace = "monitoring"
-	alloyRulesConfigMapName     = "alloy-rules-config"
+	alloyRulesAppName       = "alloy-rules"
+	alloyRulesAppNamespace  = "giantswarm"
+	alloyRulesConfigMapName = "alloy-rules-config"
 )
-
-var (
-	//go:embed templates/alloy-rules.yaml.template
-	appConfig         string
-	appConfigTemplate *template.Template
-)
-
-// init initializes the template for the alloy-rules configmap.
-func init() {
-	appConfigTemplate = template.Must(template.New("alloy-rules.yaml").Funcs(sprig.FuncMap()).Parse(appConfig))
-}
 
 type Service struct {
-	Client          client.Client
-	AlloyAppVersion semver.Version
+	Client client.Client
 }
 
-func (s *Service) Configure(ctx context.Context) error {
+func (s *Service) Delete(ctx context.Context) error {
 	logger := log.FromContext(ctx)
-	logger.Info("configuring alloy-rules")
+	logger.Info("deleting alloy-rules")
 
-	logger.Info("create or update alloy rules configmap")
-	err := s.createOrUpdateConfigMap(ctx)
+	logger.Info("delete alloy rules app")
+	err := s.deleteApp(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	logger.Info("configure alloy rules app")
-	err = s.configureApp(ctx)
+	logger.Info("delete alloy rules configmap")
+	err = s.deleteConfigMap(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	logger.Info("alloy-rules is configured")
+	logger.Info("alloy-rules is deleted")
 
 	return nil
 }
 
-func (s Service) createOrUpdateConfigMap(ctx context.Context) error {
+func (s Service) deleteConfigMap(ctx context.Context) error {
 	logger := log.FromContext(ctx)
-	// Get list of tenants
-	var tenants []string
-	tenants, err := tenancy.ListTenants(ctx, s.Client)
-	if err != nil {
-		return errors.WithStack(err)
-	}
 
 	configmap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -85,79 +57,30 @@ func (s Service) createOrUpdateConfigMap(ctx context.Context) error {
 		},
 	}
 
-	_, err = controllerutil.CreateOrUpdate(ctx, s.Client, configmap, func() error {
-		values, err := s.generateAlloyConfig(ctx, tenants)
-		if err != nil {
-			logger.Error(err, "failed to generate %s", alloyRulesConfigMapName)
-			return errors.WithStack(err)
-		}
-
-		data := make(map[string]string)
-		data["values"] = values
-
-		configmap.Data = data
-
-		return nil
-	})
-
-	if err != nil {
-		logger.Error(err, "failed to create or update configmap %s", alloyRulesConfigMapName)
+	err := s.Client.Delete(ctx, configmap)
+	if client.IgnoreNotFound(err) != nil {
+		logger.Error(err, "failed to delete configmap", "configmap", alloyRulesConfigMapName)
 		return errors.WithStack(err)
 	}
-
 	return nil
 }
 
-func (s *Service) generateAlloyConfig(ctx context.Context, tenants []string) (string, error) {
-	data := struct {
-		Tenants []string
-	}{
-		Tenants: tenants,
-	}
-
-	var values bytes.Buffer
-	err := appConfigTemplate.Execute(&values, data)
-	if err != nil {
-		return "", err
-	}
-	return values.String(), nil
-}
-
-func (s Service) configureApp(ctx context.Context) error {
+func (s Service) deleteApp(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	labels := maps.Clone(labels.Common)
 	labels["app-operator.giantswarm.io/version"] = "0.0.0"
 	app := &appv1.App{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      AlloyRulesAppName,
+			Name:      alloyRulesAppName,
 			Namespace: alloyRulesAppNamespace,
 			Labels:    labels,
 		},
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, app, func() error {
-		app.Spec = appv1.AppSpec{
-			Catalog:   alloyRulesAppCatalog,
-			Name:      alloyRulesChartName,
-			Namespace: alloyRulesDeployInNamespace,
-			Version:   s.AlloyAppVersion.String(),
-			Config: appv1.AppSpecConfig{
-				ConfigMap: appv1.AppSpecConfigConfigMap{
-					Name:      alloyRulesConfigMapName,
-					Namespace: alloyRulesAppNamespace,
-				},
-			},
-			KubeConfig: appv1.AppSpecKubeConfig{
-				InCluster: true,
-			},
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		logger.Error(err, "failed to create or update app %s", AlloyRulesAppName)
+	err := s.Client.Delete(ctx, app)
+	if client.IgnoreNotFound(err) != nil {
+		logger.Error(err, "failed to delete app", "app", alloyRulesAppName)
 		return errors.WithStack(err)
 	}
 

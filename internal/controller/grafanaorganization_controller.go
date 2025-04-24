@@ -46,8 +46,7 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config)
 	}
 
 	alloyRulesService := rules.Service{
-		Client:          mgr.GetClient(),
-		AlloyAppVersion: conf.AlloyAppVersion,
+		Client: mgr.GetClient(),
 	}
 
 	r := &GrafanaOrganizationReconciler{
@@ -189,7 +188,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Configure up the alloy-rules app
-	if err := r.AlloyRulesService.Configure(ctx); err != nil {
+	if err := r.AlloyRulesService.Delete(ctx); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -314,7 +313,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	}
 
 	// Configure up the alloy-rules app
-	if err := r.AlloyRulesService.Configure(ctx); err != nil {
+	if err := r.AlloyRulesService.Delete(ctx); err != nil {
 		errs = append(errs, err)
 	}
 

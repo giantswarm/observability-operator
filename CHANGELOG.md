@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Clean up alloy-rules app and configmap because rules are loaded by alloy-logs and alloy-metrics.
+
 ## [0.26.1] - 2025-04-23
 
 ### Fixed

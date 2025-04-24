@@ -58,6 +58,7 @@ rules:
       - apps
     verbs:
       - create
+      - delete ## TODO remove when alloy-rules is gone
       - get
       - list
       - watch
