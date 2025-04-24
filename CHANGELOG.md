@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.26.1] - 2025-04-23
 
-
 ### Fixed
 
 - Fix golangci-lint v2 problems.
