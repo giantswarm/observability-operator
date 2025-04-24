@@ -125,7 +125,4 @@ require (
 replace (
 	github.com/hashicorp/go-cleanhttp => github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-retryablehttp => github.com/hashicorp/go-retryablehttp v0.7.7
-
-	// Needed to fix CVE CVE-2025-22872 (TODO remove when fixed upstream in github.com/prometheus/common/config)
-	golang.org/x/net v0.37.0 => golang.org/x/net v0.39.0
 )
