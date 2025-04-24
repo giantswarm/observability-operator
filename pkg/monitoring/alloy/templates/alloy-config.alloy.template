@@ -3,10 +3,11 @@ logging {
   format = "logfmt"
 }
 
-{{- if $.IsWorkloadCluster }}
+{{- if $.IsSupportingExtraQueryMatchers }}
 {{- range .Tenants }}
 // load rules for tenant {{ . }}
 mimir.rules.kubernetes "{{ . }}" {
+  {{- if $.IsWorkloadCluster }}
   address = env("{{ $.RulerAPIURLEnvVarName }}")
   basic_auth {
     username = env("{{ $.RemoteWriteBasicAuthUsernameEnvVarName }}")
@@ -19,6 +20,9 @@ mimir.rules.kubernetes "{{ . }}" {
         value = "{{ $.ClusterID }}"
     }
   }
+  {{- else }}
+  address = "http://mimir-ruler.mimir.svc:8080/"
+  {{- end }}
   mimir_namespace_prefix = "{{ $.ClusterID }}"
   tenant_id = "{{ . }}"
   rule_selector {

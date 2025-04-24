@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -27,10 +28,11 @@ func (d *dummyOrgRepo) Read(ctx context.Context, cluster *clusterv1.Cluster) (st
 
 func TestGenerateAlloyConfig(t *testing.T) {
 	tests := []struct {
-		name       string
-		cluster    *clusterv1.Cluster
-		tenants    []string
-		goldenPath string
+		name                       string
+		cluster                    *clusterv1.Cluster
+		tenants                    []string
+		goldenPath                 string
+		observabilityBundleVersion semver.Version
 	}{
 		{
 			name: "TwoTenantsInWC",
@@ -45,8 +47,9 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:    []string{"tenant1", "tenant2"},
-			goldenPath: filepath.Join("testdata", "alloy_config_multitenants.wc.river"),
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.wc.river"),
+			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
 		},
 		{
 			name: "TwoTenantsInMC",
@@ -61,8 +64,9 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:    []string{"tenant1", "tenant2"},
-			goldenPath: filepath.Join("testdata", "alloy_config_multitenants.mc.river"),
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.mc.river"),
+			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
 		},
 		{
 			name: "SingleTenantInWC",
@@ -77,8 +81,9 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:    []string{"tenant1"},
-			goldenPath: filepath.Join("testdata", "alloy_config_singletenant.wc.river"),
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.wc.river"),
+			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
 		},
 		{
 			name: "SingleTenantInMC",
@@ -93,8 +98,9 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:    []string{"tenant1"},
-			goldenPath: filepath.Join("testdata", "alloy_config_singletenant.mc.river"),
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.mc.river"),
+			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
 		},
 		{
 			name: "DefaultTenantRendersLegacyConfigInWC",
@@ -109,8 +115,9 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath: filepath.Join("testdata", "alloy_config_defaulttenant.wc.river"),
+			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.wc.river"),
+			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
 		},
 		{
 			name: "DefaultTenantRendersLegacyConfigInMC",
@@ -125,8 +132,45 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath: filepath.Join("testdata", "alloy_config_defaulttenant.mc.river"),
+			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.mc.river"),
+			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+		},
+
+		// Test case for the old bundle version to make sure we do not render extra query matchers in versions < 1.9.0
+		{
+			name: "TwoTenantsWithOldBundleVersionInMC",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.170.mc.river"),
+			observabilityBundleVersion: semver.MustParse("1.7.0"),
+		},
+		{
+			name: "TwoTenantsWithNewBundleVersionInMC",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.190.mc.river"),
+			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
 		},
 	}
 
@@ -149,14 +193,14 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			}
 
-			got, err := service.generateAlloyConfig(ctx, tt.cluster, tt.tenants)
+			got, err := service.generateAlloyConfig(ctx, tt.cluster, tt.tenants, tt.observabilityBundleVersion)
 			if err != nil {
 				t.Fatalf("generateAlloyConfig failed: %v", err)
 			}
 
 			if os.Getenv("UPDATE_GOLDEN_FILES") == "true" {
 				t.Logf("Environment variable UPDATE_GOLDEN_FILES=true detected, updating golden files")
-				if err := os.MkdirAll(filepath.Dir(tt.goldenPath), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Dir(tt.goldenPath), 0750); err != nil {
 					t.Fatalf("failed to create golden directory: %v", err)
 				}
 				//nolint:gosec

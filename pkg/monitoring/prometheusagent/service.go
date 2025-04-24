@@ -61,14 +61,14 @@ func (pas PrometheusAgentService) createOrUpdateConfigMap(ctx context.Context,
 
 	current := &corev1.ConfigMap{}
 	// Get the current configmap if it exists.
-	err := pas.Client.Get(ctx, objectKey, current)
+	err := pas.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		configMap, err := pas.buildRemoteWriteConfig(ctx, cluster, logger, sharding.DefaultShards)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		err = pas.Client.Create(ctx, configMap)
+		err = pas.Create(ctx, configMap)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -88,7 +88,7 @@ func (pas PrometheusAgentService) createOrUpdateConfigMap(ctx context.Context,
 	}
 
 	if !reflect.DeepEqual(current.Data, desired.Data) || !reflect.DeepEqual(current.Finalizers, desired.Finalizers) {
-		err = pas.Client.Update(ctx, desired)
+		err = pas.Update(ctx, desired)
 		if err != nil {
 			logger.Info("could not update prometheus agent remote write configmap")
 			return errors.WithStack(err)
@@ -106,7 +106,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 
 	current := &corev1.Secret{}
 	// Get the current secret if it exists.
-	err := pas.Client.Get(ctx, objectKey, current)
+	err := pas.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		logger.Info("generating remote write secret for the prometheus agent")
 		secret, err := pas.buildRemoteWriteSecret(ctx, cluster)
@@ -116,7 +116,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		}
 		logger.Info("generated the remote write secret for the prometheus agent")
 
-		err = pas.Client.Create(ctx, secret)
+		err = pas.Create(ctx, secret)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -130,7 +130,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		return errors.WithStack(err)
 	}
 	if !reflect.DeepEqual(current.Data, desired.Data) || !reflect.DeepEqual(current.Finalizers, desired.Finalizers) {
-		err = pas.Client.Update(ctx, desired)
+		err = pas.Update(ctx, desired)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -169,7 +169,7 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 	}
 	configMap := &corev1.ConfigMap{}
 	// Get the current configmap if it exists.
-	err := pas.Client.Get(ctx, objectKey, configMap)
+	err := pas.Get(ctx, objectKey, configMap)
 	if apierrors.IsNotFound(err) {
 		// Ignore cases where the configmap is not found (if it was manually deleted, for instance).
 		return nil
@@ -177,7 +177,7 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 		return errors.WithStack(err)
 	}
 
-	err = pas.Client.Delete(ctx, configMap)
+	err = pas.Delete(ctx, configMap)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -191,7 +191,7 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 	}
 	secret := &corev1.Secret{}
 	// Get the current secret if it exists.
-	err := pas.Client.Get(ctx, objectKey, secret)
+	err := pas.Get(ctx, objectKey, secret)
 	if apierrors.IsNotFound(err) {
 		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
 		return nil
@@ -199,7 +199,7 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 		return errors.WithStack(err)
 	}
 
-	err = pas.Client.Delete(ctx, secret)
+	err = pas.Delete(ctx, secret)
 	if err != nil {
 		return errors.WithStack(err)
 	}

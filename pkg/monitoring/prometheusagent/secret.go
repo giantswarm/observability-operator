@@ -22,7 +22,7 @@ func GetPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string 
 // buildRemoteWriteSecret builds the secret that contains the remote write configuration for the Prometheus agent.
 func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 	cluster *clusterv1.Cluster) (*corev1.Secret, error) {
-	url := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, pas.ManagementCluster.BaseDomain)
+	url := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, pas.BaseDomain)
 	password, err := commonmonitoring.GetMimirIngressPassword(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -43,14 +43,14 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 						},
 						TLSConfig: &promv1.TLSConfig{
 							SafeTLSConfig: promv1.SafeTLSConfig{
-								InsecureSkipVerify: &pas.ManagementCluster.InsecureCA,
+								InsecureSkipVerify: &pas.InsecureCA,
 							},
 						},
 						Headers: map[string]string{
 							commonmonitoring.OrgIDHeader: commonmonitoring.DefaultWriteTenant,
 						},
 					},
-					Username: pas.ManagementCluster.Name,
+					Username: pas.Name,
 					Password: password,
 				},
 			},

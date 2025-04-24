@@ -27,7 +27,7 @@ func NewNamespaceRepository(client client.Client) OrganizationRepository {
 
 func (r NamespaceOrganizationRepository) Read(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
 	namespace := &corev1.Namespace{}
-	err := r.Client.Get(ctx, client.ObjectKey{Name: cluster.GetNamespace()}, namespace)
+	err := r.Get(ctx, client.ObjectKey{Name: cluster.GetNamespace()}, namespace)
 	if err != nil {
 		return "", err
 	}

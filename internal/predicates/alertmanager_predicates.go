@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	alertmanagerConfigSelectorLabelName  = "observability.giantswarm.io/kind"
-	alertmanagerConfigSelectorLabelValue = "alertmanager-config"
+	AlertmanagerConfigSelectorLabelName  = "observability.giantswarm.io/kind"
+	AlertmanagerConfigSelectorLabelValue = "alertmanager-config"
 
 	mimirNamespace             = "mimir"
 	mimirInstance              = "mimir"
@@ -56,7 +56,7 @@ func NewAlertmanagerConfigSecretsPredicate() (predicate.Predicate, error) {
 	predicate, err := predicate.LabelSelectorPredicate(
 		metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				alertmanagerConfigSelectorLabelName: alertmanagerConfigSelectorLabelValue,
+				AlertmanagerConfigSelectorLabelName: AlertmanagerConfigSelectorLabelValue,
 			},
 			MatchExpressions: []metav1.LabelSelectorRequirement{
 				{

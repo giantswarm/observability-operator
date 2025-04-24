@@ -2,38 +2,6 @@ logging {
   level  = "info"
   format = "logfmt"
 }
-// load rules for tenant tenant1
-mimir.rules.kubernetes "tenant1" {
-  address = "http://mimir-ruler.mimir.svc:8080/"
-  mimir_namespace_prefix = "dummy-cluster"
-  tenant_id = "tenant1"
-  rule_selector {
-      match_labels = {
-        "observability.giantswarm.io/tenant" = "tenant1",
-      }
-      match_expression {
-        key = "application.giantswarm.io/prometheus-rule-kind"
-        operator = "NotIn"
-        values = ["loki"]
-      }
-  }
-}
-// load rules for tenant tenant2
-mimir.rules.kubernetes "tenant2" {
-  address = "http://mimir-ruler.mimir.svc:8080/"
-  mimir_namespace_prefix = "dummy-cluster"
-  tenant_id = "tenant2"
-  rule_selector {
-      match_labels = {
-        "observability.giantswarm.io/tenant" = "tenant2",
-      }
-      match_expression {
-        key = "application.giantswarm.io/prometheus-rule-kind"
-        operator = "NotIn"
-        values = ["loki"]
-      }
-  }
-}
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
 // remote write pipeline configuration for tenant tenant1
