@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Remove alloy-rules deletion code which is no longer needed since the last release.
+- Remove PodSecurityPolicy.
 
 ## [0.27.0] - 2025-04-24
 
