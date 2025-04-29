@@ -12,6 +12,7 @@ Once that's done, there are additional things you should do :
 
 - Wait for ~ 10min after running the above command.
 - Inspect any dashboard on the installation's grafana and make sure that you can see data from all WCs, especially the`ollyoptest` one.
+- Check for new alerts on the `Alerts timeline` dashboard.
 - If everything appears to be fine, then you can revert the flux's evicting procedure that you did and let it reconcile to its original version.
 
 Congratulations, you have completed the manual e2e testing procedure ! Your PR is now ready to be merged.
