@@ -40,15 +40,7 @@ route:
     continue: false
   - receiver: blackhole
     matchers:
-    - alertname=~"WorkloadClusterApp.*"
-    continue: false
-  - receiver: blackhole
-    matchers:
-    - alertname="PrometheusMetaOperatorReconcileErrors"
-    continue: false
-  - receiver: blackhole
-    matchers:
-    - alertname="ClusterUnhealthyPhase"
+    - alertname=~"ClusterUnhealthyPhase|PrometheusMetaOperatorReconcileErrors|WorkloadClusterApp.*"
     continue: false
   - receiver: blackhole
     matchers:
@@ -60,7 +52,7 @@ route:
   - receiver: blackhole
     matchers:
     - alertname="ManagementClusterAppFailed"
-    - namespace=~"org-.*"
+    - namespace=~"org-([^g]|g[^i]|gi[^a]|gia[^n]|gian[^t]|giant[^s]|giants[^w]|giantsw[^a]|giantswa[^r]|giantswar[^m])+"
     continue: false
   {{- end }}
 
