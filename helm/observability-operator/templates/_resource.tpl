@@ -15,10 +15,6 @@ room for such suffix.
 {{- include "resource.default.name" . -}}-network-policy
 {{- end -}}
 
-{{- define "resource.psp.name" -}}
-{{- include "resource.default.name" . -}}-psp
-{{- end -}}
-
 {{- define "resource.default.namespace" -}}
 monitoring
 {{- end -}}

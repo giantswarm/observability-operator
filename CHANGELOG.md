@@ -11,9 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Switch alloy-metrics secret from env variables to alloy `remote.kubernetes.secret` component to support secret changes without having to terminate pods.
 
+### Fixed
+
+- Fix alertmanager configuration to not drop alerts when stable-testing management cluster's default apps are failing.
+
 ### Removed
 
 - Remove alloy-rules deletion code which is no longer needed since the last release.
+- Remove PodSecurityPolicy.
 
 ## [0.27.0] - 2025-04-24
 
