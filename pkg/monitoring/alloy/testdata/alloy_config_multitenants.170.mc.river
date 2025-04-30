@@ -4,8 +4,8 @@ logging {
 }
 
 remote.kubernetes.secret "credentials" {
+  name      = "alloy-metrics"
   namespace = "kube-system"
-  name = "alloy-metrics"
 }
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.

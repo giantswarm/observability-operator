@@ -4,21 +4,21 @@ logging {
 }
 
 remote.kubernetes.secret "credentials" {
+  name      = "alloy-metrics"
   namespace = "kube-system"
-  name = "alloy-metrics"
 }
 // load rules for tenant giantswarm
 mimir.rules.kubernetes "giantswarm" {
   address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
   basic_auth {
-    username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-      password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
   }
   extra_query_matchers {
     matcher {
-        name = "cluster_id"
+        name       = "cluster_id"
         match_type = "="
-        value = "default-tenant-cluster"
+        value      = "default-tenant-cluster"
     }
   }
   mimir_namespace_prefix = "default-tenant-cluster"

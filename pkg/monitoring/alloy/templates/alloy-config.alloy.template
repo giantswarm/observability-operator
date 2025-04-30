@@ -4,9 +4,8 @@ logging {
 }
 
 remote.kubernetes.secret "credentials" {
-  # secret is created in the namespace the chart is déployed to via https://github.com/giantswarm/alloy-app/blob/a3238d832a42a93055928f2e164ac0e6cea0dd13/helm/alloy/templates/secret.yaml#L10. in our case it is always kube-system
-  namespace = "kube-system"
-  name = "{{ .SecretName }}"
+  name      = "{{ .AlloySecretName }}"
+  namespace = "{{ .AlloySecretNamespace }}"
 }
 
 {{- if $.IsSupportingExtraQueryMatchers }}
@@ -16,14 +15,14 @@ mimir.rules.kubernetes "{{ . }}" {
   {{- if $.IsWorkloadCluster }}
   address = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRulerAPIURLKey }}"])
   basic_auth {
-    username = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIUsernameKey }}"])
-      password = remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIPasswordKey }}"]
+    username   = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIUsernameKey }}"])
+     password = remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIPasswordKey }}"]
   }
   extra_query_matchers {
     matcher {
-        name = "cluster_id"
+        name       = "cluster_id"
         match_type = "="
-        value = "{{ $.ClusterID }}"
+        value      = "{{ $.ClusterID }}"
     }
   }
   {{- else }}

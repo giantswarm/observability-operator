@@ -23,7 +23,10 @@ const (
 	// ServicePriorityLabel is the label used to determine the priority of a service.
 	servicePriorityLabel = "giantswarm.io/service-priority"
 
-	AlloyMonitoringAgentAppName = "alloy-metrics"
+	// secret is created in via https://github.com/giantswarm/alloy-app/blob/main/helm/alloy/templates/secret.yaml.
+	// this means the secret is created in the same namespace and with the same name as the alloy app.
+	AlloyMonitoringAgentAppName      = "alloy-metrics"
+	AlloyMonitoringAgentAppNamespace = "kube-system"
 
 	// Values accepted by the monitoring-agent flag
 	MonitoringAgentPrometheus = "prometheus-agent"

@@ -4,8 +4,8 @@ logging {
 }
 
 remote.kubernetes.secret "credentials" {
+  name      = "alloy-metrics"
   namespace = "kube-system"
-  name = "alloy-metrics"
 }
 // load rules for tenant tenant1
 mimir.rules.kubernetes "tenant1" {

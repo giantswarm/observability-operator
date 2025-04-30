@@ -122,7 +122,8 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 	}
 
 	data := struct {
-		SecretName string
+		AlloySecretName      string
+		AlloySecretNamespace string
 
 		MimirRulerAPIURLKey                   string
 		MimirRemoteWriteAPIUsernameKey        string
@@ -149,7 +150,8 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		IsSupportingExtraQueryMatchers bool
 	}{
-		SecretName: commonmonitoring.AlloyMonitoringAgentAppName,
+		AlloySecretName:      commonmonitoring.AlloyMonitoringAgentAppName,
+		AlloySecretNamespace: commonmonitoring.AlloyMonitoringAgentAppNamespace,
 
 		MimirRulerAPIURLKey:                   mimirRulerAPIURLKey,
 		MimirRemoteWriteAPIUsernameKey:        mimirRemoteWriteAPIUsernameKey,
