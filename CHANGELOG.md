@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Switch alloy-metrics secret from env variables to alloy `remote.kubernetes.secret` component to support secret changes without having to terminate pods.
+
 ## [0.28.0] - 2025-04-29
 
 ### Fixed

@@ -2,18 +2,23 @@ logging {
   level  = "info"
   format = "logfmt"
 }
+
+remote.kubernetes.secret "credentials" {
+  name      = "alloy-metrics"
+  namespace = "kube-system"
+}
 // load rules for tenant giantswarm
 mimir.rules.kubernetes "giantswarm" {
-  address = env("RULER_API_URL")
+  address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
   basic_auth {
-    username = env("BASIC_AUTH_USERNAME")
-    password = env("BASIC_AUTH_PASSWORD")
+    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
   }
   extra_query_matchers {
     matcher {
-        name = "cluster_id"
+        name       = "cluster_id"
         match_type = "="
-        value = "default-tenant-cluster"
+        value      = "default-tenant-cluster"
     }
   }
   mimir_namespace_prefix = "default-tenant-cluster"
@@ -110,13 +115,13 @@ prometheus.operator.podmonitors "giantswarm" {
 // remote write pipeline configuration for tenant giantswarm
 prometheus.remote_write "giantswarm" {
   endpoint {
-    url            = env("REMOTE_WRITE_URL")
-    name           = env("REMOTE_WRITE_NAME")
+    url            = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
+    name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
     enable_http2   = false
     remote_timeout = "60s"
     basic_auth {
-      username = env("BASIC_AUTH_USERNAME")
-      password = env("BASIC_AUTH_PASSWORD")
+      username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+      password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
     }
     headers = {
       "X-Scope-OrgID" = "giantswarm",

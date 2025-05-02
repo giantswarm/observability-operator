@@ -85,14 +85,12 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		AlloyConfig       string
 		PriorityClassName string
 		Replicas          int
-		SecretName        string
 
 		IsSupportingVPA bool
 	}{
 		AlloyConfig:       alloyConfig,
 		PriorityClassName: commonmonitoring.PriorityClassName,
 		Replicas:          shards,
-		SecretName:        commonmonitoring.AlloyMonitoringAgentAppName,
 
 		// Observability bundle in older versions do not support VPA
 		IsSupportingVPA: observabilityBundleVersion.GE(versionSupportingVPA),
@@ -124,13 +122,16 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 	}
 
 	data := struct {
-		RulerAPIURLEnvVarName                  string
-		RemoteWriteURLEnvVarName               string
-		RemoteWriteNameEnvVarName              string
-		RemoteWriteBasicAuthUsernameEnvVarName string
-		RemoteWriteBasicAuthPasswordEnvVarName string
-		RemoteWriteTimeout                     string
-		RemoteWriteTLSInsecureSkipVerify       bool
+		AlloySecretName      string
+		AlloySecretNamespace string
+
+		MimirRulerAPIURLKey                   string
+		MimirRemoteWriteAPIUsernameKey        string
+		MimirRemoteWriteAPIPasswordKey        string
+		MimirRemoteWriteAPIURLKey             string
+		MimirRemoteWriteAPINameKey            string
+		MimirRemoteWriteTimeout               string
+		MimirRemoteWriteTLSInsecureSkipVerify bool
 
 		ClusterID         string
 		IsWorkloadCluster bool
@@ -149,13 +150,16 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		IsSupportingExtraQueryMatchers bool
 	}{
-		RulerAPIURLEnvVarName:                  AlloyRulerAPIURLEnvVarName,
-		RemoteWriteURLEnvVarName:               AlloyRemoteWriteURLEnvVarName,
-		RemoteWriteNameEnvVarName:              AlloyRemoteWriteNameEnvVarName,
-		RemoteWriteBasicAuthUsernameEnvVarName: AlloyRemoteWriteBasicAuthUsernameEnvVarName,
-		RemoteWriteBasicAuthPasswordEnvVarName: AlloyRemoteWriteBasicAuthPasswordEnvVarName,
-		RemoteWriteTimeout:                     commonmonitoring.RemoteWriteTimeout,
-		RemoteWriteTLSInsecureSkipVerify:       a.InsecureCA,
+		AlloySecretName:      commonmonitoring.AlloyMonitoringAgentAppName,
+		AlloySecretNamespace: commonmonitoring.AlloyMonitoringAgentAppNamespace,
+
+		MimirRulerAPIURLKey:                   mimirRulerAPIURLKey,
+		MimirRemoteWriteAPIUsernameKey:        mimirRemoteWriteAPIUsernameKey,
+		MimirRemoteWriteAPIPasswordKey:        mimirRemoteWriteAPIPasswordKey,
+		MimirRemoteWriteAPIURLKey:             mimirRemoteWriteAPIURLKey,
+		MimirRemoteWriteAPINameKey:            mimirRemoteWriteAPINameKey,
+		MimirRemoteWriteTimeout:               commonmonitoring.RemoteWriteTimeout,
+		MimirRemoteWriteTLSInsecureSkipVerify: a.InsecureCA,
 
 		ClusterID: cluster.Name,
 

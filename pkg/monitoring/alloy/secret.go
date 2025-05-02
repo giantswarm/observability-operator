@@ -19,11 +19,11 @@ import (
 )
 
 const (
-	AlloyRulerAPIURLEnvVarName                  = "RULER_API_URL"
-	AlloyRemoteWriteURLEnvVarName               = "REMOTE_WRITE_URL"
-	AlloyRemoteWriteNameEnvVarName              = "REMOTE_WRITE_NAME"
-	AlloyRemoteWriteBasicAuthUsernameEnvVarName = "BASIC_AUTH_USERNAME"
-	AlloyRemoteWriteBasicAuthPasswordEnvVarName = "BASIC_AUTH_PASSWORD" // #nosec G101
+	mimirRulerAPIURLKey            = "mimirRulerAPIURL"
+	mimirRemoteWriteAPINameKey     = "mimirRemoteWriteAPIName"
+	mimirRemoteWriteAPIURLKey      = "mimirRemoteWriteAPIURL"
+	mimirRemoteWriteAPIUsernameKey = "mimirRemoteWriteAPIUsername"
+	mimirRemoteWriteAPIPasswordKey = "mimirRemoteWriteAPIPassword" // #nosec G101
 )
 
 var (
@@ -49,11 +49,11 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		Name  string
 		Value string
 	}{
-		{Name: AlloyRulerAPIURLEnvVarName, Value: mimirRulerUrl},
-		{Name: AlloyRemoteWriteURLEnvVarName, Value: remoteWriteUrl},
-		{Name: AlloyRemoteWriteNameEnvVarName, Value: commonmonitoring.RemoteWriteName},
-		{Name: AlloyRemoteWriteBasicAuthUsernameEnvVarName, Value: a.Name},
-		{Name: AlloyRemoteWriteBasicAuthPasswordEnvVarName, Value: password},
+		{Name: mimirRulerAPIURLKey, Value: mimirRulerUrl},
+		{Name: mimirRemoteWriteAPIURLKey, Value: remoteWriteUrl},
+		{Name: mimirRemoteWriteAPINameKey, Value: commonmonitoring.RemoteWriteName},
+		{Name: mimirRemoteWriteAPIUsernameKey, Value: a.Name},
+		{Name: mimirRemoteWriteAPIPasswordKey, Value: password},
 	}
 
 	var values bytes.Buffer

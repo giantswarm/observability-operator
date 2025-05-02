@@ -50,9 +50,6 @@ alloy:
       create: true
       content: |-
 {{ .AlloyConfig | indent 8 }}
-    envFrom:
-    - secretRef:
-        name: {{ .SecretName }}
     {{- if .IsSupportingVPA }}
     # We decided to configure the alloy-metrics resources as such after some investigation done https://github.com/giantswarm/giantswarm/issues/32655#issuecomment-2729636063
     resources:
