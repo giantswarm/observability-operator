@@ -71,8 +71,7 @@ func main() {
 		"Path to the directory where the webhook server will store its TLS certificate and key.")
 	flag.StringVar(&conf.OperatorNamespace, "operator-namespace", "",
 		"The namespace where the observability-operator is running.")
-	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local",
-		"grafana URL")
+	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local", "grafana URL")
 
 	// Management cluster configuration flags.
 	flag.StringVar(&conf.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",

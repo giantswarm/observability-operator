@@ -3,7 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"net/url"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
@@ -32,8 +32,9 @@ import (
 // DashboardReconciler reconciles a Dashboard object
 type DashboardReconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
+	Scheme *runtime.Scheme
+
+	grafanaURL *url.URL
 }
 
 const (
@@ -45,18 +46,14 @@ const (
 )
 
 func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(conf.GrafanaURL, conf)
-	if err != nil {
-		return fmt.Errorf("unable to create grafana client: %w", err)
-	}
-
 	r := &DashboardReconciler{
-		Client:     mgr.GetClient(),
-		Scheme:     mgr.GetScheme(),
-		GrafanaAPI: grafanaAPI,
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+
+		grafanaURL: conf.GrafanaURL,
 	}
 
-	err = r.SetupWithManager(mgr)
+	err := r.SetupWithManager(mgr)
 	if err != nil {
 		return err
 	}
@@ -85,13 +82,18 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
 
+	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
+	if err != nil {
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+
 	// Handle deleted grafana dashboards
 	if !dashboard.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, r.reconcileDelete(ctx, dashboard)
+		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaAPI, dashboard)
 	}
 
 	// Handle non-deleted grafana dashboards
-	return r.reconcileCreate(ctx, dashboard)
+	return r.reconcileCreate(ctx, grafanaAPI, dashboard)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -144,7 +146,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // reconcileCreate ensures the Grafana dashboard described in configmap is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
-func (r DashboardReconciler) reconcileCreate(ctx context.Context, dashboard *v1.ConfigMap) (ctrl.Result, error) { // nolint:unparam
+func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, dashboard *v1.ConfigMap) (ctrl.Result, error) { // nolint:unparam
 	logger := log.FromContext(ctx)
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
@@ -166,7 +168,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, dashboard *v1.
 	}
 
 	// Configure the dashboard in Grafana
-	if err := r.configureDashboard(ctx, dashboard); err != nil {
+	if err := r.configureDashboard(ctx, grafanaAPI, dashboard); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
@@ -204,7 +206,7 @@ func getOrgFromDashboardConfigmap(dashboard *v1.ConfigMap) (string, error) {
 	return "", errors.New("No organization label found in configmap")
 }
 
-func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM *v1.ConfigMap) error {
+func (r DashboardReconciler) configureDashboard(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, dashboardCM *v1.ConfigMap) error {
 	logger := log.FromContext(ctx)
 
 	dashboardOrg, err := getOrgFromDashboardConfigmap(dashboardCM)
@@ -216,14 +218,14 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 	// TODO Tenant Governance: Filter the dashboards with the list of authorized tenants
 
 	// Switch context to the dashboards-defined org
-	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
+	organization, err := grafana.FindOrgByName(grafanaAPI, dashboardOrg)
 	if err != nil {
 		logger.Error(err, "failed to find organization", "organization", dashboardOrg)
 		return errors.WithStack(err)
 	}
-	currentOrgID := r.GrafanaAPI.OrgID()
-	r.GrafanaAPI.WithOrgID(organization.ID)
-	defer r.GrafanaAPI.WithOrgID(currentOrgID)
+	currentOrgID := grafanaAPI.OrgID()
+	grafanaAPI.WithOrgID(organization.ID)
+	defer grafanaAPI.WithOrgID(currentOrgID)
 
 	for _, dashboardString := range dashboardCM.Data {
 		var dashboard map[string]any
@@ -243,7 +245,7 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 		cleanDashboardID(dashboard)
 
 		// Create or update dashboard
-		err = grafana.PublishDashboard(r.GrafanaAPI, dashboard)
+		err = grafana.PublishDashboard(grafanaAPI, dashboard)
 		if err != nil {
 			logger.Error(err, "Failed updating dashboard")
 			continue
@@ -256,7 +258,7 @@ func (r DashboardReconciler) configureDashboard(ctx context.Context, dashboardCM
 }
 
 // reconcileDelete deletes the grafana dashboard.
-func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v1.ConfigMap) error {
+func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, dashboardCM *v1.ConfigMap) error {
 	logger := log.FromContext(ctx)
 
 	// We do not need to delete anything if there is no finalizer on the grafana dashboard
@@ -271,14 +273,14 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 	}
 
 	// Switch context to the dashboards-defined org
-	organization, err := grafana.FindOrgByName(r.GrafanaAPI, dashboardOrg)
+	organization, err := grafana.FindOrgByName(grafanaAPI, dashboardOrg)
 	if err != nil {
 		logger.Error(err, "failed to find organization", "organization", dashboardOrg)
 		return errors.WithStack(err)
 	}
-	currentOrgID := r.GrafanaAPI.OrgID()
-	r.GrafanaAPI.WithOrgID(organization.ID)
-	defer r.GrafanaAPI.WithOrgID(currentOrgID)
+	currentOrgID := grafanaAPI.OrgID()
+	grafanaAPI.WithOrgID(organization.ID)
+	defer grafanaAPI.WithOrgID(currentOrgID)
 
 	for _, dashboardString := range dashboardCM.Data {
 		var dashboard map[string]interface{}
@@ -297,13 +299,13 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, dashboardCM *v
 		// Clean the dashboard ID to avoid conflicts
 		cleanDashboardID(dashboard)
 
-		_, err = r.GrafanaAPI.Dashboards.GetDashboardByUID(dashboardUID)
+		_, err = grafanaAPI.Dashboards.GetDashboardByUID(dashboardUID)
 		if err != nil {
 			logger.Error(err, "Failed getting dashboard")
 			continue
 		}
 
-		_, err = r.GrafanaAPI.Dashboards.DeleteDashboardByUID(dashboardUID)
+		_, err = grafanaAPI.Dashboards.DeleteDashboardByUID(dashboardUID)
 		if err != nil {
 			logger.Error(err, "Failed deleting dashboard")
 			continue

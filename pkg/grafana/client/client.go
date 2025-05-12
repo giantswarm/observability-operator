@@ -1,53 +1,106 @@
 package client
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"net/url"
 
 	grafana "github.com/grafana/grafana-openapi-client-go/client"
-
-	"github.com/giantswarm/observability-operator/pkg/config"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	clientConfigNumRetries = 3
+
+	// Secret names and keys for Grafana configuration
+	grafanaNamespace = "monitoring"
+
+	grafanaAdminSecretName        = "grafana"
+	grafanaAdminSecretUserKey     = "admin-user"
+	grafanaAdminSecretPasswordKey = "admin-password"
+
+	grafanaTLSSecretName    = "grafana-tls"
+	grafanaTLSSecretCertKey = "tls.crt"
+	grafanaTLSSecretKeyKey  = "tls.key"
 )
 
-func GenerateGrafanaClient(grafanaURL *url.URL, conf config.Config) (*grafana.GrafanaHTTPAPI, error) {
-	var err error
+// GenerateGrafanaClient creates a new Grafana client by fetching credentials
+// and TLS configuration from Kubernetes secrets.
+func GenerateGrafanaClient(
+	ctx context.Context,
+	k8sClient client.Client,
+	grafanaURL *url.URL,
+) (*grafana.GrafanaHTTPAPI, error) {
+	// Get Grafana admin credentials from secret
+	adminSecret := &corev1.Secret{}
+	adminSecretKey := client.ObjectKey{Namespace: grafanaNamespace, Name: grafanaAdminSecretName}
+	if err := k8sClient.Get(ctx, adminSecretKey, adminSecret); err != nil {
+		return nil, fmt.Errorf("failed to get Grafana admin secret %q in namespace %q: %w", grafanaAdminSecretName, grafanaNamespace, err)
+	}
 
-	// Generate Grafana client
-	// Get grafana admin-password and admin-user
+	adminUsernameBytes, ok := adminSecret.Data[grafanaAdminSecretUserKey]
+	if !ok {
+		return nil, fmt.Errorf("key %q not found in Grafana admin secret %q", grafanaAdminSecretUserKey, grafanaAdminSecretName)
+	}
+	if len(adminUsernameBytes) == 0 {
+		return nil, fmt.Errorf("GrafanaAdminUsername is empty in secret %q", grafanaAdminSecretName)
+	}
+
+	adminPasswordBytes, ok := adminSecret.Data[grafanaAdminSecretPasswordKey]
+	if !ok {
+		return nil, fmt.Errorf("key %q not found in Grafana admin secret %q", grafanaAdminSecretPasswordKey, grafanaAdminSecretName)
+	}
+	if len(adminPasswordBytes) == 0 {
+		return nil, fmt.Errorf("GrafanaAdminPassword is empty in secret %q", grafanaAdminSecretName)
+	}
+
 	adminUserCredentials := AdminCredentials{
-		Username: conf.Environment.GrafanaAdminUsername,
-		Password: conf.Environment.GrafanaAdminPassword,
-	}
-	if adminUserCredentials.Username == "" {
-		return nil, fmt.Errorf("GrafanaAdminUsername not set: %q", conf.Environment.GrafanaAdminUsername)
-
-	}
-	if adminUserCredentials.Password == "" {
-		return nil, fmt.Errorf("GrafanaAdminPassword not set: %q", conf.Environment.GrafanaAdminPassword)
-
+		Username: string(adminUsernameBytes),
+		Password: string(adminPasswordBytes),
 	}
 
-	grafanaTLSConfig, err := TLSConfig{
-		Cert: conf.Environment.GrafanaTLSCertFile,
-		Key:  conf.Environment.GrafanaTLSKeyFile,
-	}.toTLSConfig()
+	// Get Grafana TLS configuration from secret, if it exists
+	var clientTLSConfig *tls.Config
+	tlsSecret := &corev1.Secret{}
+	tlsSecretKey := client.ObjectKey{Namespace: grafanaNamespace, Name: grafanaTLSSecretName}
+	err := k8sClient.Get(ctx, tlsSecretKey, tlsSecret)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build tls config: %w", err)
+		return nil, fmt.Errorf("failed to get Grafana TLS secret %q in namespace %q: %w", grafanaTLSSecretName, grafanaNamespace, err)
 	}
+
+	// TLS Secret found, try to load cert and key
+	tlsCertBytes, certOk := tlsSecret.Data[grafanaTLSSecretCertKey]
+	tlsKeyBytes, keyOk := tlsSecret.Data[grafanaTLSSecretKeyKey]
+
+	if !certOk || len(tlsCertBytes) == 0 {
+		return nil, fmt.Errorf("key %q not found or empty in Grafana TLS secret %q", grafanaTLSSecretCertKey, grafanaTLSSecretName)
+	}
+	if !keyOk || len(tlsKeyBytes) == 0 {
+		return nil, fmt.Errorf("key %q not found or empty in Grafana TLS secret %q", grafanaTLSSecretKeyKey, grafanaTLSSecretName)
+	}
+
+	// tlsConfigInput is our local struct type from ./tls.go
+	tlsConfigInput := TLSConfig{
+		Cert: string(tlsCertBytes),
+		Key:  string(tlsKeyBytes),
+	}
+	// clientTLSConfig is the *tls.Config for the Grafana client
+	var buildErr error
+	clientTLSConfig, buildErr = tlsConfigInput.toTLSConfig()
+	if buildErr != nil {
+		return nil, fmt.Errorf("failed to build TLS config from secret %q: %w", grafanaTLSSecretName, buildErr)
+	}
+	fmt.Println("Successfully created Grafana client with TLS configuration.")
 
 	cfg := &grafana.TransportConfig{
-		Schemes:  []string{grafanaURL.Scheme},
-		BasePath: "/api",
-		Host:     grafanaURL.Host,
-		// We use basic auth to authenticate on grafana.
-		BasicAuth: url.UserPassword(adminUserCredentials.Username, adminUserCredentials.Password),
-		// NumRetries contains the optional number of attempted retries.
+		Schemes:    []string{grafanaURL.Scheme},
+		BasePath:   "/api",
+		Host:       grafanaURL.Host,
+		BasicAuth:  url.UserPassword(adminUserCredentials.Username, adminUserCredentials.Password),
 		NumRetries: clientConfigNumRetries,
-		TLSConfig:  grafanaTLSConfig,
+		TLSConfig:  clientTLSConfig,
 	}
 
 	return grafana.NewHTTPClientWithConfig(nil, cfg), nil
