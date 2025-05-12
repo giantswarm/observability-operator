@@ -92,7 +92,6 @@ func GenerateGrafanaClient(
 	if buildErr != nil {
 		return nil, fmt.Errorf("failed to build TLS config from secret %q: %w", grafanaTLSSecretName, buildErr)
 	}
-	fmt.Println("Successfully created Grafana client with TLS configuration.")
 
 	cfg := &grafana.TransportConfig{
 		Schemes:    []string{grafanaURL.Scheme},
