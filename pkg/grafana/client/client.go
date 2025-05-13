@@ -56,11 +56,6 @@ func GenerateGrafanaClient(
 		return nil, fmt.Errorf("GrafanaAdminPassword is empty in secret %q", grafanaAdminSecretName)
 	}
 
-	adminUserCredentials := AdminCredentials{
-		Username: string(adminUsernameBytes),
-		Password: string(adminPasswordBytes),
-	}
-
 	// Get Grafana TLS configuration from secret, if it exists
 	var clientTLSConfig *tls.Config
 	tlsSecret := &corev1.Secret{}
