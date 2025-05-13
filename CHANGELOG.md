@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated alertmanager's inhibitions, getting rid of vintage-specifics.
+- Clean up old teams and unused inhibitions.
 
 ## [0.29.0] - 2025-05-05
 

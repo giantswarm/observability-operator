@@ -23,12 +23,11 @@ route:
   - receiver: heartbeat
     matchers:
     - alertname="Heartbeat"
-    # TODO(@team-atlas): This label is needed for now because we support legacy and new heartbeat alerts. Lets remove it when we remove https://github.com/giantswarm/prometheus-rules/pull/1094/files#diff-2cc8f3328e242b6c86769bfb52b286c7146e074dd244ebb76a0025c838f33d0fR21
-    - type="mimir-heartbeat"
     continue: true
     group_wait: 30s
     group_interval: 30s
     repeat_interval: 15m
+
   {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
   - receiver: blackhole
     matchers:
@@ -84,25 +83,8 @@ route:
     - severity=~"page|notify"
     {{- end }}
     - team="atlas"
-    - type!="heartbeat"
     - alertname!~"Inhibition.*"
     - alertname!="Heartbeat"
-    continue: false
-
-  # Team Celestial Slack
-  - receiver: team_phoenix_slack
-    matchers:
-    - severity=~"page|notify"
-    - team="celestial"
-    - sloth_severity=~"page|ticket"
-    continue: false
-
-  # Team Firecracker Slack
-  - receiver: team_phoenix_slack
-    matchers:
-    - severity=~"page|notify"
-    - team="firecracker"
-    - sloth_severity=~"page|ticket"
     continue: false
 
   # Team Phoenix Slack
@@ -118,21 +100,6 @@ route:
     matchers:
     - severity=~"page|notify"
     - team="shield"
-    continue: false
-
-  # Team BigMac Slack
-  - receiver: team_bigmac_slack
-    matchers:
-    - severity=~"page|notify"
-    - team="bigmac"
-    continue: false
-
-  # Team Clippy Slack
-  # ReRoute to `phoenix` until we change all team ownership labels
-  - receiver: team_phoenix_slack
-    matchers:
-    - severity=~"page|notify"
-    - team="clippy"
     continue: false
 
   # Team Rocket Slack
@@ -232,23 +199,6 @@ receivers:
     send_resolved: true
     actions: *slack-actions
 
-- name: team_bigmac_slack
-  slack_configs:
-  {{- if eq .Values.managementCluster.pipeline "stable" }}
-  - channel: '#alert-bigmac'
-  {{- else }}
-  - channel: '#alert-bigmac-test'
-  {{- end }}
-    http_config:
-      {{- if .Values.alerting.slackAPIToken }}
-      authorization:
-        type: Bearer
-        credentials: {{ .Values.alerting.slackAPIToken }}
-      {{- end }}
-      proxy_from_environment: true
-    send_resolved: true
-    actions: *slack-actions
-
 - name: team_rocket_slack
   slack_configs:
   {{- if eq .Values.managementCluster.pipeline "stable" }}
@@ -318,17 +268,6 @@ inhibit_rules:
   equal: [cluster_id]
 
 - source_matchers:
-  - inhibit_kube_state_metrics_down=true
-  - cluster_id={{ .Values.managementCluster.name }}
-  target_matchers:
-  - cancel_if_mc_kube_state_metrics_down=true
-
-- source_matchers:
-  - inhibit_kube_state_metrics_down=true
-  target_matchers:
-  - cancel_if_any_kube_state_metrics_down=true
-
-- source_matchers:
   - cluster_control_plane_unhealthy=true
   target_matchers:
   - cancel_if_cluster_control_plane_unhealthy=true
@@ -368,14 +307,14 @@ inhibit_rules:
     - cancel_if_monitoring_agent_down=true
   equal: [cluster_id]
 
-# Source: https://github.com/giantswarm/prometheus-rules/blob/main/helm/prometheus-rules/templates/kaas/turtles/alerting-rules/inhibit.nodes.rules.yml
+# Source: https://github.com/giantswarm/prometheus-rules/blob/main/helm/prometheus-rules/templates/kaas/tenet/alerting-rules/inhibit.nodes.rules.yml
 - source_matchers:
     - node_not_ready=true
   target_matchers:
     - cancel_if_node_not_ready=true
   equal: [cluster_id, node]
 
-# Source: https://github.com/giantswarm/prometheus-rules/blob/main/helm/prometheus-rules/templates/kaas/turtles/alerting-rules/inhibit.nodes.rules.yml
+# Source: https://github.com/giantswarm/prometheus-rules/blob/main/helm/prometheus-rules/templates/kaas/tenet/alerting-rules/inhibit.nodes.rules.yml
 - source_matchers:
     - node_unschedulable=true
   target_matchers:
