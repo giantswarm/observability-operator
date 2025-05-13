@@ -87,10 +87,9 @@ func GenerateGrafanaClient(
 		Key:  string(tlsKeyBytes),
 	}
 	// clientTLSConfig is the *tls.Config for the Grafana client
-	var buildErr error
-	clientTLSConfig, buildErr = tlsConfigInput.toTLSConfig()
-	if buildErr != nil {
-		return nil, fmt.Errorf("failed to build TLS config from secret %q: %w", grafanaTLSSecretName, buildErr)
+	clientTLSConfig, err = tlsConfigInput.toTLSConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build TLS config from secret %q: %w", grafanaTLSSecretName, err)
 	}
 
 	cfg := &grafana.TransportConfig{
