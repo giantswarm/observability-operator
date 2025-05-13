@@ -96,7 +96,7 @@ func GenerateGrafanaClient(
 		Schemes:    []string{grafanaURL.Scheme},
 		BasePath:   "/api",
 		Host:       grafanaURL.Host,
-		BasicAuth:  url.UserPassword(adminUserCredentials.Username, adminUserCredentials.Password),
+		BasicAuth:  url.UserPassword(string(adminUsernameBytes), string(adminPasswordBytes)),
 		NumRetries: clientConfigNumRetries,
 		TLSConfig:  clientTLSConfig,
 	}
