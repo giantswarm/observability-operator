@@ -303,8 +303,8 @@ func findOrgByID(grafanaAPI *client.GrafanaHTTPAPI, orgID int64) (*Organization,
 }
 
 // PublishDashboard creates or updates a dashboard in Grafana
-func PublishDashboard(grafanaAPI *client.GrafanaHTTPAPI, dashboard map[string]any) error {
-	_, err := grafanaAPI.Dashboards.PostDashboard(&models.SaveDashboardCommand{
+func (s *Service) PublishDashboard(dashboard map[string]any) error {
+	_, err := s.grafanaAPI.Dashboards.PostDashboard(&models.SaveDashboardCommand{
 		Dashboard: any(dashboard),
 		Message:   "Added by observability-operator",
 		Overwrite: true, // allows dashboard to be updated by the same UID
