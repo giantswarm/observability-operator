@@ -11,16 +11,16 @@ import (
 )
 
 type FinalizerHelper struct {
-	// runtimeClient is the client used to interact with the Kubernetes API
-	runtimeClient client.Client
+	// client is the client used to interact with the Kubernetes API
+	client client.Client
 	// finalizer is the finalizer string to be added/removed
 	finalizer string
 }
 
 func NewFinalizerHelper(runtimeClient client.Client, finalizer string) FinalizerHelper {
 	fh := FinalizerHelper{
-		runtimeClient: runtimeClient,
-		finalizer:     finalizer,
+		client:    runtimeClient,
+		finalizer: finalizer,
 	}
 
 	return fh
@@ -37,7 +37,7 @@ func (fh FinalizerHelper) EnsureAdded(ctx context.Context, object client.Object)
 	// We use a patch rather than an update to avoid conflicts when multiple controllers are adding their finalizer
 	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
 	logger.Info("adding finalizer", "finalizer", fh.finalizer)
-	patchHelper, err := patch.NewHelper(object, fh.runtimeClient)
+	patchHelper, err := patch.NewHelper(object, fh.client)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
@@ -60,7 +60,7 @@ func (fh FinalizerHelper) EnsureRemoved(ctx context.Context, object client.Objec
 
 	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
 	logger.Info("removing finalizer", "finalizer", fh.finalizer)
-	patchHelper, err := patch.NewHelper(object, fh.runtimeClient)
+	patchHelper, err := patch.NewHelper(object, fh.client)
 	if err != nil {
 		return errors.WithStack(err)
 	}
