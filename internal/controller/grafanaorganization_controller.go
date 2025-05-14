@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"context"
 	stderrors "errors"
-	"fmt"
+	"net/url"
 	"slices"
 
 	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
@@ -33,22 +33,17 @@ import (
 type GrafanaOrganizationReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
-	GrafanaAPI *grafanaAPI.GrafanaHTTPAPI
+	grafanaURL *url.URL
 }
 
 func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(conf.GrafanaURL, conf)
-	if err != nil {
-		return fmt.Errorf("unable to create grafana client: %w", err)
-	}
-
 	r := &GrafanaOrganizationReconciler{
 		Client:     mgr.GetClient(),
 		Scheme:     mgr.GetScheme(),
-		GrafanaAPI: grafanaAPI,
+		grafanaURL: conf.GrafanaURL,
 	}
 
-	err = r.SetupWithManager(mgr)
+	err := r.SetupWithManager(mgr)
 	if err != nil {
 		return err
 	}
@@ -77,13 +72,18 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
 
+	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
+	if err != nil {
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaOrganization)
+		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaAPI, grafanaOrganization)
 	}
 
 	// Handle non-deleted grafana organizations
-	return r.reconcileCreate(ctx, grafanaOrganization)
+	return r.reconcileCreate(ctx, grafanaAPI, grafanaOrganization)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -141,7 +141,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 // - Adding the finalizer to the CR
 // - Updating the CR status field
 // - Renaming the Grafana Main Org.
-func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
+func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	logger := log.FromContext(ctx)
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
@@ -163,19 +163,19 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Configure the organization in Grafana
-	if err := r.configureOrganization(ctx, grafanaOrganization); err != nil {
+	if err := r.configureOrganization(ctx, grafanaAPI, grafanaOrganization); err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	var errs []error
 
 	// Update the datasources in the CR's status
-	if err := r.configureDatasources(ctx, grafanaOrganization); err != nil {
+	if err := r.configureDatasources(ctx, grafanaAPI, grafanaOrganization); err != nil {
 		errs = append(errs, err)
 	}
 
 	// Configure Grafana RBAC
-	if err := r.configureGrafanaSSO(ctx); err != nil {
+	if err := r.configureGrafanaSSO(ctx, grafanaAPI); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -208,11 +208,11 @@ func newOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) grafana.
 	}
 }
 
-func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 	// Create or update organization in Grafana
 	var organization = newOrganization(grafanaOrganization)
-	err := grafana.UpsertOrganization(ctx, r.GrafanaAPI, &organization)
+	err := grafana.UpsertOrganization(ctx, grafanaAPI, &organization)
 	if err != nil {
 		logger.Error(err, "failed to upsert grafanaOrganization")
 		return errors.WithStack(err)
@@ -233,14 +233,14 @@ func (r GrafanaOrganizationReconciler) configureOrganization(ctx context.Context
 	return nil
 }
 
-func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("configuring data sources")
 
 	// Create or update organization in Grafana
 	var organization = newOrganization(grafanaOrganization)
-	datasources, err := grafana.ConfigureDefaultDatasources(ctx, r.GrafanaAPI, organization)
+	datasources, err := grafana.ConfigureDefaultDatasources(ctx, grafanaAPI, organization)
 	if err != nil {
 		logger.Error(err, "failed to configure the grafanaOrganization with default datasources")
 		return errors.WithStack(err)
@@ -267,7 +267,7 @@ func (r GrafanaOrganizationReconciler) configureDatasources(ctx context.Context,
 }
 
 // reconcileDelete deletes the grafana organization.
-func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
 	// We do not need to delete anything if there is no finalizer on the grafana organization
@@ -275,12 +275,10 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		return nil
 	}
 
-	// Delete organization in Grafana
-	var organization = newOrganization(grafanaOrganization)
-
 	// Delete organization in Grafana if it exists
+	var organization = newOrganization(grafanaOrganization)
 	if grafanaOrganization.Status.OrgID > 0 {
-		err := grafana.DeleteOrganization(ctx, r.GrafanaAPI, organization)
+		err := grafana.DeleteOrganization(ctx, grafanaAPI, organization)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -295,7 +293,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	var errs []error
 
 	// Configure Grafana RBAC
-	if err := r.configureGrafanaSSO(ctx); err != nil {
+	if err := r.configureGrafanaSSO(ctx, grafanaAPI); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -322,7 +320,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 }
 
 // configureGrafana ensures the RBAC configuration is set in Grafana.
-func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context) error {
+func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI) error {
 	logger := log.FromContext(ctx)
 
 	organizationList := v1alpha1.GrafanaOrganizationList{}
@@ -337,7 +335,7 @@ func (r *GrafanaOrganizationReconciler) configureGrafanaSSO(ctx context.Context)
 	for i, organization := range organizationList.Items {
 		organizations[i] = newOrganization(&organization)
 	}
-	err = grafana.ConfigureSSOSettings(ctx, r.GrafanaAPI, organizations)
+	err = grafana.ConfigureSSOSettings(ctx, grafanaAPI, organizations)
 	if err != nil {
 		logger.Error(err, "failed to configure grafanaOrganization with SSO settings")
 		return errors.WithStack(err)
