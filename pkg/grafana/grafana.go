@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/go-openapi/runtime"
-	"github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -77,18 +76,18 @@ var defaultDatasources = []Datasource{
 	},
 }
 
-func UpsertOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization *Organization) (err error) {
+func (s *Service) UpsertOrganization(ctx context.Context, organization *Organization) (err error) {
 	logger := log.FromContext(ctx)
 	logger.Info("upserting organization")
 
 	// Get the current organization stored in Grafana
-	currentOrganization, err := findOrgByID(grafanaAPI, organization.ID)
+	currentOrganization, err := s.findOrgByID(organization.ID)
 	if err != nil {
 		if errors.Is(err, orgNotFoundError) {
 			logger.Info("organization id not found, creating")
 
 			// If organization does not exist in Grafana, create it
-			createdOrg, err := grafanaAPI.Orgs.CreateOrg(&models.CreateOrgCommand{
+			createdOrg, err := s.grafanaAPI.Orgs.CreateOrg(&models.CreateOrgCommand{
 				Name: organization.Name,
 			})
 			if err != nil {
@@ -112,7 +111,7 @@ func UpsertOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	}
 
 	// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
-	_, err = grafanaAPI.Orgs.UpdateOrg(organization.ID, &models.UpdateOrgForm{
+	_, err = s.grafanaAPI.Orgs.UpdateOrg(organization.ID, &models.UpdateOrgForm{
 		Name: organization.Name,
 	})
 	if err != nil {
@@ -125,11 +124,11 @@ func UpsertOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	return nil
 }
 
-func DeleteOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) error {
+func (s *Service) DeleteOrganization(ctx context.Context, organization Organization) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("deleting organization")
-	_, err := findOrgByID(grafanaAPI, organization.ID)
+	_, err := s.findOrgByID(organization.ID)
 	if err != nil {
 		if isNotFound(err) {
 			logger.Info("organization id was not found, skipping deletion")
@@ -140,7 +139,7 @@ func DeleteOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 		return errors.WithStack(err)
 	}
 
-	_, err = grafanaAPI.Orgs.DeleteOrgByID(organization.ID)
+	_, err = s.grafanaAPI.Orgs.DeleteOrgByID(organization.ID)
 	if err != nil {
 		logger.Error(err, "failed to delete organization")
 		return errors.WithStack(err)
@@ -150,16 +149,16 @@ func DeleteOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, 
 	return nil
 }
 
-func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organization Organization) ([]Datasource, error) {
+func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization Organization) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
 	// TODO using a serviceaccount later would be better as they are scoped to an organization
 
-	currentOrgID := grafanaAPI.OrgID()
-	grafanaAPI.WithOrgID(organization.ID)
-	defer grafanaAPI.WithOrgID(currentOrgID)
+	currentOrgID := s.grafanaAPI.OrgID()
+	s.grafanaAPI.WithOrgID(organization.ID)
+	defer s.grafanaAPI.WithOrgID(currentOrgID)
 
-	configuredDatasourcesInGrafana, err := listDatasourcesForOrganization(ctx, grafanaAPI)
+	configuredDatasourcesInGrafana, err := s.listDatasourcesForOrganization(ctx)
 	if err != nil {
 		logger.Error(err, "failed to list datasources")
 		return nil, errors.WithStack(err)
@@ -187,7 +186,7 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	for index, datasource := range datasourcesToCreate {
 		logger.Info("creating datasource", "datasource", datasource.Name)
-		created, err := grafanaAPI.Datasources.AddDataSource(
+		created, err := s.grafanaAPI.Datasources.AddDataSource(
 			&models.AddDataSourceCommand{
 				UID:            datasource.UID,
 				Name:           datasource.Name,
@@ -208,7 +207,7 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 
 	for _, datasource := range datasourcesToUpdate {
 		logger.Info("updating datasource", "datasource", datasource.Name)
-		_, err := grafanaAPI.Datasources.UpdateDataSourceByUID(
+		_, err := s.grafanaAPI.Datasources.UpdateDataSourceByUID(
 			datasource.UID,
 			&models.UpdateDataSourceCommand{
 				UID:            datasource.UID,
@@ -231,10 +230,10 @@ func ConfigureDefaultDatasources(ctx context.Context, grafanaAPI *client.Grafana
 	return append(datasourcesToCreate, datasourcesToUpdate...), errors.WithStack(err)
 }
 
-func listDatasourcesForOrganization(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI) ([]Datasource, error) {
+func (s *Service) listDatasourcesForOrganization(ctx context.Context) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
-	resp, err := grafanaAPI.Datasources.GetDataSources()
+	resp, err := s.grafanaAPI.Datasources.GetDataSources()
 	if err != nil {
 		logger.Error(err, "failed to get configured datasources")
 		return nil, errors.WithStack(err)
@@ -269,8 +268,8 @@ func isNotFound(err error) bool {
 }
 
 // FindOrgByName is a wrapper function used to find a Grafana organization by its name
-func FindOrgByName(grafanaAPI *client.GrafanaHTTPAPI, name string) (*Organization, error) {
-	organization, err := grafanaAPI.Orgs.GetOrgByName(name)
+func (s *Service) FindOrgByName(name string) (*Organization, error) {
+	organization, err := s.grafanaAPI.Orgs.GetOrgByName(name)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -282,12 +281,12 @@ func FindOrgByName(grafanaAPI *client.GrafanaHTTPAPI, name string) (*Organizatio
 }
 
 // findOrgByID is a wrapper function used to find a Grafana organization by its id
-func findOrgByID(grafanaAPI *client.GrafanaHTTPAPI, orgID int64) (*Organization, error) {
+func (s *Service) findOrgByID(orgID int64) (*Organization, error) {
 	if orgID == 0 {
 		return nil, orgNotFoundError
 	}
 
-	organization, err := grafanaAPI.Orgs.GetOrgByID(orgID)
+	organization, err := s.grafanaAPI.Orgs.GetOrgByID(orgID)
 	if err != nil {
 		if isNotFound(err) {
 			return nil, fmt.Errorf("%w: %w", orgNotFoundError, err)
