@@ -152,7 +152,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaAPI *gr
 		return errors.WithStack(err)
 	}
 
-	service := grafana.NewService(grafanaAPI)
+	service := grafana.NewService(r.Client, grafanaAPI)
 
 	// Configure the dashboard in Grafana
 	err = service.ConfigureDashboard(ctx, dashboard)
@@ -170,7 +170,7 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaAPI *gr
 		return nil
 	}
 
-	service := grafana.NewService(grafanaAPI)
+	service := grafana.NewService(r.Client, grafanaAPI)
 
 	// Unconfigure the dashboard in Grafana
 	err := service.UnconfigureDashboard(ctx, dashboard)

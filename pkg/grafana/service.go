@@ -10,8 +10,9 @@ type Service struct {
 	grafanaAPI *grafanaAPI.GrafanaHTTPAPI
 }
 
-func NewService(grafanaAPI *grafanaAPI.GrafanaHTTPAPI) *Service {
+func NewService(runtimeClient client.Client, grafanaAPI *grafanaAPI.GrafanaHTTPAPI) *Service {
 	s := &Service{
+		client:     runtimeClient,
 		grafanaAPI: grafanaAPI,
 	}
 

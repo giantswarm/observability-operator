@@ -148,7 +148,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	service := grafana.NewService(grafanaAPI)
+	service := grafana.NewService(r.Client, grafanaAPI)
 
 	err = service.SetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
@@ -166,7 +166,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		return nil
 	}
 
-	service := grafana.NewService(grafanaAPI)
+	service := grafana.NewService(r.Client, grafanaAPI)
 
 	err := service.UnsetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
