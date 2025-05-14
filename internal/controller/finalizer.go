@@ -38,3 +38,27 @@ func ensureFinalizerdAdded(ctx context.Context, runtimeClient client.Client, obj
 	logger.Info("added finalizer", "finalizer", finalizer)
 	return true, nil
 }
+
+func ensureFinalizerRemoved(ctx context.Context, runtimeClient client.Client, object client.Object, finalizer string) error {
+	logger := log.FromContext(ctx)
+
+	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
+	logger.Info("removing finalizer", "finalizer", finalizer)
+	patchHelper, err := patch.NewHelper(object, runtimeClient)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	// Remove the finalizer from the object
+	controllerutil.RemoveFinalizer(object, finalizer)
+
+	err = patchHelper.Patch(ctx, object)
+	if err != nil {
+		logger.Error(err, "failed to remove finalizer", "finalizer", finalizer)
+		return errors.WithStack(err)
+	}
+
+	logger.Info("removed finalizer", "finalizer", finalizer)
+
+	return nil
+}

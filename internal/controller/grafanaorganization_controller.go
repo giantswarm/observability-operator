@@ -12,7 +12,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -142,8 +141,6 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 // - Updating the CR status field
 // - Renaming the Grafana Main Org.
 func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
-	logger := log.FromContext(ctx)
-
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := ensureFinalizerdAdded(ctx, r.Client, grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
 	if err != nil || finalizerAdded {
@@ -290,19 +287,10 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	}
 
 	// Finalizer handling needs to come last.
-	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-	logger.Info("removing finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
-	patchHelper, err := patch.NewHelper(grafanaOrganization, r.Client)
+	err := ensureFinalizerRemoved(ctx, r.Client, grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
-	controllerutil.RemoveFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
-	if err := patchHelper.Patch(ctx, grafanaOrganization); err != nil {
-		logger.Error(err, "failed to remove finalizer, requeuing", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
-		return errors.WithStack(err)
-	}
-	logger.Info("removed finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
 
 	return nil
 }

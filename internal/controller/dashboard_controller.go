@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -147,8 +146,6 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
 func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, dashboard *v1.ConfigMap) (ctrl.Result, error) { // nolint:unparam
-	logger := log.FromContext(ctx)
-
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := ensureFinalizerdAdded(ctx, r.Client, dashboard, DashboardFinalizer)
 	if err != nil || finalizerAdded {
@@ -303,19 +300,10 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaAPI *gr
 	}
 
 	// Finalizer handling needs to come last.
-	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-	logger.Info("removing finalizer", "finalizer", DashboardFinalizer)
-	patchHelper, err := patch.NewHelper(dashboardCM, r.Client)
+	err = ensureFinalizerRemoved(ctx, r.Client, dashboardCM, DashboardFinalizer)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
-	controllerutil.RemoveFinalizer(dashboardCM, DashboardFinalizer)
-	if err := patchHelper.Patch(ctx, dashboardCM); err != nil {
-		logger.Error(err, "failed to remove finalizer, requeuing", "finalizer", DashboardFinalizer)
-		return errors.WithStack(err)
-	}
-	logger.Info("removed finalizer", "finalizer", DashboardFinalizer)
 
 	return nil
 }

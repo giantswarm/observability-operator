@@ -10,7 +10,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -308,33 +307,13 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// We get the latest state of the object to avoid race conditions.
 		// Finalizer handling needs to come last.
-		err = r.removeFinalizer(ctx, cluster)
+		err = ensureFinalizerRemoved(ctx, r.Client, cluster, monitoring.MonitoringFinalizer)
 		if err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func (r *ClusterMonitoringReconciler) removeFinalizer(ctx context.Context, cluster *clusterv1.Cluster) error {
-	logger := log.FromContext(ctx)
-
-	// We use a patch rather than an update to avoid conflicts when multiple controllers are removing their finalizer from the ClusterCR
-	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-	logger.Info("removing finalizer", "finalizer", monitoring.MonitoringFinalizer)
-	patchHelper, err := patch.NewHelper(cluster, r.Client)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	controllerutil.RemoveFinalizer(cluster, monitoring.MonitoringFinalizer)
-	if err := patchHelper.Patch(ctx, cluster); err != nil {
-		logger.Error(err, "failed to remove finalizer, requeuing", "finalizer", monitoring.MonitoringFinalizer)
-		return errors.WithStack(err)
-	}
-	logger.Info("removed finalizer", "finalizer", monitoring.MonitoringFinalizer)
-	return nil
 }
 
 func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Context) *ctrl.Result {
