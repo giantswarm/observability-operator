@@ -51,7 +51,7 @@ const (
 	DefaultWriteTenant = "giantswarm"
 )
 
-var DefaultReadTenants = []string{"anonymous", "giantswarm"}
+var DefaultReadTenant = "giantswarm"
 
 func GetServicePriority(cluster *clusterv1.Cluster) string {
 	if servicePriority, ok := cluster.GetLabels()[servicePriorityLabel]; ok && servicePriority != "" {
