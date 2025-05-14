@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Remove crds template as the CRDs are now deployed via management-cluster-bases (https://github.com/giantswarm/management-cluster-bases/pull/232)
+
 ### Changed
 
 - Grafana API client is now generated on every requests to support grafana secret changes and allows for better mc-bootstrap testing (https://github.com/giantswarm/giantswarm/issues/32664)
