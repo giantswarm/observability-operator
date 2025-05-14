@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Remove crds template as the CRDs are now deployed via management-cluster-bases (https://github.com/giantswarm/management-cluster-bases/pull/232)
+
 ### Changed
 
 - Updated alertmanager's inhibitions, getting rid of vintage-specifics.
