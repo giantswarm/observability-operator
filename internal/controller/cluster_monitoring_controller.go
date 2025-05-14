@@ -195,9 +195,9 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	logger := log.FromContext(ctx)
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
-	// Note: Finalizers in general can only be added when the deletionTimestamp is not set.
-	if !controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
-		return r.addFinalizer(ctx, cluster)
+	finalizerAdded, err := ensureFinalizerdAdded(ctx, r.Client, cluster, monitoring.MonitoringFinalizer)
+	if err != nil || finalizerAdded {
+		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	// Management cluster specific configuration
@@ -314,25 +314,6 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 	}
 
-	return ctrl.Result{}, nil
-}
-
-func (r *ClusterMonitoringReconciler) addFinalizer(ctx context.Context, cluster *clusterv1.Cluster) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-
-	// We use a patch rather than an update to avoid conflicts when multiple controllers are adding their finalizer to the ClusterCR
-	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-	logger.Info("adding finalizer", "finalizer", monitoring.MonitoringFinalizer)
-	patchHelper, err := patch.NewHelper(cluster, r.Client)
-	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-	controllerutil.AddFinalizer(cluster, monitoring.MonitoringFinalizer)
-	if err := patchHelper.Patch(ctx, cluster); err != nil {
-		logger.Error(err, "failed to add finalizer", "finalizer", monitoring.MonitoringFinalizer)
-		return ctrl.Result{}, errors.WithStack(err)
-	}
-	logger.Info("added finalizer", "finalizer", monitoring.MonitoringFinalizer)
 	return ctrl.Result{}, nil
 }
 

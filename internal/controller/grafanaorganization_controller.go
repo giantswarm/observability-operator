@@ -145,21 +145,9 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	logger := log.FromContext(ctx)
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
-	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
-		// We use a patch rather than an update to avoid conflicts when multiple controllers are adding their finalizer to the grafana organization
-		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-		logger.Info("adding finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
-		patchHelper, err := patch.NewHelper(grafanaOrganization, r.Client)
-		if err != nil {
-			return ctrl.Result{}, errors.WithStack(err)
-		}
-		controllerutil.AddFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
-		if err := patchHelper.Patch(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to add finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
-			return ctrl.Result{}, errors.WithStack(err)
-		}
-		logger.Info("added finalizer", "finalizer", v1alpha1.GrafanaOrganizationFinalizer)
-		return ctrl.Result{}, nil
+	finalizerAdded, err := ensureFinalizerdAdded(ctx, r.Client, grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
+	if err != nil || finalizerAdded {
+		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	// Configure the organization in Grafana

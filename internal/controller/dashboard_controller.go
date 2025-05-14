@@ -150,21 +150,9 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaAPI *gr
 	logger := log.FromContext(ctx)
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
-	if !controllerutil.ContainsFinalizer(dashboard, DashboardFinalizer) {
-		// We use a patch rather than an update to avoid conflicts when multiple controllers are adding their finalizer to the grafana dashboard
-		// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-		logger.Info("adding finalizer", "finalizer", DashboardFinalizer)
-		patchHelper, err := patch.NewHelper(dashboard, r.Client)
-		if err != nil {
-			return ctrl.Result{}, errors.WithStack(err)
-		}
-		controllerutil.AddFinalizer(dashboard, DashboardFinalizer)
-		if err := patchHelper.Patch(ctx, dashboard); err != nil {
-			logger.Error(err, "failed to add finalizer", "finalizer", DashboardFinalizer)
-			return ctrl.Result{}, errors.WithStack(err)
-		}
-		logger.Info("added finalizer", "finalizer", DashboardFinalizer)
-		return ctrl.Result{}, nil
+	finalizerAdded, err := ensureFinalizerdAdded(ctx, r.Client, dashboard, DashboardFinalizer)
+	if err != nil || finalizerAdded {
+		return ctrl.Result{}, errors.WithStack(err)
 	}
 
 	// Configure the dashboard in Grafana
