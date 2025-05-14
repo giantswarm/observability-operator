@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Grafana API client is now generated on every requests to support grafana secret changes and allows for better mc-bootstrap testing (https://github.com/giantswarm/giantswarm/issues/32664)
 - Updated alertmanager's inhibitions, getting rid of vintage-specifics.
 
 ## [0.29.0] - 2025-05-05
