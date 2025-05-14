@@ -33,7 +33,8 @@ type DashboardReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	grafanaURL *url.URL
+	grafanaURL      *url.URL
+	finalizerHelper FinalizerHelper
 }
 
 const (
@@ -49,7 +50,8 @@ func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 
-		grafanaURL: conf.GrafanaURL,
+		grafanaURL:      conf.GrafanaURL,
+		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
 	}
 
 	err := r.SetupWithManager(mgr)
@@ -147,7 +149,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // - Adding the finalizer to the configmap
 func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, dashboard *v1.ConfigMap) (ctrl.Result, error) { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
-	finalizerAdded, err := ensureFinalizerdAdded(ctx, r.Client, dashboard, DashboardFinalizer)
+	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
 	if err != nil || finalizerAdded {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
@@ -300,7 +302,7 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaAPI *gr
 	}
 
 	// Finalizer handling needs to come last.
-	err = ensureFinalizerRemoved(ctx, r.Client, dashboardCM, DashboardFinalizer)
+	err = r.finalizerHelper.EnsureRemoved(ctx, dashboardCM)
 	if err != nil {
 		return errors.WithStack(err)
 	}

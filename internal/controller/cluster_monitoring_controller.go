@@ -53,6 +53,8 @@ type ClusterMonitoringReconciler struct {
 	BundleConfigurationService *bundle.BundleConfigurationService
 	// MonitoringConfig is the configuration for the monitoring package.
 	MonitoringConfig monitoring.Config
+	// FinalizerHelper is the helper for managing finalizers.
+	finalizerHelper FinalizerHelper
 }
 
 func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) error {
@@ -99,6 +101,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 		MimirService:               mimirService,
 		MonitoringConfig:           conf.Monitoring,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, conf.Monitoring),
+		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
 
 	err = r.SetupWithManager(mgr)
@@ -194,7 +197,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	logger := log.FromContext(ctx)
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
-	finalizerAdded, err := ensureFinalizerdAdded(ctx, r.Client, cluster, monitoring.MonitoringFinalizer)
+	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, cluster)
 	if err != nil || finalizerAdded {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
@@ -307,7 +310,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// We get the latest state of the object to avoid race conditions.
 		// Finalizer handling needs to come last.
-		err = ensureFinalizerRemoved(ctx, r.Client, cluster, monitoring.MonitoringFinalizer)
+		err = r.finalizerHelper.EnsureRemoved(ctx, cluster)
 		if err != nil {
 			return ctrl.Result{}, errors.WithStack(err)
 		}

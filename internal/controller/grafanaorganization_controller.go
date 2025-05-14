@@ -31,15 +31,17 @@ import (
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	grafanaURL *url.URL
+	Scheme          *runtime.Scheme
+	grafanaURL      *url.URL
+	finalizerHelper FinalizerHelper
 }
 
 func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
 	r := &GrafanaOrganizationReconciler{
-		Client:     mgr.GetClient(),
-		Scheme:     mgr.GetScheme(),
-		grafanaURL: conf.GrafanaURL,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		grafanaURL:      conf.GrafanaURL,
+		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), v1alpha1.GrafanaOrganizationFinalizer),
 	}
 
 	err := r.SetupWithManager(mgr)
@@ -142,7 +144,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 // - Renaming the Grafana Main Org.
 func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
-	finalizerAdded, err := ensureFinalizerdAdded(ctx, r.Client, grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
+	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, grafanaOrganization)
 	if err != nil || finalizerAdded {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
@@ -287,7 +289,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	}
 
 	// Finalizer handling needs to come last.
-	err := ensureFinalizerRemoved(ctx, r.Client, grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer)
+	err := r.finalizerHelper.EnsureRemoved(ctx, grafanaOrganization)
 	if err != nil {
 		return errors.WithStack(err)
 	}
