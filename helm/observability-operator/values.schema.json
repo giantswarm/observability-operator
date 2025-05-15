@@ -2,6 +2,23 @@
     "$schema": "http://json-schema.org/schema#",
     "type": "object",
     "properties": {
+        "alerting": {
+            "type": "object",
+            "properties": {
+                "alertmanagerURL": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "grafanaAddress": {
+                    "type": "string"
+                },
+                "slackAPIToken": {
+                    "type": "string"
+                }
+            }
+        },
         "image": {
             "type": "object",
             "properties": {
@@ -20,6 +37,9 @@
             "type": "object",
             "properties": {
                 "baseDomain": {
+                    "type": "string"
+                },
+                "clusterIssuer": {
                     "type": "string"
                 },
                 "customer": {

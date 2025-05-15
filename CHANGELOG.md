@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Unify finalizer logic accross controllers
+- We decided to disable the alerting tab in the Shared Org to prevent customers from messing with our alerts so we need to open the alerting tag in orgID = 2 (i.e. the Giant Swarm organization).
+
+### Removed
+
+- Remove deprecated slackAPIURL property.
 
 ## [0.30.0] - 2025-05-14
 
