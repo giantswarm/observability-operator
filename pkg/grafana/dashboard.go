@@ -24,7 +24,7 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboardCM *v1.Config
 			return
 		}
 
-		logger.Info("updated dashboard", "Dashboard UID", dashboardUID)
+		logger.Info("updated dashboard")
 	})
 }
 
@@ -45,7 +45,7 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboardCM *v1.ConfigMap
 			return
 		}
 
-		logger.Info("deleted dashboard", "Dashboard UID", dashboardUID)
+		logger.Info("deleted dashboard")
 	})
 }
 
@@ -88,6 +88,10 @@ func (s *Service) processDashboards(ctx context.Context, dashboardCM *v1.ConfigM
 
 		// Clean the dashboard ID to avoid conflicts
 		cleanDashboardID(dashboard)
+
+		// Create a new logger with the dashboard UID, this is to avoid overwriting the logger
+		dashboardLogger := logger.WithValues("Dashboard UID", dashboardUID)
+		ctx = log.IntoContext(ctx, dashboardLogger)
 
 		f(ctx, dashboard, dashboardUID)
 	}
