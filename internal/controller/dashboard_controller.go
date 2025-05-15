@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/url"
 
-	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,13 +85,15 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	grafanaService := grafana.NewService(r.Client, grafanaAPI)
+
 	// Handle deleted grafana dashboards
 	if !dashboard.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaAPI, dashboard)
+		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaService, dashboard)
 	}
 
 	// Handle non-deleted grafana dashboards
-	return ctrl.Result{}, r.reconcileCreate(ctx, grafanaAPI, dashboard)
+	return ctrl.Result{}, r.reconcileCreate(ctx, grafanaService, dashboard)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -145,17 +146,15 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // reconcileCreate ensures the Grafana dashboard described in configmap is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
-func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, dashboard *v1.ConfigMap) error { // nolint:unparam
+func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
 	if err != nil || finalizerAdded {
 		return errors.WithStack(err)
 	}
 
-	service := grafana.NewService(r.Client, grafanaAPI)
-
 	// Configure the dashboard in Grafana
-	err = service.ConfigureDashboard(ctx, dashboard)
+	err = grafanaService.ConfigureDashboard(ctx, dashboard)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -164,16 +163,14 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaAPI *gr
 }
 
 // reconcileDelete deletes the grafana dashboard.
-func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, dashboard *v1.ConfigMap) error {
+func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error {
 	// We do not need to delete anything if there is no finalizer on the grafana dashboard
 	if !controllerutil.ContainsFinalizer(dashboard, DashboardFinalizer) {
 		return nil
 	}
 
-	service := grafana.NewService(r.Client, grafanaAPI)
-
 	// Unconfigure the dashboard in Grafana
-	err := service.UnconfigureDashboard(ctx, dashboard)
+	err := grafanaService.UnconfigureDashboard(ctx, dashboard)
 	if err != nil {
 		return errors.WithStack(err)
 	}

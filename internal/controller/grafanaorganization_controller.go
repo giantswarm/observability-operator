@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"slices"
 
-	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -77,13 +76,15 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	grafanaService := grafana.NewService(r.Client, grafanaAPI)
+
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaAPI, grafanaOrganization)
+		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaService, grafanaOrganization)
 	}
 
 	// Handle non-deleted grafana organizations
-	return r.reconcileCreate(ctx, grafanaAPI, grafanaOrganization)
+	return r.reconcileCreate(ctx, grafanaService, grafanaOrganization)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -141,16 +142,14 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 // - Adding the finalizer to the CR
 // - Updating the CR status field
 // - Renaming the Grafana Main Org.
-func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
+func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, grafanaOrganization)
 	if err != nil || finalizerAdded {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	service := grafana.NewService(r.Client, grafanaAPI)
-
-	err = service.SetupOrganization(ctx, grafanaOrganization)
+	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
@@ -159,16 +158,14 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 }
 
 // reconcileDelete deletes the grafana organization.
-func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaAPI *grafanaAPI.GrafanaHTTPAPI, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 
 	// We do not need to delete anything if there is no finalizer on the grafana organization
 	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 		return nil
 	}
 
-	service := grafana.NewService(r.Client, grafanaAPI)
-
-	err := service.UnsetupOrganization(ctx, grafanaOrganization)
+	err := grafanaService.UnsetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
 		return errors.WithStack(err)
 	}
