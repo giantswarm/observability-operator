@@ -124,7 +124,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 	return nil
 }
 
-func (s *Service) DeleteOrganization(ctx context.Context, organization Organization) error {
+func (s *Service) deleteOrganization(ctx context.Context, organization Organization) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("deleting organization")

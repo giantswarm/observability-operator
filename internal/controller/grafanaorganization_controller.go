@@ -165,7 +165,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		return nil
 	}
 
-	err := grafanaService.UnsetupOrganization(ctx, grafanaOrganization)
+	err := grafanaService.DeleteOrganization(ctx, grafanaOrganization)
 	if err != nil {
 		return errors.WithStack(err)
 	}

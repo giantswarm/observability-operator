@@ -35,13 +35,13 @@ func (s *Service) SetupOrganization(ctx context.Context, grafanaOrganization *v1
 	return nil
 }
 
-func (s *Service) UnsetupOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (s *Service) DeleteOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
 	// Delete organization in Grafana if it exists
 	var organization = NewOrganization(grafanaOrganization)
 	if grafanaOrganization.Status.OrgID > 0 {
-		err := s.DeleteOrganization(ctx, organization)
+		err := s.deleteOrganization(ctx, organization)
 		if err != nil {
 			return errors.WithStack(err)
 		}
