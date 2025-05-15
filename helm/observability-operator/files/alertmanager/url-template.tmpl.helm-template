@@ -4,7 +4,7 @@
 {{/*
   __alert_url is the link pointing to a page in Grafana with details and source expressiong of the alert.
 */}}
-{{ define "__alert_url" }}{{ template "__grafana_url" }}/alerting/Mimir/{{ .CommonLabels.alertname }}/find{{ end }}
+{{ define "__alert_url" }}{{ template "__grafana_url" }}/alerting/Mimir/{{ .CommonLabels.alertname }}/find?orgId=2{{ end }}
 
 {{/*
   __dashboard_url is the link pointing the Grafana dashboard referenced in the alert annotation if any.
