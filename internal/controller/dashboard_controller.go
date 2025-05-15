@@ -170,7 +170,7 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 	}
 
 	// Unconfigure the dashboard in Grafana
-	err := grafanaService.UnconfigureDashboard(ctx, dashboard)
+	err := grafanaService.DeleteDashboard(ctx, dashboard)
 	if err != nil {
 		return errors.WithStack(err)
 	}

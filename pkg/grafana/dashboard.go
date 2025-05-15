@@ -28,7 +28,7 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboardCM *v1.Config
 	})
 }
 
-func (s *Service) UnconfigureDashboard(ctx context.Context, dashboardCM *v1.ConfigMap) error {
+func (s *Service) DeleteDashboard(ctx context.Context, dashboardCM *v1.ConfigMap) error {
 
 	return s.processDashboards(ctx, dashboardCM, func(ctx context.Context, dashboard map[string]any, dashboardUID string) {
 		logger := log.FromContext(ctx)
