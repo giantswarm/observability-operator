@@ -9,31 +9,48 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	OrganizationLabel string = "giantswarm.io/organization"
+var (
+	// ErrOrganizationLabelMissing is returned when the organization label is not found on the cluster's namespace
+	// or if the label value is empty.
+	ErrOrganizationLabelMissing = errors.New("cluster namespace missing organization label or label value is empty")
+	organizationLabel           = "giantswarm.io/organization"
 )
 
+// OrganizationRepository defines an interface for reading organization information.
 type OrganizationRepository interface {
 	Read(ctx context.Context, cluster *clusterv1.Cluster) (string, error)
 }
 
+// NamespaceOrganizationRepository implements OrganizationRepository by reading
+// the organization from the cluster's namespace labels.
 type NamespaceOrganizationRepository struct {
 	client.Client
 }
 
+// NewNamespaceRepository creates a new NamespaceOrganizationRepository.
 func NewNamespaceRepository(client client.Client) OrganizationRepository {
-	return NamespaceOrganizationRepository{client}
+	return NamespaceOrganizationRepository{Client: client}
 }
 
+// Read fetches the organization ID from the labels of the namespace
+// where the given CAPI cluster resides.
+// It returns ErrOrganizationLabelMissing if the label is not present or its value is empty.
 func (r NamespaceOrganizationRepository) Read(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
 	namespace := &corev1.Namespace{}
-	err := r.Get(ctx, client.ObjectKey{Name: cluster.GetNamespace()}, namespace)
-	if err != nil {
-		return "", err
+	key := client.ObjectKey{Name: cluster.GetNamespace()}
+
+	if err := r.Get(ctx, key, namespace); err != nil {
+		return "", err // Propagate client errors
 	}
 
-	if organization, ok := namespace.Labels[OrganizationLabel]; ok {
-		return organization, nil
+	if namespace.Labels == nil {
+		return "", ErrOrganizationLabelMissing
 	}
-	return "", errors.New("cluster namespace missing organization label")
+
+	organization, ok := namespace.Labels[organizationLabel]
+	if !ok || organization == "" {
+		return "", ErrOrganizationLabelMissing
+	}
+
+	return organization, nil
 }
