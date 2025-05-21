@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/yaml"
 
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
 
 const (
