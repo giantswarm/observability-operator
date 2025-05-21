@@ -122,7 +122,7 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 	if apierrors.IsNotFound(err) {
 		logger.Info("building ingress secret")
 
-		password, err := commonmonitoring.GetMimirIngressPassword(ctx)
+		password, err := commonmonitoring.GetMimirIngressPassword(ctx, ms.Client)
 		if err != nil {
 			return errors.WithStack(err)
 		}

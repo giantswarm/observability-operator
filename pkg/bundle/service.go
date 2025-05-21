@@ -9,7 +9,6 @@ import (
 	"github.com/blang/semver/v4"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	apimachineryerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +16,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
@@ -46,8 +46,8 @@ func getConfigMapObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 // Configure configures the observability-bundle application.
 // the observabilitybundle application to enable logging agents.
 func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clusterv1.Cluster, monitoringAgent string) error {
-	logger := log.FromContext(ctx)
-	logger.Info(fmt.Sprintf("configuring %s", observabilityBundleAppName))
+	logger := log.FromContext(ctx).WithValues("appName", observabilityBundleAppName)
+	logger.Info("configuring application")
 
 	bundleConfiguration := bundleConfiguration{
 		Apps: map[string]app{},
@@ -73,19 +73,19 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 		return errors.Errorf("unsupported monitoring agent %q", monitoringAgent)
 	}
 
-	logger.Info(fmt.Sprintf("create or update %s configmap", observabilityBundleAppName))
+	logger.Info("create or update configmap")
 	err := s.createOrUpdateObservabilityBundleConfigMap(ctx, cluster, bundleConfiguration)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	logger.Info(fmt.Sprintf("configure %s app", observabilityBundleAppName))
+	logger.Info("configure application")
 	err = s.configureObservabilityBundleApp(ctx, cluster)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	logger.Info(fmt.Sprintf("%s is configured successfully", observabilityBundleAppName))
+	logger.Info("application is configured successfully")
 
 	return nil
 }
@@ -122,7 +122,7 @@ func (s BundleConfigurationService) createOrUpdateObservabilityBundleConfigMap(
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			logger.Info("observability-bundle configuration created")
+			logger.Info("configuration created")
 		} else {
 			return errors.WithStack(err)
 		}
@@ -134,10 +134,10 @@ func (s BundleConfigurationService) createOrUpdateObservabilityBundleConfigMap(
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		logger.Info("observability-bundle configuration updated")
+		logger.Info("configuration updated")
 	}
 
-	logger.Info("observability-bundle configuration up to date")
+	logger.Info("configuration up to date")
 	return nil
 }
 
