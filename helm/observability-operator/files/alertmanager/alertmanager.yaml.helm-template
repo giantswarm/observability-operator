@@ -2,11 +2,7 @@ global:
   resolve_timeout: 5m
   http_config:
     proxy_from_environment: true
-{{- if .Values.alerting.slackAPIToken }}
   slack_api_url: "https://slack.com/api/chat.postMessage"
-{{- else }}
-  slack_api_url: {{ .Values.alerting.slackAPIURL }}
-{{- end }}
 
 templates:
   - notification-template.tmpl
@@ -139,11 +135,9 @@ receivers:
   slack_configs:
   - channel: '#noise-falco'
     http_config:
-      {{- if .Values.alerting.slackAPIToken }}
       authorization:
         type: Bearer
         credentials: {{ .Values.alerting.slackAPIToken }}
-      {{- end }}
       proxy_from_environment: true
     send_resolved: true
     actions: &slack-actions
@@ -173,11 +167,9 @@ receivers:
   - channel: '#alert-atlas-test'
   {{- end }}
     http_config:
-      {{- if .Values.alerting.slackAPIToken }}
       authorization:
         type: Bearer
         credentials: {{ .Values.alerting.slackAPIToken }}
-      {{- end }}
       proxy_from_environment: true
     send_resolved: true
     actions: *slack-actions
@@ -190,11 +182,9 @@ receivers:
   - channel: '#alert-phoenix-test'
   {{- end }}
     http_config:
-      {{- if .Values.alerting.slackAPIToken }}
       authorization:
         type: Bearer
         credentials: {{ .Values.alerting.slackAPIToken }}
-      {{- end }}
       proxy_from_environment: true
     send_resolved: true
     actions: *slack-actions
@@ -207,11 +197,9 @@ receivers:
   - channel: '#alert-rocket-test'
   {{- end }}
     http_config:
-      {{- if .Values.alerting.slackAPIToken }}
       authorization:
         type: Bearer
         credentials: {{ .Values.alerting.slackAPIToken }}
-      {{- end }}
       proxy_from_environment: true
     send_resolved: true
     actions: *slack-actions
@@ -220,11 +208,9 @@ receivers:
   slack_configs:
   - channel: '#alert-shield'
     http_config:
-      {{- if .Values.alerting.slackAPIToken }}
       authorization:
         type: Bearer
         credentials: {{ .Values.alerting.slackAPIToken }}
-      {{- end }}
       proxy_from_environment: true
     send_resolved: true
     actions: *slack-actions
@@ -233,11 +219,9 @@ receivers:
   slack_configs:
   - channel: '#alert-tenet'
     http_config:
-      {{- if .Values.alerting.slackAPIToken }}
       authorization:
         type: Bearer
         credentials: {{ .Values.alerting.slackAPIToken }}
-      {{- end }}
       proxy_from_environment: true
     send_resolved: true
     actions: *slack-actions
@@ -246,11 +230,9 @@ receivers:
   slack_configs:
   - channel: '#alert-honeybadger'
     http_config:
-      {{- if .Values.alerting.slackAPIToken }}
       authorization:
         type: Bearer
         credentials: {{ .Values.alerting.slackAPIToken }}
-      {{- end }}
       proxy_from_environment: true
     send_resolved: true
     actions: *slack-actions
