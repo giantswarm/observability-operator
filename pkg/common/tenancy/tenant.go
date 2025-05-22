@@ -13,26 +13,36 @@ const (
 	TenantSelectorLabel = "observability.giantswarm.io/tenant"
 )
 
-func ListTenants(ctx context.Context, client client.Client) ([]string, error) {
-	tenants := make([]string, 0)
+// ListTenants retrieves a unique, sorted list of tenant IDs from all active GrafanaOrganization resources.
+func ListTenants(ctx context.Context, k8sClient client.Client) ([]string, error) {
 	var grafanaOrganizations v1alpha1.GrafanaOrganizationList
-
-	err := client.List(ctx, &grafanaOrganizations)
-	if err != nil {
+	if err := k8sClient.List(ctx, &grafanaOrganizations); err != nil {
 		return nil, err
 	}
 
+	// Use a map to store unique tenants for efficient lookup.
+	// The map value (struct{}{}) is an empty struct, which uses minimal memory.
+	uniqueTenants := make(map[string]struct{})
+
 	for _, organization := range grafanaOrganizations.Items {
+		// Skip organizations marked for deletion.
 		if !organization.DeletionTimestamp.IsZero() {
 			continue
 		}
 
 		for _, tenant := range organization.Spec.Tenants {
-			if !slices.Contains(tenants, string(tenant)) {
-				tenants = append(tenants, string(tenant))
-			}
+			uniqueTenants[string(tenant)] = struct{}{}
 		}
 	}
+
+	// Convert map keys to a slice.
+	tenants := make([]string, 0, len(uniqueTenants))
+	for tenant := range uniqueTenants {
+		tenants = append(tenants, tenant)
+	}
+
+	// Sort the tenants for deterministic output.
+	slices.Sort(tenants)
 
 	return tenants, nil
 }
