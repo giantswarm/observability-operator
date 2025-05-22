@@ -16,7 +16,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
 
 type PrometheusAgentService struct {

@@ -6,7 +6,7 @@ import (
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
 
 const MonitoringLabel = "giantswarm.io/monitoring"
