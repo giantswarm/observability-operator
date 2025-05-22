@@ -36,8 +36,6 @@ func (s *Service) SetupOrganization(ctx context.Context, grafanaOrganization *v1
 }
 
 func (s *Service) DeleteOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
-	logger := log.FromContext(ctx)
-
 	// Delete organization in Grafana if it exists
 	var organization = NewOrganization(grafanaOrganization)
 	if grafanaOrganization.Status.OrgID > 0 {
@@ -45,17 +43,6 @@ func (s *Service) DeleteOrganization(ctx context.Context, grafanaOrganization *v
 		if err != nil {
 			return errors.WithStack(err)
 		}
-
-		grafanaOrganization.Status.OrgID = 0
-		if err = s.client.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to update grafanaOrganization status")
-			return errors.WithStack(err)
-		}
-	}
-
-	// Configure Grafana RBAC
-	if err := s.ConfigureGrafanaSSO(ctx); err != nil {
-		return errors.WithStack(err)
 	}
 
 	return nil
