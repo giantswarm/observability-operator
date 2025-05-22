@@ -11,11 +11,6 @@ import (
 )
 
 func (s *Service) SetupOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
-	// Configure the organization in Grafana
-	if err := s.ConfigureOrganization(ctx, grafanaOrganization); err != nil {
-		return errors.WithStack(err)
-	}
-
 	var errs []error
 
 	// Update the datasources in the CR's status
@@ -48,29 +43,16 @@ func (s *Service) DeleteOrganization(ctx context.Context, grafanaOrganization *v
 	return nil
 }
 
-func (s *Service) ConfigureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
-	logger := log.FromContext(ctx)
+func (s *Service) ConfigureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (int64, error) {
 	// Create or update organization in Grafana
-	var organization = NewOrganization(grafanaOrganization)
+	organization := NewOrganization(grafanaOrganization)
+
 	err := s.UpsertOrganization(ctx, &organization)
 	if err != nil {
-		logger.Error(err, "failed to upsert grafanaOrganization")
-		return errors.WithStack(err)
+		return -1, errors.WithStack(err)
 	}
 
-	// Update CR status if anything was changed
-	if grafanaOrganization.Status.OrgID != organization.ID {
-		logger.Info("updating orgID in the grafanaOrganization status")
-		grafanaOrganization.Status.OrgID = organization.ID
-
-		if err = s.client.Status().Update(ctx, grafanaOrganization); err != nil {
-			logger.Error(err, "failed to update grafanaOrganization status")
-			return errors.WithStack(err)
-		}
-		logger.Info("updated orgID in the grafanaOrganization status")
-	}
-
-	return nil
+	return organization.ID, nil
 }
 
 func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {

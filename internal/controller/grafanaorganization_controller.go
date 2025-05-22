@@ -149,8 +149,30 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
+	logger := log.FromContext(ctx)
+
+	updatedID, err := grafanaService.ConfigureOrganization(ctx, grafanaOrganization)
+	if err != nil {
+		logger.Error(err, "failed to upsert grafanaOrganization")
+		return ctrl.Result{}, errors.WithStack(err)
+	}
+
+	// Update CR status if anything was changed
+	if grafanaOrganization.Status.OrgID != updatedID {
+		logger.Info("updating orgID in the grafanaOrganization status")
+		grafanaOrganization.Status.OrgID = updatedID
+
+		err = r.Client.Status().Update(ctx, grafanaOrganization)
+		if err != nil {
+			logger.Error(err, "failed to update grafanaOrganization status")
+			return ctrl.Result{}, errors.WithStack(err)
+		}
+		logger.Info("updated orgID in the grafanaOrganization status")
+	}
+
 	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
+		logger.Error(err, "failed to setup grafanaOrganization")
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
