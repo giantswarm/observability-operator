@@ -38,6 +38,11 @@ prometheus.operator.servicemonitors "giantswarm_legacy" {
       operator = "DoesNotExist"
     }
   }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_pod_label_application_giantswarm_io_team"]
+  }
   scrape {
     default_scrape_interval = "60s"
   }
@@ -58,6 +63,11 @@ prometheus.operator.podmonitors "giantswarm_legacy" {
       operator = "DoesNotExist"
     }
   }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_pod_label_application_giantswarm_io_team"]
+  }
   scrape {
     default_scrape_interval = "60s"
   }
@@ -76,6 +86,11 @@ prometheus.operator.servicemonitors "giantswarm" {
       values   = ["giantswarm"]
     }
   }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_pod_label_application_giantswarm_io_team"]
+  }
   scrape {
     default_scrape_interval = "60s"
   }
@@ -92,6 +107,11 @@ prometheus.operator.podmonitors "giantswarm" {
       operator = "In"
       values   = ["giantswarm"]
     }
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_pod_label_application_giantswarm_io_team"]
   }
   scrape {
     default_scrape_interval = "60s"
