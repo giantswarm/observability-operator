@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -17,11 +16,11 @@ const (
 	grafanaViewerRole = "Viewer"
 )
 
-func ConfigureSSOSettings(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI, organizations []Organization) error {
+func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Organization) error {
 	logger := log.FromContext(ctx)
 
 	provider := "generic_oauth"
-	resp, err := grafanaAPI.SsoSettings.GetProviderSettings(provider, nil)
+	resp, err := s.grafanaAPI.SsoSettings.GetProviderSettings(provider, nil)
 	if err != nil {
 		logger.Error(err, "failed to get sso provider settings.")
 		return errors.WithStack(err)
@@ -36,7 +35,7 @@ func ConfigureSSOSettings(ctx context.Context, grafanaAPI *client.GrafanaHTTPAPI
 	logger.Info("Configuring Grafana SSO settings", "provider", provider, "settings", settings)
 
 	// Update the provider settings
-	_, err = grafanaAPI.SsoSettings.UpdateProviderSettings(provider,
+	_, err = s.grafanaAPI.SsoSettings.UpdateProviderSettings(provider,
 		&models.UpdateProviderSettingsParamsBody{
 			ID:       resp.Payload.ID,
 			Provider: resp.Payload.Provider,
