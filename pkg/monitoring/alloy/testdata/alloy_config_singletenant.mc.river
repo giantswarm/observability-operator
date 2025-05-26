@@ -41,6 +41,16 @@ prometheus.operator.servicemonitors "tenant1" {
     target_label = "team"
     source_labels = ["__meta_kubernetes_pod_label_application_giantswarm_io_team"]
   }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_endpoints_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_service_label_application_giantswarm_io_team"]
+  }
   scrape {
     default_scrape_interval = "60s"
   }
@@ -62,6 +72,16 @@ prometheus.operator.podmonitors "tenant1" {
     action = "replace"
     target_label = "team"
     source_labels = ["__meta_kubernetes_pod_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_endpoints_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_service_label_application_giantswarm_io_team"]
   }
   scrape {
     default_scrape_interval = "60s"
