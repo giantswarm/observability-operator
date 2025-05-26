@@ -23,7 +23,8 @@ func GetPrometheusAgentRemoteWriteSecretName(cluster *clusterv1.Cluster) string 
 func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 	cluster *clusterv1.Cluster) (*corev1.Secret, error) {
 	url := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, pas.BaseDomain)
-	password, err := commonmonitoring.GetMimirIngressPassword(ctx)
+
+	password, err := commonmonitoring.GetMimirIngressPassword(ctx, pas.Client)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

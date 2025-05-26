@@ -22,7 +22,7 @@ import (
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent/sharding"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
 
 var (
