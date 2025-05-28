@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"text/template"
 
+	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
@@ -36,6 +38,8 @@ var (
 
 	versionSupportingVPA                = semver.MustParse("1.7.0")
 	versionSupportingExtraQueryMatchers = semver.MustParse("1.9.0")
+
+	alloyMetricsRuleLoadingFixedVersion = semver.MustParse("1.8.3")
 )
 
 func init() {
@@ -85,15 +89,27 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		AlloyConfig       string
 		PriorityClassName string
 		Replicas          int
-
+		// AlloyImageTag is the tag of the Alloy controller image.
+		AlloyImageTag *string
+		// IsSupportingVPA indicates whether the Alloy controller supports VPA.
 		IsSupportingVPA bool
 	}{
 		AlloyConfig:       alloyConfig,
 		PriorityClassName: commonmonitoring.PriorityClassName,
 		Replicas:          shards,
-
 		// Observability bundle in older versions do not support VPA
 		IsSupportingVPA: observabilityBundleVersion.GE(versionSupportingVPA),
+	}
+
+	alloyMetricsImageTag, err := a.getAlloyMetricsAppVersion(ctx, cluster)
+	if err != nil {
+		logger.Error(err, "alloy-service - failed to get Alloy metrics app version")
+		return nil, errors.WithStack(err)
+	}
+
+	if alloyMetricsImageTag.LT(alloyMetricsRuleLoadingFixedVersion) {
+		version := alloyMetricsRuleLoadingFixedVersion.String()
+		data.AlloyImageTag = &version
 	}
 
 	var values bytes.Buffer
@@ -207,4 +223,19 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 	}
 
 	return configmap
+}
+
+func (a *Service) getAlloyMetricsAppVersion(ctx context.Context, cluster *clusterv1.Cluster) (version semver.Version, err error) {
+	// Get observability bundle app metadata.
+	appMeta := types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", cluster.GetName(), commonmonitoring.AlloyMonitoringAgentAppName),
+		Namespace: cluster.GetNamespace(),
+	}
+	// Retrieve the app.
+	var currentApp appv1.App
+	err = a.Client.Get(ctx, appMeta, &currentApp)
+	if err != nil {
+		return version, err
+	}
+	return semver.Parse(currentApp.Spec.Version)
 }
