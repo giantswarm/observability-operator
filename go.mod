@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/Netflix/go-env v0.1.2
 	github.com/giantswarm/apiextensions-application v0.6.2
-	github.com/go-logr/logr v1.4.2
+	github.com/go-logr/logr v1.4.3
 	github.com/go-openapi/runtime v0.28.0
 	github.com/grafana/grafana-openapi-client-go v0.0.0-20250516123951-83fcd32d7bbe
 	github.com/onsi/ginkgo/v2 v2.23.4
