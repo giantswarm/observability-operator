@@ -108,7 +108,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	}
 
 	if alloyMetricsImageTag.LT(alloyMetricsRuleLoadingFixedVersion) {
-		version := alloyMetricsRuleLoadingFixedVersion.String()
+		version := fmt.Sprintf("v%s", alloyMetricsRuleLoadingFixedVersion.String())
 		data.AlloyImageTag = &version
 	}
 
