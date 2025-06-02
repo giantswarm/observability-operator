@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Alloy configuration (`pkg/monitoring/alloy/configmap.go` and `pkg/monitoring/alloy/templates/monitoring-config.yaml.template`):
     - Conditionally set `alloy.alloy.image.tag` in `monitoring-config.yaml.template`. The operator now explicitly sets the tag to `1.8.3` if the deployed `alloy-metrics` app version is older than `1.8.3`. For `alloy-metrics` app versions `1.8.3` or newer, the image tag will rely on the Alloy Helm chart's defaults or user-provided values, facilitating easier Alloy image updates via the chart.
     - Adjusted indentation for `AlloyConfig` in `monitoring-config.yaml.template` from `indent 8` to `nindent 8`.
+- Improve Mimir Datasource configuration (https://github.com/giantswarm/giantswarm/issues/33470)
+  - Enable medium level caching (caching of `/api/v1/label/${name}/values`, `/api/v1/series`, `/api/v1/labels` and `/api/v1/metadata` for 10 minutes)
+  - Enable incremental querying (only query new data when refreshing dashboards)
+
+### Removed
+
+- Remove old mimir datasource on all installations.
 
 ## [0.31.0] - 2025-05-15
 
