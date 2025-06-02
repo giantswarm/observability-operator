@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Improve Mimir Datasource configuration (https://github.com/giantswarm/giantswarm/issues/33470)
+  - Enable medium level caching (caching of `/api/v1/label/${name}/values`, `/api/v1/series`, `/api/v1/labels` and `/api/v1/metadata` for 10 minutes)
+  - Enable incremental querying (only query new data when refreshing dashboards)
+
+### Removed
+
+- Remove old mimir datasource on all installations.
+
 ## [0.31.0] - 2025-05-15
 
 ### Changed
