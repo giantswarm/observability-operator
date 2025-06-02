@@ -39,7 +39,8 @@ var (
 	versionSupportingVPA                = semver.MustParse("1.7.0")
 	versionSupportingExtraQueryMatchers = semver.MustParse("1.9.0")
 
-	alloyMetricsRuleLoadingFixedVersion = semver.MustParse("1.8.3")
+	alloyMetricsRuleLoadingFixedAppVersion            = semver.MustParse("0.10.0")
+	alloyMetricsRuleLoadingFixedContainerImageVersion = semver.MustParse("1.8.3")
 )
 
 func init() {
@@ -101,14 +102,14 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		IsSupportingVPA: observabilityBundleVersion.GE(versionSupportingVPA),
 	}
 
-	alloyMetricsImageTag, err := a.getAlloyMetricsAppVersion(ctx, cluster)
+	alloyMetricsAppVersion, err := a.getAlloyMetricsAppVersion(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to get Alloy metrics app version")
 		return nil, errors.WithStack(err)
 	}
 
-	if alloyMetricsImageTag.LT(alloyMetricsRuleLoadingFixedVersion) {
-		version := fmt.Sprintf("v%s", alloyMetricsRuleLoadingFixedVersion.String())
+	if alloyMetricsAppVersion.LT(alloyMetricsRuleLoadingFixedAppVersion) {
+		version := fmt.Sprintf("v%s", alloyMetricsRuleLoadingFixedContainerImageVersion.String())
 		data.AlloyImageTag = &version
 	}
 
