@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-openapi/runtime"
+	"github.com/grafana/grafana-openapi-client-go/client/datasources"
 	"github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -33,23 +34,9 @@ var defaultDatasources = []Datasource{
 		IsDefault: true,
 		URL:       "http://mimir-alertmanager.mimir.svc:8080",
 		Access:    datasourceProxyAccessMode,
-		JSONData: map[string]interface{}{
+		JSONData: map[string]any{
 			"handleGrafanaManagedAlerts": false,
 			"implementation":             "mimir",
-		},
-	},
-	{
-		Name:   "Mimir (old tenant data)",
-		UID:    mimirOldDatasourceUID,
-		Type:   "prometheus",
-		URL:    "http://mimir-gateway.mimir.svc/prometheus",
-		Access: datasourceProxyAccessMode,
-		JSONData: map[string]interface{}{
-			"cacheLevel":     "None",
-			"httpMethod":     "POST",
-			"mimirVersion":   "2.14.0",
-			"prometheusType": "Mimir",
-			"timeInterval":   "60s",
 		},
 	},
 	{
@@ -59,12 +46,18 @@ var defaultDatasources = []Datasource{
 		IsDefault: true,
 		URL:       "http://mimir-gateway.mimir.svc/prometheus",
 		Access:    datasourceProxyAccessMode,
-		JSONData: map[string]interface{}{
-			"cacheLevel":     "None",
-			"httpMethod":     "POST",
-			"mimirVersion":   "2.14.0",
-			"prometheusType": "Mimir",
-			"timeInterval":   "60s",
+		JSONData: map[string]any{
+			// Cache matching queries on metadata endpoints within 10 minutes to improve performance
+			// and reduce load on the Mimir API.
+			"cacheLevel": "Medium",
+			"httpMethod": "POST",
+			// Enables incremental querying, which allows Grafana to fetch only new data when dashboards are refreshed,
+			// rather than re-fetching all data. This is particularly useful for large datasets and improves performance.
+			"incrementalQuerying": true,
+			"prometheusType":      "Mimir",
+			// This is the expected value for the Mimir datasource in Grafana
+			"prometheusVersion": "2.9.1",
+			"timeInterval":      "60s",
 		},
 	},
 	{
@@ -198,7 +191,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 				Access:         models.DsAccess(datasource.Access),
 			})
 		if err != nil {
-			logger.Error(err, "failed to create datasources", "datasource", datasourcesToCreate[index].Name)
+			logger.Error(err, "failed to create datasource", "datasource", datasourcesToCreate[index].Name)
 			return nil, errors.WithStack(err)
 		}
 		datasourcesToCreate[index].ID = *created.Payload.ID
@@ -220,14 +213,31 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 				Access:         models.DsAccess(datasource.Access),
 			})
 		if err != nil {
-			logger.Error(err, "failed to update datasources", "datasource", datasource.Name)
+			logger.Error(err, "failed to update datasource", "datasource", datasource.Name)
 			return nil, errors.WithStack(err)
 		}
 		logger.Info("datasource updated", "datasource", datasource.Name)
 	}
 
+	updatedDatasources := append(datasourcesToCreate, datasourcesToUpdate...)
+	// If the old mimir datasource exists, we need to delete it
+	logger.Info("deleting datasource", "datasource", mimirOldDatasourceUID)
+	_, err = s.grafanaAPI.Datasources.DeleteDataSourceByUID(mimirOldDatasourceUID)
+	if err != nil {
+		var notFound *datasources.DeleteDataSourceByUIDNotFound
+		if errors.As(err, &notFound) {
+			logger.Info("skipping, datasource not found", "datasource", mimirOldDatasourceUID)
+			return updatedDatasources, nil
+		} else {
+			logger.Error(err, "failed to delete datasource", "datasource", mimirOldDatasourceUID)
+			return updatedDatasources, errors.WithStack(err)
+		}
+	} else {
+		logger.Info("deleted datasource", "datasource", mimirOldDatasourceUID)
+	}
+
 	// We return the datasources and the error if it exists. This allows us to return the defer function error it it exists.
-	return append(datasourcesToCreate, datasourcesToUpdate...), errors.WithStack(err)
+	return updatedDatasources, errors.WithStack(err)
 }
 
 func (s *Service) listDatasourcesForOrganization(ctx context.Context) ([]Datasource, error) {
