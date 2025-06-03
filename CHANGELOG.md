@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix Alloy image templating when the alloy app is running the latest version.
+
 ## [0.32.0] - 2025-06-02
 
 ### Changed
