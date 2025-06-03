@@ -148,7 +148,7 @@ func (v *AlertmanagerConfigSecretCustomValidator) validateTenant(ctx context.Con
 func validateAlertmanagerConfig(ctx context.Context, secret *corev1.Secret) error {
 	_, err := alertmanager.ExtractAlertmanagerConfig(ctx, secret)
 	if err != nil {
-		return err
+		return fmt.Errorf("alertmanager configuration validation failed: %w. Note: If you're using a newer Alertmanager feature, it might not be supported yet by the Grafana fork (grafana/prometheus-alertmanager) used by Mimir. Check the Mimir documentation for supported configuration options", err)
 	}
 	log.Info("alertmanager config validation successful")
 	return nil
