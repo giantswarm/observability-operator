@@ -14,20 +14,48 @@ vet: ## Run go vet against code.
 # Testing & Coverage
 ###############################################################################
 
+# Default Kubernetes version for envtest
+ENVTEST_K8S_VERSION ?= 1.33.0
+
 generate-golden-files: ## Generate golden files for tests
 	@echo "Generating golden files"
 	@UPDATE_GOLDEN_FILES=true go test -v ./...
 
-.PHONY: test-unit
-test-unit: ginkgo generate fmt vet envtest ## Run unit tests
-	# Set up environment for Kubernetes and run Ginkgo concurrently.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GINKGO) -p --nodes 4 -r -randomize-all --randomize-suites --skip-package=tests --cover --coverpkg=`go list ./... | grep -v fakes | tr '\n' ','` ./...
+.PHONY: setup-envtest
+setup-envtest: envtest ## Download and setup Kubernetes test binaries for the specified version
+	@echo "Setting up envtest binaries for Kubernetes $(ENVTEST_K8S_VERSION)"
+	$(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir ./bin/k8s
 
-.PHONY: test
-test: test-unit ## Run all tests by default (currently only unit tests).
+.PHONY: test-unit
+test-unit: ginkgo fmt vet ## Run unit tests only - pure Go logic (./pkg/... and ./internal/predicates, no envtest required)
+	@echo "Running unit tests"
+	$(GINKGO) -p --nodes 4 -randomize-all --randomize-suites --cover --coverprofile=coverage-unit.out --coverpkg=$$(go list ./pkg/... ./internal/predicates | tr '\n' ',') ./pkg/... ./internal/predicates
+
+.PHONY: test-integration
+test-integration: ginkgo fmt vet envtest ## Run integration tests with envtest
+	@echo "Running integration tests with envtest"
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GINKGO) -p --nodes 4 -randomize-all --randomize-suites --cover --coverprofile=coverage-integration.out --coverpkg=$$(go list ./internal/controller ./internal/webhook/... | tr '\n' ',') ./internal/controller ./internal/webhook/...
+
+.PHONY: test-all
+test-all: test-unit test-integration ## Run all tests (unit + integration) and merge coverage.
+	@echo "Merging coverage reports"
+	@echo "mode: set" > coverprofile.out
+	@cat coverage-unit.out coverage-integration.out | grep -v "^mode: " >> coverprofile.out
+	@rm coverage-unit.out coverage-integration.out
+	@echo "Combined coverage profile created: coverprofile.out"
+
+.PHONY: test-controllers
+test-controllers: ginkgo fmt vet envtest ## Run only controller integration tests
+	@echo "Running controller integration tests with envtest"
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GINKGO) -v ./internal/controller
+
+.PHONY: test-webhooks
+test-webhooks: ginkgo fmt vet envtest ## Run only webhook integration tests
+	@echo "Running webhook integration tests with envtest"
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" $(GINKGO) -v ./internal/webhook/...
 
 .PHONY: coverage-html
-coverage-html: test ## Generate HTML coverage report.
+coverage-html: test-all ## Generate HTML coverage report from merged profile.
 	go tool cover -html coverprofile.out
 
 # Define the location of the envtest setup script.
@@ -65,16 +93,17 @@ run-local: ## Run the application in local mode.
 # PROJECT_DIR is the directory of this Makefile.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# go-get-tool fetches and installs a Go tool if it is not present.
+# go-get-tool will 'go install' any package $2 and install it to $1.
 # $1: Target binary path.
 # $2: Go package path with version.
 define go-get-tool
 @[ -f $(1) ] || { \
-	set -e ;\
-	TMP_DIR=$$(mktemp -d) ;\
-	cd $$TMP_DIR ;\
-	echo "Downloading $(2)" ;\
-	GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
-	rm -rf $$TMP_DIR ;\
+set -e ;\
+TMP_DIR=$$(mktemp -d) ;\
+cd $$TMP_DIR ;\
+go mod init tmp ;\
+echo "Downloading $(2)" ;\
+GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
+rm -rf $$TMP_DIR ;\
 }
 endef

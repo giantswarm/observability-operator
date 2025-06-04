@@ -53,13 +53,22 @@ var (
 	testEnv   *envtest.Environment
 )
 
-func getEnvOrSkip(env string) string {
-	value := os.Getenv(env)
-	if value == "" {
-		Skip(fmt.Sprintf("%s not exported", env))
+// getKubeBuilderAssets attempts to get KUBEBUILDER_ASSETS from environment
+// or find the binaries automatically. Returns empty string if neither is available.
+func getKubeBuilderAssets() string {
+	// First try environment variable
+	if value := os.Getenv("KUBEBUILDER_ASSETS"); value != "" {
+		return value
 	}
 
-	return value
+	// If not set, try to find binaries automatically
+	binDir := getFirstFoundEnvTestBinaryDir()
+	if binDir != "" {
+		logf.Log.Info("Using automatically detected envtest binaries", "path", binDir)
+		return binDir
+	}
+
+	return ""
 }
 
 func TestAPIs(t *testing.T) {
@@ -71,7 +80,11 @@ func TestAPIs(t *testing.T) {
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
-	getEnvOrSkip("KUBEBUILDER_ASSETS")
+	// Check if we have KUBEBUILDER_ASSETS or can find them automatically
+	kubeBuilderAssets := getKubeBuilderAssets()
+	if kubeBuilderAssets == "" {
+		Skip("KUBEBUILDER_ASSETS not set and envtest binaries not found. Run 'make setup-envtest' to set up test environment.")
+	}
 
 	ctx, cancel = context.WithCancel(context.TODO())
 
@@ -85,15 +98,11 @@ var _ = BeforeSuite(func() {
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: false,
+		BinaryAssetsDirectory: kubeBuilderAssets, // Use the assets we found
 
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
 			Paths: []string{filepath.Join("..", "..", "..", "config", "webhook")},
 		},
-	}
-
-	// Retrieve the first found binary directory to allow running tests from IDEs
-	if getFirstFoundEnvTestBinaryDir() != "" {
-		testEnv.BinaryAssetsDirectory = getFirstFoundEnvTestBinaryDir()
 	}
 
 	// cfg is defined in this file globally.
@@ -145,7 +154,14 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
-	getEnvOrSkip("KUBEBUILDER_ASSETS")
+
+	// Only check for assets if we need to clean up
+	kubeBuilderAssets := getKubeBuilderAssets()
+	if kubeBuilderAssets == "" {
+		// If no assets were available, the test was skipped, so nothing to clean up
+		return
+	}
+
 	cancel()
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
@@ -160,16 +176,38 @@ var _ = AfterSuite(func() {
 // setting the 'KUBEBUILDER_ASSETS' environment variable. To ensure the binaries are
 // properly set up, run 'make setup-envtest' beforehand.
 func getFirstFoundEnvTestBinaryDir() string {
-	basePath := filepath.Join("..", "..", "..", "bin", "k8s")
-	entries, err := os.ReadDir(basePath)
-	if err != nil {
-		logf.Log.Error(err, "Failed to read directory", "path", basePath)
-		return ""
+	// Try common paths where envtest binaries might be located
+	possiblePaths := []string{
+		filepath.Join("..", "..", "..", "bin", "k8s"),        // bin/k8s/
+		filepath.Join("..", "..", "..", "bin", "k8s", "k8s"), // bin/k8s/k8s/ (setup-envtest creates this nested structure)
 	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			return filepath.Join(basePath, entry.Name())
+
+	for _, basePath := range possiblePaths {
+		entries, err := os.ReadDir(basePath)
+		if err != nil {
+			logf.Log.V(1).Info("Failed to read directory", "path", basePath, "error", err)
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				binPath := filepath.Join(basePath, entry.Name())
+				// Verify this directory contains the expected binaries
+				if hasEnvTestBinaries(binPath) {
+					return binPath
+				}
+			}
 		}
 	}
 	return ""
+}
+
+// hasEnvTestBinaries checks if a directory contains the expected envtest binaries
+func hasEnvTestBinaries(path string) bool {
+	expectedBinaries := []string{"kube-apiserver", "etcd", "kubectl"}
+	for _, binary := range expectedBinaries {
+		if _, err := os.Stat(filepath.Join(path, binary)); os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
 }
