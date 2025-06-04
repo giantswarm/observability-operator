@@ -27,7 +27,7 @@ if [ -z "$ALERTMANAGER_VERSION_LINE" ]; then
   exit 1
 fi
 
-echo "Found replacement line: $ALERTMANAGER_VERSION_LINE"
+echo "✓ Found replacement line: $ALERTMANAGER_VERSION_LINE"
 
 # Extract commit hash from version string like v0.25.1-0.20250305143719-fa9fa7096626
 ALERTMANAGER_COMMIT=$(echo "$ALERTMANAGER_VERSION_LINE" | sed -n 's/.*-\([a-f0-9]\{12\}\)$/\1/p')
