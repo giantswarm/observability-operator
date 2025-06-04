@@ -1,0 +1,12 @@
+name: 'Go coverage'
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  coverage:
+    uses: giantswarm/github-workflows/.github/workflows/go-coverage.yaml@6bacf73d582b8088d41b8eaec469c40c14398081
+    secrets:
+      token: "${{ secrets.TAYLORBOT_GITHUB_ACTION }}"

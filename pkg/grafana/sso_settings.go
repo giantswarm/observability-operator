@@ -14,28 +14,27 @@ const (
 	grafanaAdminRole  = "Admin"
 	grafanaEditorRole = "Editor"
 	grafanaViewerRole = "Viewer"
+
+	ssoProvider = "generic_oauth"
 )
 
 func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Organization) error {
 	logger := log.FromContext(ctx)
 
-	provider := "generic_oauth"
-	resp, err := s.grafanaAPI.SsoSettings.GetProviderSettings(provider, nil)
+	resp, err := s.grafanaAPI.SsoSettings.GetProviderSettings(ssoProvider, nil)
 	if err != nil {
 		logger.Error(err, "failed to get sso provider settings.")
 		return errors.WithStack(err)
 	}
 
 	orgsMapping := generateGrafanaOrgsMapping(organizations)
-	settings := resp.Payload.Settings.(map[string]interface{})
-	settings["role_attribute_path"] = "to_string('Viewer')"
-	settings["org_attribute_path"] = "groups"
+	settings := resp.Payload.Settings.(map[string]any)
 	settings["org_mapping"] = orgsMapping
 
-	logger.Info("Configuring Grafana SSO settings", "provider", provider, "settings", settings)
+	logger.Info("Configuring Grafana SSO settings", "provider", ssoProvider, "settings", settings)
 
 	// Update the provider settings
-	_, err = s.grafanaAPI.SsoSettings.UpdateProviderSettings(provider,
+	_, err = s.grafanaAPI.SsoSettings.UpdateProviderSettings(ssoProvider,
 		&models.UpdateProviderSettingsParamsBody{
 			ID:       resp.Payload.ID,
 			Provider: resp.Payload.Provider,
