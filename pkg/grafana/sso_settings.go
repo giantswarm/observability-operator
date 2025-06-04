@@ -65,7 +65,7 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 
 	if err != nil {
 		logger.Error(err, "failed to configure Grafana SSO")
-		return errors.WithStack(fmt.Errorf("failed to update SSO provider settings: %w", err))
+		return errors.WithStack(fmt.Errorf("failed to update SSO provider settings for %s: %w", ssoProvider, err))
 	}
 
 	logger.Info("successfully configured Grafana SSO settings")
