@@ -36,7 +36,7 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 	}
 
 	if resp.Payload == nil {
-		return errors.WithStack(fmt.Errorf("received nil payload from SSO provider settings"))
+		return errors.WithStack(fmt.Errorf("received nil payload from SSO provider settings for %s", ssoProvider))
 	}
 
 	// Safe type assertion with error handling
