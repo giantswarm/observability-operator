@@ -42,7 +42,7 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 	// Safe type assertion with error handling
 	settings, ok := resp.Payload.Settings.(map[string]any)
 	if !ok {
-		return errors.WithStack(fmt.Errorf("unexpected settings type: expected map[string]any, got %T", resp.Payload.Settings))
+		return errors.WithStack(fmt.Errorf("unexpected settings type for %s: expected map[string]any, got %T", ssoProvider, resp.Payload.Settings))
 	}
 
 	orgsMapping, err := generateGrafanaOrgsMapping(organizations)
