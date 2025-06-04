@@ -47,7 +47,7 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 
 	orgsMapping, err := generateGrafanaOrgsMapping(organizations)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("failed to generate organization mappings: %w", err))
+		return errors.WithStack(fmt.Errorf("failed to generate organization mappings for %s: %w", ssoProvider, err))
 	}
 
 	settings["org_mapping"] = orgsMapping
