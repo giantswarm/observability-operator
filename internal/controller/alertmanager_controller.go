@@ -71,6 +71,9 @@ func podEventHandler(conf config.Config) handler.EventHandler {
 	})
 }
 
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=secrets/finalizers,verbs=update
+
 // Reconcile main logic
 func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)

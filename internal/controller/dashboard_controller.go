@@ -60,7 +60,6 @@ func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
 }
 
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core,resources=configmaps/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=core,resources=configmaps/finalizers,verbs=update
 
 // Reconcile is part of the main Kubernetes reconciliation loop which aims to
