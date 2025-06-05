@@ -36,7 +36,7 @@ func (s *Service) DeleteOrganization(ctx context.Context, grafanaOrganization *v
 	if grafanaOrganization.Status.OrgID > 0 {
 		err := s.deleteOrganization(ctx, organization)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 	}
 

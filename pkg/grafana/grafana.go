@@ -9,6 +9,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/grafana/grafana-openapi-client-go/client/datasources"
 	"github.com/grafana/grafana-openapi-client-go/models"
+	juju "github.com/juju/errors"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -134,8 +135,7 @@ func (s *Service) deleteOrganization(ctx context.Context, organization Organizat
 
 	_, err = s.grafanaAPI.Orgs.DeleteOrgByID(organization.ID)
 	if err != nil {
-		logger.Error(err, "failed to delete organization")
-		return errors.WithStack(err)
+		return juju.Annotate(err, "failed to delete organization")
 	}
 	logger.Info("deleted organization")
 

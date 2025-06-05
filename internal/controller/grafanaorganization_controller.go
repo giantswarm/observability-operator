@@ -190,7 +190,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 
 	err := grafanaService.DeleteOrganization(ctx, grafanaOrganization)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	grafanaOrganization.Status.OrgID = 0
