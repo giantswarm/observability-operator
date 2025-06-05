@@ -7,7 +7,7 @@ generate-golden-files: ## Generate golden files for tests
 	@UPDATE_GOLDEN_FILES=true go test -v ./...
 
 .PHONY: coverage-html
-coverage-html: test ## Generate HTML coverage report from merged profile.
+coverage-html: test ## Generate HTML coverage report
 	go tool cover -html coverprofile.out
 
 ###############################################################################
