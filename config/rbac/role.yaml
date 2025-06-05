@@ -8,7 +8,6 @@ rules:
   - ""
   resources:
   - configmaps
-  - secrets
   verbs:
   - create
   - delete
@@ -21,22 +20,20 @@ rules:
   - ""
   resources:
   - configmaps/finalizers
-  - secrets/finalizers
   verbs:
   - update
 - apiGroups:
   - ""
   resources:
   - configmaps/status
-  - secrets/status
   verbs:
   - get
   - patch
   - update
 - apiGroups:
-  - cluster.giantswarm.io
+  - objectstorage.giantswarm.io
   resources:
-  - clusters
+  - Clusters
   verbs:
   - create
   - delete
@@ -46,15 +43,15 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cluster.giantswarm.io
+  - objectstorage.giantswarm.io
   resources:
-  - clusters/finalizers
+  - Clusters/finalizers
   verbs:
   - update
 - apiGroups:
-  - cluster.giantswarm.io
+  - objectstorage.giantswarm.io
   resources:
-  - clusters/status
+  - Clusters/status
   verbs:
   - get
   - patch
