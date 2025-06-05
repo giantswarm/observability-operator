@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Replace the `prometheus/alertmanager` package with Grafana's Mimir fork (`grafana/prometheus-alertmanager`) to ensure configuration compatibility between our validating webhook and Mimir's Alertmanager. This change addresses a compatibility issue where the webhook validation logic used the upstream Prometheus Alertmanager config parser, while Mimir uses a fork with additional/modified configuration options. The replacement ensures 100% compatibility and eliminates the risk of configuration drift between validation and runtime. Uses version `v0.25.1-0.20250305143719-fa9fa7096626` corresponding to Mimir 2.16.0.
+- Improved Alertmanager configuration validation script (`hack/bin/validate-alertmanager-config.sh`):
+  - Automatically extracts the exact commit hash from `go.mod` replacement directive to ensure perfect consistency with webhook validation
+  - Replaced binary building with `go run` for faster execution and simpler maintenance
+  - Enhanced logging throughout the script for better debugging and monitoring
+  - Now uses the exact same Grafana fork commit as the operator's webhook validation logic
+
 ## [0.32.1] - 2025-06-03
 
 ### Fixed
