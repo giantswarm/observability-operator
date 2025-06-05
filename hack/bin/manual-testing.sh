@@ -1,5 +1,28 @@
 #!/bin/bash
 
+# Manual End-to-End Testing Script for Observability Operator
+#
+# This script performs manual e2e testing by creating a test workload cluster (WC)
+# and verifying that the metric collector is deployed and configured correctly.
+#
+# Usage:
+#   ./hack/bin/manual-testing.sh <installation>
+#   make manual-testing INSTALLATION=<installation-name>
+#
+# Prerequisites:
+# - kubectl configured for the target installation
+# - Flux reconciliation suspended for the observability-operator app
+# - Custom branch version deployed to the testing installation
+#
+# The script will:
+# 1. Create a test workload cluster named 'ollyoptest'
+# 2. Verify metric collector deployment and configuration
+# 3. Check that ConfigMaps and Secrets are created properly
+#
+# After running, wait ~10 minutes then verify:
+# - Dashboards show data from all WCs including 'ollyoptest'
+# - Check for new alerts on the 'Alerts timeline' dashboard
+
 # Helper function - prints an error message and exits
 exit_error() {
   echo "Error: $*"

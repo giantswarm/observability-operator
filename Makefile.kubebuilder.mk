@@ -107,7 +107,7 @@ generate-deepcopy: $(CONTROLLER_GEN) ## Generate deepcopy methods for API types
 		$(call log_warn,Failed to generate deepcopy methods); \
 		exit 1; \
 	}
-	@$(call log_info,"Deepcopy generation completed")
+	@$(call log_info,Deepcopy generation completed)
 
 .PHONY: generate-client
 generate-client: generate-deepcopy ## Generate Kubernetes client code (if needed)
