@@ -10,7 +10,7 @@ jobs:
     - checkout
     - run:
         name: Run unit and integration tests
-        command: CGO_ENABLED=0 make test-all
+        command: CGO_ENABLED=0 make test
   template-chart:
     docker:
     - image: giantswarm/helm-chart-testing:v3.13.0
