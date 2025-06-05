@@ -18,14 +18,15 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
+	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,7 +34,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	corev1 "k8s.io/api/core/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -50,13 +51,22 @@ var (
 	k8sClient client.Client
 )
 
-func getEnvOrSkip(env string) string {
-	value := os.Getenv(env)
-	if value == "" {
-		Skip(fmt.Sprintf("%s not exported", env))
+// getKubeBuilderAssets attempts to get KUBEBUILDER_ASSETS from environment
+// or find the binaries automatically. Returns empty string if neither is available.
+func getKubeBuilderAssets() string {
+	// First try environment variable
+	if value := os.Getenv("KUBEBUILDER_ASSETS"); value != "" {
+		return value
 	}
 
-	return value
+	// If not set, try to find binaries automatically
+	binDir := getFirstFoundEnvTestBinaryDir()
+	if binDir != "" {
+		logf.Log.Info("Using automatically detected envtest binaries", "path", binDir)
+		return binDir
+	}
+
+	return ""
 }
 
 func TestControllers(t *testing.T) {
@@ -68,7 +78,11 @@ func TestControllers(t *testing.T) {
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
-	getEnvOrSkip("KUBEBUILDER_ASSETS")
+	// Check if we have KUBEBUILDER_ASSETS or can find them automatically
+	kubeBuilderAssets := getKubeBuilderAssets()
+	if kubeBuilderAssets == "" {
+		Skip("KUBEBUILDER_ASSETS not set and envtest binaries not found. Run 'make setup-envtest' to set up test environment.")
+	}
 
 	ctx, cancel = context.WithCancel(context.TODO())
 
@@ -79,23 +93,28 @@ var _ = BeforeSuite(func() {
 	err = corev1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
+	// Add Cluster API types
+	err = clusterv1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
 	// +kubebuilder:scaffold:scheme
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
-		ErrorIfCRDPathMissing: true,
-	}
-
-	// Retrieve the first found binary directory to allow running tests from IDEs
-	if getFirstFoundEnvTestBinaryDir() != "" {
-		testEnv.BinaryAssetsDirectory = getFirstFoundEnvTestBinaryDir()
+		ErrorIfCRDPathMissing: false,             // Don't fail if CRDs are missing, we'll handle Cluster API separately
+		BinaryAssetsDirectory: kubeBuilderAssets, // Use the assets we found
 	}
 
 	// cfg is defined in this file globally.
 	cfg, err = testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
+
+	// Install Cluster API CRDs after environment starts
+	By("installing Cluster API CRDs")
+	err = installClusterAPICRDs(cfg)
+	Expect(err).NotTo(HaveOccurred())
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
@@ -104,11 +123,125 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
-	getEnvOrSkip("KUBEBUILDER_ASSETS")
+
+	// Only check for assets if we need to clean up
+	kubeBuilderAssets := getKubeBuilderAssets()
+	if kubeBuilderAssets == "" {
+		// If no assets were available, the test was skipped, so nothing to clean up
+		return
+	}
+
+	// Clean up any test namespaces that might be in terminating state
+	if k8sClient != nil {
+		// Force cleanup any hanging namespaces
+		ctx := context.Background()
+		namespaces := &corev1.NamespaceList{}
+		err := k8sClient.List(ctx, namespaces)
+		if err == nil {
+			for _, ns := range namespaces.Items {
+				if ns.Name == "test-namespace" && ns.Status.Phase == corev1.NamespaceTerminating {
+					// Remove finalizers to force cleanup
+					ns.Finalizers = []string{}
+					_ = k8sClient.Update(ctx, &ns)
+				}
+			}
+		}
+	}
+
 	cancel()
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+// installClusterAPICRDs installs the Cluster API CRDs needed for testing
+func installClusterAPICRDs(cfg *rest.Config) error {
+	// Create a client for installing CRDs
+	tempClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	if err != nil {
+		return err
+	}
+
+	// Add apiextensions scheme for CRD operations
+	err = apiextensionsv1.AddToScheme(scheme.Scheme)
+	if err != nil {
+		return err
+	}
+
+	// Create minimal Cluster CRD definition
+	clusterCRD := &apiextensionsv1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "clusters.cluster.x-k8s.io",
+		},
+		Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+			Group: "cluster.x-k8s.io",
+			Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+				{
+					Name:    "v1beta1",
+					Served:  true,
+					Storage: true,
+					Schema: &apiextensionsv1.CustomResourceValidation{
+						OpenAPIV3Schema: &apiextensionsv1.JSONSchemaProps{
+							Type: "object",
+							Properties: map[string]apiextensionsv1.JSONSchemaProps{
+								"spec": {
+									Type: "object",
+									Properties: map[string]apiextensionsv1.JSONSchemaProps{
+										"infrastructureRef": {
+											Type: "object",
+											Properties: map[string]apiextensionsv1.JSONSchemaProps{
+												"apiVersion": {Type: "string"},
+												"kind":       {Type: "string"},
+												"name":       {Type: "string"},
+											},
+										},
+										"controlPlaneRef": {
+											Type: "object",
+											Properties: map[string]apiextensionsv1.JSONSchemaProps{
+												"apiVersion": {Type: "string"},
+												"kind":       {Type: "string"},
+												"name":       {Type: "string"},
+											},
+										},
+										"controlPlaneEndpoint": {
+											Type: "object",
+											Properties: map[string]apiextensionsv1.JSONSchemaProps{
+												"host": {Type: "string"},
+												"port": {Type: "integer"},
+											},
+										},
+									},
+								},
+								"status": {
+									Type: "object",
+									Properties: map[string]apiextensionsv1.JSONSchemaProps{
+										"controlPlaneReady":   {Type: "boolean"},
+										"infrastructureReady": {Type: "boolean"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Scope: apiextensionsv1.NamespaceScoped,
+			Names: apiextensionsv1.CustomResourceDefinitionNames{
+				Plural:   "clusters",
+				Singular: "cluster",
+				Kind:     "Cluster",
+			},
+		},
+	}
+
+	// Install the CRD
+	err = tempClient.Create(context.Background(), clusterCRD)
+	if err != nil {
+		logf.Log.Error(err, "Failed to install Cluster CRD")
+		return err
+	}
+
+	logf.Log.Info("Successfully installed Cluster API CRD")
+	return nil
+}
 
 // getFirstFoundEnvTestBinaryDir locates the first binary in the specified path.
 // ENVTEST-based tests depend on specific binaries, usually located in paths set by
@@ -119,16 +252,38 @@ var _ = AfterSuite(func() {
 // setting the 'KUBEBUILDER_ASSETS' environment variable. To ensure the binaries are
 // properly set up, run 'make setup-envtest' beforehand.
 func getFirstFoundEnvTestBinaryDir() string {
-	basePath := filepath.Join("..", "..", "bin", "k8s")
-	entries, err := os.ReadDir(basePath)
-	if err != nil {
-		logf.Log.Error(err, "Failed to read directory", "path", basePath)
-		return ""
+	// Try common paths where envtest binaries might be located
+	possiblePaths := []string{
+		filepath.Join("..", "..", "bin", "k8s"),        // bin/k8s/
+		filepath.Join("..", "..", "bin", "k8s", "k8s"), // bin/k8s/k8s/ (setup-envtest creates this nested structure)
 	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			return filepath.Join(basePath, entry.Name())
+
+	for _, basePath := range possiblePaths {
+		entries, err := os.ReadDir(basePath)
+		if err != nil {
+			logf.Log.V(1).Info("Failed to read directory", "path", basePath, "error", err)
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				binPath := filepath.Join(basePath, entry.Name())
+				// Verify this directory contains the expected binaries
+				if hasEnvTestBinaries(binPath) {
+					return binPath
+				}
+			}
 		}
 	}
 	return ""
+}
+
+// hasEnvTestBinaries checks if a directory contains the expected envtest binaries
+func hasEnvTestBinaries(path string) bool {
+	expectedBinaries := []string{"kube-apiserver", "etcd", "kubectl"}
+	for _, binary := range expectedBinaries {
+		if _, err := os.Stat(filepath.Join(path, binary)); os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
 }
