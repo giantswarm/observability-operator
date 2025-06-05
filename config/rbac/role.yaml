@@ -25,15 +25,6 @@ rules:
   verbs:
   - update
 - apiGroups:
-  - ""
-  resources:
-  - configmaps/status
-  - secrets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
   - cluster.giantswarm.io
   resources:
   - clusters

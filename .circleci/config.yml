@@ -4,13 +4,13 @@ orbs:
   architect: giantswarm/architect@5.15.0
 
 jobs:
-  unit-tests:
+  go-tests:
     executor: architect/architect
     steps:
     - checkout
     - run:
-        name: Run unit tests
-        command: CGO_ENABLED=0 make test-unit
+        name: Run unit and integration tests
+        command: CGO_ENABLED=0 make test
   template-chart:
     docker:
     - image: giantswarm/helm-chart-testing:v3.13.0
@@ -46,8 +46,8 @@ workflows:
           tags:
             only: /^v.*/
 
-    # This job is used to run go unit tests.
-    - unit-tests:
+    # This job is used to run go unit and integration tests.
+    - go-tests:
         filters:
           tags:
             only: /^v.*/
@@ -55,7 +55,7 @@ workflows:
     - architect/go-build:
         name: go-build
         requires:
-        - unit-tests
+        - go-tests
         - validate-alertmanager-config
         path: ./cmd
         binary: observability-operator
