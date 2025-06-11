@@ -45,6 +45,8 @@ spec:
         {{- end }}
         - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         env:
+        - name: ENABLE_WEBHOOKS
+          value: {{ .Values.webhook.enabled | quote }}
         - name: OPSGENIE_API_KEY
           valueFrom:
             secretKeyRef:
@@ -67,20 +69,26 @@ spec:
         - containerPort: 8081
           name: http-healthz
           protocol: TCP
+        {{- if .Values.webhook.enabled }}
         - containerPort: 9443
           name: webhook-server
           protocol: TCP
+        {{- end }}
         resources: {{ toYaml .Values.operator.resources | nindent 10 }}
         volumeMounts:
+        {{- if .Values.webhook.enabled }}
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: webhook-certs
           readOnly: true
+        {{- end }}
       serviceAccountName: {{ include "resource.default.name" . }}
       securityContext:
         {{- with .Values.operator.podSecurityContext }}
           {{- . | toYaml | nindent 8 }}
         {{- end }}
       volumes:
+        {{- if .Values.webhook.enabled }}
       - name: webhook-certs
         secret:
           secretName: {{ include "resource.default.name" . }}-webhook-server-cert
+        {{- end }}

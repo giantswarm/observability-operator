@@ -175,6 +175,39 @@
                     }
                 }
             }
+        },
+        "webhook": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable or disable webhook validation"
+                },
+                "validatingWebhooks": {
+                    "type": "object",
+                    "description": "Configure individual webhooks",
+                    "properties": {
+                        "alertmanagerConfig": {
+                            "type": "object",
+                            "description": "Enable AlertManager config secret validation webhook",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "grafanaOrganization": {
+                            "type": "object",
+                            "description": "Enable GrafanaOrganization validation webhook",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Enhanced TenantID validation in GrafanaOrganization CRD to support full Grafana Mimir specification:
+  - Expanded pattern from `^[a-z]*$` to `^[a-zA-Z0-9!._*'()-]+$` to allow alphanumeric characters and special characters (`!`, `-`, `_`, `.`, `*`, `'`, `(`, `)`)
+  - Increased maximum length from 63 to 150 characters
+  - Added validating webhook to enforce forbidden values (`.`, `..`, `__mimir_cluster`) and prevent duplicate tenants
+- Comprehensive Helm chart support for webhook configuration:
+  - Added granular enable/disable controls for individual webhooks (`webhook.validatingWebhooks.grafanaOrganization.enabled`, `webhook.validatingWebhooks.alertmanagerConfig.enabled`)
+  - Made all webhook resources conditional (ValidatingWebhookConfiguration, Service, Certificate)
+  - Added `ENABLE_WEBHOOKS` environment variable configuration
+
 ### Changed
 
 - Replace the `prometheus/alertmanager` package with Grafana's Mimir fork (`grafana/prometheus-alertmanager`) to ensure configuration compatibility between our validating webhook and Mimir's Alertmanager. This change addresses a compatibility issue where the webhook validation logic used the upstream Prometheus Alertmanager config parser, while Mimir uses a fork with additional/modified configuration options. The replacement ensures 100% compatibility and eliminates the risk of configuration drift between validation and runtime. Uses version `v0.25.1-0.20250305143719-fa9fa7096626` corresponding to Mimir 2.16.0.
@@ -15,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaced binary building with `go run` for faster execution and simpler maintenance
   - Enhanced logging throughout the script for better debugging and monitoring
   - Now uses the exact same Grafana fork commit as the operator's webhook validation logic
+- Enhanced AlertmanagerConfigSecret webhook with improved scope filtering and error handling
+
+### Fixed
+
+- Fixed alertmanager configuration key consistency across codebase (standardized on `alertmanager.yaml` instead of mixed `alertmanager.yml`/`alertmanager.yaml`)
+- Fixed error message formatting in `ExtractAlertmanagerConfig` function
 
 ## [0.32.1] - 2025-06-03
 

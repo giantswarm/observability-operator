@@ -34,7 +34,7 @@ var _ = Describe("Alertmanager Controller", func() {
 					},
 				},
 				Data: map[string][]byte{
-					"alertmanager.yml": []byte(`
+					"alertmanager.yaml": []byte(`
 global:
   smtp_smarthost: 'localhost:587'
   smtp_from: 'alertmanager@example.org'
@@ -64,8 +64,8 @@ receivers:
 				return err == nil
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(createdSecret.Data).Should(HaveKey("alertmanager.yml"))
-			Expect(string(createdSecret.Data["alertmanager.yml"])).Should(ContainSubstring("receivers:"))
+			Expect(createdSecret.Data).Should(HaveKey("alertmanager.yaml"))
+			Expect(string(createdSecret.Data["alertmanager.yaml"])).Should(ContainSubstring("receivers:"))
 
 			By("Cleaning up the Secret")
 			Eventually(func() error {

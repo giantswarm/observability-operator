@@ -231,6 +231,10 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Secret")
 			os.Exit(1)
 		}
+		if err = webhookcorev1.SetupGrafanaOrganizationWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "GrafanaOrganization")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

@@ -52,7 +52,7 @@ func ExtractAlertmanagerConfig(ctx context.Context, secret *v1.Secret) ([]byte, 
 	// Check that the secret contains an "alertmanager.yaml" file.
 	alertmanagerConfig, found := secret.Data[alertmanagerConfigKey]
 	if !found {
-		return nil, fmt.Errorf("missing %s in the secret", alertmanagerConfig)
+		return nil, fmt.Errorf("missing %s in the secret", alertmanagerConfigKey)
 	}
 	// Validate Alertmanager configuration
 	// The returned config is not used, as transforming it via String() would produce an invalid configuration with all secrets replaced with <redacted>.
