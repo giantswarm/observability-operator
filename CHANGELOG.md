@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Alertmanager version synchronization and dependency management**: Added comprehensive automated tooling to ensure Alertmanager fork version stays in sync with Mimir releases (https://github.com/giantswarm/giantswarm/issues/33621):
+  - New script `hack/bin/check-alertmanager-version.sh` that compares the local Alertmanager version with the version used in the latest stable Mimir release
+  - GitHub Actions workflow `.github/workflows/check-alertmanager-version.yml` that runs the check on `go.mod` changes and can be triggered manually
+  - Updated Renovate configuration to automatically track Mimir releases and ignore release candidates, alpha, and beta versions
+  - Added comprehensive comments to `renovate.json5` explaining the Alertmanager version tracking logic
+  - Updated `go.mod` comments to reference Renovate automation instead of manual version checking
+
 ### Changed
 
 - Replace the `prometheus/alertmanager` package with Grafana's Mimir fork (`grafana/prometheus-alertmanager`) to ensure configuration compatibility between our validating webhook and Mimir's Alertmanager. This change addresses a compatibility issue where the webhook validation logic used the upstream Prometheus Alertmanager config parser, while Mimir uses a fork with additional/modified configuration options. The replacement ensures 100% compatibility and eliminates the risk of configuration drift between validation and runtime. Uses version `v0.25.1-0.20250305143719-fa9fa7096626` corresponding to Mimir 2.16.0.

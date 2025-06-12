@@ -3,6 +3,30 @@
     // Base config - https://github.com/giantswarm/renovate-presets/blob/main/default.json5
     "github>giantswarm/renovate-presets:default.json5",
     // Go specific config - https://github.com/giantswarm/renovate-presets/blob/main/lang-go.json5
-    "github>giantswarm/renovate-presets:lang-go.json5",
+    "github>giantswarm/renovate-presets:lang-go.json5"
   ],
+  "regexManagers": [
+    {
+      "fileMatch": ["^go\\.mod$"],
+      "matchStrings": [
+        // Match the alertmanager replace directive in go.mod to track version alignment with Mimir
+        // Pattern matches: github.com/prometheus/alertmanager => github.com/grafana/prometheus-alertmanager v0.25.1-0.20250305143719-fa9fa7096626
+        "^[[:space:]]*github\\.com/prometheus/alertmanager => github\\.com/grafana/prometheus-alertmanager (?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+-[0-9]+\\.[0-9]+-[0-9a-f]+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "grafana/mimir",
+      // Extract Mimir version to check for new releases that might require alertmanager updates
+      "versioningTemplate": "regex:^mimir-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["github-releases"],
+      "matchPackageNames": ["grafana/mimir"],
+      "enabled": true,
+      "groupName": "Mimir version tracking",
+      // Ignore release candidates, alpha, and beta versions to only track stable releases
+      "allowedVersions": "!/-(rc|alpha|beta)/"
+    }
+  ]
 }
