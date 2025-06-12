@@ -84,7 +84,7 @@ var _ = BeforeSuite(func() {
 		Skip("KUBEBUILDER_ASSETS not set and envtest binaries not found. Run 'make setup-envtest' to set up test environment.")
 	}
 
-	ctx, cancel = context.WithCancel(context.TODO())
+	ctx, cancel = context.WithCancel(context.Background())
 
 	var err error
 	err = observabilityv1alpha1.AddToScheme(scheme.Scheme)

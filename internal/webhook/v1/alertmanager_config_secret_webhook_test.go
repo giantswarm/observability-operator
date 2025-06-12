@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/pkg/alertmanager"
 )
 
 var _ = Describe("Secret Webhook", func() {
@@ -48,7 +49,7 @@ var _ = Describe("Secret Webhook", func() {
 				},
 			},
 			Data: map[string][]byte{
-				"alertmanager.yaml": []byte(`global:
+				alertmanager.AlertmanagerConfigKey: []byte(`global:
   smtp_smarthost: 'localhost:587'
 route:
   group_by: ['alertname']
@@ -168,7 +169,7 @@ receivers:
 					},
 				},
 				Data: map[string][]byte{
-					"alertmanager.yaml": []byte(`invalid yaml: [`),
+					alertmanager.AlertmanagerConfigKey: []byte(`invalid yaml: [`),
 				},
 			}
 
