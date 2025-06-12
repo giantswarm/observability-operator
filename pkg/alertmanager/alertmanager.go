@@ -21,10 +21,10 @@ import (
 
 const (
 	// Those values are used to retrieve the Alertmanager configuration from the secret named after conf.Monitoring.AlertmanagerSecretName
-	// alertmanagerConfigKey is the key to the alertmanager configuration in the secret
-	alertmanagerConfigKey = "alertmanager.yaml"
-	// templatesSuffix is the suffix used to identify the templates in the secret
-	templatesSuffix = ".tmpl"
+	// AlertmanagerConfigKey is the key to the alertmanager configuration in the secret
+	AlertmanagerConfigKey = "alertmanager.yaml"
+	// TemplatesSuffix is the suffix used to identify the templates in the secret
+	TemplatesSuffix = ".tmpl"
 
 	alertmanagerAPIPath = "/api/v1/alerts"
 )
@@ -49,10 +49,10 @@ func New(conf pkgconfig.Config) Service {
 }
 
 func ExtractAlertmanagerConfig(ctx context.Context, secret *v1.Secret) ([]byte, error) {
-	// Check that the secret contains an "alertmanager.yaml" file.
-	alertmanagerConfig, found := secret.Data[alertmanagerConfigKey]
+	// Check that the secret contains an Alertmanager configuration file.
+	alertmanagerConfig, found := secret.Data[AlertmanagerConfigKey]
 	if !found {
-		return nil, fmt.Errorf("missing %s in the secret", alertmanagerConfig)
+		return nil, fmt.Errorf("missing %s in the secret", AlertmanagerConfigKey)
 	}
 	// Validate Alertmanager configuration
 	// The returned config is not used, as transforming it via String() would produce an invalid configuration with all secrets replaced with <redacted>.
@@ -81,7 +81,7 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret, tenantID stri
 	templates := make(map[string]string)
 	// TODO Validate templates (and add it in the validating webhook)
 	for key, value := range secret.Data {
-		if strings.HasSuffix(key, templatesSuffix) {
+		if strings.HasSuffix(key, TemplatesSuffix) {
 			// Template key/name should not be a path otherwise the request will fail with:
 			// > error validating Alertmanager config: invalid template name "/etc/dummy.tmpl": the template name cannot contain any path
 			baseKey := path.Base(key)
