@@ -75,8 +75,8 @@ spec:
           protocol: TCP
         {{- end }}
         resources: {{ toYaml .Values.operator.resources | nindent 10 }}
-        volumeMounts:
         {{- if .Values.webhook.enabled }}
+        volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: webhook-certs
           readOnly: true
@@ -86,9 +86,9 @@ spec:
         {{- with .Values.operator.podSecurityContext }}
           {{- . | toYaml | nindent 8 }}
         {{- end }}
+      {{- if .Values.webhook.enabled }}
       volumes:
-        {{- if .Values.webhook.enabled }}
       - name: webhook-certs
         secret:
           secretName: {{ include "resource.default.name" . }}-webhook-server-cert
-        {{- end }}
+      {{- end }}
