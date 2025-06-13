@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Comprehensive Helm chart support for webhook configuration:
+  - Made all webhook resources conditional (ValidatingWebhookConfiguration, Service, Certificate)
+  - Added granular enable/disable controls for individual webhooks (``webhook.validatingWebhooks.alertmanagerConfig.enabled`)
+  - Added `ENABLE_WEBHOOKS` environment variable configuration
 - Replace the `prometheus/alertmanager` package with Grafana's Mimir fork (`grafana/prometheus-alertmanager`) to ensure configuration compatibility between our validating webhook and Mimir's Alertmanager. This change addresses a compatibility issue where the webhook validation logic used the upstream Prometheus Alertmanager config parser, while Mimir uses a fork with additional/modified configuration options. The replacement ensures 100% compatibility and eliminates the risk of configuration drift between validation and runtime. Uses version `v0.25.1-0.20250305143719-fa9fa7096626` corresponding to Mimir 2.16.0.
 - Improved Alertmanager configuration validation script (`hack/bin/validate-alertmanager-config.sh`):
   - Automatically extracts the exact commit hash from `go.mod` replacement directive to ensure perfect consistency with webhook validation
