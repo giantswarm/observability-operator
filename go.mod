@@ -122,7 +122,6 @@ require (
 )
 
 replace (
-
 	github.com/hashicorp/go-cleanhttp => github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-retryablehttp => github.com/hashicorp/go-retryablehttp v0.7.7
 	// Replacing prometheus/alertmanager with grafana mimir fork to support the same alertmanager configuration options.
