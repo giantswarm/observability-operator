@@ -26,7 +26,7 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 	logger := log.FromContext(ctx).WithValues("provider", ssoProvider, "organizations_count", len(organizations))
 
 	if len(organizations) == 0 {
-		logger.Info("no organizations provided, skipping SSO configuration")
+		logger.Info("skipping SSO configuration, no organizations provided")
 		return nil
 	}
 
