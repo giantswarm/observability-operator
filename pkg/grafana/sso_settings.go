@@ -23,7 +23,7 @@ const (
 // It retrieves the current SSO provider settings, updates the org_mapping field
 // with the provided organizations, and applies the changes to Grafana.
 func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Organization) error {
-	logger := log.FromContext(ctx).WithValues("provider", ssoProvider)
+	logger := log.FromContext(ctx).WithValues("provider", ssoProvider, "organizations_count", len(organizations))
 
 	if len(organizations) == 0 {
 		logger.Info("no organizations provided, skipping SSO configuration")
