@@ -1,3 +1,4 @@
+{{- if .Values.webhook.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -12,3 +13,4 @@ spec:
       targetPort: 9443
   selector:
     {{- include "labels.selector" . | nindent 4 }}
+{{- end }}
