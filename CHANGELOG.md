@@ -7,17 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Enhanced TenantID validation in GrafanaOrganization CRD to support full Grafana Mimir specification:
-  - Expanded pattern from `^[a-z]*$` to `^[a-zA-Z0-9!._*'()-]+$` to allow alphanumeric characters and special characters (`!`, `-`, `_`, `.`, `*`, `'`, `(`, `)`)
-  - Increased maximum length from 63 to 150 characters
-  - Added validating webhook to enforce forbidden values (`.`, `..`, `__mimir_cluster`) and prevent duplicate tenants
-- Comprehensive Helm chart support for webhook configuration:
-  - Added granular enable/disable controls for individual webhooks (`webhook.validatingWebhooks.grafanaOrganization.enabled`, `webhook.validatingWebhooks.alertmanagerConfig.enabled`)
-  - Made all webhook resources conditional (ValidatingWebhookConfiguration, Service, Certificate)
-  - Added `ENABLE_WEBHOOKS` environment variable configuration
-
 ### Changed
 
 - Comprehensive Helm chart support for webhook configuration:
@@ -31,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced logging throughout the script for better debugging and monitoring
   - Now uses the exact same Grafana fork commit as the operator's webhook validation logic
 - Enhanced AlertmanagerConfigSecret webhook with improved scope filtering and error handling
+- Enhanced TenantID validation in GrafanaOrganization CRD to support full Grafana Mimir specification:
+  - Expanded pattern from `^[a-z]*$` to `^[a-zA-Z0-9!._*'()-]+$` to allow alphanumeric characters and special characters (`!`, `-`, `_`, `.`, `*`, `'`, `(`, `)`)
+  - Increased maximum length from 63 to 150 characters
+  - Added validating webhook to enforce forbidden values (`.`, `..`, `__mimir_cluster`) and prevent duplicate tenants
 
 ### Fixed
 
