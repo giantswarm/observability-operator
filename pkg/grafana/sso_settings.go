@@ -54,8 +54,7 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 
 	settings["org_mapping"] = orgsMapping
 
-	logger.Info("configuring Grafana SSO settings",
-		"organizations_count", len(organizations))
+	logger.Info("configuring SSO settings")
 
 	// Update the provider settings
 	_, err = s.grafanaAPI.SsoSettings.UpdateProviderSettings(ssoProvider,
