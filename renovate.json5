@@ -11,7 +11,7 @@
       "matchStrings": [
         // Match the alertmanager replace directive in go.mod to track version alignment with Mimir
         // Pattern matches: github.com/prometheus/alertmanager => github.com/grafana/prometheus-alertmanager v0.25.1-0.20250305143719-fa9fa7096626
-        "^[[:space:]]*github\\.com/prometheus/alertmanager => github\\.com/grafana/prometheus-alertmanager (?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+-[0-9]+\\.[0-9]+-[0-9a-f]+)"
+        "^[[:space:]]*github\\.com/prometheus/alertmanager => github\\.com/grafana/prometheus-alertmanager (?<currentValue>v.+)"
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "grafana/mimir",
