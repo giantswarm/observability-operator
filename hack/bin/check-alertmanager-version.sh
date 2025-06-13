@@ -58,7 +58,7 @@ echo "✅ Latest stable Mimir release: ${latest_mimir_tag}"
 
 # --- Download go.mod from Mimir ---
 echo "📦 Downloading go.mod from Mimir @ ${latest_mimir_tag}..."
-mimir_go_mod=$(curl -fsSL "https://raw.githubusercontent.com/${MIMIR_REPO}/${latest_mimir_tag}/go.mod")
+mimir_go_mod="$(curl -fsSL "https://raw.githubusercontent.com/${MIMIR_REPO}/${latest_mimir_tag}/go.mod")"
 
 # --- Extract Alertmanager version from Mimir's go.mod ---
 echo "🔍 Extracting Alertmanager version from Mimir's go.mod..."
