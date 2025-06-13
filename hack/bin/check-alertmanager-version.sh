@@ -43,11 +43,11 @@ require_jq
 # --- Get latest stable Mimir release (no -rc, no beta) ---
 echo "🔍 Fetching latest stable Mimir release tag..."
 
-latest_mimir_tag=$(curl -s "https://api.github.com/repos/${MIMIR_REPO}/releases?per_page=50" | \
+latest_mimir_tag="$(curl -s "https://api.github.com/repos/${MIMIR_REPO}/releases?per_page=50" | \
   jq -r '.[].tag_name' | \
   grep -E '^mimir-[0-9]+\.[0-9]+\.[0-9]+$' | \
   sort -V | \
-  tail -n1)
+  tail -n1)"
 
 if [[ -z "${latest_mimir_tag}" ]]; then
   echo "❌ Could not find a stable Mimir release tag."
