@@ -73,14 +73,12 @@ spec:
         - containerPort: 9443
           name: webhook-server
           protocol: TCP
-        {{- end }}
-        resources: {{ toYaml .Values.operator.resources | nindent 10 }}
-        {{- if .Values.webhook.enabled }}
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: webhook-certs
           readOnly: true
         {{- end }}
+        resources: {{ toYaml .Values.operator.resources | nindent 10 }}
       serviceAccountName: {{ include "resource.default.name" . }}
       securityContext:
         {{- with .Values.operator.podSecurityContext }}
