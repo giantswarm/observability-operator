@@ -55,3 +55,13 @@ operator:
     runAsUser: 65534
     seccompProfile:
       type: RuntimeDefault
+
+
+webhook:
+  # -- Enable or disable webhook validation
+  enabled: true
+  # -- Configure individual webhooks
+  validatingWebhooks:
+    # -- Enable AlertManager config secret validation webhook
+    alertmanagerConfig:
+      enabled: true
