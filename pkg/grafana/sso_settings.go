@@ -14,28 +14,51 @@ const (
 	grafanaAdminRole  = "Admin"
 	grafanaEditorRole = "Editor"
 	grafanaViewerRole = "Viewer"
+
+	// ssoProvider is the OAuth provider type used for SSO configuration
+	ssoProvider = "generic_oauth"
 )
 
+// ConfigureSSOSettings configures Grafana SSO settings with organization mappings.
+// It retrieves the current SSO provider settings, updates the org_mapping field
+// with the provided organizations, and applies the changes to Grafana.
 func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Organization) error {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithValues("provider", ssoProvider)
 
-	provider := "generic_oauth"
-	resp, err := s.grafanaAPI.SsoSettings.GetProviderSettings(provider, nil)
-	if err != nil {
-		logger.Error(err, "failed to get sso provider settings.")
-		return errors.WithStack(err)
+	if len(organizations) == 0 {
+		logger.Info("no organizations provided, skipping SSO configuration")
+		return nil
 	}
 
-	orgsMapping := generateGrafanaOrgsMapping(organizations)
-	settings := resp.Payload.Settings.(map[string]interface{})
+	resp, err := s.grafanaAPI.SsoSettings.GetProviderSettings(ssoProvider, nil)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("failed to get SSO provider settings for %s: %w", ssoProvider, err))
+	}
+
+	if resp.Payload == nil {
+		return errors.WithStack(fmt.Errorf("received nil payload from SSO provider settings for %s", ssoProvider))
+	}
+
+	// Safe type assertion with error handling
+	settings, ok := resp.Payload.Settings.(map[string]any)
+	if !ok {
+		return errors.WithStack(fmt.Errorf("unexpected settings type for %s: expected map[string]any, got %T", ssoProvider, resp.Payload.Settings))
+	}
 	settings["role_attribute_path"] = "to_string('Viewer')"
 	settings["org_attribute_path"] = "groups"
+
+	orgsMapping, err := generateGrafanaOrgsMapping(organizations)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("failed to generate organization mappings for %s: %w", ssoProvider, err))
+	}
+
 	settings["org_mapping"] = orgsMapping
 
-	logger.Info("Configuring Grafana SSO settings", "provider", provider, "settings", settings)
+	logger.Info("configuring Grafana SSO settings",
+		"organizations_count", len(organizations))
 
 	// Update the provider settings
-	_, err = s.grafanaAPI.SsoSettings.UpdateProviderSettings(provider,
+	_, err = s.grafanaAPI.SsoSettings.UpdateProviderSettings(ssoProvider,
 		&models.UpdateProviderSettingsParamsBody{
 			ID:       resp.Payload.ID,
 			Provider: resp.Payload.Provider,
@@ -43,28 +66,47 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 		})
 
 	if err != nil {
-		logger.Error(err, "failed to configure grafana sso.")
-		return errors.WithStack(err)
+		logger.Error(err, "failed to configure Grafana SSO")
+		return errors.WithStack(fmt.Errorf("failed to update SSO provider settings for %s: %w", ssoProvider, err))
 	}
 
+	logger.Info("successfully configured Grafana SSO settings")
 	return nil
 }
 
-func generateGrafanaOrgsMapping(organizations []Organization) string {
+// generateGrafanaOrgsMapping generates Grafana organization mappings from the provided organizations.
+// Each organization's users are mapped to Grafana roles (Admin, Editor, Viewer) based on their attributes.
+func generateGrafanaOrgsMapping(organizations []Organization) (string, error) {
+	if len(organizations) == 0 {
+		return "", nil
+	}
+
 	var orgMappings []string
 	for _, organization := range organizations {
+		if organization.Name == "" {
+			return "", fmt.Errorf("organization name cannot be empty")
+		}
+
+		// Process admins
 		for _, adminOrgAttribute := range organization.Admins {
+			if adminOrgAttribute == "" {
+				return "", fmt.Errorf("admin attribute cannot be empty for organization %s", organization.Name)
+			}
 			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, adminOrgAttribute, grafanaAdminRole))
 		}
+
+		// Process editors
 		for _, editorOrgAttribute := range organization.Editors {
 			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, editorOrgAttribute, grafanaEditorRole))
 		}
+
+		// Process viewers
 		for _, viewerOrgAttribute := range organization.Viewers {
 			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, viewerOrgAttribute, grafanaViewerRole))
 		}
 	}
 
-	return strings.Join(orgMappings, " ")
+	return strings.Join(orgMappings, " "), nil
 }
 
 func buildOrgMapping(organizationName, userOrgAttribute, role string) string {
