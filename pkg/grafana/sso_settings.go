@@ -44,6 +44,8 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 	if !ok {
 		return errors.WithStack(fmt.Errorf("unexpected settings type for %s: expected map[string]any, got %T", ssoProvider, resp.Payload.Settings))
 	}
+        settings["role_attribute_path"] = "to_string('Viewer')"
+	settings["org_attribute_path"] = "groups"
 
 	orgsMapping, err := generateGrafanaOrgsMapping(organizations)
 	if err != nil {
@@ -80,7 +82,6 @@ func generateGrafanaOrgsMapping(organizations []Organization) (string, error) {
 	}
 
 	var orgMappings []string
-
 	for _, organization := range organizations {
 		if organization.Name == "" {
 			return "", fmt.Errorf("organization name cannot be empty")
