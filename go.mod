@@ -122,6 +122,9 @@ require (
 )
 
 replace (
+	// Replacing due to CVE-2025-4673
+	golang.org/x/net v0.40.0 => golang.org/x/net v0.41.0
+	
 	github.com/hashicorp/go-cleanhttp => github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-retryablehttp => github.com/hashicorp/go-retryablehttp v0.7.7
 	// Replacing prometheus/alertmanager with grafana mimir fork to support the same alertmanager configuration options.
