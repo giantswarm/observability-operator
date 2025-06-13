@@ -75,7 +75,7 @@ echo "✅ Mimir Alertmanager version: ${mimir_alertmanager_version}"
 # --- Extract local Alertmanager version from your repo's go.mod ---
 echo "🔍 Extracting Alertmanager version from local go.mod..."
 # Handle tabs and spaces in the replace directive
-local_alertmanager_version=$(grep -E "${ALERTMANAGER_MODULE}.*=>" "${GO_MOD_PATH}" | awk '{ print $NF }')
+local_alertmanager_version="$(grep -E "${ALERTMANAGER_MODULE}.*=>" "${GO_MOD_PATH}" | awk '{ print $NF }')"
 
 if [[ -z "$local_alertmanager_version" ]]; then
   echo "❌ Could not find Alertmanager replace directive in local go.mod."
