@@ -76,9 +76,6 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 // generateGrafanaOrgsMapping generates Grafana organization mappings from the provided organizations.
 // Each organization's users are mapped to Grafana roles (Admin, Editor, Viewer) based on their attributes.
 func generateGrafanaOrgsMapping(organizations []Organization) (string, error) {
-	if len(organizations) == 0 {
-		return "", nil
-	}
 
 	var orgMappings []string
 	for _, organization := range organizations {
