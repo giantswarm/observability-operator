@@ -63,7 +63,7 @@ mimir_go_mod="$(curl -fsSL "https://raw.githubusercontent.com/${MIMIR_REPO}/${la
 # --- Extract Alertmanager version from Mimir's go.mod ---
 echo "🔍 Extracting Alertmanager version from Mimir's go.mod..."
 # Look for the replace directive, not the require directive
-mimir_alertmanager_version=$(echo "$mimir_go_mod" | grep -E "replace.*${ALERTMANAGER_MODULE}" | awk '{ print $NF }')
+mimir_alertmanager_version="$(echo "$mimir_go_mod" | grep -E "${ALERTMANAGER_MODULE} =>" | awk '{ print $NF }')"
 
 if [[ -z "$mimir_alertmanager_version" ]]; then
   echo "❌ Could not find Alertmanager replace directive in Mimir's go.mod."
