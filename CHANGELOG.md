@@ -28,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaced binary building with `go run` for faster execution and simpler maintenance
   - Enhanced logging throughout the script for better debugging and monitoring
   - Now uses the exact same Grafana fork commit as the operator's webhook validation logic
+- Enhanced AlertmanagerConfigSecret webhook with improved scope filtering and error handling
+
+### Fixed
+
+- Fixed alertmanager configuration key consistency across codebase (standardized on `alertmanager.yaml` instead of mixed `alertmanager.yml`/`alertmanager.yaml`)
+- Fixed error message formatting in `ExtractAlertmanagerConfig` function
 
 ## [0.32.1] - 2025-06-03
 

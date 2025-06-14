@@ -18,15 +18,19 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -84,7 +88,7 @@ var _ = BeforeSuite(func() {
 		Skip("KUBEBUILDER_ASSETS not set and envtest binaries not found. Run 'make setup-envtest' to set up test environment.")
 	}
 
-	ctx, cancel = context.WithCancel(context.TODO())
+	ctx, cancel = context.WithCancel(context.Background())
 
 	var err error
 	err = observabilityv1alpha1.AddToScheme(scheme.Scheme)
@@ -111,14 +115,25 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	// Install Cluster API CRDs after environment starts
-	By("installing Cluster API CRDs")
-	err = installClusterAPICRDs(cfg)
-	Expect(err).NotTo(HaveOccurred())
-
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
+
+	// Install Cluster API CRDs before any tests run
+	// This must happen after the test environment is started and client is created
+	By("installing Cluster API CRDs")
+	err = installClusterAPICRDs(k8sClient)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Ensure all CRDs are ready before proceeding with any tests
+	By("waiting for all CRDs to be ready")
+	Eventually(func() bool {
+		// Verify that the Cluster CRD is accessible
+		crd := &apiextensionsv1.CustomResourceDefinition{}
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "clusters.cluster.x-k8s.io"}, crd)
+		return err == nil
+	}, time.Second*30, time.Millisecond*500).Should(BeTrue(), "Cluster API CRD should be accessible")
+
 })
 
 var _ = AfterSuite(func() {
@@ -153,93 +168,82 @@ var _ = AfterSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 })
 
-// installClusterAPICRDs installs the Cluster API CRDs needed for testing
-func installClusterAPICRDs(cfg *rest.Config) error {
-	// Create a client for installing CRDs
-	tempClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
-	if err != nil {
-		return err
-	}
-
+// installClusterAPICRDs dynamically fetches and installs the actual Cluster API CRDs needed for testing
+func installClusterAPICRDs(k8sClient client.Client) error {
 	// Add apiextensions scheme for CRD operations
-	err = apiextensionsv1.AddToScheme(scheme.Scheme)
+	err := apiextensionsv1.AddToScheme(scheme.Scheme)
 	if err != nil {
 		return err
 	}
 
-	// Create minimal Cluster CRD definition
-	clusterCRD := &apiextensionsv1.CustomResourceDefinition{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "clusters.cluster.x-k8s.io",
-		},
-		Spec: apiextensionsv1.CustomResourceDefinitionSpec{
-			Group: "cluster.x-k8s.io",
-			Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
-				{
-					Name:    "v1beta1",
-					Served:  true,
-					Storage: true,
-					Schema: &apiextensionsv1.CustomResourceValidation{
-						OpenAPIV3Schema: &apiextensionsv1.JSONSchemaProps{
-							Type: "object",
-							Properties: map[string]apiextensionsv1.JSONSchemaProps{
-								"spec": {
-									Type: "object",
-									Properties: map[string]apiextensionsv1.JSONSchemaProps{
-										"infrastructureRef": {
-											Type: "object",
-											Properties: map[string]apiextensionsv1.JSONSchemaProps{
-												"apiVersion": {Type: "string"},
-												"kind":       {Type: "string"},
-												"name":       {Type: "string"},
-											},
-										},
-										"controlPlaneRef": {
-											Type: "object",
-											Properties: map[string]apiextensionsv1.JSONSchemaProps{
-												"apiVersion": {Type: "string"},
-												"kind":       {Type: "string"},
-												"name":       {Type: "string"},
-											},
-										},
-										"controlPlaneEndpoint": {
-											Type: "object",
-											Properties: map[string]apiextensionsv1.JSONSchemaProps{
-												"host": {Type: "string"},
-												"port": {Type: "integer"},
-											},
-										},
-									},
-								},
-								"status": {
-									Type: "object",
-									Properties: map[string]apiextensionsv1.JSONSchemaProps{
-										"controlPlaneReady":   {Type: "boolean"},
-										"infrastructureReady": {Type: "boolean"},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			Scope: apiextensionsv1.NamespaceScoped,
-			Names: apiextensionsv1.CustomResourceDefinitionNames{
-				Plural:   "clusters",
-				Singular: "cluster",
-				Kind:     "Cluster",
-			},
-		},
+	// Check if the CRD already exists (in case of test reruns)
+	existingCRD := &apiextensionsv1.CustomResourceDefinition{}
+	err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "clusters.cluster.x-k8s.io"}, existingCRD)
+	if err == nil {
+		logf.Log.Info("Cluster API CRD already exists, skipping installation")
+		return nil
 	}
+
+	// Fetch the actual Cluster CRD from the official Cluster API repository
+	// Using v1.10.2 tag to match the version in go.mod
+	crdURL := "https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/v1.10.2/config/crd/bases/cluster.x-k8s.io_clusters.yaml"
+
+	logf.Log.Info("Fetching Cluster API CRD", "url", crdURL)
+
+	resp, err := http.Get(crdURL)
+	if err != nil {
+		return fmt.Errorf("failed to fetch CRD from %s: %w", crdURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to fetch CRD: HTTP %d", resp.StatusCode)
+	}
+
+	crdBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read CRD response: %w", err)
+	}
+
+	// Parse the YAML into a CRD object
+	var clusterCRD apiextensionsv1.CustomResourceDefinition
+	err = yaml.Unmarshal(crdBytes, &clusterCRD)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal CRD YAML: %w", err)
+	}
+
+	logf.Log.Info("Successfully parsed Cluster API CRD", "name", clusterCRD.Name)
 
 	// Install the CRD
-	err = tempClient.Create(context.Background(), clusterCRD)
+	err = k8sClient.Create(context.Background(), &clusterCRD)
 	if err != nil {
 		logf.Log.Error(err, "Failed to install Cluster CRD")
 		return err
 	}
 
-	logf.Log.Info("Successfully installed Cluster API CRD")
+	logf.Log.Info("Successfully created Cluster API CRD, waiting for it to be established")
+
+	// Wait for the CRD to be established with more generous timeout
+	Eventually(func() bool {
+		crd := &apiextensionsv1.CustomResourceDefinition{}
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "clusters.cluster.x-k8s.io"}, crd)
+		if err != nil {
+			logf.Log.V(1).Info("CRD not yet accessible", "error", err)
+			return false
+		}
+
+		// Check if the CRD is established
+		for _, condition := range crd.Status.Conditions {
+			if condition.Type == apiextensionsv1.Established && condition.Status == apiextensionsv1.ConditionTrue {
+				logf.Log.Info("Cluster API CRD is now established")
+				return true
+			}
+		}
+		logf.Log.V(1).Info("CRD exists but not yet established", "conditions", crd.Status.Conditions)
+		return false
+	}, time.Second*30, time.Millisecond*200).Should(BeTrue(), "CRD should be established within 30 seconds")
+
+	logf.Log.Info("Successfully installed and established Cluster API CRD from official source")
 	return nil
 }
 
