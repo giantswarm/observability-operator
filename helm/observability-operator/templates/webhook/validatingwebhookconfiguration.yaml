@@ -38,4 +38,27 @@ webhooks:
         - secrets
   sideEffects: None
 {{- end }}
+{{- if .Values.webhook.validatingWebhooks.grafanaOrganization.enabled }}
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "resource.default.name" . }}-webhook
+      namespace: {{ .Release.Namespace }}
+      path: /validate-v1alpha1-grafana-organization
+      port: 443
+  failurePolicy: Fail
+  name: grafanaorganization.observability.giantswarm.io
+  rules:
+    - apiGroups:
+        - observability.giantswarm.io
+      apiVersions:
+        - v1alpha1
+      operations:
+        - CREATE
+        - UPDATE
+      resources:
+        - grafanaorganizations
+  sideEffects: None
+{{- end }}
 {{- end }}

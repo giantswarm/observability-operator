@@ -195,6 +195,15 @@
                                     "type": "boolean"
                                 }
                             }
+                        },
+                        "grafanaOrganization": {
+                            "type": "object",
+                            "description": "Enable GrafanaOrganization validation webhook",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
                     }
                 }
