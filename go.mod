@@ -127,6 +127,4 @@ replace (
 	// Replacing prometheus/alertmanager with grafana mimir fork to support the same alertmanager configuration options.
 	// This needs to be in sync with the version of Mimir we run https://github.com/grafana/mimir/blob/mimir-2.16.0/go.mod#L329
 	github.com/prometheus/alertmanager => github.com/grafana/prometheus-alertmanager v0.25.1-0.20250305143719-fa9fa7096626
-	// Replacing due to CVE-2025-4673
-	golang.org/x/net v0.40.0 => golang.org/x/net v0.41.0
 )
