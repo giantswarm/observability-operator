@@ -187,5 +187,4 @@ receivers:
 			Expect(err.Error()).To(ContainSubstring("expected a Secret object but got"))
 		})
 	})
-
 })
