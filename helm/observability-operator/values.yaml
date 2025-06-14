@@ -56,7 +56,6 @@ operator:
     seccompProfile:
       type: RuntimeDefault
 
-
 webhook:
   # -- Enable or disable webhook validation
   enabled: true
@@ -64,4 +63,7 @@ webhook:
   validatingWebhooks:
     # -- Enable AlertManager config secret validation webhook
     alertmanagerConfig:
+      enabled: true
+    # -- Enable GrafanaOrganization validation webhook
+    grafanaOrganization:
       enabled: true

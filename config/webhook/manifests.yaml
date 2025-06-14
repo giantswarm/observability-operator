@@ -10,6 +10,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-v1alpha1-grafana-organization
+  failurePolicy: Fail
+  name: vgrafanaorganization.kb.io
+  rules:
+  - apiGroups:
+    - observability.giantswarm.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - grafanaorganizations
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-alertmanager-config
   failurePolicy: Fail
   name: vsecret-v1.kb.io
