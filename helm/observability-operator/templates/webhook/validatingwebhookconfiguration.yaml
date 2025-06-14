@@ -19,6 +19,7 @@ webhooks:
       port: 443
   failurePolicy: Fail
   name: alertmanagerconfig.observability.giantswarm.io
+  # Limit the validation only to the alertmanager-config secrets
   objectSelector:
     matchLabels:
       observability.giantswarm.io/kind: alertmanager-config
