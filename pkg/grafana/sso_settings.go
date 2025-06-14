@@ -23,10 +23,10 @@ const (
 // It retrieves the current SSO provider settings, updates the org_mapping field
 // with the provided organizations, and applies the changes to Grafana.
 func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Organization) error {
-	logger := log.FromContext(ctx).WithValues("provider", ssoProvider)
+	logger := log.FromContext(ctx).WithValues("provider", ssoProvider, "organizations_count", len(organizations))
 
 	if len(organizations) == 0 {
-		logger.Info("no organizations provided, skipping SSO configuration")
+		logger.Info("skipping SSO configuration, no organizations provided")
 		return nil
 	}
 
@@ -54,8 +54,7 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 
 	settings["org_mapping"] = orgsMapping
 
-	logger.Info("configuring Grafana SSO settings",
-		"organizations_count", len(organizations))
+	logger.Info("configuring SSO settings")
 
 	// Update the provider settings
 	_, err = s.grafanaAPI.SsoSettings.UpdateProviderSettings(ssoProvider,
@@ -70,17 +69,13 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 		return errors.WithStack(fmt.Errorf("failed to update SSO provider settings for %s: %w", ssoProvider, err))
 	}
 
-	logger.Info("successfully configured Grafana SSO settings")
+	logger.Info("configured SSO settings successfully")
 	return nil
 }
 
 // generateGrafanaOrgsMapping generates Grafana organization mappings from the provided organizations.
 // Each organization's users are mapped to Grafana roles (Admin, Editor, Viewer) based on their attributes.
 func generateGrafanaOrgsMapping(organizations []Organization) (string, error) {
-	if len(organizations) == 0 {
-		return "", nil
-	}
-
 	var orgMappings []string
 	for _, organization := range organizations {
 		if organization.Name == "" {
