@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Alertmanager inhibition rule `cancel_if_metrics_broken`
 - **Alertmanager version synchronization and dependency management**: Added comprehensive automated tooling to ensure Alertmanager fork version stays in sync with Mimir releases (https://github.com/giantswarm/giantswarm/issues/33621):
   - New script `hack/bin/check-alertmanager-version.sh` that compares the local Alertmanager version with the version used in the latest stable Mimir release
   - GitHub Actions workflow `.github/workflows/check-alertmanager-version.yml` that runs the check on `go.mod` changes and can be triggered manually

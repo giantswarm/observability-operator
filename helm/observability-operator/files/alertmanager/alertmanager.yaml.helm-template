@@ -289,6 +289,12 @@ inhibit_rules:
     - cancel_if_monitoring_agent_down=true
   equal: [cluster_id]
 
+# When metrics are unreliable (mimir broken)
+- source_matchers:
+    - inhibit_metrics_broken=true
+  target_matchers:
+    - cancel_if_metrics_broken=true
+
 # Source: https://github.com/giantswarm/prometheus-rules/blob/main/helm/prometheus-rules/templates/kaas/tenet/alerting-rules/inhibit.nodes.rules.yml
 - source_matchers:
     - node_not_ready=true
