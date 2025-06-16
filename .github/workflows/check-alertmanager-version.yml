@@ -1,0 +1,16 @@
+name: Check Alertmanager Version
+
+on:
+  pull_request:
+    paths:
+      - 'go.mod'
+  workflow_dispatch:
+
+jobs:
+  validate-alertmanager:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run alertmanager version sync check
+        run: ./hack/bin/check-alertmanager-version.sh
