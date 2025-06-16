@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed alertmanager configuration key consistency across codebase (standardized on `alertmanager.yaml` instead of mixed `alertmanager.yml`/`alertmanager.yaml`)
 - Fixed error message formatting in `ExtractAlertmanagerConfig` function
 
+### Removed
+
+- Remove unnecessary Grafana SSO configuration override for `role_attribute_path` and `org_attribute_path`. Any override should happen in shared-configs instead.
+
 ## [0.32.1] - 2025-06-03
 
 ### Fixed
