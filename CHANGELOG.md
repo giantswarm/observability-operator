@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Alertmanager inhibition rule `cancel_if_metrics_broken`
+
 ### Changed
 
 - Comprehensive Helm chart support for webhook configuration:
