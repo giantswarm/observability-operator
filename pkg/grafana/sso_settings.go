@@ -14,6 +14,7 @@ const (
 	grafanaAdminRole  = "Admin"
 	grafanaEditorRole = "Editor"
 	grafanaViewerRole = "Viewer"
+	grafanaNoneRole   = "None"
 
 	// ssoProvider is the OAuth provider type used for SSO configuration
 	ssoProvider = "generic_oauth"
@@ -97,6 +98,10 @@ func generateGrafanaOrgsMapping(organizations []Organization) (string, error) {
 		for _, viewerOrgAttribute := range organization.Viewers {
 			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, viewerOrgAttribute, grafanaViewerRole))
 		}
+
+		// We set role none to all groups by default, because Grafana currently defaults to the viewer role (c.f. https://github.com/giantswarm/giantswarm/issues/33560#issuecomment-2976805243)
+		// This works because Grafana safely returns the top role in case of multiple roles for the same user.
+		orgMappings = append(orgMappings, buildOrgMapping(organization.Name, "*", grafanaNoneRole))
 	}
 
 	return strings.Join(orgMappings, " "), nil
