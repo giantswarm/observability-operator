@@ -78,7 +78,7 @@ func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization 
 	logger.Info("updating datasources in the grafanaOrganization status")
 	grafanaOrganization.Status.DataSources = configuredDatasources
 	if err := s.client.Status().Update(ctx, grafanaOrganization); err != nil {
-		return fmt.Errorf("failed to update the the grafanaOrganization status with datasources information: %w", err)
+		return fmt.Errorf("failed to update grafanaOrganization status with datasources information: %w", err)
 	}
 	logger.Info("updated datasources in the grafanaOrganization status")
 	logger.Info("configured data sources")
