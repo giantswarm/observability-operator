@@ -2,6 +2,7 @@ package prometheusagent
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -35,14 +36,12 @@ func (pas *PrometheusAgentService) ReconcileRemoteWriteConfiguration(
 
 	err := pas.createOrUpdateConfigMap(ctx, cluster, logger)
 	if err != nil {
-		logger.Error(err, "failed to create or update prometheus agent remote write configmap")
-		return err
+		return fmt.Errorf("failed to create or update prometheus agent remote write configmap: %w", err)
 	}
 
 	err = pas.createOrUpdateSecret(ctx, cluster, logger)
 	if err != nil {
-		logger.Error(err, "failed to create or update prometheus agent remote write secret")
-		return err
+		return fmt.Errorf("failed to create or update prometheus agent remote write secret: %w", err)
 	}
 
 	logger.Info("ensured prometheus agent remote write configmap and secret")
@@ -64,33 +63,32 @@ func (pas PrometheusAgentService) createOrUpdateConfigMap(ctx context.Context,
 	if apierrors.IsNotFound(err) {
 		configMap, err := pas.buildRemoteWriteConfig(ctx, cluster, logger, sharding.DefaultShards)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to build remote write config for cluster %s: %w", cluster.Name, err)
 		}
 
 		err = pas.Create(ctx, configMap)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create prometheus agent configmap for cluster %s: %w", cluster.Name, err)
 		}
 		return nil
 	} else if err != nil {
-		return err
+		return fmt.Errorf("failed to get existing prometheus agent configmap for cluster %s: %w", cluster.Name, err)
 	}
 
 	currentShards, err := readCurrentShardsFromConfig(*current)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read current shards from configmap for cluster %s: %w", cluster.Name, err)
 	}
 
 	desired, err := pas.buildRemoteWriteConfig(ctx, cluster, logger, currentShards)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to build desired remote write config for cluster %s: %w", cluster.Name, err)
 	}
 
 	if !reflect.DeepEqual(current.Data, desired.Data) || !reflect.DeepEqual(current.Finalizers, desired.Finalizers) {
 		err = pas.Update(ctx, desired)
 		if err != nil {
-			logger.Info("could not update prometheus agent remote write configmap")
-			return err
+			return fmt.Errorf("failed to update prometheus agent configmap for cluster %s: %w", cluster.Name, err)
 		}
 	}
 	return nil
@@ -110,28 +108,28 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		logger.Info("generating remote write secret for the prometheus agent")
 		secret, err := pas.buildRemoteWriteSecret(ctx, cluster)
 		if err != nil {
-			logger.Error(err, "failed to generate the remote write secret for the prometheus agent")
-			return err
+			return fmt.Errorf("failed to generate the remote write secret for the prometheus agent: %w", err)
 		}
 		logger.Info("generated the remote write secret for the prometheus agent")
 
 		err = pas.Create(ctx, secret)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create prometheus agent secret for cluster %s: %w", cluster.Name, err)
 		}
 		return nil
 	} else if err != nil {
-		return err
+		return fmt.Errorf("failed to get existing prometheus agent secret for cluster %s: %w", cluster.Name, err)
 	}
 
 	desired, err := pas.buildRemoteWriteSecret(ctx, cluster)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to build prometheus agent secret for cluster %s: %w", cluster.Name, err)
 	}
+
 	if !reflect.DeepEqual(current.Data, desired.Data) || !reflect.DeepEqual(current.Finalizers, desired.Finalizers) {
 		err = pas.Update(ctx, desired)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to update prometheus agent secret for cluster %s: %w", cluster.Name, err)
 		}
 	}
 
@@ -146,14 +144,12 @@ func (pas *PrometheusAgentService) DeleteRemoteWriteConfiguration(
 
 	err := pas.deleteConfigMap(ctx, cluster)
 	if err != nil {
-		logger.Error(err, "failed to delete prometheus agent remote write configmap")
-		return err
+		return fmt.Errorf("failed to delete prometheus agent remote write configmap: %w", err)
 	}
 
 	err = pas.deleteSecret(ctx, cluster)
 	if err != nil {
-		logger.Error(err, "failed to delete prometheus agent remote write secret")
-		return err
+		return fmt.Errorf("failed to delete prometheus agent remote write secret: %w", err)
 	}
 
 	logger.Info("deleted prometheus agent remote write configmap and secret")
@@ -173,12 +169,12 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 		// Ignore cases where the configmap is not found (if it was manually deleted, for instance).
 		return nil
 	} else if err != nil {
-		return err
+		return fmt.Errorf("failed to get prometheus agent configmap for deletion in cluster %s: %w", cluster.Name, err)
 	}
 
 	err = pas.Delete(ctx, configMap)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete prometheus agent configmap for cluster %s: %w", cluster.Name, err)
 	}
 	return nil
 }
@@ -195,12 +191,12 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
 		return nil
 	} else if err != nil {
-		return err
+		return fmt.Errorf("failed to get prometheus agent secret for deletion in cluster %s: %w", cluster.Name, err)
 	}
 
 	err = pas.Delete(ctx, secret)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete prometheus agent secret for cluster %s: %w", cluster.Name, err)
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package monitoring
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
@@ -67,12 +68,12 @@ func GetMimirIngressPassword(ctx context.Context, k8sClient client.Client) (stri
 		Namespace: mimirNamespace,
 	}, secret)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get mimir auth secret: %w", err)
 	}
 
 	mimirPassword, err := readMimirAuthPasswordFromSecret(*secret)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read mimir auth password from secret: %w", err)
 	}
 
 	return mimirPassword, nil
@@ -86,7 +87,7 @@ func readMimirAuthPasswordFromSecret(secret corev1.Secret) (string, error) {
 
 		err := yaml.Unmarshal(credentials, &secretData)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to unmarshal mimir auth credentials: %w", err)
 		}
 		return secretData, nil
 	}

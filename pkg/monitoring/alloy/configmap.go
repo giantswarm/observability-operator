@@ -103,8 +103,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	alloyMetricsAppVersion, err := a.getAlloyMetricsAppVersion(ctx, cluster)
 	if err != nil {
-		logger.Error(err, "alloy-service - failed to get Alloy metrics app version")
-		return nil, err
+		return nil, fmt.Errorf("alloy-service - failed to get Alloy metrics app version: %w", err)
 	}
 
 	if alloyMetricsAppVersion.LT(alloyMetricsRuleLoadingFixedAppVersion) {

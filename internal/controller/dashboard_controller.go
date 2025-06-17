@@ -53,7 +53,7 @@ func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
 
 	err := r.SetupWithManager(mgr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to setup dashboard controller with manager: %w", err)
 	}
 
 	return nil
@@ -102,7 +102,6 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			MatchLabels: map[string]string{
 				DashboardSelectorLabelName: DashboardSelectorLabelValue,
 			},
-			// TODO add match expressions to filter by the tenant label instead of the organization annotation
 		})
 	if err != nil {
 		return fmt.Errorf("failed to create label selector predicate: %w", err)

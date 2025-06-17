@@ -84,8 +84,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 				Name: organization.Name,
 			})
 			if err != nil {
-				logger.Error(err, "failed to create organization")
-				return err
+				return fmt.Errorf("failed to create organization: %w", err)
 			}
 			logger.Info("created organization")
 
@@ -93,8 +92,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 			return nil
 		}
 
-		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", organization.ID))
-		return err
+		return fmt.Errorf("failed to find organization with ID %d: %w", organization.ID, err)
 	}
 
 	// If both name matches, there is nothing to do.
@@ -108,8 +106,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 		Name: organization.Name,
 	})
 	if err != nil {
-		logger.Error(err, "failed to update organization name")
-		return err
+		return fmt.Errorf("failed to update organization name: %w", err)
 	}
 
 	logger.Info("updated organization")
@@ -128,14 +125,12 @@ func (s *Service) deleteOrganization(ctx context.Context, organization Organizat
 			// If the CR orgID does not exist in Grafana, then we create the organization
 			return nil
 		}
-		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", organization.ID))
-		return err
+		return fmt.Errorf("failed to find organization with ID %d: %w", organization.ID, err)
 	}
 
 	_, err = s.grafanaAPI.Orgs.DeleteOrgByID(organization.ID)
 	if err != nil {
-		logger.Error(err, "failed to delete organization")
-		return err
+		return fmt.Errorf("failed to delete organization: %w", err)
 	}
 	logger.Info("deleted organization")
 
@@ -153,8 +148,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 
 	configuredDatasourcesInGrafana, err := s.listDatasourcesForOrganization(ctx)
 	if err != nil {
-		logger.Error(err, "failed to list datasources")
-		return nil, err
+		return nil, fmt.Errorf("failed to list datasources: %w", err)
 	}
 
 	datasourcesToCreate := make([]Datasource, 0)
@@ -191,8 +185,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 				Access:         models.DsAccess(datasource.Access),
 			})
 		if err != nil {
-			logger.Error(err, "failed to create datasource", "datasource", datasourcesToCreate[index].Name)
-			return nil, err
+			return nil, fmt.Errorf("failed to create datasource %s: %w", datasourcesToCreate[index].Name, err)
 		}
 		datasourcesToCreate[index].ID = *created.Payload.ID
 		logger.Info("datasource created", "datasource", datasource.Name)
@@ -213,8 +206,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 				Access:         models.DsAccess(datasource.Access),
 			})
 		if err != nil {
-			logger.Error(err, "failed to update datasource", "datasource", datasource.Name)
-			return nil, err
+			return nil, fmt.Errorf("failed to update datasource %s: %w", datasource.Name, err)
 		}
 		logger.Info("datasource updated", "datasource", datasource.Name)
 	}
@@ -229,8 +221,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 			logger.Info("skipping, datasource not found", "datasource", mimirOldDatasourceUID)
 			return updatedDatasources, nil
 		} else {
-			logger.Error(err, "failed to delete datasource", "datasource", mimirOldDatasourceUID)
-			return updatedDatasources, err
+			return updatedDatasources, fmt.Errorf("failed to delete datasource %s: %w", mimirOldDatasourceUID, err)
 		}
 	} else {
 		logger.Info("deleted datasource", "datasource", mimirOldDatasourceUID)
@@ -241,12 +232,9 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 }
 
 func (s *Service) listDatasourcesForOrganization(ctx context.Context) ([]Datasource, error) {
-	logger := log.FromContext(ctx)
-
 	resp, err := s.grafanaAPI.Datasources.GetDataSources()
 	if err != nil {
-		logger.Error(err, "failed to get configured datasources")
-		return nil, err
+		return nil, fmt.Errorf("failed to get configured datasources: %w", err)
 	}
 
 	datasources := make([]Datasource, len(resp.Payload))
@@ -319,5 +307,8 @@ func (s *Service) PublishDashboard(dashboard map[string]any) error {
 		Overwrite: true, // allows dashboard to be updated by the same UID
 
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to create dashboard in grafana: %w", err)
+	}
+	return nil
 }

@@ -75,7 +75,7 @@ func (r *OpsgenieHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 		apiErr, ok := err.(*client.ApiError)
 		// If the error is not a 404, we return it
 		if !ok || apiErr.StatusCode != http.StatusNotFound {
-			return err
+			return fmt.Errorf("failed to get heartbeat %s: %w", hb.Name, err)
 		}
 		// If the heartbeat does not exist, we set the heartbeatExists to false
 		heartbeatExists = false
@@ -95,7 +95,7 @@ func (r *OpsgenieHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 		logger.Info("deleting heartbeat")
 		_, err := r.Client.Delete(ctx, hb.Name)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to delete heartbeat %s: %w", hb.Name, err)
 		}
 
 		logger.Info("deleted heartbeat")
@@ -104,7 +104,7 @@ func (r *OpsgenieHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 	logger.Info("creating heartbeat")
 	err = r.createHeartbeat(ctx, hb)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create heartbeat %s: %w", hb.Name, err)
 	}
 	logger.Info("created heartbeat")
 
@@ -122,7 +122,7 @@ func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
 			logger.Info("heartbeat does not exist, skipping")
 			return nil
 		} else {
-			return err
+			return fmt.Errorf("failed to get heartbeat %s for deletion: %w", r.Name, err)
 		}
 	}
 
@@ -130,14 +130,14 @@ func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
 	logger.Info("triggering final heartbeat ping")
 	_, err = r.Ping(ctx, r.Name)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to trigger final heartbeat ping for %s: %w", r.Name, err)
 	}
 	logger.Info("triggered final heartbeat ping")
 
 	logger.Info("deleting heartbeat")
 	_, err = r.Client.Delete(ctx, r.Name)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete heartbeat %s: %w", r.Name, err)
 	}
 	logger.Info("deleted heartbeat")
 	return nil
@@ -158,13 +158,13 @@ func (r *OpsgenieHeartbeatRepository) createHeartbeat(ctx context.Context, h *he
 	}
 	_, err := r.Add(ctx, req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to add heartbeat %s: %w", h.Name, err)
 	}
 
 	// We ping the heartbeat to active it and make sure it pages.
 	_, err = r.Ping(ctx, h.Name)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to ping heartbeat %s: %w", h.Name, err)
 	}
 
 	return nil

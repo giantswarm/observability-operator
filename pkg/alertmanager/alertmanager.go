@@ -67,13 +67,13 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret, tenantID stri
 
 	logger.Info("configuring alertmanager")
 	if secret == nil {
-		return fmt.Errorf("failed to get secret")
+		return fmt.Errorf("failed to get alertmanager secret for tenant %s", tenantID)
 	}
 
 	// Retrieve and Validate alertmanager configuration from secret
 	alertmanagerConfig, err := ExtractAlertmanagerConfig(ctx, secret)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to extract alertmanager config for tenant %s: %w", tenantID, err)
 	}
 
 	// Retrieve all alertmanager templates from secret

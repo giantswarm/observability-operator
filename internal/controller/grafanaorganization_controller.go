@@ -44,7 +44,7 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config)
 
 	err := r.SetupWithManager(mgr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to setup grafana organization controller: %w", err)
 	}
 
 	return nil
@@ -181,8 +181,6 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 // reconcileDelete deletes the grafana organization.
 func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
-	logger := log.FromContext(ctx)
-
 	// We do not need to delete anything if there is no finalizer on the grafana organization
 	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 		return nil
@@ -196,7 +194,6 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	grafanaOrganization.Status.OrgID = 0
 	err = r.Client.Status().Update(ctx, grafanaOrganization)
 	if err != nil {
-		logger.Error(err, "failed to update grafanaOrganization status")
 		return fmt.Errorf("failed to update grafana organization status: %w", err)
 	}
 

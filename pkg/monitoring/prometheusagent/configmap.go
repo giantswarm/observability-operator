@@ -21,14 +21,12 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 
 	organization, err := pas.Read(ctx, cluster)
 	if err != nil {
-		logger.Error(err, "failed to get cluster organization")
-		return nil, err
+		return nil, fmt.Errorf("failed to get cluster organization: %w", err)
 	}
 
 	provider, err := common.GetClusterProvider(cluster)
 	if err != nil {
-		logger.Error(err, "failed to get cluster provider")
-		return nil, err
+		return nil, fmt.Errorf("failed to get cluster provider: %w", err)
 	}
 
 	externalLabels := map[string]string{

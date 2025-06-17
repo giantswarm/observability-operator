@@ -47,7 +47,6 @@ func (fh FinalizerHelper) EnsureAdded(ctx context.Context, object client.Object)
 
 	err = patchHelper.Patch(ctx, object)
 	if err != nil {
-		logger.Error(err, "failed to add finalizer", "finalizer", fh.finalizer)
 		return false, fmt.Errorf("failed to patch object with finalizer %s: %w", fh.finalizer, err)
 	}
 

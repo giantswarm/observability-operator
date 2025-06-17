@@ -3,6 +3,7 @@ package alloy
 import (
 	"context"
 	_ "embed"
+	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -38,39 +39,35 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	var tenants []string
 	tenants, err := tenancy.ListTenants(ctx, a.Client)
 	if err != nil {
-		return err
+		return fmt.Errorf("alloy-service - failed to list tenants: %w", err)
 	}
 
 	configmap := ConfigMap(cluster)
 	_, err = controllerutil.CreateOrUpdate(ctx, a.Client, configmap, func() error {
 		data, err := a.GenerateAlloyMonitoringConfigMapData(ctx, configmap, cluster, tenants, observabilityBundleVersion)
 		if err != nil {
-			logger.Error(err, "alloy-service - failed to generate alloy monitoring configmap")
-			return err
+			return fmt.Errorf("alloy-service - failed to generate alloy monitoring configmap: %w", err)
 		}
 		configmap.Data = data
 
 		return nil
 	})
 	if err != nil {
-		logger.Error(err, "alloy-service - failed to create or update alloy monitoring configmap")
-		return err
+		return fmt.Errorf("alloy-service - failed to create or update alloy monitoring configmap: %w", err)
 	}
 
 	secret := Secret(cluster)
 	_, err = controllerutil.CreateOrUpdate(ctx, a.Client, secret, func() error {
 		data, err := a.GenerateAlloyMonitoringSecretData(ctx, cluster)
 		if err != nil {
-			logger.Error(err, "alloy-service - failed to generate alloy monitoring secret")
-			return err
+			return fmt.Errorf("alloy-service - failed to generate alloy monitoring secret: %w", err)
 		}
 		secret.Data = data
 
 		return nil
 	})
 	if err != nil {
-		logger.Error(err, "alloy-service - failed to create or update alloy monitoring secret")
-		return err
+		return fmt.Errorf("alloy-service - failed to create or update alloy monitoring secret: %w", err)
 	}
 
 	logger.Info("alloy-service - ensured alloy is configured")
@@ -85,13 +82,13 @@ func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluste
 	configmap := ConfigMap(cluster)
 	err := a.Delete(ctx, configmap)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return err
+		return fmt.Errorf("alloy-service - failed to delete alloy configmap: %w", err)
 	}
 
 	secret := Secret(cluster)
 	err = a.Delete(ctx, secret)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return err
+		return fmt.Errorf("alloy-service - failed to delete alloy secret: %w", err)
 	}
 
 	logger.Info("alloy-service - ensured alloy is removed")

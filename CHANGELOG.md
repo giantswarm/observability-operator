@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Improve error management by moving away from `pkg/errors` to standard errors and improve error message consistency.
+
 ## [0.33.0] - 2025-06-16
 
 ### Added

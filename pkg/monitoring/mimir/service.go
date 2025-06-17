@@ -66,20 +66,20 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 
 		err := secret.DeleteSecret(ingressAuthSecretName, mimirNamespace, ctx, ms.Client)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to delete old ingress auth secret: %w", err)
 		}
 
 		clusterList := &clusterv1.ClusterList{}
 		err = ms.List(ctx, clusterList)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to list clusters for secret cleanup: %w", err)
 		}
 
 		for _, cluster := range clusterList.Items {
 			secretName := prometheusagent.GetPrometheusAgentRemoteWriteSecretName(&cluster) // #nosec G601
 			err = secret.DeleteSecret(secretName, cluster.Namespace, ctx, ms.Client)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to delete prometheus agent secret for cluster %s: %w", cluster.Name, err)
 			}
 		}
 
@@ -88,7 +88,7 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 
 		password, err := ms.PasswordManager.GeneratePassword(32)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to generate password for mimir auth: %w", err)
 		}
 
 		secret := secret.GenerateGenericSecret(
@@ -96,14 +96,14 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 
 		err = ms.Create(ctx, secret)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create mimir auth secret: %w", err)
 		}
 
 		logger.Info("Auth secret successfully created")
 
 		return nil
 	} else if err != nil {
-		return err
+		return fmt.Errorf("failed to get existing mimir auth secret: %w", err)
 	}
 
 	return nil
@@ -122,26 +122,26 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 
 		password, err := commonmonitoring.GetMimirIngressPassword(ctx, ms.Client)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get mimir ingress password: %w", err)
 		}
 
 		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(ms.Name, password)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to generate htpasswd for mimir ingress: %w", err)
 		}
 
 		secret := secret.GenerateGenericSecret(ingressAuthSecretName, mimirNamespace, "auth", htpasswd)
 
 		err = ms.Create(ctx, secret)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create mimir ingress auth secret: %w", err)
 		}
 
 		logger.Info("ingress secret successfully created")
 
 		return nil
 	} else if err != nil {
-		return err
+		return fmt.Errorf("failed to get existing mimir ingress auth secret: %w", err)
 	}
 
 	return nil
@@ -150,12 +150,12 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 func (ms *MimirService) DeleteMimirSecrets(ctx context.Context) error {
 	err := secret.DeleteSecret(ingressAuthSecretName, mimirNamespace, ctx, ms.Client)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete mimir ingress auth secret: %w", err)
 	}
 
 	err = secret.DeleteSecret(mimirApiKey, mimirNamespace, ctx, ms.Client)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete mimir API key secret: %w", err)
 	}
 
 	return nil

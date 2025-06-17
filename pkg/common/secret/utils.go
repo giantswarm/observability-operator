@@ -2,6 +2,7 @@ package secret
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +35,7 @@ func DeleteSecret(secretName string, secretNamespace string,
 	}
 
 	if err := providedClient.Delete(ctx, current); client.IgnoreNotFound(err) != nil {
-		return err
+		return fmt.Errorf("failed to delete secret %s in namespace %s: %w", secretName, secretNamespace, err)
 	}
 
 	return nil

@@ -3,6 +3,7 @@ package grafana
 import (
 	"context"
 	stderrors "errors"
+	"fmt"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -35,7 +36,7 @@ func (s *Service) DeleteOrganization(ctx context.Context, grafanaOrganization *v
 	if grafanaOrganization.Status.OrgID > 0 {
 		err := s.deleteOrganization(ctx, organization)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to delete grafana organization %s (OrgID: %d): %w", grafanaOrganization.Name, grafanaOrganization.Status.OrgID, err)
 		}
 	}
 
@@ -63,8 +64,7 @@ func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization 
 	var organization = NewOrganization(grafanaOrganization)
 	datasources, err := s.ConfigureDefaultDatasources(ctx, organization)
 	if err != nil {
-		logger.Error(err, "failed to configure the grafanaOrganization with default datasources")
-		return err
+		return fmt.Errorf("failed to configure the grafanaOrganization with default datasources: %w", err)
 	}
 
 	var configuredDatasources = make([]v1alpha1.DataSource, len(datasources))
@@ -78,8 +78,7 @@ func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization 
 	logger.Info("updating datasources in the grafanaOrganization status")
 	grafanaOrganization.Status.DataSources = configuredDatasources
 	if err := s.client.Status().Update(ctx, grafanaOrganization); err != nil {
-		logger.Error(err, "failed to update the the grafanaOrganization status with datasources information")
-		return err
+		return fmt.Errorf("failed to update the the grafanaOrganization status with datasources information: %w", err)
 	}
 	logger.Info("updated datasources in the grafanaOrganization status")
 	logger.Info("configured data sources")
@@ -89,13 +88,10 @@ func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization 
 
 // ConfigureGrafana ensures the RBAC configuration is set in Grafana.
 func (s *Service) ConfigureGrafanaSSO(ctx context.Context) error {
-	logger := log.FromContext(ctx)
-
 	organizationList := v1alpha1.GrafanaOrganizationList{}
 	err := s.client.List(ctx, &organizationList)
 	if err != nil {
-		logger.Error(err, "failed to list grafana organizations")
-		return err
+		return fmt.Errorf("failed to list grafana organizations: %w", err)
 	}
 
 	// Configure SSO settings in Grafana
@@ -105,8 +101,7 @@ func (s *Service) ConfigureGrafanaSSO(ctx context.Context) error {
 	}
 	err = s.ConfigureSSOSettings(ctx, organizations)
 	if err != nil {
-		logger.Error(err, "failed to configure grafanaOrganization with SSO settings")
-		return err
+		return fmt.Errorf("failed to configure grafanaOrganization with SSO settings: %w", err)
 	}
 
 	return nil

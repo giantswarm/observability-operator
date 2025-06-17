@@ -105,7 +105,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 
 	err = r.SetupWithManager(mgr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to setup cluster monitoring controller with manager: %w", err)
 	}
 
 	return nil
@@ -351,18 +351,14 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 // tearDown tears down the monitoring stack management cluster specific components like the hearbeat, mimir secrets and so on.
 func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
-	logger := log.FromContext(ctx)
-
 	err := r.HeartbeatRepository.Delete(ctx)
 	if err != nil {
-		logger.Error(err, "failed to delete heartbeat")
-		return err
+		return fmt.Errorf("failed to delete heartbeat: %w", err)
 	}
 
 	err = r.MimirService.DeleteMimirSecrets(ctx)
 	if err != nil {
-		logger.Error(err, "failed to delete mimir ingress secret")
-		return err
+		return fmt.Errorf("failed to delete mimir ingress secret: %w", err)
 	}
 
 	return nil
