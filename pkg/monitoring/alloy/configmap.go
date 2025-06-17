@@ -74,7 +74,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	clusterShardingStrategy, err := commonmonitoring.GetClusterShardingStrategy(cluster)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("alloy-service - failed to get cluster sharding strategy: %w", err)
 	}
 
 	shardingStrategy := a.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
