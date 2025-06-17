@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	v1 "k8s.io/api/core/v1"
@@ -12,8 +13,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/alertmanager"
@@ -39,7 +38,7 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
 
 	alertmanagerConfigSecretsPredicate, err := predicates.NewAlertmanagerConfigSecretsPredicate()
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to create alertmanager config secrets predicate: %w", err)
 	}
 	podPredicate := predicates.NewAlertmanagerPodPredicate()
 
@@ -83,7 +82,7 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 	// Retrieve the secret being reconciled
 	secret := &v1.Secret{}
 	if err := r.client.Get(ctx, req.NamespacedName, secret); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to get secret %s: %w", req.NamespacedName, err)
 	}
 
 	if !secret.DeletionTimestamp.IsZero() {
@@ -102,7 +101,7 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 	var tenants []string
 	tenants, err := tenancy.ListTenants(ctx, r.client)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to list tenants: %w", err)
 	}
 
 	if !slices.Contains(tenants, tenant) {
@@ -114,7 +113,7 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 	// TODO: Do we want to support deletion of alerting configs?
 	err = r.alertmanagerService.Configure(ctx, secret, tenant)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to configure alertmanager for tenant %s: %w", tenant, err)
 	}
 
 	logger.Info("Finished reconciling")

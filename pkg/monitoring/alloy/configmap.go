@@ -17,7 +17,6 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/blang/semver/v4"
-	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
@@ -75,7 +74,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	clusterShardingStrategy, err := commonmonitoring.GetClusterShardingStrategy(cluster)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	shardingStrategy := a.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
@@ -105,7 +104,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	alloyMetricsAppVersion, err := a.getAlloyMetricsAppVersion(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to get Alloy metrics app version")
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	if alloyMetricsAppVersion.LT(alloyMetricsRuleLoadingFixedAppVersion) {
@@ -130,12 +129,12 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 	organization, err := a.Read(ctx, cluster)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", err
 	}
 
 	provider, err := common.GetClusterProvider(cluster)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", err
 	}
 
 	data := struct {

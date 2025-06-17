@@ -10,7 +10,6 @@ import (
 	"github.com/opsgenie/opsgenie-go-sdk-v2/client"
 	"github.com/opsgenie/opsgenie-go-sdk-v2/heartbeat"
 	"github.com/opsgenie/opsgenie-go-sdk-v2/og"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -76,7 +75,7 @@ func (r *OpsgenieHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 		apiErr, ok := err.(*client.ApiError)
 		// If the error is not a 404, we return it
 		if !ok || apiErr.StatusCode != http.StatusNotFound {
-			return errors.WithStack(err)
+			return err
 		}
 		// If the heartbeat does not exist, we set the heartbeatExists to false
 		heartbeatExists = false
@@ -96,7 +95,7 @@ func (r *OpsgenieHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 		logger.Info("deleting heartbeat")
 		_, err := r.Client.Delete(ctx, hb.Name)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 
 		logger.Info("deleted heartbeat")
@@ -105,7 +104,7 @@ func (r *OpsgenieHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 	logger.Info("creating heartbeat")
 	err = r.createHeartbeat(ctx, hb)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	logger.Info("created heartbeat")
 
@@ -123,7 +122,7 @@ func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
 			logger.Info("heartbeat does not exist, skipping")
 			return nil
 		} else {
-			return errors.WithStack(err)
+			return err
 		}
 	}
 
@@ -131,14 +130,14 @@ func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
 	logger.Info("triggering final heartbeat ping")
 	_, err = r.Ping(ctx, r.Name)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	logger.Info("triggered final heartbeat ping")
 
 	logger.Info("deleting heartbeat")
 	_, err = r.Client.Delete(ctx, r.Name)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	logger.Info("deleted heartbeat")
 	return nil
@@ -159,13 +158,13 @@ func (r *OpsgenieHeartbeatRepository) createHeartbeat(ctx context.Context, h *he
 	}
 	_, err := r.Add(ctx, req)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	// We ping the heartbeat to active it and make sure it pages.
 	_, err = r.Ping(ctx, h.Name)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	return nil

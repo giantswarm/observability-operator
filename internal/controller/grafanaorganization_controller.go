@@ -3,10 +3,10 @@ package controller
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"net/url"
 	"slices"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -68,12 +68,12 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	grafanaOrganization := &v1alpha1.GrafanaOrganization{}
 	err := r.Get(ctx, req.NamespacedName, grafanaOrganization)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to generate grafana client: %w", err)
 	}
 
 	grafanaService := grafana.NewService(r.Client, grafanaAPI)
@@ -145,16 +145,18 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, grafanaOrganization)
-	if err != nil || finalizerAdded {
-		return ctrl.Result{}, errors.WithStack(err)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
+	}
+	if finalizerAdded {
+		return ctrl.Result{}, nil
 	}
 
 	logger := log.FromContext(ctx)
 
 	updatedID, err := grafanaService.ConfigureOrganization(ctx, grafanaOrganization)
 	if err != nil {
-		logger.Error(err, "failed to upsert grafanaOrganization")
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to configure grafana organization: %w", err)
 	}
 
 	// Update CR status if anything was changed
@@ -164,16 +166,14 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 		err = r.Client.Status().Update(ctx, grafanaOrganization)
 		if err != nil {
-			logger.Error(err, "failed to update grafanaOrganization status")
-			return ctrl.Result{}, errors.WithStack(err)
+			return ctrl.Result{}, fmt.Errorf("failed to update grafana organization status: %w", err)
 		}
 		logger.Info("updated orgID in the grafanaOrganization status")
 	}
 
 	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
-		logger.Error(err, "failed to setup grafanaOrganization")
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to setup grafana organization: %w", err)
 	}
 
 	return ctrl.Result{}, nil
@@ -190,26 +190,26 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 
 	err := grafanaService.DeleteOrganization(ctx, grafanaOrganization)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to delete grafana organization: %w", err)
 	}
 
 	grafanaOrganization.Status.OrgID = 0
 	err = r.Client.Status().Update(ctx, grafanaOrganization)
 	if err != nil {
 		logger.Error(err, "failed to update grafanaOrganization status")
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to update grafana organization status: %w", err)
 	}
 
 	// Configure Grafana RBAC
 	err = grafanaService.ConfigureGrafanaSSO(ctx)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to configure grafana SSO: %w", err)
 	}
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, grafanaOrganization)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return nil

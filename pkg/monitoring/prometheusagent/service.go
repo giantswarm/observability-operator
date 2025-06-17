@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -37,13 +36,13 @@ func (pas *PrometheusAgentService) ReconcileRemoteWriteConfiguration(
 	err := pas.createOrUpdateConfigMap(ctx, cluster, logger)
 	if err != nil {
 		logger.Error(err, "failed to create or update prometheus agent remote write configmap")
-		return errors.WithStack(err)
+		return err
 	}
 
 	err = pas.createOrUpdateSecret(ctx, cluster, logger)
 	if err != nil {
 		logger.Error(err, "failed to create or update prometheus agent remote write secret")
-		return errors.WithStack(err)
+		return err
 	}
 
 	logger.Info("ensured prometheus agent remote write configmap and secret")
@@ -65,33 +64,33 @@ func (pas PrometheusAgentService) createOrUpdateConfigMap(ctx context.Context,
 	if apierrors.IsNotFound(err) {
 		configMap, err := pas.buildRemoteWriteConfig(ctx, cluster, logger, sharding.DefaultShards)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 
 		err = pas.Create(ctx, configMap)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		return nil
 	} else if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	currentShards, err := readCurrentShardsFromConfig(*current)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	desired, err := pas.buildRemoteWriteConfig(ctx, cluster, logger, currentShards)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	if !reflect.DeepEqual(current.Data, desired.Data) || !reflect.DeepEqual(current.Finalizers, desired.Finalizers) {
 		err = pas.Update(ctx, desired)
 		if err != nil {
 			logger.Info("could not update prometheus agent remote write configmap")
-			return errors.WithStack(err)
+			return err
 		}
 	}
 	return nil
@@ -112,27 +111,27 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		secret, err := pas.buildRemoteWriteSecret(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to generate the remote write secret for the prometheus agent")
-			return errors.WithStack(err)
+			return err
 		}
 		logger.Info("generated the remote write secret for the prometheus agent")
 
 		err = pas.Create(ctx, secret)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		return nil
 	} else if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	desired, err := pas.buildRemoteWriteSecret(ctx, cluster)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	if !reflect.DeepEqual(current.Data, desired.Data) || !reflect.DeepEqual(current.Finalizers, desired.Finalizers) {
 		err = pas.Update(ctx, desired)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 	}
 
@@ -148,13 +147,13 @@ func (pas *PrometheusAgentService) DeleteRemoteWriteConfiguration(
 	err := pas.deleteConfigMap(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to delete prometheus agent remote write configmap")
-		return errors.WithStack(err)
+		return err
 	}
 
 	err = pas.deleteSecret(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to delete prometheus agent remote write secret")
-		return errors.WithStack(err)
+		return err
 	}
 
 	logger.Info("deleted prometheus agent remote write configmap and secret")
@@ -174,12 +173,12 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 		// Ignore cases where the configmap is not found (if it was manually deleted, for instance).
 		return nil
 	} else if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	err = pas.Delete(ctx, configMap)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	return nil
 }
@@ -196,12 +195,12 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
 		return nil
 	} else if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	err = pas.Delete(ctx, secret)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	return nil
 }

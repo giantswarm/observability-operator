@@ -12,7 +12,6 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
@@ -40,7 +39,7 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, a.BaseDomain)
 	password, err := commonmonitoring.GetMimirIngressPassword(ctx, a.Client)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	mimirRulerUrl := fmt.Sprintf(commonmonitoring.MimirBaseURLFormat, a.BaseDomain)

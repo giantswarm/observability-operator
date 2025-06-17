@@ -3,8 +3,8 @@ package grafana
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -66,7 +66,7 @@ func (s *Service) processDashboards(ctx context.Context, dashboardCM *v1.ConfigM
 	organization, err := s.FindOrgByName(dashboardOrg)
 	if err != nil {
 		logger.Error(err, "Failed to find organization")
-		return errors.WithStack(err)
+		return err
 	}
 	currentOrgID := s.grafanaAPI.OrgID()
 	s.grafanaAPI.WithOrgID(organization.ID)

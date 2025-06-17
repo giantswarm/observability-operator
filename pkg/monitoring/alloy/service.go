@@ -11,7 +11,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/blang/semver/v4"
-	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
@@ -39,7 +38,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	var tenants []string
 	tenants, err := tenancy.ListTenants(ctx, a.Client)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	configmap := ConfigMap(cluster)
@@ -47,7 +46,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 		data, err := a.GenerateAlloyMonitoringConfigMapData(ctx, configmap, cluster, tenants, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "alloy-service - failed to generate alloy monitoring configmap")
-			return errors.WithStack(err)
+			return err
 		}
 		configmap.Data = data
 
@@ -55,7 +54,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	})
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to create or update alloy monitoring configmap")
-		return errors.WithStack(err)
+		return err
 	}
 
 	secret := Secret(cluster)
@@ -63,7 +62,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 		data, err := a.GenerateAlloyMonitoringSecretData(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "alloy-service - failed to generate alloy monitoring secret")
-			return errors.WithStack(err)
+			return err
 		}
 		secret.Data = data
 
@@ -71,7 +70,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	})
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to create or update alloy monitoring secret")
-		return errors.WithStack(err)
+		return err
 	}
 
 	logger.Info("alloy-service - ensured alloy is configured")
@@ -86,13 +85,13 @@ func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluste
 	configmap := ConfigMap(cluster)
 	err := a.Delete(ctx, configmap)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return errors.WithStack(err)
+		return err
 	}
 
 	secret := Secret(cluster)
 	err = a.Delete(ctx, secret)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return errors.WithStack(err)
+		return err
 	}
 
 	logger.Info("alloy-service - ensured alloy is removed")

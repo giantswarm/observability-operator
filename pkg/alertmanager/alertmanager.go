@@ -9,7 +9,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/alertmanager/config"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -68,13 +67,13 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret, tenantID stri
 
 	logger.Info("configuring alertmanager")
 	if secret == nil {
-		return errors.WithStack(fmt.Errorf("failed to get secret"))
+		return fmt.Errorf("failed to get secret")
 	}
 
 	// Retrieve and Validate alertmanager configuration from secret
 	alertmanagerConfig, err := ExtractAlertmanagerConfig(ctx, secret)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	// Retrieve all alertmanager templates from secret
@@ -91,7 +90,7 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret, tenantID stri
 
 	err = s.configure(ctx, alertmanagerConfig, templates, tenantID)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("failed to configure alertmanager: %w", err))
+		return fmt.Errorf("failed to configure alertmanager: %w", err)
 	}
 
 	logger.Info("configured alertmanager")
@@ -111,7 +110,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 	}
 	data, err := yaml.Marshal(requestData)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to marshal yaml: %w", err))
+		return fmt.Errorf("alertmanager: failed to marshal yaml: %w", err)
 	}
 	dataLen := len(data)
 
@@ -121,14 +120,14 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 	// Send request to Alertmanager's API
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to create request: %w", err))
+		return fmt.Errorf("alertmanager: failed to create request: %w", err)
 	}
 	req.Header.Set(common.OrgIDHeader, tenantID)
 	req.ContentLength = int64(dataLen)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to send request: %w", err))
+		return fmt.Errorf("alertmanager: failed to send request: %w", err)
 	}
 	defer resp.Body.Close() // nolint: errcheck
 
@@ -137,7 +136,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 	if resp.StatusCode != http.StatusCreated {
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return errors.WithStack(fmt.Errorf("alertmanager: failed to read response: %w", err))
+			return fmt.Errorf("alertmanager: failed to read response: %w", err)
 		}
 
 		e := APIError{
@@ -145,7 +144,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 			Message: string(respBody),
 		}
 
-		return errors.WithStack(fmt.Errorf("alertmanager: failed to send configuration: %w", e))
+		return fmt.Errorf("alertmanager: failed to send configuration: %w", e)
 	}
 
 	return nil

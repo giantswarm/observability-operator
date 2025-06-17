@@ -2,9 +2,9 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -76,12 +76,12 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	dashboard := &v1.ConfigMap{}
 	err := r.Get(ctx, req.NamespacedName, dashboard)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to generate grafana client: %w", err)
 	}
 
 	grafanaService := grafana.NewService(r.Client, grafanaAPI)
@@ -105,7 +105,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			// TODO add match expressions to filter by the tenant label instead of the organization annotation
 		})
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to create label selector predicate: %w", err)
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -148,14 +148,17 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
-	if err != nil || finalizerAdded {
-		return errors.WithStack(err)
+	if err != nil {
+		return fmt.Errorf("failed to add finalizer: %w", err)
+	}
+	if finalizerAdded {
+		return nil
 	}
 
 	// Configure the dashboard in Grafana
 	err = grafanaService.ConfigureDashboard(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to configure dashboard in grafana: %w", err)
 	}
 
 	return nil
@@ -171,13 +174,13 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 	// Unconfigure the dashboard in Grafana
 	err := grafanaService.DeleteDashboard(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to delete dashboard from grafana: %w", err)
 	}
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return nil

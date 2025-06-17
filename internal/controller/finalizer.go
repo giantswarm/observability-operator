@@ -2,8 +2,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -39,7 +39,7 @@ func (fh FinalizerHelper) EnsureAdded(ctx context.Context, object client.Object)
 	logger.Info("adding finalizer", "finalizer", fh.finalizer)
 	patchHelper, err := patch.NewHelper(object, fh.client)
 	if err != nil {
-		return false, errors.WithStack(err)
+		return false, fmt.Errorf("failed to create patch helper: %w", err)
 	}
 
 	// Add the finalizer to the object
@@ -48,7 +48,7 @@ func (fh FinalizerHelper) EnsureAdded(ctx context.Context, object client.Object)
 	err = patchHelper.Patch(ctx, object)
 	if err != nil {
 		logger.Error(err, "failed to add finalizer", "finalizer", fh.finalizer)
-		return false, errors.WithStack(err)
+		return false, fmt.Errorf("failed to patch object with finalizer %s: %w", fh.finalizer, err)
 	}
 
 	logger.Info("added finalizer", "finalizer", fh.finalizer)
@@ -62,7 +62,7 @@ func (fh FinalizerHelper) EnsureRemoved(ctx context.Context, object client.Objec
 	logger.Info("removing finalizer", "finalizer", fh.finalizer)
 	patchHelper, err := patch.NewHelper(object, fh.client)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to create patch helper: %w", err)
 	}
 
 	// Remove the finalizer from the object
@@ -70,8 +70,7 @@ func (fh FinalizerHelper) EnsureRemoved(ctx context.Context, object client.Objec
 
 	err = patchHelper.Patch(ctx, object)
 	if err != nil {
-		logger.Error(err, "failed to remove finalizer", "finalizer", fh.finalizer)
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to patch object to remove finalizer %s: %w", fh.finalizer, err)
 	}
 
 	logger.Info("removed finalizer", "finalizer", fh.finalizer)

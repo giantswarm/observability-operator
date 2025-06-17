@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -23,13 +22,13 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 	organization, err := pas.Read(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to get cluster organization")
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	provider, err := common.GetClusterProvider(cluster)
 	if err != nil {
 		logger.Error(err, "failed to get cluster provider")
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	externalLabels := map[string]string{
@@ -54,7 +53,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 
 	clusterShardingStrategy, err := commonmonitoring.GetClusterShardingStrategy(cluster)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	shardingStrategy := pas.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
@@ -71,7 +70,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		},
 	})
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	if currentShards < shards {
@@ -99,7 +98,7 @@ func readCurrentShardsFromConfig(configMap corev1.ConfigMap) (int, error) {
 	remoteWriteConfig := RemoteWriteConfig{}
 	err := yaml.Unmarshal([]byte(configMap.Data["values"]), &remoteWriteConfig)
 	if err != nil {
-		return 0, errors.WithStack(err)
+		return 0, err
 	}
 
 	return remoteWriteConfig.PrometheusAgentConfig.Shards, nil

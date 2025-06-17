@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/blang/semver/v4"
-	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -158,13 +157,13 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	cluster := &clusterv1.Cluster{}
 	if err := r.Client.Get(ctx, req.NamespacedName, cluster); err != nil {
 		if apierrors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
+			// Object not found, return. Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
 			return ctrl.Result{}, nil
 		}
 
 		// Error reading the object - requeue the request.
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to get cluster %s: %w", req.NamespacedName, err)
 	}
 
 	// Linting is disabled for the following line as otherwise it fails with the following error:
@@ -198,8 +197,11 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, cluster)
-	if err != nil || finalizerAdded {
-		return ctrl.Result{}, errors.WithStack(err)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
+	}
+	if finalizerAdded {
+		return ctrl.Result{}, nil
 	}
 
 	// Management cluster specific configuration
@@ -247,7 +249,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		default:
-			return ctrl.Result{}, errors.Errorf("unsupported monitoring agent %q", monitoringAgent)
+			return ctrl.Result{}, fmt.Errorf("unsupported monitoring agent %q", monitoringAgent)
 		}
 	} else {
 		// clean up any existing prometheus agent configuration
@@ -312,7 +314,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		// Finalizer handling needs to come last.
 		err = r.finalizerHelper.EnsureRemoved(ctx, cluster)
 		if err != nil {
-			return ctrl.Result{}, errors.WithStack(err)
+			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 		}
 	}
 

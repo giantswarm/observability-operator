@@ -3,7 +3,6 @@ package secret
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,7 +34,7 @@ func DeleteSecret(secretName string, secretNamespace string,
 	}
 
 	if err := providedClient.Delete(ctx, current); client.IgnoreNotFound(err) != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	return nil
