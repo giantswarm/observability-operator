@@ -2,6 +2,7 @@ package tenancy
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,7 +18,7 @@ const (
 func ListTenants(ctx context.Context, k8sClient client.Client) ([]string, error) {
 	var grafanaOrganizations v1alpha1.GrafanaOrganizationList
 	if err := k8sClient.List(ctx, &grafanaOrganizations); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list grafana organizations: %w", err)
 	}
 
 	// Use a map to store unique tenants for efficient lookup.

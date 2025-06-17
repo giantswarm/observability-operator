@@ -58,7 +58,7 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 	var values bytes.Buffer
 	err = alloyMonitoringSecretTemplate.Execute(&values, data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("alloy-service - failed to execute secret template for cluster %s: %w", cluster.Name, err)
 	}
 
 	secretData := make(map[string][]byte)

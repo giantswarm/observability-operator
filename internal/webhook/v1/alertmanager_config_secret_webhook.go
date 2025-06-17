@@ -79,7 +79,7 @@ func (v *AlertmanagerConfigSecretValidator) ValidateCreate(ctx context.Context, 
 	log.Info("Validation for Secret upon creation", "name", secret.GetName())
 
 	if err := v.validateTenant(ctx, secret); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tenant validation failed for secret %s/%s: %w", secret.Namespace, secret.Name, err)
 	}
 	return nil, validateAlertmanagerConfig(ctx, secret)
 }
@@ -99,7 +99,7 @@ func (v *AlertmanagerConfigSecretValidator) ValidateUpdate(ctx context.Context, 
 	log.Info("Validation for Secret upon update", "name", secret.GetName())
 
 	if err := v.validateTenant(ctx, secret); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tenant validation failed for secret %s/%s: %w", secret.Namespace, secret.Name, err)
 	}
 	return nil, validateAlertmanagerConfig(ctx, secret)
 }

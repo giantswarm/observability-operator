@@ -51,7 +51,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 
 	clusterShardingStrategy, err := commonmonitoring.GetClusterShardingStrategy(cluster)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get cluster sharding strategy for cluster %s: %w", cluster.Name, err)
 	}
 
 	shardingStrategy := pas.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
@@ -68,7 +68,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal prometheus agent remote write config for cluster %s: %w", cluster.Name, err)
 	}
 
 	if currentShards < shards {
@@ -96,7 +96,7 @@ func readCurrentShardsFromConfig(configMap corev1.ConfigMap) (int, error) {
 	remoteWriteConfig := RemoteWriteConfig{}
 	err := yaml.Unmarshal([]byte(configMap.Data["values"]), &remoteWriteConfig)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to unmarshal prometheus agent config from configmap: %w", err)
 	}
 
 	return remoteWriteConfig.PrometheusAgentConfig.Shards, nil

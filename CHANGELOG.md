@@ -9,7 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Improve error management by moving away from `pkg/errors` to standard errors and improve error message consistency.
+- **Comprehensive error management improvements**: Migrated from `pkg/errors` to standard library errors and significantly improved error message consistency across the entire codebase:
+  - Replaced all `github.com/pkg/errors` usage with standard `fmt.Errorf()` and `%w` verb for error wrapping
+  - Removed stack trace logging and merged `logger.Error` + `return err` patterns into single `return fmt.Errorf()` calls
+  - Added descriptive error context throughout all business logic including resource identifiers (cluster names, tenant IDs, heartbeat names, etc.)
+  - Enhanced error messages in alloy, prometheus agent, mimir, grafana, bundle, and heartbeat services
+  - Improved webhook validation error messages with proper context
+  - Added context to configuration template execution, YAML marshaling/unmarshaling, and API client operations
+  - Standardized error patterns for consistent debugging experience across all components
 
 ## [0.33.0] - 2025-06-16
 

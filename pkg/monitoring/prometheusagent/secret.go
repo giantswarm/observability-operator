@@ -25,7 +25,7 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 
 	password, err := commonmonitoring.GetMimirIngressPassword(ctx, pas.Client)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get mimir ingress password for cluster %s: %w", cluster.Name, err)
 	}
 
 	config := RemoteWriteConfig{
@@ -59,7 +59,7 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 
 	marshalledValues, err := yaml.Marshal(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal prometheus agent remote write config for cluster %s: %w", cluster.Name, err)
 	}
 
 	return &corev1.Secret{

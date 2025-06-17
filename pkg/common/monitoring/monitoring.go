@@ -98,12 +98,12 @@ func GetClusterShardingStrategy(cluster metav1.Object) (*sharding.Strategy, erro
 	var scaleUpSeriesCount, scaleDownPercentage float64
 	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-up-series-count"]; ok {
 		if scaleUpSeriesCount, err = strconv.ParseFloat(value, 64); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse scale-up-series-count annotation %q for cluster %s: %w", value, cluster.GetName(), err)
 		}
 	}
 	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-down-percentage"]; ok {
 		if scaleDownPercentage, err = strconv.ParseFloat(value, 64); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse scale-down-percentage annotation %q for cluster %s: %w", value, cluster.GetName(), err)
 		}
 	}
 	return &sharding.Strategy{

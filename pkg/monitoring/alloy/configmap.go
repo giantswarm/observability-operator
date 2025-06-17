@@ -82,7 +82,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	alloyConfig, err := a.generateAlloyConfig(ctx, cluster, tenants, observabilityBundleVersion)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("alloy-service - failed to generate alloy config for cluster %s: %w", cluster.Name, err)
 	}
 
 	data := struct {
@@ -114,7 +114,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	var values bytes.Buffer
 	err = alloyMonitoringConfigTemplate.Execute(&values, data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("alloy-service - failed to execute monitoring config template for cluster %s: %w", cluster.Name, err)
 	}
 
 	configMapData := make(map[string]string)
@@ -128,12 +128,12 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 	organization, err := a.Read(ctx, cluster)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("generateAlloyConfig - failed to read organization: %w", err)
 	}
 
 	provider, err := common.GetClusterProvider(cluster)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("generateAlloyConfig - failed to get cluster provider for cluster %s: %w", cluster.Name, err)
 	}
 
 	data := struct {
@@ -206,7 +206,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 	err = alloyConfigTemplate.Execute(&values, data)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("generateAlloyConfig - failed to execute alloy config template for cluster %s: %w", cluster.Name, err)
 	}
 
 	return values.String(), nil
@@ -234,7 +234,7 @@ func (a *Service) getAlloyMetricsAppVersion(ctx context.Context, cluster *cluste
 	var currentApp appv1.App
 	err = a.Client.Get(ctx, appMeta, &currentApp)
 	if err != nil {
-		return version, err
+		return version, fmt.Errorf("failed to get alloy metrics app %s for cluster %s: %w", appMeta.Name, cluster.Name, err)
 	}
 	return semver.Parse(currentApp.Spec.Version)
 }

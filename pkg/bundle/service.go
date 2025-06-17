@@ -223,7 +223,7 @@ func (s BundleConfigurationService) GetObservabilityBundleAppVersion(ctx context
 	var currentApp appv1.App
 	err = s.client.Get(ctx, appMeta, &currentApp)
 	if err != nil {
-		return version, err
+		return version, fmt.Errorf("failed to get observability bundle app %s for cluster %s: %w", appMeta.Name, cluster.Name, err)
 	}
 	return semver.Parse(currentApp.Spec.Version)
 }

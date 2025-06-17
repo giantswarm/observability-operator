@@ -49,7 +49,7 @@ func (s *Service) ConfigureOrganization(ctx context.Context, grafanaOrganization
 
 	err := s.UpsertOrganization(ctx, &organization)
 	if err != nil {
-		return -1, err
+		return -1, fmt.Errorf("failed to upsert grafana organization %s: %w", grafanaOrganization.Name, err)
 	}
 
 	return organization.ID, nil
