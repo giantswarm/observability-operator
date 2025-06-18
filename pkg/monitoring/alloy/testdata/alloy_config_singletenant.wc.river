@@ -49,17 +49,20 @@ prometheus.operator.servicemonitors "tenant1" {
   }
   rule {
     action = "replace"
-    target_label = "team"
+    regex  = "(.+)"
+    target_label = "app"
     source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
   }
   rule {
     action = "replace"
-    target_label = "team"
+    regex  = "(.+)"
+    target_label = "app"
     source_labels = ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
   }
   rule {
     action = "replace"
-    target_label = "team"
+    regex  = "(.+)"
+    target_label = "app"
     source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
   }
   scrape {
@@ -81,17 +84,20 @@ prometheus.operator.podmonitors "tenant1" {
   }
   rule {
     action = "replace"
-    target_label = "team"
+    regex  = "(.+)"
+    target_label = "app"
     source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
   }
   rule {
     action = "replace"
-    target_label = "team"
+    regex  = "(.+)"
+    target_label = "app"
     source_labels = ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
   }
   rule {
     action = "replace"
-    target_label = "team"
+    regex  = "(.+)"
+    target_label = "app"
     source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
   }
   scrape {
