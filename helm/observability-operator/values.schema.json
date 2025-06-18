@@ -196,6 +196,15 @@
                                 }
                             }
                         },
+                        "dashboardConfigMap": {
+                            "type": "object",
+                            "description": "Enable dashboard ConfigMap validation webhook",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
                         "grafanaOrganization": {
                             "type": "object",
                             "description": "Enable GrafanaOrganization validation webhook",

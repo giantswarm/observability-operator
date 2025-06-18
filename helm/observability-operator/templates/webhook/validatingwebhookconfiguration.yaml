@@ -38,6 +38,33 @@ webhooks:
         - secrets
   sideEffects: None
 {{- end }}
+{{- if .Values.webhook.validatingWebhooks.dashboardConfigMap.enabled }}
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "resource.default.name" . }}-webhook
+      namespace: {{ .Release.Namespace }}
+      path: /validate-dashboard-configmap
+      port: 443
+  failurePolicy: Fail
+  name: dashboardconfigmap.observability.giantswarm.io
+  # Limit the validation only to dashboard ConfigMaps
+  objectSelector:
+    matchLabels:
+      app.giantswarm.io/kind: dashboard
+  rules:
+    - apiGroups:
+        - ""
+      apiVersions:
+        - v1
+      operations:
+        - CREATE
+        - UPDATE
+      resources:
+        - configmaps
+  sideEffects: None
+{{- end }}
 {{- if .Values.webhook.validatingWebhooks.grafanaOrganization.enabled }}
 - admissionReviewVersions:
   - v1

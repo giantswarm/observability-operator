@@ -235,6 +235,10 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "GrafanaOrganization")
 			os.Exit(1)
 		}
+		if err = webhookcorev1.SetupDashboardConfigMapWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "DashboardConfigMap")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 
