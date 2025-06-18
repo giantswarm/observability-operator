@@ -27,11 +27,14 @@ type GrafanaOrganizationSpec struct {
 	Tenants []TenantID `json:"tenants"`
 }
 
-// TenantID is a unique identifier for a tenant. Must follow Grafana Mimir tenant ID restrictions.
+// TenantID is a unique identifier for a tenant. Must follow both Grafana Mimir tenant ID restrictions
+// and Alloy component naming restrictions.
 // See: https://grafana.com/docs/mimir/latest/configure/about-tenant-ids/
-// Allowed characters: alphanumeric (a-z, A-Z, 0-9) and special characters (!, -, _, ., *, ', (, ))
-// Forbidden values: ".", "..", "__mimir_cluster" (enforced by validating webhook)
-// +kubebuilder:validation:Pattern="^[a-zA-Z0-9!._*'()-]+$"
+// See: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/syntax/#identifiers
+// Allowed characters: alphanumeric (a-z, A-Z, 0-9) and underscore (_)
+// Must start with a letter or underscore, max 150 characters (Mimir tenant limit)
+// Forbidden value: "__mimir_cluster" (enforced by validating webhook)
+// +kubebuilder:validation:Pattern="^[a-zA-Z_][a-zA-Z0-9_]{0,149}$"
 // +kubebuilder:validation:MinLength=1
 // +kubebuilder:validation:MaxLength=150
 type TenantID string
