@@ -2,50 +2,19 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"net/url"
 	"time"
 
-	grafana "github.com/grafana/grafana-openapi-client-go/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
-	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
-
-// MockGrafanaClientGenerator is a simple mock for the GrafanaClientGenerator interface
-type MockGrafanaClientGenerator struct {
-	shouldReturnError bool
-
-	// Call tracking
-	CallCount int
-	LastURL   *url.URL
-}
-
-func (m *MockGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Context, k8sClient client.Client, grafanaURL *url.URL) (*grafana.GrafanaHTTPAPI, error) {
-	m.CallCount++
-	m.LastURL = grafanaURL
-
-	if m.shouldReturnError {
-		return nil, errors.New("grafana service unavailable")
-	}
-
-	// For the working scenario, we'll return an error that indicates
-	// the dashboard configuration should be skipped (simulating a scenario
-	// where Grafana client generation succeeds but dashboard operations are not performed)
-	// This is a limitation of the current test approach - we can't easily mock the complex Grafana API
-	return nil, errors.New("dashboard configuration skipped for testing")
-}
-
-// Ensure MockGrafanaClientGenerator implements the interface
-var _ grafanaclient.GrafanaClientGenerator = (*MockGrafanaClientGenerator)(nil)
 
 var _ = Describe("Dashboard Controller", func() {
 	Context("When reconciling a dashboard ConfigMap", func() {
@@ -186,7 +155,7 @@ var _ = Describe("Dashboard Controller", func() {
 		Context("When Grafana is unavailable", func() {
 			BeforeEach(func() {
 				// Configure mock to return errors (Grafana unavailable)
-				mockGrafanaGen.shouldReturnError = true
+				mockGrafanaGen.SetShouldReturnError(true)
 			})
 
 			It("should handle Grafana unavailability gracefully", func() {
@@ -256,15 +225,15 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(result).To(Equal(reconcile.Result{}))
 
 				By("Making Grafana available again")
-				mockGrafanaGen.shouldReturnError = false
+				mockGrafanaGen.SetShouldReturnError(false)
 
-				By("Second reconciliation - should now fail with 'dashboard configuration skipped'")
+				By("Second reconciliation - should now fail with 'configuration skipped'")
 				result, err = reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: retryNamespacedName,
 				})
 				// This will still fail but with a different error message indicating the test limitation
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("dashboard configuration skipped for testing"))
+				Expect(err.Error()).To(ContainSubstring("configuration skipped for testing"))
 				Expect(result).To(Equal(reconcile.Result{}))
 
 				// Clean up
@@ -275,7 +244,7 @@ var _ = Describe("Dashboard Controller", func() {
 		Context("When testing edge cases", func() {
 			BeforeEach(func() {
 				// Use "working" Grafana for edge case tests (though it will still fail with test message)
-				mockGrafanaGen.shouldReturnError = false
+				mockGrafanaGen.SetShouldReturnError(false)
 			})
 
 			It("should handle ConfigMap without dashboard labels", func() {
@@ -308,7 +277,7 @@ var _ = Describe("Dashboard Controller", func() {
 				// The controller will still fail because it tries to generate a Grafana client
 				// for any ConfigMap it processes, regardless of labels.
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("dashboard configuration skipped for testing"))
+				Expect(err.Error()).To(ContainSubstring("configuration skipped for testing"))
 				Expect(result).To(Equal(reconcile.Result{}))
 
 				// Clean up
