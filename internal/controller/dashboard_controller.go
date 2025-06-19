@@ -23,6 +23,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 
+	"github.com/giantswarm/observability-operator/internal/mapper"
 	"github.com/giantswarm/observability-operator/internal/predicates"
 )
 
@@ -33,6 +34,7 @@ type DashboardReconciler struct {
 
 	grafanaURL      *url.URL
 	finalizerHelper FinalizerHelper
+	dashboardMapper *mapper.DashboardMapper
 }
 
 const (
@@ -49,6 +51,7 @@ func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
 
 		grafanaURL:      conf.GrafanaURL,
 		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
+		dashboardMapper: mapper.New(),
 	}
 
 	err := r.SetupWithManager(mgr)
@@ -141,21 +144,38 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// reconcileCreate creates the dashboard.
 // reconcileCreate ensures the Grafana dashboard described in configmap is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
 func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error { // nolint:unparam
+	logger := log.FromContext(ctx)
+
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
 	if err != nil || finalizerAdded {
 		return errors.WithStack(err)
 	}
 
-	// Configure the dashboard in Grafana
-	err = grafanaService.ConfigureDashboard(ctx, dashboard)
+	// Convert ConfigMap to domain objects using mapper
+	dashboards, err := r.dashboardMapper.FromConfigMap(dashboard)
 	if err != nil {
+		logger.Error(err, "Failed to convert ConfigMap to domain objects")
 		return errors.WithStack(err)
+	}
+
+	// Validate and process each dashboard
+	for _, dashboard := range dashboards {
+		errs := dashboard.Validate()
+		if len(errs) > 0 {
+			logger.Error(errs[0], "Dashboard validation failed", "uid", dashboard.UID(), "organization", dashboard.Organization())
+			return errors.WithStack(errs[0])
+		}
+		logger.Info("Processing dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
+		err = grafanaService.ConfigureDashboard(ctx, dashboard)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		logger.Info("Configured dashboard in Grafana", "uid", dashboard.UID(), "organization", dashboard.Organization())
 	}
 
 	return nil
@@ -163,15 +183,26 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 // reconcileDelete deletes the grafana dashboard.
 func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error {
+	logger := log.FromContext(ctx)
+
 	// We do not need to delete anything if there is no finalizer on the grafana dashboard
 	if !controllerutil.ContainsFinalizer(dashboard, DashboardFinalizer) {
 		return nil
 	}
 
-	// Unconfigure the dashboard in Grafana
-	err := grafanaService.DeleteDashboard(ctx, dashboard)
+	// Convert ConfigMap to domain objects using mapper
+	dashboards, err := r.dashboardMapper.FromConfigMap(dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		logger.Error(err, "Failed to convert ConfigMap to domain objects during deletion")
+		// Continue with deletion even if conversion fails to avoid stuck finalizers
+	} else {
+		for _, dashboard := range dashboards {
+			err = grafanaService.DeleteDashboard(ctx, dashboard)
+			if err != nil {
+				logger.Error(err, "Failed to delete dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
+				// Continue with other dashboards and finalizer removal
+			}
+		}
 	}
 
 	// Finalizer handling needs to come last.
