@@ -10,7 +10,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	dashboardMapper := mapper.New()
+	dashboardMapper := New()
 	if dashboardMapper == nil {
 		t.Error("Expected New to return a non-nil mapper")
 	}
