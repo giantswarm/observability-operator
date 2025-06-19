@@ -7,14 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+### Fixed
 
-- **Enhanced TenantID validation for Alloy compatibility**: Updated GrafanaOrganization CRD validation to ensure tenant names are compatible with Alloy component naming requirements:
-  - Changed validation pattern from `^[a-zA-Z0-9!._*'()-]+$` to `^[a-zA-Z_][a-zA-Z0-9_]{0,149}$` to follow Alloy identifier rules (must start with letter or underscore, only alphanumeric and underscores allowed)
-  - Simplified webhook validation architecture by moving structural validation (pattern, length) to CRD level and keeping only business logic validation (forbidden values, duplicates) in webhook
-  - Updated forbidden values list to only include `__mimir_cluster` as other previously forbidden values (`.`, `..`) are now caught by the CRD pattern
-  - Converted webhook tests to integration-only tests using `k8sClient.Create()` for more realistic validation pipeline testing
-  - Updated documentation and comments to reflect Alloy component naming constraints and 150-character limit
+- Fixed TenantID validation for Alloy compatibility - was causing alloy to crash with some tenant names. Now follows alloy component naming requirements (https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/syntax/#identifiers), which is more restrictive than previously-used mimir requirements.
 
 ## [0.33.0] - 2025-06-16
 
