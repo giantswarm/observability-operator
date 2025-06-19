@@ -34,6 +34,7 @@ import (
 	webhookcorev1 "github.com/giantswarm/observability-operator/internal/webhook/v1"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -53,6 +54,14 @@ func init() {
 }
 
 func main() {
+	err := runner()
+	if err != nil {
+		setupLog.Error(err, "observability-operator failed")
+		os.Exit(1)
+	}
+}
+
+func runner() error {
 	var grafanaURL string
 	var err error
 
@@ -118,7 +127,7 @@ func main() {
 	// parse grafana URL
 	conf.GrafanaURL, err = url.Parse(grafanaURL)
 	if err != nil {
-		panic(fmt.Sprintf("failed to parse grafana url: %v", err))
+		return fmt.Errorf("failed to parse grafana url: %w", err)
 	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
@@ -126,8 +135,7 @@ func main() {
 	// Load environment variables.
 	_, err = env.UnmarshalFromEnviron(&conf.Environment)
 	if err != nil {
-		setupLog.Error(err, "failed to unmarshal environment variables")
-		os.Exit(1)
+		return fmt.Errorf("failed to unmarshal environment variables: %w", err)
 	}
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
@@ -153,8 +161,7 @@ func main() {
 
 	discardHelmSecretsSelector, err := labels.Parse("owner notin (helm,Helm)")
 	if err != nil {
-		setupLog.Error(err, "failed to parse label selector")
-		os.Exit(1)
+		return fmt.Errorf("failed to parse label selector: %w", err)
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -189,71 +196,65 @@ func main() {
 		},
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
 	// Initialize event recorder.
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
+	// Create Grafana client generator for dependency injection
+	grafanaClientGen := &grafanaclient.DefaultGrafanaClientGenerator{}
 	// Setup controller for the Cluster resource.
 	err = controller.SetupClusterMonitoringReconciler(mgr, conf)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ClusterMonitoringReconciler")
-		os.Exit(1)
+		return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
 	}
 
 	// Setup controller for the GrafanaOrganization resource.
-	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf)
+	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf, grafanaClientGen)
 	if err != nil {
-		setupLog.Error(err, "unable to setup controller", "controller", "GrafanaOrganizationReconciler")
-		os.Exit(1)
+		return fmt.Errorf("unable to setup controller (GrafanaOrganizationReconciler): %w", err)
 	}
 
 	if conf.Monitoring.AlertmanagerEnabled {
 		// Setup controller for Alertmanager
 		err = controller.SetupAlertmanagerReconciler(mgr, conf)
 		if err != nil {
-			setupLog.Error(err, "unable to setup controller", "controller", "AlertmanagerReconciler")
-			os.Exit(1)
+			return fmt.Errorf("unable to setup controller (AlertmanagerReconciler): %w", err)
 		}
 	}
 
-	err = controller.SetupDashboardReconciler(mgr, conf)
+	// Setup controller for the Dashboard resource.
+	err = controller.SetupDashboardReconciler(mgr, conf, grafanaClientGen)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Dashboard")
-		os.Exit(1)
+		return fmt.Errorf("unable to create controller (Dashboard): %w", err)
 	}
 
 	// nolint:goconst
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		if err = webhookcorev1.SetupAlertmanagerConfigSecretWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "Secret")
-			os.Exit(1)
+			return fmt.Errorf("unable to create webhook (Secret): %w", err)
 		}
 		if err = webhookcorev1.SetupGrafanaOrganizationWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "GrafanaOrganization")
-			os.Exit(1)
+			return fmt.Errorf("unable to create webhook (GrafanaOrganization): %w", err)
 		}
 		if err = webhookcorev1.SetupDashboardConfigMapWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "DashboardConfigMap")
-			os.Exit(1)
+			return fmt.Errorf("unable to create webhook (DashboardConfigMap): %w", err)
 		}
 	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
+		return fmt.Errorf("unable to set up health check: %w", err)
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
+		return fmt.Errorf("unable to set up ready check: %w", err)
 	}
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		return fmt.Errorf("problem running manager: %w", err)
 	}
+
+	return nil
 }

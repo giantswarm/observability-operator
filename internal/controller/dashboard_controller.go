@@ -32,9 +32,10 @@ type DashboardReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	grafanaURL      *url.URL
-	finalizerHelper FinalizerHelper
-	dashboardMapper *mapper.DashboardMapper
+	grafanaURL       *url.URL
+	finalizerHelper  FinalizerHelper
+	dashboardMapper  *mapper.DashboardMapper
+	grafanaClientGen grafanaclient.GrafanaClientGenerator
 }
 
 const (
@@ -44,7 +45,7 @@ const (
 	DashboardSelectorLabelValue = "dashboard"
 )
 
-func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
+func SetupDashboardReconciler(mgr manager.Manager, conf config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &DashboardReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -52,6 +53,7 @@ func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
 		grafanaURL:      conf.GrafanaURL,
 		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
 		dashboardMapper: mapper.New(),
+		grafanaClientGen: grafanaClientGen,
 	}
 
 	err := r.SetupWithManager(mgr)
@@ -82,7 +84,7 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
 
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
+	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
