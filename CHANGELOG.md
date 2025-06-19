@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed TenantID validation for Alloy compatibility - was causing alloy to crash with some tenant names. Now follows alloy component naming requirements (https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/syntax/#identifiers), which is more restrictive than previously-used mimir requirements.
+
 ## [0.33.0] - 2025-06-16
 
 ### Added
