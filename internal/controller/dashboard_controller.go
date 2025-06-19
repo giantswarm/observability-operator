@@ -157,7 +157,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 		return fmt.Errorf("failed to ensure finalizer is added: %w", err)
 	}
 	if finalizerAdded {
-		return ctrl.Result{}, nil
+		return nil
 	}
 
 	// Configure the dashboard in Grafana
