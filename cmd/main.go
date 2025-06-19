@@ -34,6 +34,7 @@ import (
 	webhookcorev1 "github.com/giantswarm/observability-operator/internal/webhook/v1"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -201,6 +202,8 @@ func runner() error {
 	// Initialize event recorder.
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
+	// Create Grafana client generator for dependency injection
+	grafanaClientGen := &grafanaclient.DefaultGrafanaClientGenerator{}
 	// Setup controller for the Cluster resource.
 	err = controller.SetupClusterMonitoringReconciler(mgr, conf)
 	if err != nil {
@@ -208,7 +211,7 @@ func runner() error {
 	}
 
 	// Setup controller for the GrafanaOrganization resource.
-	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf)
+	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf, grafanaClientGen)
 	if err != nil {
 		return fmt.Errorf("unable to setup controller (GrafanaOrganizationReconciler): %w", err)
 	}
@@ -221,7 +224,8 @@ func runner() error {
 		}
 	}
 
-	err = controller.SetupDashboardReconciler(mgr, conf)
+	// Setup controller for the Dashboard resource.
+	err = controller.SetupDashboardReconciler(mgr, conf, grafanaClientGen)
 	if err != nil {
 		return fmt.Errorf("unable to create controller (Dashboard): %w", err)
 	}

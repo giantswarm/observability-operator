@@ -31,8 +31,9 @@ type DashboardReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	grafanaURL      *url.URL
-	finalizerHelper FinalizerHelper
+	grafanaURL       *url.URL
+	finalizerHelper  FinalizerHelper
+	grafanaClientGen grafanaclient.GrafanaClientGenerator
 }
 
 const (
@@ -42,13 +43,14 @@ const (
 	DashboardSelectorLabelValue = "dashboard"
 )
 
-func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
+func SetupDashboardReconciler(mgr manager.Manager, conf config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &DashboardReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 
-		grafanaURL:      conf.GrafanaURL,
-		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
+		grafanaURL:       conf.GrafanaURL,
+		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
+		grafanaClientGen: grafanaClientGen,
 	}
 
 	return r.SetupWithManager(mgr)
@@ -78,7 +80,7 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
+	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
@@ -101,7 +103,6 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			MatchLabels: map[string]string{
 				DashboardSelectorLabelName: DashboardSelectorLabelValue,
 			},
-			// TODO add match expressions to filter by the tenant label instead of the organization annotation
 		})
 	if err != nil {
 		return fmt.Errorf("failed to create label selector predicate: %w", err)
