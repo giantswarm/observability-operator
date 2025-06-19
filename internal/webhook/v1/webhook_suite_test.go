@@ -142,6 +142,9 @@ var _ = BeforeSuite(func() {
 	err = SetupGrafanaOrganizationWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = SetupDashboardConfigMapWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+
 	// +kubebuilder:scaffold:webhook
 
 	go func() {

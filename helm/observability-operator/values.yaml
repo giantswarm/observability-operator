@@ -64,6 +64,9 @@ webhook:
     # -- Enable AlertManager config secret validation webhook
     alertmanagerConfig:
       enabled: true
+    # -- Enable dashboard ConfigMap validation webhook
+    dashboardConfigMap:
+      enabled: true
     # -- Enable GrafanaOrganization validation webhook
     grafanaOrganization:
       enabled: true
