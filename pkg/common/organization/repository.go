@@ -3,6 +3,7 @@ package organization
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -40,7 +41,7 @@ func (r NamespaceOrganizationRepository) Read(ctx context.Context, cluster *clus
 	key := client.ObjectKey{Name: cluster.GetNamespace()}
 
 	if err := r.Get(ctx, key, namespace); err != nil {
-		return "", err // Propagate client errors
+		return "", fmt.Errorf("failed to get namespace: %w", err)
 	}
 
 	if namespace.Labels == nil {
