@@ -1,12 +1,13 @@
-package mapper_test
+package mapper
 
 import (
 	"testing"
-
-	"github.com/giantswarm/observability-operator/internal/mapper"
-	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
+	
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+  
+  "github.com/giantswarm/observability-operator/internal/mapper"
+	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 )
 
 func TestNew(t *testing.T) {
@@ -131,7 +132,7 @@ func TestFromConfigMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dashboardMapper := mapper.New()
+			dashboardMapper := New()
 			dashboards, err := dashboardMapper.FromConfigMap(tt.configMap)
 
 			if tt.expectError {
@@ -164,7 +165,7 @@ func TestFromConfigMap(t *testing.T) {
 }
 
 func TestFromConfigMapEdgeCases(t *testing.T) {
-	dashboardMapper := mapper.New()
+	dashboardMapper := New()
 
 	t.Run("empty configmap data", func(t *testing.T) {
 		cm := &v1.ConfigMap{
