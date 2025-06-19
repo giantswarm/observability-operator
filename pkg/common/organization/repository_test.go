@@ -54,7 +54,7 @@ func TestNamespaceOrganizationRepository_Read(t *testing.T) {
 			expectedOrg:    "",
 			// The actual error from fake client for "not found" might vary slightly in text
 			// but it will be a "not found" type error.
-			expectedError: errors.New("namespaces \"non-existent-ns\" not found"),
+			expectedError: ErrNamespaceNotFound,
 		},
 		{
 			name: "case 2: error - label missing",

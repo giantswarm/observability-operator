@@ -14,6 +14,7 @@ var (
 	// ErrOrganizationLabelMissing is returned when the organization label is not found on the cluster's namespace
 	// or if the label value is empty.
 	ErrOrganizationLabelMissing = errors.New("cluster namespace missing organization label or label value is empty")
+	ErrNamespaceNotFound        = errors.New("namespace not found")
 	organizationLabel           = "giantswarm.io/organization"
 )
 
@@ -41,7 +42,7 @@ func (r NamespaceOrganizationRepository) Read(ctx context.Context, cluster *clus
 	key := client.ObjectKey{Name: cluster.GetNamespace()}
 
 	if err := r.Get(ctx, key, namespace); err != nil {
-		return "", fmt.Errorf("failed to get namespace: %w", err)
+		return "", fmt.Errorf("%w: %w", ErrNamespaceNotFound, err)
 	}
 
 	if namespace.Labels == nil {
