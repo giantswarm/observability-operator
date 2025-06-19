@@ -2,9 +2,9 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -75,13 +75,13 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	dashboard := &v1.ConfigMap{}
 	err := r.Get(ctx, req.NamespacedName, dashboard)
-	if err != nil {
-		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+	if client.IgnoreNotFound(err) == nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get dashboard configmap: %w", err)
 	}
 
 	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
 	grafanaService := grafana.NewService(r.Client, grafanaAPI)
@@ -105,7 +105,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			// TODO add match expressions to filter by the tenant label instead of the organization annotation
 		})
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -149,13 +149,13 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
 	if err != nil || finalizerAdded {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to ensure finalizer is added: %w", err)
 	}
 
 	// Configure the dashboard in Grafana
 	err = grafanaService.ConfigureDashboard(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to configure dashboard: %w", err)
 	}
 
 	return nil
@@ -171,13 +171,13 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 	// Unconfigure the dashboard in Grafana
 	err := grafanaService.DeleteDashboard(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to delete dashboard: %w", err)
 	}
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return nil
