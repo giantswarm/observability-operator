@@ -40,12 +40,17 @@ import (
 var log = logf.Log.WithName("alertmanagerconfig-secret-resource")
 
 // SetupAlertmanagerConfigSecretWebhookWithManager registers the webhook for Secret in the manager.
-func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) (err error) {
-	return ctrl.NewWebhookManagedBy(mgr).
+func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) error {
+	err := ctrl.NewWebhookManagedBy(mgr).
 		For(&corev1.Secret{}).
 		WithValidator(&AlertmanagerConfigSecretValidator{client: mgr.GetClient()}).
 		WithCustomPath("/validate-alertmanager-config").
 		Complete()
+	if err != nil {
+		return fmt.Errorf("failed to build controller: %w", err)
+	}
+
+	return nil
 }
 
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
