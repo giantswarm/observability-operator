@@ -19,10 +19,15 @@ import (
 
 var managementClusterName = "dummy-cluster"
 
-// dummyOrgRepo implements a minimal OrganizationRepository.
-type dummyOrgRepo struct{}
+// MockOrganizationRepository implements a minimal OrganizationRepository with call tracking.
+type MockOrganizationRepository struct {
+	CallCount   int
+	LastCluster *clusterv1.Cluster
+}
 
-func (d *dummyOrgRepo) Read(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
+func (m *MockOrganizationRepository) Read(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
+	m.CallCount++
+	m.LastCluster = cluster
 	return "dummy-org", nil
 }
 
@@ -180,7 +185,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			ctx := context.Background()
 			// Create a dummy Service with minimal dependencies.
 			service := &Service{
-				OrganizationRepository: &dummyOrgRepo{},
+				OrganizationRepository: &MockOrganizationRepository{},
 				ManagementCluster: common.ManagementCluster{
 					InsecureCA: false,
 					Customer:   "dummy-customer",
