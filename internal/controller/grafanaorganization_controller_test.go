@@ -70,7 +70,7 @@ var _ = Describe("GrafanaOrganization Controller", func() {
 				},
 				Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
 					DisplayName: "Test Organization",
-					Tenants:     []observabilityv1alpha1.TenantID{"test-tenant"},
+					Tenants:     []observabilityv1alpha1.TenantID{"test_tenant"},
 					RBAC: &observabilityv1alpha1.RBAC{
 						Admins:  []string{"admin-group"},
 						Editors: []string{"editor-group"},
@@ -144,7 +144,7 @@ var _ = Describe("GrafanaOrganization Controller", func() {
 					},
 					Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
 						DisplayName: "Retry Test Organization",
-						Tenants:     []observabilityv1alpha1.TenantID{"retry-tenant"},
+						Tenants:     []observabilityv1alpha1.TenantID{"retry_tenant"},
 						RBAC: &observabilityv1alpha1.RBAC{
 							Admins: []string{"retry-admin"},
 						},
@@ -231,7 +231,7 @@ var _ = Describe("GrafanaOrganization Controller", func() {
 					},
 					Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
 						DisplayName: "Minimal RBAC Organization",
-						Tenants:     []observabilityv1alpha1.TenantID{"minimal-tenant"},
+						Tenants:     []observabilityv1alpha1.TenantID{"minimal_tenant"},
 						RBAC: &observabilityv1alpha1.RBAC{
 							Admins: []string{"minimal-admin"},
 							// No editors or viewers
@@ -310,9 +310,9 @@ var _ = Describe("GrafanaOrganization Controller", func() {
 					Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
 						DisplayName: "Multi Tenant Organization",
 						Tenants: []observabilityv1alpha1.TenantID{
-							"tenant-1",
-							"tenant-2",
-							"tenant-3",
+							"tenant_1",
+							"tenant_2",
+							"tenant_3",
 						},
 						RBAC: &observabilityv1alpha1.RBAC{
 							Admins:  []string{"multi-admin-1", "multi-admin-2"},
@@ -389,7 +389,7 @@ var _ = Describe("GrafanaOrganization Controller", func() {
 			By("Creating a valid GrafanaOrganization spec")
 			validSpec := observabilityv1alpha1.GrafanaOrganizationSpec{
 				DisplayName: "Valid Organization",
-				Tenants:     []observabilityv1alpha1.TenantID{"valid-tenant"},
+				Tenants:     []observabilityv1alpha1.TenantID{"valid_tenant"},
 				RBAC: &observabilityv1alpha1.RBAC{
 					Admins: []string{"valid-admin"},
 				},

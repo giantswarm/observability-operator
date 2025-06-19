@@ -71,7 +71,7 @@ var _ = Describe("Dashboard Controller", func() {
 				},
 				Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
 					DisplayName: "Test Dashboard Organization",
-					Tenants:     []observabilityv1alpha1.TenantID{"dashboard-tenant"},
+					Tenants:     []observabilityv1alpha1.TenantID{"dashboard_tenant"},
 					RBAC: &observabilityv1alpha1.RBAC{
 						Admins: []string{"admin-org"},
 					},
