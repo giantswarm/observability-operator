@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 )
 
 const grafanaOrganizationLabel = "observability.giantswarm.io/organization"
