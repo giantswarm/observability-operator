@@ -19,12 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/internal/mapper"
+	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
-
-	"github.com/giantswarm/observability-operator/internal/mapper"
-	"github.com/giantswarm/observability-operator/internal/predicates"
 )
 
 // DashboardReconciler reconciles a Dashboard object
@@ -50,9 +49,9 @@ func SetupDashboardReconciler(mgr manager.Manager, conf config.Config, grafanaCl
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 
-		grafanaURL:      conf.GrafanaURL,
-		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
-		dashboardMapper: mapper.New(),
+		grafanaURL:       conf.GrafanaURL,
+		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
+		dashboardMapper:  mapper.New(),
 		grafanaClientGen: grafanaClientGen,
 	}
 
