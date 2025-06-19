@@ -45,7 +45,7 @@ var _ = Describe("Secret Webhook", func() {
 				Namespace: "test-namespace",
 				Labels: map[string]string{
 					"observability.giantswarm.io/kind":   "alertmanager-config",
-					"observability.giantswarm.io/tenant": "test-tenant",
+					"observability.giantswarm.io/tenant": "test_tenant",
 				},
 			},
 			Data: map[string][]byte{
@@ -132,7 +132,7 @@ receivers:
 				},
 				Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
 					DisplayName: "Test Organization",
-					Tenants:     []observabilityv1alpha1.TenantID{"test-tenant"},
+					Tenants:     []observabilityv1alpha1.TenantID{"test_tenant"},
 					RBAC: &observabilityv1alpha1.RBAC{
 						Admins: []string{"admin-org"},
 					},
@@ -165,7 +165,7 @@ receivers:
 					Namespace: "test-namespace",
 					Labels: map[string]string{
 						"observability.giantswarm.io/kind":   "alertmanager-config",
-						"observability.giantswarm.io/tenant": "test-tenant",
+						"observability.giantswarm.io/tenant": "test_tenant",
 					},
 				},
 				Data: map[string][]byte{
