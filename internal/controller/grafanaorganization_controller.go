@@ -29,17 +29,20 @@ import (
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	grafanaURL      *url.URL
-	finalizerHelper FinalizerHelper
+	Scheme *runtime.Scheme
+
+	grafanaURL       *url.URL
+	finalizerHelper  FinalizerHelper
+	grafanaClientGen grafanaclient.GrafanaClientGenerator
 }
 
-func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
+func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &GrafanaOrganizationReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		grafanaURL:      conf.GrafanaURL,
-		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), v1alpha1.GrafanaOrganizationFinalizer),
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		grafanaURL:       conf.GrafanaURL,
+		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), v1alpha1.GrafanaOrganizationFinalizer),
+		grafanaClientGen: grafanaClientGen,
 	}
 
 	err := r.SetupWithManager(mgr)
@@ -71,7 +74,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
 
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
+	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
