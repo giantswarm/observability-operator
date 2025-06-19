@@ -197,8 +197,11 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, cluster)
-	if err != nil || finalizerAdded {
+	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure finalizer is added: %w", err)
+	}
+	if finalizerAdded {
+		return ctrl.Result{}, nil
 	}
 
 	// Management cluster specific configuration

@@ -153,8 +153,11 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
-	if err != nil || finalizerAdded {
+	if err != nil {
 		return fmt.Errorf("failed to ensure finalizer is added: %w", err)
+	}
+	if finalizerAdded {
+		return ctrl.Result{}, nil
 	}
 
 	// Configure the dashboard in Grafana
