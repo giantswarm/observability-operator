@@ -38,7 +38,7 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
 
 	alertmanagerConfigSecretsPredicate, err := predicates.NewAlertmanagerConfigSecretsPredicate()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create Alertmanager config secrets predicate: %w", err)
 	}
 	podPredicate := predicates.NewAlertmanagerPodPredicate()
 
@@ -46,13 +46,18 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
 	p := podEventHandler(conf)
 
 	// Setup the controller
-	return ctrl.NewControllerManagedBy(mgr).
+	err = ctrl.NewControllerManagedBy(mgr).
 		Named("alertmanager").
 		// Reconcile only the Alertmanager secret
 		For(&v1.Secret{}, builder.WithPredicates(alertmanagerConfigSecretsPredicate)).
 		// Watch only the Mimir Alertmanager pod
 		Watches(&v1.Pod{}, p, builder.WithPredicates(podPredicate)).
 		Complete(r)
+	if err != nil {
+		return fmt.Errorf("failed to build controller: %w", err)
+	}
+
+	return nil
 }
 
 // podEventHandler returns an event handler that enqueues requests for the Alertmanager secret only.

@@ -51,12 +51,7 @@ func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
 		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
 	}
 
-	err := r.SetupWithManager(mgr)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.SetupWithManager(mgr)
 }
 
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
@@ -105,10 +100,10 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			// TODO add match expressions to filter by the tenant label instead of the organization annotation
 		})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create label selector predicate: %w", err)
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	err = ctrl.NewControllerManagedBy(mgr).
 		Named("dashboard").
 		For(&v1.ConfigMap{}, builder.WithPredicates(labelSelectorPredicate)).
 		// Watch for grafana pod's status changes
@@ -139,6 +134,11 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
+	if err != nil {
+		return fmt.Errorf("failed to build controller: %w", err)
+	}
+
+	return nil
 }
 
 // reconcileCreate creates the dashboard.

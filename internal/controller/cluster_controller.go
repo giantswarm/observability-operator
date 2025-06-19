@@ -103,17 +103,12 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
 
-	err = r.SetupWithManager(mgr)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.SetupWithManager(mgr)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	err := ctrl.NewControllerManagedBy(mgr).
 		Named("cluster").
 		For(&clusterv1.Cluster{}).
 		// Reconcile all clusters when the grafana organizations have changed to update agents configs with the new list of tenants where metrics are sent to.
@@ -140,6 +135,11 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return requests
 			})).
 		Complete(r)
+	if err != nil {
+		return fmt.Errorf("failed to build controller: %w", err)
+	}
+
+	return nil
 }
 
 //+kubebuilder:rbac:groups=cluster.giantswarm.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
@@ -162,7 +162,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 
 		// Error reading the object - requeue the request.
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get cluster: %w", err)
 	}
 
 	// Linting is disabled for the following line as otherwise it fails with the following error:
@@ -185,6 +185,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	logger.Info("reconciling cluster")
+
 	// Handle normal reconciliation loop.
 	return r.reconcile(ctx, cluster)
 }
