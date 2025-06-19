@@ -19,11 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/giantswarm/observability-operator/internal/mapper"
-	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
+
+	"github.com/giantswarm/observability-operator/internal/predicates"
 )
 
 // DashboardReconciler reconciles a Dashboard object
@@ -33,7 +33,6 @@ type DashboardReconciler struct {
 
 	grafanaURL       *url.URL
 	finalizerHelper  FinalizerHelper
-	dashboardMapper  *mapper.DashboardMapper
 	grafanaClientGen grafanaclient.GrafanaClientGenerator
 }
 
@@ -51,7 +50,6 @@ func SetupDashboardReconciler(mgr manager.Manager, conf config.Config, grafanaCl
 
 		grafanaURL:       conf.GrafanaURL,
 		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
-		dashboardMapper:  mapper.New(),
 		grafanaClientGen: grafanaClientGen,
 	}
 
@@ -153,8 +151,6 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
 func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error { // nolint:unparam
-	logger := log.FromContext(ctx)
-
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
 	if err != nil {
@@ -164,24 +160,10 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 		return nil
 	}
 
-	// Convert ConfigMap to domain objects using mapper
-	dashboards, err := r.dashboardMapper.FromConfigMap(dashboard)
+	// Configure the dashboard in Grafana
+	err = grafanaService.ConfigureDashboard(ctx, dashboard)
 	if err != nil {
-		return fmt.Errorf("failed to extract dashboards from configmap: %w", err)
-	}
-
-	// Validate and process each dashboard
-	for _, dashboard := range dashboards {
-		errs := dashboard.Validate()
-		if len(errs) > 0 {
-      return fmt.Errorf("failed to validate dashboard: %w", err)
-		}
-		logger.Info("Processing dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
-		err = grafanaService.ConfigureDashboard(ctx, dashboard)
-		if err != nil {
-			return fmt.Errorf("failed to configure dashboard: %w", err)
-		}
-		logger.Info("Configured dashboard in Grafana", "uid", dashboard.UID(), "organization", dashboard.Organization())
+		return fmt.Errorf("failed to configure dashboard: %w", err)
 	}
 
 	return nil
@@ -189,25 +171,15 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 // reconcileDelete deletes the grafana dashboard.
 func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error {
-	logger := log.FromContext(ctx)
-
 	// We do not need to delete anything if there is no finalizer on the grafana dashboard
 	if !controllerutil.ContainsFinalizer(dashboard, DashboardFinalizer) {
 		return nil
 	}
 
-	// Convert ConfigMap to domain objects using mapper
-	dashboards, err := r.dashboardMapper.FromConfigMap(dashboard)
+	// Unconfigure the dashboard in Grafana
+	err := grafanaService.DeleteDashboard(ctx, dashboard)
 	if err != nil {
-		return fmt.Errorf("failed to extract dashboards from configmap: %w", err)
-		// Continue with deletion even if conversion fails to avoid stuck finalizers
-	} else {
-		for _, dashboard := range dashboards {
-			err = grafanaService.DeleteDashboard(ctx, dashboard)
-			if err != nil {
-				return fmt.Errorf("failed to delete dashboard: %w", err)
-			}
-		}
+		return fmt.Errorf("failed to delete dashboard: %w", err)
 	}
 
 	// Finalizer handling needs to come last.
