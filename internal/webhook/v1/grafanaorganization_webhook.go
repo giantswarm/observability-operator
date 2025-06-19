@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -89,23 +88,18 @@ func (v *GrafanaOrganizationValidator) ValidateDelete(ctx context.Context, obj r
 }
 
 // validateTenantIDs validates tenant IDs for business logic that cannot be expressed in OpenAPI schema.
-// The CRD already validates: pattern, minLength(1), maxLength(150), and minItems(1).
-// This webhook adds: forbidden values, duplicates, and whitespace validation.
+// The CRD already validates: pattern (Alloy-compatible), minLength(1), maxLength(150), and minItems(1).
+// This webhook only adds: forbidden values and duplicates validation.
 // See: https://grafana.com/docs/mimir/latest/configure/about-tenant-ids/
 func (v *GrafanaOrganizationValidator) validateTenantIDs(tenantIDs []observabilityv1alpha1.TenantID) error {
-	// List of forbidden tenant ID values (business logic that CRD can't enforce)
-	forbiddenValues := []string{".", "..", "__mimir_cluster"}
+	// List of forbidden tenant ID values that pass the CRD pattern but are not allowed by Mimir
+	forbiddenValues := []string{"__mimir_cluster"}
 
 	// Track seen tenant IDs to detect duplicates (CRD can't enforce uniqueness in arrays)
 	seen := make(map[string]bool)
 
 	for _, tenantID := range tenantIDs {
 		tenantStr := string(tenantID)
-
-		// Note: Empty check is redundant since CRD has minLength=1, but kept for safety
-		if tenantStr == "" {
-			return fmt.Errorf("tenant ID cannot be empty")
-		}
 
 		// Check for duplicates (CRD cannot enforce this)
 		if seen[tenantStr] {
@@ -116,11 +110,6 @@ func (v *GrafanaOrganizationValidator) validateTenantIDs(tenantIDs []observabili
 		// Check forbidden values (CRD cannot enforce specific value exclusions)
 		if slices.Contains(forbiddenValues, tenantStr) {
 			return fmt.Errorf("tenant ID %q is not allowed. Forbidden values: %v", tenantStr, forbiddenValues)
-		}
-
-		// Check for leading/trailing whitespace (CRD pattern doesn't catch this edge case)
-		if strings.TrimSpace(tenantStr) != tenantStr {
-			return fmt.Errorf("tenant ID %q contains leading or trailing whitespace", tenantStr)
 		}
 	}
 

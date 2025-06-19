@@ -87,13 +87,16 @@ spec:
                 - giantswarm
                 items:
                   description: |-
-                    TenantID is a unique identifier for a tenant. Must follow Grafana Mimir tenant ID restrictions.
+                    TenantID is a unique identifier for a tenant. Must follow both Grafana Mimir tenant ID restrictions
+                    and Alloy component naming restrictions.
                     See: https://grafana.com/docs/mimir/latest/configure/about-tenant-ids/
-                    Allowed characters: alphanumeric (a-z, A-Z, 0-9) and special characters (!, -, _, ., *, ', (, ))
-                    Forbidden values: ".", "..", "__mimir_cluster" (enforced by validating webhook)
+                    See: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/syntax/#identifiers
+                    Allowed characters: alphanumeric (a-z, A-Z, 0-9) and underscore (_)
+                    Must start with a letter or underscore, max 150 characters (Mimir tenant limit)
+                    Forbidden value: "__mimir_cluster" (enforced by validating webhook)
                   maxLength: 150
                   minLength: 1
-                  pattern: ^[a-zA-Z0-9!._*'()-]+$
+                  pattern: ^[a-zA-Z_][a-zA-Z0-9_]{0,149}$
                   type: string
                 type: array
             required:

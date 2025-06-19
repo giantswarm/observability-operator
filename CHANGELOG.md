@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.1] - 2025-06-19
+
+### Fixed
+
+- Fixed TenantID validation for Alloy compatibility - was causing alloy to crash with some tenant names. Now follows alloy component naming requirements (https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/syntax/#identifiers), which is more restrictive than previously-used mimir requirements.
+
 ## [0.33.0] - 2025-06-16
 
 ### Added
@@ -553,7 +559,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.33.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.33.1...HEAD
+[0.33.1]: https://github.com/giantswarm/observability-operator/compare/v0.33.0...v0.33.1
 [0.33.0]: https://github.com/giantswarm/observability-operator/compare/v0.32.1...v0.33.0
 [0.32.1]: https://github.com/giantswarm/observability-operator/compare/v0.32.0...v0.32.1
 [0.32.0]: https://github.com/giantswarm/observability-operator/compare/v0.31.0...v0.32.0
