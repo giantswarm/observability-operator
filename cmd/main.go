@@ -202,7 +202,7 @@ func main() {
 	// Setup controller for the Cluster resource.
 	err = controller.SetupClusterMonitoringReconciler(mgr, conf)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
+		setupLog.Error(err, "unable to create controller", "controller", "ClusterMonitoringReconciler")
 		os.Exit(1)
 	}
 
