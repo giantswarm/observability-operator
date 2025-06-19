@@ -55,7 +55,7 @@ func init() {
 func main() {
 	err := runner()
 	if err != nil {
-		setupLog.Error(err, "failed to run the observability operator")
+		setupLog.Error(err, "observability-operator failed")
 		os.Exit(1)
 	}
 }
