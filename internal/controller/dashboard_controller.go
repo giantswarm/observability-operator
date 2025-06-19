@@ -19,12 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/internal/mapper"
+	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
-
-	"github.com/giantswarm/observability-operator/internal/mapper"
-	"github.com/giantswarm/observability-operator/internal/predicates"
 )
 
 // DashboardReconciler reconciles a Dashboard object
@@ -32,9 +31,10 @@ type DashboardReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	grafanaURL      *url.URL
-	finalizerHelper FinalizerHelper
-	dashboardMapper *mapper.DashboardMapper
+	grafanaURL       *url.URL
+	finalizerHelper  FinalizerHelper
+	dashboardMapper  *mapper.DashboardMapper
+	grafanaClientGen grafanaclient.GrafanaClientGenerator
 }
 
 const (
@@ -44,14 +44,15 @@ const (
 	DashboardSelectorLabelValue = "dashboard"
 )
 
-func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
+func SetupDashboardReconciler(mgr manager.Manager, conf config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &DashboardReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 
-		grafanaURL:      conf.GrafanaURL,
-		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
-		dashboardMapper: mapper.New(),
+		grafanaURL:       conf.GrafanaURL,
+		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
+		dashboardMapper:  mapper.New(),
+		grafanaClientGen: grafanaClientGen,
 	}
 
 	err := r.SetupWithManager(mgr)
@@ -82,7 +83,7 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
 
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
+	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
 		return ctrl.Result{}, errors.WithStack(err)
 	}
