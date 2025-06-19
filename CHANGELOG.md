@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dashboard domain validation**: Added `pkg/domain/dashboard/` package with Dashboard type and validation rules (UID format, organization presence, content structure)
+- **Dashboard mapper**: Added `internal/mapper/` package for converting ConfigMaps to domain objects
+
+### Changed
+
+- **Dashboard processing**: Refactored controller and Grafana service to use domain objects and mapper pattern for better separation of concerns
+
 ## [0.33.0] - 2025-06-16
 
 ### Added
