@@ -218,7 +218,7 @@ func IsError(err, target error) bool {
 	if err == nil || target == nil {
 		return err == target
 	}
-	return err.Error() == target.Error() || 
-		   (len(err.Error()) >= len(target.Error()) && 
-		    err.Error()[:len(target.Error())] == target.Error())
+	return err.Error() == target.Error() ||
+		(len(err.Error()) >= len(target.Error()) &&
+			err.Error()[:len(target.Error())] == target.Error())
 }

@@ -9,29 +9,11 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 )
 
-// withDashboardOrganization executes the given function within the context of the dashboard's organization
-func (s *Service) withDashboardOrganization(ctx context.Context, dash *dashboard.Dashboard, fn func() error) error {
-	logger := log.FromContext(ctx)
-
-	// Switch context to the dashboard-defined org
-	organization, err := s.FindOrgByName(dash.Organization())
-	if err != nil {
-		logger.Error(err, "Failed to find organization")
-		return errors.WithStack(err)
-	}
-	currentOrgID := s.grafanaAPI.OrgID()
-	s.grafanaAPI.WithOrgID(organization.ID)
-	defer s.grafanaAPI.WithOrgID(currentOrgID)
-
-	// Execute the provided function within the organization context
-	return fn()
-}
-
 // ConfigureDashboard configures a dashboard
 func (s *Service) ConfigureDashboard(ctx context.Context, dash *dashboard.Dashboard) error {
 	logger := log.FromContext(ctx).WithValues("Dashboard UID", dash.UID(), "Dashboard Org", dash.Organization())
 
-	return s.withDashboardOrganization(ctx, dash, func() error {
+	return s.withinOrganization(ctx, dash, func() error {
 		// Prepare dashboard content for Grafana API using local function
 		dashboardContent := prepareForGrafanaAPI(dash)
 
@@ -50,7 +32,7 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dash *dashboard.Dashbo
 func (s *Service) DeleteDashboard(ctx context.Context, dash *dashboard.Dashboard) error {
 	logger := log.FromContext(ctx).WithValues("Dashboard UID", dash.UID(), "Dashboard Org", dash.Organization())
 
-	return s.withDashboardOrganization(ctx, dash, func() error {
+	return s.withinOrganization(ctx, dash, func() error {
 		_, err := s.grafanaAPI.Dashboards.GetDashboardByUID(dash.UID())
 		if err != nil {
 			logger.Error(err, "Failed getting dashboard")
@@ -66,6 +48,24 @@ func (s *Service) DeleteDashboard(ctx context.Context, dash *dashboard.Dashboard
 		logger.Info("deleted dashboard")
 		return nil
 	})
+}
+
+// withinOrganization executes the given function within the context of the dashboard's organization
+func (s *Service) withinOrganization(ctx context.Context, dash *dashboard.Dashboard, fn func() error) error {
+	logger := log.FromContext(ctx)
+
+	// Switch context to the dashboard-defined org
+	organization, err := s.FindOrgByName(dash.Organization())
+	if err != nil {
+		logger.Error(err, "Failed to find organization")
+		return errors.WithStack(err)
+	}
+	currentOrgID := s.grafanaAPI.OrgID()
+	s.grafanaAPI.WithOrgID(organization.ID)
+	defer s.grafanaAPI.WithOrgID(currentOrgID)
+
+	// Execute the provided function within the organization context
+	return fn()
 }
 
 // prepareForGrafanaAPI removes the "id" field which can cause conflicts during dashboard creation/update
