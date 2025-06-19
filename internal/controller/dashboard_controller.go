@@ -200,7 +200,7 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 			err = grafanaService.DeleteDashboard(ctx, dashboard)
 			if err != nil {
 				logger.Error(err, "Failed to delete dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
-				// Continue with other dashboards and finalizer removal
+				return errors.WithStack(err)
 			}
 		}
 	}
