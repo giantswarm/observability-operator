@@ -2,9 +2,9 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,12 +53,7 @@ func SetupDashboardReconciler(mgr manager.Manager, conf config.Config, grafanaCl
 		grafanaClientGen: grafanaClientGen,
 	}
 
-	err := r.SetupWithManager(mgr)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.SetupWithManager(mgr)
 }
 
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
@@ -78,12 +73,16 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	dashboard := &v1.ConfigMap{}
 	err := r.Get(ctx, req.NamespacedName, dashboard)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		if client.IgnoreNotFound(err) != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to get dashboard configmap: %w", err)
+		}
+
+		return ctrl.Result{}, nil
 	}
 
 	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
 	grafanaService := grafana.NewService(r.Client, grafanaAPI)
@@ -106,10 +105,10 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 		})
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to create label selector predicate: %w", err)
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	err = ctrl.NewControllerManagedBy(mgr).
 		Named("dashboard").
 		For(&v1.ConfigMap{}, builder.WithPredicates(labelSelectorPredicate)).
 		// Watch for grafana pod's status changes
@@ -140,6 +139,11 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
+	if err != nil {
+		return fmt.Errorf("failed to build controller: %w", err)
+	}
+
+	return nil
 }
 
 // reconcileCreate creates the dashboard.
@@ -149,14 +153,17 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
-	if err != nil || finalizerAdded {
-		return errors.WithStack(err)
+	if err != nil {
+		return fmt.Errorf("failed to ensure finalizer is added: %w", err)
+	}
+	if finalizerAdded {
+		return nil
 	}
 
 	// Configure the dashboard in Grafana
 	err = grafanaService.ConfigureDashboard(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to configure dashboard: %w", err)
 	}
 
 	return nil
@@ -172,13 +179,13 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 	// Unconfigure the dashboard in Grafana
 	err := grafanaService.DeleteDashboard(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to delete dashboard: %w", err)
 	}
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return nil
