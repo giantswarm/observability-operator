@@ -8,7 +8,6 @@ import (
 
 	"github.com/blang/semver/v4"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apimachineryerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,19 +69,19 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 			Enabled: s.config.IsMonitored(cluster),
 		}
 	default:
-		return errors.Errorf("unsupported monitoring agent %q", monitoringAgent)
+		return fmt.Errorf("unsupported monitoring agent %q", monitoringAgent)
 	}
 
 	logger.Info("create or update configmap")
 	err := s.createOrUpdateObservabilityBundleConfigMap(ctx, cluster, bundleConfiguration)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to create or update observability bundle configmap: %w", err)
 	}
 
 	logger.Info("configure application")
 	err = s.configureObservabilityBundleApp(ctx, cluster)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to configure observability bundle app: %w", err)
 	}
 
 	logger.Info("application is configured successfully")
@@ -97,7 +96,7 @@ func (s BundleConfigurationService) createOrUpdateObservabilityBundleConfigMap(
 
 	values, err := yaml.Marshal(configuration)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to marshal bundle configuration to yaml: %w", err)
 	}
 
 	configMapObjectKey := getConfigMapObjectKey(cluster)
@@ -120,11 +119,11 @@ func (s BundleConfigurationService) createOrUpdateObservabilityBundleConfigMap(
 		if apimachineryerrors.IsNotFound(err) {
 			err = s.client.Create(ctx, &desired)
 			if err != nil {
-				return errors.WithStack(err)
+				return fmt.Errorf("failed to create configmap: %w", err)
 			}
 			logger.Info("configuration created")
 		} else {
-			return errors.WithStack(err)
+			return fmt.Errorf("failed to get configmap: %w", err)
 		}
 	}
 
@@ -132,7 +131,7 @@ func (s BundleConfigurationService) createOrUpdateObservabilityBundleConfigMap(
 		!reflect.DeepEqual(current.Labels, desired.Labels) {
 		err := s.client.Update(ctx, &desired)
 		if err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("failed to update configmap: %w", err)
 		}
 		logger.Info("configuration updated")
 	}
@@ -155,7 +154,7 @@ func (s BundleConfigurationService) configureObservabilityBundleApp(
 	var current appv1.App
 	err := s.client.Get(ctx, appObjectKey, &current)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to get observability bundle app: %w", err)
 	}
 
 	desired := current.DeepCopy()
@@ -183,7 +182,7 @@ func (s BundleConfigurationService) configureObservabilityBundleApp(
 	if !reflect.DeepEqual(current, *desired) {
 		err := s.client.Update(ctx, desired)
 		if err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("failed to update observability bundle app: %w", err)
 		}
 	}
 
@@ -203,7 +202,7 @@ func (s BundleConfigurationService) RemoveConfiguration(ctx context.Context, clu
 		},
 	}
 	if err := s.client.Delete(ctx, &current); client.IgnoreNotFound(err) != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to delete configmap: %w", err)
 	}
 
 	logger.Info("observability-bundle configuration has been deleted successfully")
@@ -224,7 +223,7 @@ func (s BundleConfigurationService) GetObservabilityBundleAppVersion(ctx context
 	var currentApp appv1.App
 	err = s.client.Get(ctx, appMeta, &currentApp)
 	if err != nil {
-		return version, err
+		return version, fmt.Errorf("failed to get observability bundle app: %w", err)
 	}
 	return semver.Parse(currentApp.Spec.Version)
 }
