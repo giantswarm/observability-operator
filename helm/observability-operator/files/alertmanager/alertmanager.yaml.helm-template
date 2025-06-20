@@ -24,6 +24,11 @@ route:
     group_interval: 30s
     repeat_interval: 15m
 
+  - receiver: togithub
+    matchers:
+    - foo=bar
+    continue: true
+    
   {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
   - receiver: blackhole
     matchers:
@@ -126,6 +131,11 @@ receivers:
       enable_http2: true
       proxy_from_environment: true
     url: https://api.opsgenie.com/v2/heartbeats/{{ .Values.managementCluster.name }}/ping
+
+- name: togithub
+  webhook_configs:
+  - url: "http://alertmanager-to-github.default.svc/v1/webhook?owner=giantswarm&repo=giantswarm"
+
 
 {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
 - name: blackhole
