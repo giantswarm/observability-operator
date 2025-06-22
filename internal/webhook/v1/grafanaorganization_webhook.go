@@ -35,11 +35,16 @@ var grafanaorganizationlog = logf.Log.WithName("grafanaorganization-resource")
 
 // SetupGrafanaOrganizationWebhookWithManager registers the webhook for GrafanaOrganization in the manager.
 func SetupGrafanaOrganizationWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
+	err := ctrl.NewWebhookManagedBy(mgr).
 		For(&observabilityv1alpha1.GrafanaOrganization{}).
 		WithValidator(&GrafanaOrganizationValidator{}).
 		WithCustomPath("/validate-v1alpha1-grafana-organization").
 		Complete()
+	if err != nil {
+		return fmt.Errorf("failed to build grafanaorganization webhook manager: %w", err)
+	}
+
+	return nil
 }
 
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
