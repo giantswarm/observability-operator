@@ -47,7 +47,7 @@ func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) error {
 		WithCustomPath("/validate-alertmanager-config").
 		Complete()
 	if err != nil {
-		return fmt.Errorf("failed to build webhook manager: %w", err)
+		return fmt.Errorf("failed to build alertmanager webhook manager: %w", err)
 	}
 
 	return nil

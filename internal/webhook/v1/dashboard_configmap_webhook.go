@@ -40,7 +40,7 @@ func SetupDashboardConfigMapWebhookWithManager(mgr ctrl.Manager) error {
 		WithCustomPath("/validate-dashboard-configmap").
 		Complete()
 	if err != nil {
-		return fmt.Errorf("failed to build webhook manager: %w", err)
+		return fmt.Errorf("failed to build dashboard webhook manager: %w", err)
 	}
 
 	return nil

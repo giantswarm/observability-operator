@@ -41,7 +41,7 @@ func SetupGrafanaOrganizationWebhookWithManager(mgr ctrl.Manager) error {
 		WithCustomPath("/validate-v1alpha1-grafana-organization").
 		Complete()
 	if err != nil {
-		return fmt.Errorf("failed to build webhook manager: %w", err)
+		return fmt.Errorf("failed to build grafanaorganization webhook manager: %w", err)
 	}
 
 	return nil
