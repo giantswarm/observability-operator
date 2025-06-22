@@ -34,10 +34,7 @@ func (s *Service) DeleteOrganization(ctx context.Context, grafanaOrganization *v
 	// Delete organization in Grafana if it exists
 	var organization = NewOrganization(grafanaOrganization)
 	if grafanaOrganization.Status.OrgID > 0 {
-		err := s.deleteOrganization(ctx, organization)
-		if err != nil {
-			return fmt.Errorf("DeleteOrganization: failed to delete organization: %w", err)
-		}
+		return s.deleteOrganization(ctx, organization)
 	}
 
 	return nil

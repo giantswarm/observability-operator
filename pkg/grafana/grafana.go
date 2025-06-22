@@ -84,7 +84,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 				Name: organization.Name,
 			})
 			if err != nil {
-				return fmt.Errorf("UpsertOrganization: failed to create organization: %w", err)
+				return fmt.Errorf("failed to create organization: %w", err)
 			}
 			logger.Info("created organization")
 
@@ -92,7 +92,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 			return nil
 		}
 
-		return fmt.Errorf("UpsertOrganization: failed to find organization with ID %d: %w", organization.ID, err)
+		return fmt.Errorf("failed to find organization with ID %d: %w", organization.ID, err)
 	}
 
 	// If both name matches, there is nothing to do.
@@ -106,7 +106,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 		Name: organization.Name,
 	})
 	if err != nil {
-		return fmt.Errorf("UpsertOrganization: failed to update organization name: %w", err)
+		return fmt.Errorf("failed to update organization name: %w", err)
 	}
 
 	logger.Info("updated organization")
@@ -148,7 +148,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 
 	configuredDatasourcesInGrafana, err := s.listDatasourcesForOrganization(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("ConfigureDefaultDatasources: failed to list datasources: %w", err)
+		return nil, fmt.Errorf("failed to list datasources: %w", err)
 	}
 
 	datasourcesToCreate := make([]Datasource, 0)
@@ -185,7 +185,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 				Access:         models.DsAccess(datasource.Access),
 			})
 		if err != nil {
-			return nil, fmt.Errorf("ConfigureDefaultDatasources: failed to create datasource: %w", err)
+			return nil, fmt.Errorf("failed to create datasource: %w", err)
 		}
 		datasourcesToCreate[index].ID = *created.Payload.ID
 		logger.Info("datasource created", "datasource", datasource.Name)
@@ -206,7 +206,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 				Access:         models.DsAccess(datasource.Access),
 			})
 		if err != nil {
-			return nil, fmt.Errorf("ConfigureDefaultDatasources: failed to update datasource: %w", err)
+			return nil, fmt.Errorf("failed to update datasource: %w", err)
 		}
 		logger.Info("datasource updated", "datasource", datasource.Name)
 	}
@@ -222,7 +222,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 			return updatedDatasources, nil
 		}
 
-		return nil, fmt.Errorf("ConfigureDefaultDatasources: failed to delete datasource: %w", err)
+		return nil, fmt.Errorf("failed to delete datasource: %w", err)
 	}
 
 	logger.Info("deleted datasource", "datasource", mimirOldDatasourceUID)
@@ -269,7 +269,7 @@ func isNotFound(err error) bool {
 func (s *Service) FindOrgByName(name string) (*Organization, error) {
 	organization, err := s.grafanaAPI.Orgs.GetOrgByName(name)
 	if err != nil {
-		return nil, fmt.Errorf("FindOrgByName: failed to get organization by name: %w", err)
+		return nil, fmt.Errorf("failed to get organization by name: %w", err)
 	}
 
 	return &Organization{
@@ -308,7 +308,7 @@ func (s *Service) PublishDashboard(dashboard map[string]any) error {
 
 	})
 	if err != nil {
-		return fmt.Errorf("PublishDashboard: failed to publish dashboard: %w", err)
+		return fmt.Errorf("failed to publish dashboard: %w", err)
 	}
 	return nil
 }
