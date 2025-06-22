@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/blang/semver/v4"
-	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -104,23 +103,17 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
 
-	err = r.SetupWithManager(mgr)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.SetupWithManager(mgr)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	err := ctrl.NewControllerManagedBy(mgr).
 		Named("cluster").
 		For(&clusterv1.Cluster{}).
 		// Reconcile all clusters when the grafana organizations have changed to update agents configs with the new list of tenants where metrics are sent to.
 		Watches(&v1alpha1.GrafanaOrganization{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
-
 				var logger = log.FromContext(ctx)
 				var clusters clusterv1.ClusterList
 
@@ -142,6 +135,11 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return requests
 			})).
 		Complete(r)
+	if err != nil {
+		return fmt.Errorf("failed to build controller: %w", err)
+	}
+
+	return nil
 }
 
 //+kubebuilder:rbac:groups=cluster.giantswarm.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
@@ -164,7 +162,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 
 		// Error reading the object - requeue the request.
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to get cluster: %w", err)
 	}
 
 	// Linting is disabled for the following line as otherwise it fails with the following error:
@@ -187,6 +185,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	logger.Info("reconciling cluster")
+
 	// Handle normal reconciliation loop.
 	return r.reconcile(ctx, cluster)
 }
@@ -198,8 +197,11 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, cluster)
-	if err != nil || finalizerAdded {
-		return ctrl.Result{}, errors.WithStack(err)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to ensure finalizer is added: %w", err)
+	}
+	if finalizerAdded {
+		return ctrl.Result{}, nil
 	}
 
 	// Management cluster specific configuration
@@ -247,7 +249,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		default:
-			return ctrl.Result{}, errors.Errorf("unsupported monitoring agent %q", monitoringAgent)
+			return ctrl.Result{}, fmt.Errorf("unsupported monitoring agent %q", monitoringAgent)
 		}
 	} else {
 		// clean up any existing prometheus agent configuration
@@ -312,7 +314,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		// Finalizer handling needs to come last.
 		err = r.finalizerHelper.EnsureRemoved(ctx, cluster)
 		if err != nil {
-			return ctrl.Result{}, errors.WithStack(err)
+			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 		}
 	}
 
@@ -349,18 +351,14 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 // tearDown tears down the monitoring stack management cluster specific components like the hearbeat, mimir secrets and so on.
 func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
-	logger := log.FromContext(ctx)
-
 	err := r.HeartbeatRepository.Delete(ctx)
 	if err != nil {
-		logger.Error(err, "failed to delete heartbeat")
-		return err
+		return fmt.Errorf("failed to delete heartbeat: %w", err)
 	}
 
 	err = r.MimirService.DeleteMimirSecrets(ctx)
 	if err != nil {
-		logger.Error(err, "failed to delete mimir ingress secret")
-		return err
+		return fmt.Errorf("failed to delete mimir ingress secret: %w", err)
 	}
 
 	return nil
