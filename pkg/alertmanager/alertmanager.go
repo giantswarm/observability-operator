@@ -51,13 +51,13 @@ func ExtractAlertmanagerConfig(ctx context.Context, secret *v1.Secret) ([]byte, 
 	// Check that the secret contains an Alertmanager configuration file.
 	alertmanagerConfig, found := secret.Data[AlertmanagerConfigKey]
 	if !found {
-		return nil, fmt.Errorf("missing %s in the secret", AlertmanagerConfigKey)
+		return nil, fmt.Errorf("missing %s in alertmanager secret", AlertmanagerConfigKey)
 	}
 	// Validate Alertmanager configuration
 	// The returned config is not used, as transforming it via String() would produce an invalid configuration with all secrets replaced with <redacted>.
 	_, err := config.Load(string(alertmanagerConfig))
 	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
+		return nil, fmt.Errorf("failed to load alertmanager configuration: %w", err)
 	}
 	return alertmanagerConfig, nil
 }
@@ -67,7 +67,7 @@ func (s Service) Configure(ctx context.Context, secret *v1.Secret, tenantID stri
 
 	logger.Info("configuring alertmanager")
 	if secret == nil {
-		return fmt.Errorf("failed to get secret: secret is nil")
+		return fmt.Errorf("alertmanager secret is nil")
 	}
 
 	// Retrieve and Validate alertmanager configuration from secret
@@ -110,7 +110,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 	}
 	data, err := yaml.Marshal(requestData)
 	if err != nil {
-		return fmt.Errorf("alertmanager: failed to marshal yaml: %w", err)
+		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 	dataLen := len(data)
 
@@ -120,14 +120,14 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 	// Send request to Alertmanager's API
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
-		return fmt.Errorf("alertmanager: failed to create request: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set(common.OrgIDHeader, tenantID)
 	req.ContentLength = int64(dataLen)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("alertmanager: failed to send request: %w", err)
+		return fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close() // nolint: errcheck
 
@@ -136,7 +136,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 	if resp.StatusCode != http.StatusCreated {
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("alertmanager: failed to read response: %w", err)
+			return fmt.Errorf("failed to read response: %w", err)
 		}
 
 		e := APIError{
@@ -144,7 +144,7 @@ func (s Service) configure(ctx context.Context, alertmanagerConfigContent []byte
 			Message: string(respBody),
 		}
 
-		return fmt.Errorf("alertmanager: failed to send configuration: %w", e)
+		return fmt.Errorf("failed to send configuration: %w", e)
 	}
 
 	return nil

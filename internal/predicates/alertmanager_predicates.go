@@ -67,7 +67,7 @@ func NewAlertmanagerConfigSecretsPredicate() (predicate.Predicate, error) {
 			},
 		})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Alertmanager config secrets predicate: %w", err)
+		return nil, fmt.Errorf("failed to create alertmanager config secrets predicate: %w", err)
 	}
 	return predicate, nil
 }
