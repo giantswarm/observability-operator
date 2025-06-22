@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/grafana/grafana-openapi-client-go/models"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -32,22 +31,22 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 
 	resp, err := s.grafanaAPI.SsoSettings.GetProviderSettings(ssoProvider, nil)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("failed to get SSO provider settings for %s: %w", ssoProvider, err))
+		return fmt.Errorf("ConfigureSSOSettings: failed to get SSO provider settings for %s: %w", ssoProvider, err)
 	}
 
 	if resp.Payload == nil {
-		return errors.WithStack(fmt.Errorf("received nil payload from SSO provider settings for %s", ssoProvider))
+		return fmt.Errorf("ConfigureSSOSettings: received nil payload from SSO provider settings for %s", ssoProvider)
 	}
 
 	// Safe type assertion with error handling
 	settings, ok := resp.Payload.Settings.(map[string]any)
 	if !ok {
-		return errors.WithStack(fmt.Errorf("unexpected settings type for %s: expected map[string]any, got %T", ssoProvider, resp.Payload.Settings))
+		return fmt.Errorf("ConfigureSSOSettings: unexpected settings type for %s: expected map[string]any, got %T", ssoProvider, resp.Payload.Settings)
 	}
 
 	orgsMapping, err := generateGrafanaOrgsMapping(organizations)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("failed to generate organization mappings for %s: %w", ssoProvider, err))
+		return fmt.Errorf("ConfigureSSOSettings: failed to generate organization mappings for %s: %w", ssoProvider, err)
 	}
 
 	settings["org_mapping"] = orgsMapping
@@ -63,8 +62,7 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 		})
 
 	if err != nil {
-		logger.Error(err, "failed to configure Grafana SSO")
-		return errors.WithStack(fmt.Errorf("failed to update SSO provider settings for %s: %w", ssoProvider, err))
+		return fmt.Errorf("ConfigureSSOSettings: failed to update SSO provider settings for %s: %w", ssoProvider, err)
 	}
 
 	logger.Info("configured SSO settings successfully")
