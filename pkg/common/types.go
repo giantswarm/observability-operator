@@ -1,7 +1,7 @@
 package common
 
 import (
-	"errors"
+	"fmt"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
@@ -78,5 +78,5 @@ func GetClusterProvider(cluster *clusterv1.Cluster) (string, error) {
 		return GCPManagedClusterKindProvider, nil
 	}
 
-	return "", errors.New("unknown cluster provider")
+	return "", fmt.Errorf("unknown cluster provider for %s", cluster.Spec.InfrastructureRef.Kind)
 }

@@ -3,8 +3,8 @@ package grafana
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -67,8 +67,7 @@ func (s *Service) processDashboards(ctx context.Context, dashboardCM *v1.ConfigM
 	// Switch context to the dashboards-defined org
 	organization, err := s.FindOrgByName(dashboardOrg)
 	if err != nil {
-		logger.Error(err, "Failed to find organization")
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to find organization: %w", err)
 	}
 	currentOrgID := s.grafanaClient.OrgID()
 	s.grafanaClient.WithOrgID(organization.ID)
@@ -97,7 +96,7 @@ func (s *Service) processDashboards(ctx context.Context, dashboardCM *v1.ConfigM
 
 		err = f(ctx, dashboard, dashboardUID)
 		if err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("failed to process dashboard %q: %w", dashboardUID, err)
 		}
 	}
 
@@ -118,13 +117,13 @@ func getOrgFromDashboardConfigmap(dashboard *v1.ConfigMap) (string, error) {
 	}
 
 	// Return an error if no label was found
-	return "", errors.New("No organization label found in configmap")
+	return "", fmt.Errorf("No organization label found in configmap")
 }
 
 func getDashboardUID(dashboard map[string]interface{}) (string, error) {
 	UID, ok := dashboard["uid"].(string)
 	if !ok {
-		return "", errors.New("dashboard UID not found in configmap")
+		return "", fmt.Errorf("dashboard UID not found in configmap")
 	}
 	return UID, nil
 }
