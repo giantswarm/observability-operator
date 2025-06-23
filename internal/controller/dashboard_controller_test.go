@@ -168,8 +168,12 @@ var _ = Describe("Dashboard Controller", func() {
 
 				// Setup mock client methods for successful operation
 				mockGrafanaClient.On("OrgID").Return(int64(1))
-				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
-				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(nil)
+
+				// Mock the Orgs service
+				mockOrgsClient := &mocks.MockOrgsClient{}
+				mockGrafanaClient.On("Orgs").Return(mockOrgsClient)
+				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(
 					&orgs.GetOrgByNameOK{
 						Payload: &models.OrgDetailsDTO{
 							ID:   1,
@@ -177,8 +181,10 @@ var _ = Describe("Dashboard Controller", func() {
 						},
 					}, nil)
 
-				// The PostDashboard call happens on the same client after WithOrgID
-				mockGrafanaClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
+				// Mock the Dashboards service
+				mockDashboardsClient := &mocks.MockDashboardsClient{}
+				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
+				mockDashboardsClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
 					&dashboards.PostDashboardOK{
 						Payload: &models.PostDashboardOKBody{
 							UID: func() *string { s := "test-dashboard-uid"; return &s }(),
@@ -308,15 +314,23 @@ var _ = Describe("Dashboard Controller", func() {
 
 				// Setup mock client methods for successful dashboard operation
 				mockGrafanaClient.On("OrgID").Return(int64(1))
-				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
-				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(nil)
+
+				// Mock the Orgs service
+				mockOrgsClient := &mocks.MockOrgsClient{}
+				mockGrafanaClient.On("Orgs").Return(mockOrgsClient)
+				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(
 					&orgs.GetOrgByNameOK{
 						Payload: &models.OrgDetailsDTO{
 							ID:   1,
 							Name: "Test Dashboard Organization",
 						},
 					}, nil)
-				mockGrafanaClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
+
+				// Mock the Dashboards service
+				mockDashboardsClient := &mocks.MockDashboardsClient{}
+				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
+				mockDashboardsClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
 					&dashboards.PostDashboardOK{
 						Payload: &models.PostDashboardOKBody{
 							UID: func() *string { s := "test-dashboard-uid"; return &s }(),
@@ -343,15 +357,23 @@ var _ = Describe("Dashboard Controller", func() {
 
 				// Setup mock client methods for successful operation
 				mockGrafanaClient.On("OrgID").Return(int64(1))
-				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
-				mockGrafanaClient.On("GetOrgByName", mock.AnythingOfType("string")).Return(
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(nil)
+
+				// Mock the Orgs service
+				mockOrgsClient := &mocks.MockOrgsClient{}
+				mockGrafanaClient.On("Orgs").Return(mockOrgsClient)
+				mockOrgsClient.On("GetOrgByName", mock.AnythingOfType("string")).Return(
 					&orgs.GetOrgByNameOK{
 						Payload: &models.OrgDetailsDTO{
 							ID:   1,
 							Name: "Test Dashboard Organization",
 						},
 					}, nil)
-				mockGrafanaClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
+
+				// Mock the Dashboards service
+				mockDashboardsClient := &mocks.MockDashboardsClient{}
+				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
+				mockDashboardsClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
 					&dashboards.PostDashboardOK{
 						Payload: &models.PostDashboardOKBody{
 							UID: func() *string { s := "test-dashboard-uid"; return &s }(),
