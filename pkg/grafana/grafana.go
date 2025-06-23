@@ -3,13 +3,13 @@ package grafana
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/go-openapi/runtime"
 	"github.com/grafana/grafana-openapi-client-go/client/datasources"
 	"github.com/grafana/grafana-openapi-client-go/models"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -18,7 +18,7 @@ const (
 	mimirOldDatasourceUID     = "gs-mimir-old"
 )
 
-var orgNotFoundError = errors.New("organization not found")
+var ErrOrganizationNotFound = errors.New("organization not found")
 
 var SharedOrg = Organization{
 	ID:   1,
@@ -69,14 +69,14 @@ var defaultDatasources = []Datasource{
 	},
 }
 
-func (s *Service) UpsertOrganization(ctx context.Context, organization *Organization) (err error) {
+func (s *Service) UpsertOrganization(ctx context.Context, organization *Organization) error {
 	logger := log.FromContext(ctx)
 	logger.Info("upserting organization")
 
 	// Get the current organization stored in Grafana
 	currentOrganization, err := s.findOrgByID(organization.ID)
 	if err != nil {
-		if errors.Is(err, orgNotFoundError) {
+		if errors.Is(err, ErrOrganizationNotFound) {
 			logger.Info("organization id not found, creating")
 
 			// If organization does not exist in Grafana, create it
@@ -84,8 +84,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 				Name: organization.Name,
 			})
 			if err != nil {
-				logger.Error(err, "failed to create organization")
-				return errors.WithStack(err)
+				return fmt.Errorf("failed to create organization: %w", err)
 			}
 			logger.Info("created organization")
 
@@ -93,8 +92,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 			return nil
 		}
 
-		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", organization.ID))
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to find organization with ID %d: %w", organization.ID, err)
 	}
 
 	// If both name matches, there is nothing to do.
@@ -108,8 +106,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 		Name: organization.Name,
 	})
 	if err != nil {
-		logger.Error(err, "failed to update organization name")
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to update organization name: %w", err)
 	}
 
 	logger.Info("updated organization")
@@ -123,19 +120,17 @@ func (s *Service) deleteOrganization(ctx context.Context, organization Organizat
 	logger.Info("deleting organization")
 	_, err := s.findOrgByID(organization.ID)
 	if err != nil {
-		if isNotFound(err) {
+		if errors.Is(err, ErrOrganizationNotFound) {
 			logger.Info("organization id was not found, skipping deletion")
 			// If the CR orgID does not exist in Grafana, then we create the organization
 			return nil
 		}
-		logger.Error(err, fmt.Sprintf("failed to find organization with ID: %d", organization.ID))
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to find organization: %w", err)
 	}
 
 	_, err = s.grafanaAPI.Orgs.DeleteOrgByID(organization.ID)
 	if err != nil {
-		logger.Error(err, "failed to delete organization")
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to delete organization: %w", err)
 	}
 	logger.Info("deleted organization")
 
@@ -153,8 +148,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 
 	configuredDatasourcesInGrafana, err := s.listDatasourcesForOrganization(ctx)
 	if err != nil {
-		logger.Error(err, "failed to list datasources")
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("failed to list datasources: %w", err)
 	}
 
 	datasourcesToCreate := make([]Datasource, 0)
@@ -191,8 +185,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 				Access:         models.DsAccess(datasource.Access),
 			})
 		if err != nil {
-			logger.Error(err, "failed to create datasource", "datasource", datasourcesToCreate[index].Name)
-			return nil, errors.WithStack(err)
+			return nil, fmt.Errorf("failed to create datasource: %w", err)
 		}
 		datasourcesToCreate[index].ID = *created.Payload.ID
 		logger.Info("datasource created", "datasource", datasource.Name)
@@ -213,8 +206,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 				Access:         models.DsAccess(datasource.Access),
 			})
 		if err != nil {
-			logger.Error(err, "failed to update datasource", "datasource", datasource.Name)
-			return nil, errors.WithStack(err)
+			return nil, fmt.Errorf("failed to update datasource: %w", err)
 		}
 		logger.Info("datasource updated", "datasource", datasource.Name)
 	}
@@ -228,25 +220,21 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 		if errors.As(err, &notFound) {
 			logger.Info("skipping, datasource not found", "datasource", mimirOldDatasourceUID)
 			return updatedDatasources, nil
-		} else {
-			logger.Error(err, "failed to delete datasource", "datasource", mimirOldDatasourceUID)
-			return updatedDatasources, errors.WithStack(err)
 		}
-	} else {
-		logger.Info("deleted datasource", "datasource", mimirOldDatasourceUID)
+
+		return nil, fmt.Errorf("failed to delete datasource: %w", err)
 	}
 
+	logger.Info("deleted datasource", "datasource", mimirOldDatasourceUID)
+
 	// We return the datasources and the error if it exists. This allows us to return the defer function error it it exists.
-	return updatedDatasources, errors.WithStack(err)
+	return updatedDatasources, nil
 }
 
 func (s *Service) listDatasourcesForOrganization(ctx context.Context) ([]Datasource, error) {
-	logger := log.FromContext(ctx)
-
 	resp, err := s.grafanaAPI.Datasources.GetDataSources()
 	if err != nil {
-		logger.Error(err, "failed to get configured datasources")
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("failed to get configured datasources: %w", err)
 	}
 
 	datasources := make([]Datasource, len(resp.Payload))
@@ -281,7 +269,7 @@ func isNotFound(err error) bool {
 func (s *Service) FindOrgByName(name string) (*Organization, error) {
 	organization, err := s.grafanaAPI.Orgs.GetOrgByName(name)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("failed to get organization by name: %w", err)
 	}
 
 	return &Organization{
@@ -293,16 +281,16 @@ func (s *Service) FindOrgByName(name string) (*Organization, error) {
 // findOrgByID is a wrapper function used to find a Grafana organization by its id
 func (s *Service) findOrgByID(orgID int64) (*Organization, error) {
 	if orgID == 0 {
-		return nil, orgNotFoundError
+		return nil, ErrOrganizationNotFound
 	}
 
 	organization, err := s.grafanaAPI.Orgs.GetOrgByID(orgID)
 	if err != nil {
 		if isNotFound(err) {
-			return nil, fmt.Errorf("%w: %w", orgNotFoundError, err)
+			return nil, fmt.Errorf("%w: %w", ErrOrganizationNotFound, err)
 		}
 
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("failed to get organization by id: %w", err)
 	}
 
 	return &Organization{
@@ -319,5 +307,8 @@ func (s *Service) PublishDashboard(dashboard map[string]any) error {
 		Overwrite: true, // allows dashboard to be updated by the same UID
 
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to publish dashboard: %w", err)
+	}
+	return nil
 }
