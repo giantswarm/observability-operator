@@ -50,13 +50,6 @@ func (s *Service) DeleteDashboard(ctx context.Context, dash *dashboard.Dashboard
 func (s *Service) withinOrganization(ctx context.Context, dash *dashboard.Dashboard, fn func(ctx context.Context) error) error {
 	logger := log.FromContext(ctx)
 
-	// Validate the dashboard first
-	if validationErrors := dash.Validate(); len(validationErrors) > 0 {
-		logger.Info("Skipping dashboard due to validation errors", "errors", validationErrors)
-		// Return nil to indicate successful handling (graceful skip)
-		return nil
-	}
-
 	// Switch context to the dashboard-defined org
 	organization, err := s.FindOrgByName(dash.Organization())
 	if err != nil {
