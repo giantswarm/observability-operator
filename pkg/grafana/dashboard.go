@@ -42,7 +42,7 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboardCM *v1.ConfigMap
 		_, err = s.grafanaClient.DeleteDashboardByUID(dashboardUID)
 		if err != nil {
 			logger.Error(err, "Failed deleting dashboard")
-			return err
+			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
 
 		logger.Info("deleted dashboard")
