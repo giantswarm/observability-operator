@@ -2,8 +2,10 @@ package grafana
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
-	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
@@ -20,8 +22,7 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dash *dashboard.Dashbo
 		// Create or update dashboard
 		err := s.PublishDashboard(dashboardContent)
 		if err != nil {
-			logger.Error(err, "failed to update dashboard")
-			return errors.WithStack(err)
+			return fmt.Errorf("failed to update dashboard: %w", err)
 		}
 
 		logger.Info("updated dashboard")
@@ -35,14 +36,12 @@ func (s *Service) DeleteDashboard(ctx context.Context, dash *dashboard.Dashboard
 	return s.withinOrganization(ctx, dash, func() error {
 		_, err := s.grafanaAPI.Dashboards.GetDashboardByUID(dash.UID())
 		if err != nil {
-			logger.Error(err, "Failed getting dashboard")
-			return errors.WithStack(err)
+			return fmt.Errorf("failed to get dashboard: %w", err)
 		}
 
 		_, err = s.grafanaAPI.Dashboards.DeleteDashboardByUID(dash.UID())
 		if err != nil {
-			logger.Error(err, "Failed deleting dashboard")
-			return errors.WithStack(err)
+			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
 
 		logger.Info("deleted dashboard")
@@ -57,12 +56,11 @@ func (s *Service) withinOrganization(ctx context.Context, dash *dashboard.Dashbo
 	// Switch context to the dashboard-defined org
 	organization, err := s.FindOrgByName(dash.Organization())
 	if err != nil {
-		logger.Error(err, "Failed to find organization")
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to find organization: %w", err)
 	}
-	currentOrgID := s.grafanaAPI.OrgID()
-	s.grafanaAPI.WithOrgID(organization.ID)
-	defer s.grafanaAPI.WithOrgID(currentOrgID)
+	currentOrgID := s.grafanaClient.OrgID()
+	s.grafanaClient.WithOrgID(organization.ID)
+	defer s.grafanaClient.WithOrgID(currentOrgID)
 
 	// Execute the provided function within the organization context
 	return fn()
