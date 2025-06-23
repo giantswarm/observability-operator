@@ -30,12 +30,13 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dash *dashboard.Dashbo
 func (s *Service) DeleteDashboard(ctx context.Context, dash *dashboard.Dashboard) error {
 	return s.withinOrganization(ctx, dash, func(ctx context.Context) error {
 		logger := log.FromContext(ctx)
-		_, err := s.grafanaClient.GetDashboardByUID(dash.UID())
+
+		_, err := s.grafanaClient.Dashboards().GetDashboardByUID(dash.UID())
 		if err != nil {
 			return fmt.Errorf("failed to get dashboard: %w", err)
 		}
 
-		_, err = s.grafanaClient.DeleteDashboardByUID(dash.UID())
+		_, err = s.grafanaClient.Dashboards().DeleteDashboardByUID(dash.UID())
 		if err != nil {
 			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
