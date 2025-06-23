@@ -2,10 +2,8 @@ package grafana
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
@@ -15,7 +13,14 @@ import (
 func (s *Service) ConfigureDashboard(ctx context.Context, dash *dashboard.Dashboard) error {
 	logger := log.FromContext(ctx).WithValues("Dashboard UID", dash.UID(), "Dashboard Org", dash.Organization())
 
-	return s.withinOrganization(ctx, dash, func() error {
+	// Validate the dashboard first
+	if validationErrors := dash.Validate(); len(validationErrors) > 0 {
+		logger.Info("Skipping dashboard due to validation errors", "errors", validationErrors)
+		// Return nil to indicate successful handling (graceful skip)
+		return nil
+	}
+
+	return s.withinOrganization(dash, func() error {
 		// Prepare dashboard content for Grafana API using local function
 		dashboardContent := prepareForGrafanaAPI(dash)
 
@@ -33,13 +38,20 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dash *dashboard.Dashbo
 func (s *Service) DeleteDashboard(ctx context.Context, dash *dashboard.Dashboard) error {
 	logger := log.FromContext(ctx).WithValues("Dashboard UID", dash.UID(), "Dashboard Org", dash.Organization())
 
-	return s.withinOrganization(ctx, dash, func() error {
-		_, err := s.grafanaAPI.Dashboards.GetDashboardByUID(dash.UID())
+	// Validate the dashboard first
+	if validationErrors := dash.Validate(); len(validationErrors) > 0 {
+		logger.Info("Skipping dashboard deletion due to validation errors", "errors", validationErrors)
+		// Return nil to indicate successful handling (graceful skip)
+		return nil
+	}
+
+	return s.withinOrganization(dash, func() error {
+		_, err := s.grafanaClient.GetDashboardByUID(dash.UID())
 		if err != nil {
 			return fmt.Errorf("failed to get dashboard: %w", err)
 		}
 
-		_, err = s.grafanaAPI.Dashboards.DeleteDashboardByUID(dash.UID())
+		_, err = s.grafanaClient.DeleteDashboardByUID(dash.UID())
 		if err != nil {
 			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
@@ -50,9 +62,7 @@ func (s *Service) DeleteDashboard(ctx context.Context, dash *dashboard.Dashboard
 }
 
 // withinOrganization executes the given function within the context of the dashboard's organization
-func (s *Service) withinOrganization(ctx context.Context, dash *dashboard.Dashboard, fn func() error) error {
-	logger := log.FromContext(ctx)
-
+func (s *Service) withinOrganization(dash *dashboard.Dashboard, fn func() error) error {
 	// Switch context to the dashboard-defined org
 	organization, err := s.FindOrgByName(dash.Organization())
 	if err != nil {

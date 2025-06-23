@@ -5,8 +5,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 )
 
 func TestNew(t *testing.T) {
@@ -18,11 +16,9 @@ func TestNew(t *testing.T) {
 
 func TestFromConfigMap(t *testing.T) {
 	tests := []struct {
-		name              string
-		configMap         *v1.ConfigMap
-		expectedCount     int
-		expectError       bool
-		expectedErrorType error
+		name          string
+		configMap     *v1.ConfigMap
+		expectedCount int
 	}{
 		{
 			name: "valid configmap with single dashboard",
@@ -39,7 +35,6 @@ func TestFromConfigMap(t *testing.T) {
 				},
 			},
 			expectedCount: 1,
-			expectError:   false,
 		},
 		{
 			name: "valid configmap with annotation organization",
@@ -56,7 +51,6 @@ func TestFromConfigMap(t *testing.T) {
 				},
 			},
 			expectedCount: 1,
-			expectError:   false,
 		},
 		{
 			name: "multiple dashboards in configmap",
@@ -74,7 +68,6 @@ func TestFromConfigMap(t *testing.T) {
 				},
 			},
 			expectedCount: 2,
-			expectError:   false,
 		},
 		{
 			name: "missing organization",
@@ -87,9 +80,7 @@ func TestFromConfigMap(t *testing.T) {
 					"dashboard.json": `{"uid": "test-uid", "title": "Test Dashboard"}`,
 				},
 			},
-			expectedCount:     0,
-			expectError:       true,
-			expectedErrorType: dashboard.ErrMissingOrganization,
+			expectedCount: 1,
 		},
 		{
 			name: "invalid JSON",
@@ -105,9 +96,7 @@ func TestFromConfigMap(t *testing.T) {
 					"dashboard.json": `invalid json`,
 				},
 			},
-			expectedCount:     0,
-			expectError:       true,
-			expectedErrorType: dashboard.ErrInvalidJSON,
+			expectedCount: 1,
 		},
 		{
 			name: "missing UID in dashboard",
@@ -123,39 +112,29 @@ func TestFromConfigMap(t *testing.T) {
 					"dashboard.json": `{"title": "Test Dashboard"}`,
 				},
 			},
-			expectedCount:     0,
-			expectError:       true,
-			expectedErrorType: dashboard.ErrMissingUID,
+			expectedCount: 1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dashboardMapper := New()
-			dashboards, err := dashboardMapper.FromConfigMap(tt.configMap)
+			dashboards := dashboardMapper.FromConfigMap(tt.configMap)
 
-			if tt.expectError {
-				if err == nil {
-					t.Error("Expected an error but got none")
-				}
-				if tt.expectedErrorType != nil && !IsError(err, tt.expectedErrorType) {
-					t.Errorf("Expected error type %v, got %v", tt.expectedErrorType, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error but got: %v", err)
-				}
-				if len(dashboards) != tt.expectedCount {
-					t.Errorf("Expected %d dashboards, got %d", tt.expectedCount, len(dashboards))
-				}
+			if len(dashboards) != tt.expectedCount {
+				t.Errorf("Expected %d dashboards, got %d", tt.expectedCount, len(dashboards))
+			}
 
-				// Verify dashboard properties for successful cases
-				for i, dash := range dashboards {
-					if dash.Organization() != "test-org" {
-						t.Errorf("Dashboard %d: expected organization 'test-org', got '%s'", i, dash.Organization())
+			// Verify dashboard properties for successful cases with valid data
+			for i, dash := range dashboards {
+				// Only check organization for cases where we expect it to be set
+				if tt.configMap.Annotations != nil && tt.configMap.Annotations["observability.giantswarm.io/organization"] != "" {
+					if dash.Organization() != tt.configMap.Annotations["observability.giantswarm.io/organization"] {
+						t.Errorf("Dashboard %d: expected organization from annotation, got '%s'", i, dash.Organization())
 					}
-					if dash.UID() == "" {
-						t.Errorf("Dashboard %d: expected non-empty UID", i)
+				} else if tt.configMap.Labels != nil && tt.configMap.Labels["observability.giantswarm.io/organization"] != "" {
+					if dash.Organization() != tt.configMap.Labels["observability.giantswarm.io/organization"] {
+						t.Errorf("Dashboard %d: expected organization from label, got '%s'", i, dash.Organization())
 					}
 				}
 			}
@@ -176,10 +155,7 @@ func TestFromConfigMapEdgeCases(t *testing.T) {
 			Data: map[string]string{},
 		}
 
-		dashboards, err := dashboardMapper.FromConfigMap(cm)
-		if err != nil {
-			t.Errorf("Expected no error for empty data, got: %v", err)
-		}
+		dashboards := dashboardMapper.FromConfigMap(cm)
 		if len(dashboards) != 0 {
 			t.Errorf("Expected 0 dashboards for empty data, got %d", len(dashboards))
 		}
@@ -200,10 +176,7 @@ func TestFromConfigMapEdgeCases(t *testing.T) {
 			},
 		}
 
-		dashboards, err := dashboardMapper.FromConfigMap(cm)
-		if err != nil {
-			t.Errorf("Expected no error, got: %v", err)
-		}
+		dashboards := dashboardMapper.FromConfigMap(cm)
 		if len(dashboards) != 1 {
 			t.Errorf("Expected 1 dashboard, got %d", len(dashboards))
 		}
@@ -211,14 +184,4 @@ func TestFromConfigMapEdgeCases(t *testing.T) {
 			t.Errorf("Expected organization 'annotation-org', got '%s'", dashboards[0].Organization())
 		}
 	})
-}
-
-// Helper function to check if an error matches a specific type
-func IsError(err, target error) bool {
-	if err == nil || target == nil {
-		return err == target
-	}
-	return err.Error() == target.Error() ||
-		(len(err.Error()) >= len(target.Error()) &&
-			err.Error()[:len(target.Error())] == target.Error())
 }

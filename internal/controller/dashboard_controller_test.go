@@ -15,12 +15,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/client/orgs"
 	"github.com/grafana/grafana-openapi-client-go/models"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/internal/mapper"
+	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
 
 var _ = Describe("Dashboard Controller", func() {
@@ -99,6 +100,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Scheme:           k8sClient.Scheme(),
 				grafanaURL:       grafanaURL,
 				finalizerHelper:  NewFinalizerHelper(k8sClient, DashboardFinalizer),
+				dashboardMapper:  mapper.New(),
 				grafanaClientGen: mockGrafanaGen,
 			}
 
@@ -519,7 +521,10 @@ var _ = Describe("Dashboard Controller", func() {
 			})
 
 			AfterEach(func() {
-				mockGrafanaClient.AssertExpectations(GinkgoT())
+				// Only assert expectations if they were set
+				if len(mockGrafanaClient.ExpectedCalls) > 0 {
+					mockGrafanaClient.AssertExpectations(GinkgoT())
+				}
 				mockGrafanaGen.AssertExpectations(GinkgoT())
 			})
 
@@ -633,9 +638,7 @@ var _ = Describe("Dashboard Controller", func() {
 			})
 
 			It("should handle dashboard with missing UID", func() {
-				// Set up mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
-				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+				// No mock expectations needed since validation will skip the dashboard
 
 				configMapWithoutUID := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -655,14 +658,7 @@ var _ = Describe("Dashboard Controller", func() {
 					},
 				}
 
-				// Mock the organization lookup to succeed
-				orgResponse := &orgs.GetOrgByNameOK{
-					Payload: &models.OrgDetailsDTO{
-						ID:   int64(2),
-						Name: "Test Dashboard Organization",
-					},
-				}
-				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+				// No organization lookup mock needed since dashboard will be skipped due to missing UID
 
 				By("Creating a dashboard ConfigMap without UID")
 				Expect(k8sClient.Create(ctx, configMapWithoutUID)).To(Succeed())
@@ -768,9 +764,7 @@ var _ = Describe("Dashboard Controller", func() {
 			})
 
 			It("should handle ConfigMap with invalid JSON", func() {
-				// Set up mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
-				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+				// No mock expectations needed since validation will skip the dashboard due to invalid JSON
 
 				configMapWithInvalidJSON := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -791,14 +785,7 @@ var _ = Describe("Dashboard Controller", func() {
 					},
 				}
 
-				// Mock the organization lookup to succeed
-				orgResponse := &orgs.GetOrgByNameOK{
-					Payload: &models.OrgDetailsDTO{
-						ID:   int64(2),
-						Name: "Test Dashboard Organization",
-					},
-				}
-				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+				// No mock expectations needed - service layer will skip due to validation errors
 
 				By("Creating a dashboard ConfigMap with invalid JSON")
 				Expect(k8sClient.Create(ctx, configMapWithInvalidJSON)).To(Succeed())

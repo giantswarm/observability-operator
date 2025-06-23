@@ -34,22 +34,24 @@ func (d *Dashboard) Content() map[string]any {
 
 // Validate performs domain validation logic
 func (d *Dashboard) Validate() []error {
-	var errs []error
+	var errors []error
 
-	// Replicate exact existing validation logic
+	// Validate UID is present
 	if d.uid == "" {
-		errs = append(errs, ErrMissingUID)
+		errors = append(errors, ErrMissingUID)
 	}
 
+	// Validate organization is present
 	if d.organization == "" {
-		errs = append(errs, ErrMissingOrganization)
+		errors = append(errors, ErrMissingOrganization)
 	}
 
+	// Validate content is not nil (though empty content might be valid)
 	if d.content == nil {
-		errs = append(errs, ErrInvalidJSON)
+		errors = append(errors, ErrInvalidJSON)
 	}
 
-	return errs
+	return errors
 }
 
 // String provides a string representation for debugging
