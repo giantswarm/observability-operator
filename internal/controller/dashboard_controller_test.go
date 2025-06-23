@@ -571,7 +571,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(k8sClient.Create(ctx, configMapWithLabelOrg)).To(Succeed())
 
 				By("First reconciliation - should add finalizer only")
-				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-with-label-org",
 						Namespace: dashboardNamespace,
@@ -580,7 +580,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Second reconciliation - should process the dashboard successfully")
-				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-with-label-org",
 						Namespace: dashboardNamespace,
@@ -593,7 +593,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(k8sClient.Delete(ctx, configMapWithLabelOrg)).To(Succeed())
 			})
 
-			It("should handle ConfigMap with no organization label or annotation gracefully", func() {
+			It("should fail when ConfigMap has no organization label or annotation (defensive validation)", func() {
 				configMapWithoutOrg := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "dashboard-without-org",
@@ -622,22 +622,24 @@ var _ = Describe("Dashboard Controller", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				By("Second reconciliation - should succeed and skip dashboard processing")
+				By("Second reconciliation - should fail due to defensive validation")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-without-org",
 						Namespace: dashboardNamespace,
 					},
 				})
-				// Should succeed because missing organization is handled gracefully by logging an error and continuing
-				Expect(err).NotTo(HaveOccurred())
+				// Should fail because defensive validation catches the missing organization
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("dashboard validation failed"))
+				Expect(err.Error()).To(ContainSubstring("organization is missing"))
 				Expect(result).To(Equal(reconcile.Result{}))
 
 				// Clean up
 				Expect(k8sClient.Delete(ctx, configMapWithoutOrg)).To(Succeed())
 			})
 
-			It("should handle dashboard with missing UID gracefully", func() {
+			It("should fail when dashboard has missing UID (defensive validation)", func() {
 				// No mock expectations for organization operations since validation will fail early
 
 				configMapWithoutUID := &v1.ConfigMap{
@@ -658,29 +660,29 @@ var _ = Describe("Dashboard Controller", func() {
 					},
 				}
 
-				// No organization lookup mock needed since dashboard will be skipped due to missing UID
-
 				By("Creating a dashboard ConfigMap without UID")
 				Expect(k8sClient.Create(ctx, configMapWithoutUID)).To(Succeed())
 
 				By("First reconciliation - should add finalizer only")
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-without-uid",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Second reconciliation - should fail due to defensive validation")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-without-uid",
 						Namespace: dashboardNamespace,
 					},
 				})
-				Expect(err).NotTo(HaveOccurred())
-
-				By("Second reconciliation - should succeed and skip dashboard without UID")
-				result, err = reconciler.Reconcile(ctx, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-without-uid",
-						Namespace: dashboardNamespace,
-					},
-				})
-				// Should succeed because missing UID is handled gracefully by logging an error and continuing
-				Expect(err).NotTo(HaveOccurred())
+				// Should fail because defensive validation catches the missing UID
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("dashboard validation failed"))
+				Expect(err.Error()).To(ContainSubstring("UID is missing"))
 				Expect(result).To(Equal(reconcile.Result{}))
 
 				// Clean up
@@ -741,7 +743,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(k8sClient.Create(ctx, configMapWithID)).To(Succeed())
 
 				By("First reconciliation - should add finalizer only")
-				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-with-id",
 						Namespace: dashboardNamespace,
@@ -750,7 +752,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Second reconciliation - should process and clean the dashboard ID")
-				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-with-id",
 						Namespace: dashboardNamespace,
@@ -763,7 +765,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(k8sClient.Delete(ctx, configMapWithID)).To(Succeed())
 			})
 
-			It("should handle ConfigMap with invalid JSON gracefully", func() {
+			It("should fail when ConfigMap has invalid JSON (defensive validation)", func() {
 				// No mock expectations for organization operations since validation will fail early
 
 				configMapWithInvalidJSON := &v1.ConfigMap{
@@ -785,8 +787,6 @@ var _ = Describe("Dashboard Controller", func() {
 					},
 				}
 
-				// No mock expectations needed - service layer will skip due to validation errors
-
 				By("Creating a dashboard ConfigMap with invalid JSON")
 				Expect(k8sClient.Create(ctx, configMapWithInvalidJSON)).To(Succeed())
 
@@ -798,16 +798,19 @@ var _ = Describe("Dashboard Controller", func() {
 					},
 				})
 				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
 
-				By("Second reconciliation - should succeed and skip invalid JSON")
+				By("Second reconciliation - should fail due to defensive validation")
 				result, err = reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-invalid-json",
 						Namespace: dashboardNamespace,
 					},
 				})
-				// Should succeed because invalid JSON is handled gracefully by logging an error and continuing
-				Expect(err).NotTo(HaveOccurred())
+				// Should fail because defensive validation catches the invalid JSON (nil content)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("dashboard validation failed"))
+				Expect(err.Error()).To(ContainSubstring("invalid JSON format"))
 				Expect(result).To(Equal(reconcile.Result{}))
 
 				// Clean up
@@ -866,7 +869,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(k8sClient.Create(ctx, configMapWithMultipleDashboards)).To(Succeed())
 
 				By("First reconciliation - should add finalizer only")
-				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "multiple-dashboards",
 						Namespace: dashboardNamespace,
@@ -875,7 +878,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Second reconciliation - should process all dashboards")
-				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "multiple-dashboards",
 						Namespace: dashboardNamespace,
@@ -886,6 +889,124 @@ var _ = Describe("Dashboard Controller", func() {
 
 				// Clean up
 				Expect(k8sClient.Delete(ctx, configMapWithMultipleDashboards)).To(Succeed())
+			})
+		})
+
+		Context("When testing defensive validation at controller level", func() {
+			var validationMockClient *mocks.MockGrafanaClient
+
+			BeforeEach(func() {
+				// Create a separate mock client for validation tests
+				validationMockClient = &mocks.MockGrafanaClient{}
+				// Configure the client generator to return our validation-specific mock
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(validationMockClient, nil)
+			})
+
+			AfterEach(func() {
+				// Only assert expectations for the validation mock if it has any
+				if len(validationMockClient.ExpectedCalls) > 0 {
+					validationMockClient.AssertExpectations(GinkgoT())
+				}
+				mockGrafanaGen.AssertExpectations(GinkgoT())
+			})
+
+			It("should reject ConfigMap with invalid dashboard during reconciliation (defensive validation)", func() {
+				By("Creating ConfigMap with invalid dashboard (missing UID)")
+				invalidConfigMap := &v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "invalid-dashboard",
+						Namespace: dashboardNamespace,
+						Labels: map[string]string{
+							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+						},
+						Annotations: map[string]string{
+							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+						},
+					},
+					Data: map[string]string{
+						"dashboard.json": `{
+							"title": "Dashboard without UID",
+							"panels": []
+						}`,
+					},
+				}
+
+				// Create the ConfigMap in the cluster
+				Expect(k8sClient.Create(ctx, invalidConfigMap)).To(Succeed())
+
+				By("First reconciliation should add finalizer")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "invalid-dashboard",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				By("Second reconciliation should fail due to validation")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "invalid-dashboard",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("dashboard validation failed"))
+				Expect(err.Error()).To(ContainSubstring("UID is missing"))
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				// Clean up
+				Expect(k8sClient.Delete(ctx, invalidConfigMap)).To(Succeed())
+			})
+
+			It("should reject ConfigMap with dashboard missing organization during reconciliation", func() {
+				By("Creating ConfigMap with invalid dashboard (missing organization)")
+				invalidConfigMap := &v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "invalid-org-dashboard",
+						Namespace: dashboardNamespace,
+						Labels: map[string]string{
+							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+						},
+						// No organization annotation
+					},
+					Data: map[string]string{
+						"dashboard.json": `{
+							"uid": "test-uid",
+							"title": "Dashboard without organization",
+							"panels": []
+						}`,
+					},
+				}
+
+				// Create the ConfigMap in the cluster
+				Expect(k8sClient.Create(ctx, invalidConfigMap)).To(Succeed())
+
+				By("First reconciliation should add finalizer")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "invalid-org-dashboard",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				By("Second reconciliation should fail due to validation")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "invalid-org-dashboard",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("dashboard validation failed"))
+				Expect(err.Error()).To(ContainSubstring("organization is missing"))
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				// Clean up
+				Expect(k8sClient.Delete(ctx, invalidConfigMap)).To(Succeed())
 			})
 		})
 

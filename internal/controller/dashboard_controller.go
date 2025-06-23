@@ -165,6 +165,17 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 	// Convert ConfigMap to domain objects using mapper
 	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
+
+	// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
+	for _, dash := range dashboards {
+		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
+			logger.Error(nil, "Dashboard validation failed during reconciliation - webhook may have been bypassed",
+				"dashboard", dash.UID(), "organization", dash.Organization(), "errors", validationErrors,
+				"configmap", dashboard.Name, "namespace", dashboard.Namespace)
+			return fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors)
+		}
+	}
+
 	// Process each dashboard
 	for _, dashboard := range dashboards {
 		logger.Info("Configuring dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
