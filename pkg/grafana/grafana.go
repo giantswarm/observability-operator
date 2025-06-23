@@ -80,7 +80,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 			logger.Info("organization id not found, creating")
 
 			// If organization does not exist in Grafana, create it
-			createdOrg, err := s.grafanaAPI.Orgs.CreateOrg(&models.CreateOrgCommand{
+			createdOrg, err := s.grafanaClient.CreateOrg(&models.CreateOrgCommand{
 				Name: organization.Name,
 			})
 			if err != nil {
@@ -104,7 +104,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 	}
 
 	// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
-	_, err = s.grafanaAPI.Orgs.UpdateOrg(organization.ID, &models.UpdateOrgForm{
+	_, err = s.grafanaClient.UpdateOrg(organization.ID, &models.UpdateOrgForm{
 		Name: organization.Name,
 	})
 	if err != nil {
@@ -132,7 +132,7 @@ func (s *Service) deleteOrganization(ctx context.Context, organization Organizat
 		return errors.WithStack(err)
 	}
 
-	_, err = s.grafanaAPI.Orgs.DeleteOrgByID(organization.ID)
+	_, err = s.grafanaClient.DeleteOrgByID(organization.ID)
 	if err != nil {
 		logger.Error(err, "failed to delete organization")
 		return errors.WithStack(err)
@@ -147,9 +147,9 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 
 	// TODO using a serviceaccount later would be better as they are scoped to an organization
 
-	currentOrgID := s.grafanaAPI.OrgID()
-	s.grafanaAPI.WithOrgID(organization.ID)
-	defer s.grafanaAPI.WithOrgID(currentOrgID)
+	currentOrgID := s.grafanaClient.OrgID()
+	s.grafanaClient.WithOrgID(organization.ID)
+	defer s.grafanaClient.WithOrgID(currentOrgID)
 
 	configuredDatasourcesInGrafana, err := s.listDatasourcesForOrganization(ctx)
 	if err != nil {
@@ -179,7 +179,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 
 	for index, datasource := range datasourcesToCreate {
 		logger.Info("creating datasource", "datasource", datasource.Name)
-		created, err := s.grafanaAPI.Datasources.AddDataSource(
+		created, err := s.grafanaClient.AddDataSource(
 			&models.AddDataSourceCommand{
 				UID:            datasource.UID,
 				Name:           datasource.Name,
@@ -200,7 +200,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 
 	for _, datasource := range datasourcesToUpdate {
 		logger.Info("updating datasource", "datasource", datasource.Name)
-		_, err := s.grafanaAPI.Datasources.UpdateDataSourceByUID(
+		_, err := s.grafanaClient.UpdateDataSourceByUID(
 			datasource.UID,
 			&models.UpdateDataSourceCommand{
 				UID:            datasource.UID,
@@ -222,7 +222,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 	updatedDatasources := append(datasourcesToCreate, datasourcesToUpdate...)
 	// If the old mimir datasource exists, we need to delete it
 	logger.Info("deleting datasource", "datasource", mimirOldDatasourceUID)
-	_, err = s.grafanaAPI.Datasources.DeleteDataSourceByUID(mimirOldDatasourceUID)
+	_, err = s.grafanaClient.DeleteDataSourceByUID(mimirOldDatasourceUID)
 	if err != nil {
 		var notFound *datasources.DeleteDataSourceByUIDNotFound
 		if errors.As(err, &notFound) {
@@ -243,7 +243,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 func (s *Service) listDatasourcesForOrganization(ctx context.Context) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
-	resp, err := s.grafanaAPI.Datasources.GetDataSources()
+	resp, err := s.grafanaClient.GetDataSources()
 	if err != nil {
 		logger.Error(err, "failed to get configured datasources")
 		return nil, errors.WithStack(err)
@@ -279,7 +279,7 @@ func isNotFound(err error) bool {
 
 // FindOrgByName is a wrapper function used to find a Grafana organization by its name
 func (s *Service) FindOrgByName(name string) (*Organization, error) {
-	organization, err := s.grafanaAPI.Orgs.GetOrgByName(name)
+	organization, err := s.grafanaClient.GetOrgByName(name)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -296,7 +296,7 @@ func (s *Service) findOrgByID(orgID int64) (*Organization, error) {
 		return nil, orgNotFoundError
 	}
 
-	organization, err := s.grafanaAPI.Orgs.GetOrgByID(orgID)
+	organization, err := s.grafanaClient.GetOrgByID(orgID)
 	if err != nil {
 		if isNotFound(err) {
 			return nil, fmt.Errorf("%w: %w", orgNotFoundError, err)
@@ -313,7 +313,7 @@ func (s *Service) findOrgByID(orgID int64) (*Organization, error) {
 
 // PublishDashboard creates or updates a dashboard in Grafana
 func (s *Service) PublishDashboard(dashboard map[string]any) error {
-	_, err := s.grafanaAPI.Dashboards.PostDashboard(&models.SaveDashboardCommand{
+	_, err := s.grafanaClient.PostDashboard(&models.SaveDashboardCommand{
 		Dashboard: any(dashboard),
 		Message:   "Added by observability-operator",
 		Overwrite: true, // allows dashboard to be updated by the same UID

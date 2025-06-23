@@ -6,46 +6,21 @@ import (
 	"net/url"
 	"time"
 
-	grafana "github.com/grafana/grafana-openapi-client-go/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
-	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
+	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
+	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
+	"github.com/grafana/grafana-openapi-client-go/client/orgs"
+	"github.com/grafana/grafana-openapi-client-go/models"
 )
-
-// MockGrafanaClientGenerator is a simple mock for the GrafanaClientGenerator interface
-type MockGrafanaClientGenerator struct {
-	shouldReturnError bool
-
-	// Call tracking
-	CallCount int
-	LastURL   *url.URL
-}
-
-func (m *MockGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Context, k8sClient client.Client, grafanaURL *url.URL) (*grafana.GrafanaHTTPAPI, error) {
-	m.CallCount++
-	m.LastURL = grafanaURL
-
-	if m.shouldReturnError {
-		return nil, errors.New("grafana service unavailable")
-	}
-
-	// For the working scenario, we'll return an error that indicates
-	// the dashboard configuration should be skipped (simulating a scenario
-	// where Grafana client generation succeeds but dashboard operations are not performed)
-	// This is a limitation of the current test approach - we can't easily mock the complex Grafana API
-	return nil, errors.New("dashboard configuration skipped for testing")
-}
-
-// Ensure MockGrafanaClientGenerator implements the interface
-var _ grafanaclient.GrafanaClientGenerator = (*MockGrafanaClientGenerator)(nil)
 
 var _ = Describe("Dashboard Controller", func() {
 	Context("When reconciling a dashboard ConfigMap", func() {
@@ -61,7 +36,7 @@ var _ = Describe("Dashboard Controller", func() {
 			reconciler         *DashboardReconciler
 			dashboardConfigMap *v1.ConfigMap
 			namespacedName     types.NamespacedName
-			mockGrafanaGen     *MockGrafanaClientGenerator
+			mockGrafanaGen     *mocks.MockGrafanaClientGenerator
 		)
 
 		BeforeEach(func() {
@@ -114,7 +89,7 @@ var _ = Describe("Dashboard Controller", func() {
 			}
 
 			// Create fresh mock for each test
-			mockGrafanaGen = &MockGrafanaClientGenerator{}
+			mockGrafanaGen = &mocks.MockGrafanaClientGenerator{}
 
 			// Setup reconciler with mock client generator
 			grafanaURL, _ := url.Parse("http://localhost:3000")
@@ -186,7 +161,7 @@ var _ = Describe("Dashboard Controller", func() {
 		Context("When Grafana is unavailable", func() {
 			BeforeEach(func() {
 				// Configure mock to return errors (Grafana unavailable)
-				mockGrafanaGen.shouldReturnError = true
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("grafana service unavailable"))
 			})
 
 			It("should handle Grafana unavailability gracefully", func() {
@@ -218,12 +193,452 @@ var _ = Describe("Dashboard Controller", func() {
 				}
 				Expect(hasFinalizerAdded).To(BeFalse())
 			})
+		})
 
-			It("should retry when Grafana becomes available again", func() {
+		Context("When Grafana is available and dashboard operations succeed", func() {
+			var mockGrafanaClient *mocks.MockGrafanaClient
+
+			BeforeEach(func() {
+				// Create a mock Grafana client
+				mockGrafanaClient = &mocks.MockGrafanaClient{}
+
+				// Configure the client generator to return our mock client
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(mockGrafanaClient, nil)
+
+				// Setup common mock expectations for organization operations
+				mockGrafanaClient.On("OrgID").Return(int64(1))
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+			})
+
+			AfterEach(func() {
+				// Assert all expectations were met
+				mockGrafanaClient.AssertExpectations(GinkgoT())
+				mockGrafanaGen.AssertExpectations(GinkgoT())
+			})
+			It("should successfully create a dashboard when organization exists", func() {
+				// Mock the organization lookup to succeed
+				orgResponse := &orgs.GetOrgByNameOK{
+					Payload: &models.OrgDetailsDTO{
+						ID:   int64(2),
+						Name: "Test Dashboard Organization",
+					},
+				}
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+
+				// Mock the dashboard creation to succeed
+				dashboardID := int64(123)
+				dashboardUID := "test-dashboard-uid"
+				dashboardURL := "/d/test-dashboard-uid/test-dashboard"
+				dashboardResponse := &dashboards.PostDashboardOK{
+					Payload: &models.PostDashboardOKBody{
+						ID:  &dashboardID,
+						UID: &dashboardUID,
+						URL: &dashboardURL,
+					},
+				}
+				mockGrafanaClient.On("PostDashboard", mock.MatchedBy(func(cmd interface{}) bool {
+					// Verify the dashboard command contains the expected data
+					if saveCmd, ok := cmd.(*models.SaveDashboardCommand); ok {
+						return saveCmd.Dashboard != nil && saveCmd.Overwrite == true
+					}
+					return false
+				})).Return(dashboardResponse, nil)
+
 				By("Creating a dashboard ConfigMap")
-				retryTestConfigMap := &v1.ConfigMap{
+				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
+
+				By("First reconciliation - should add finalizer only")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: namespacedName,
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				By("Checking that the finalizer was added")
+				createdConfigMap := &v1.ConfigMap{}
+				err = k8sClient.Get(ctx, namespacedName, createdConfigMap)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Finalizer should be added after first reconciliation
+				hasFinalizerAdded := false
+				for _, finalizer := range createdConfigMap.Finalizers {
+					if finalizer == DashboardFinalizer {
+						hasFinalizerAdded = true
+						break
+					}
+				}
+				Expect(hasFinalizerAdded).To(BeTrue())
+
+				By("Second reconciliation - should process the dashboard")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: namespacedName,
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+			})
+
+			It("should fail when dashboard creation fails in Grafana", func() {
+				// Mock the organization lookup to succeed
+				orgResponse := &orgs.GetOrgByNameOK{
+					Payload: &models.OrgDetailsDTO{
+						ID:   int64(2),
+						Name: "Test Dashboard Organization",
+					},
+				}
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+
+				// Mock the dashboard creation to fail
+				mockGrafanaClient.On("PostDashboard", mock.Anything).Return(nil, errors.New("dashboard creation failed"))
+
+				By("Creating a dashboard ConfigMap")
+				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
+
+				By("First reconciliation - should add finalizer only")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: namespacedName,
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				By("Checking that the finalizer was added")
+				createdConfigMap := &v1.ConfigMap{}
+				err = k8sClient.Get(ctx, namespacedName, createdConfigMap)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Finalizer should be added after first reconciliation
+				hasFinalizerAdded := false
+				for _, finalizer := range createdConfigMap.Finalizers {
+					if finalizer == DashboardFinalizer {
+						hasFinalizerAdded = true
+						break
+					}
+				}
+				Expect(hasFinalizerAdded).To(BeTrue())
+
+				By("Second reconciliation - should fail due to dashboard creation failure")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: namespacedName,
+				})
+
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("dashboard creation failed"))
+				Expect(result).To(Equal(reconcile.Result{}))
+			})
+		})
+
+		Context("When Grafana operations fail", func() {
+			var mockGrafanaClient *mocks.MockGrafanaClient
+
+			BeforeEach(func() {
+				// Create a mock Grafana client
+				mockGrafanaClient = &mocks.MockGrafanaClient{}
+
+				// Configure the client generator to return our mock client
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(mockGrafanaClient, nil)
+			})
+
+			AfterEach(func() {
+				// Assert all expectations were met
+				mockGrafanaClient.AssertExpectations(GinkgoT())
+				mockGrafanaGen.AssertExpectations(GinkgoT())
+			})
+
+			It("should fail when organization does not exist", func() {
+				// Mock the organization lookup to fail
+				// Note: OrgID() and WithOrgID() are NOT called when organization lookup fails
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(nil, errors.New("organization not found"))
+
+				By("Creating a dashboard ConfigMap")
+				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
+
+				By("First reconciliation - should add finalizer only")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: namespacedName,
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				By("Checking that the finalizer was added")
+				createdConfigMap := &v1.ConfigMap{}
+				err = k8sClient.Get(ctx, namespacedName, createdConfigMap)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Finalizer should be added after first reconciliation
+				hasFinalizerAdded := false
+				for _, finalizer := range createdConfigMap.Finalizers {
+					if finalizer == DashboardFinalizer {
+						hasFinalizerAdded = true
+						break
+					}
+				}
+				Expect(hasFinalizerAdded).To(BeTrue())
+
+				By("Second reconciliation - should fail due to organization not found")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: namespacedName,
+				})
+
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("organization not found"))
+				Expect(result).To(Equal(reconcile.Result{}))
+			})
+		})
+
+		Context("When deleting a dashboard", func() {
+			var mockGrafanaClient *mocks.MockGrafanaClient
+
+			BeforeEach(func() {
+				// Create a mock Grafana client
+				mockGrafanaClient = &mocks.MockGrafanaClient{}
+
+				// Configure the client generator to return our mock client
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(mockGrafanaClient, nil)
+
+				// Setup common mock expectations for organization operations
+				mockGrafanaClient.On("OrgID").Return(int64(1))
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+
+				// First create the dashboard with finalizer
+				dashboardConfigMap.Finalizers = []string{DashboardFinalizer}
+				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
+			})
+
+			AfterEach(func() {
+				// Assert all expectations were met
+				mockGrafanaClient.AssertExpectations(GinkgoT())
+				mockGrafanaGen.AssertExpectations(GinkgoT())
+			})
+			It("should successfully delete a dashboard", func() {
+				// Mock the organization lookup to succeed
+				orgResponse := &orgs.GetOrgByNameOK{
+					Payload: &models.OrgDetailsDTO{
+						ID:   int64(2),
+						Name: "Test Dashboard Organization",
+					},
+				}
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+
+				// Mock getting the dashboard to verify it exists
+				dashboardResponse := &dashboards.GetDashboardByUIDOK{
+					Payload: &models.DashboardFullWithMeta{
+						Dashboard: map[string]interface{}{
+							"uid":   "test-dashboard-uid",
+							"title": "Test Dashboard",
+						},
+					},
+				}
+				mockGrafanaClient.On("GetDashboardByUID", "test-dashboard-uid").Return(dashboardResponse, nil)
+
+				// Mock the dashboard deletion to succeed
+				deleteMessage := "Dashboard deleted"
+				deleteTitle := "Test Dashboard"
+				deleteResponse := &dashboards.DeleteDashboardByUIDOK{
+					Payload: &models.DeleteDashboardByUIDOKBody{
+						Message: &deleteMessage,
+						Title:   &deleteTitle,
+					},
+				}
+				mockGrafanaClient.On("DeleteDashboardByUID", "test-dashboard-uid").Return(deleteResponse, nil)
+
+				By("Marking the dashboard ConfigMap for deletion")
+				createdConfigMap := &v1.ConfigMap{}
+				err := k8sClient.Get(ctx, namespacedName, createdConfigMap)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(k8sClient.Delete(ctx, createdConfigMap)).To(Succeed())
+
+				By("Reconciling the dashboard deletion")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: namespacedName,
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				By("Verifying the ConfigMap was actually deleted")
+				Eventually(func() bool {
+					err := k8sClient.Get(ctx, namespacedName, &v1.ConfigMap{})
+					return apierrors.IsNotFound(err)
+				}, timeout, interval).Should(BeTrue())
+			})
+
+			It("should fail when dashboard deletion fails in Grafana", func() {
+				// Mock the organization lookup to succeed
+				orgResponse := &orgs.GetOrgByNameOK{
+					Payload: &models.OrgDetailsDTO{
+						ID:   int64(2),
+						Name: "Test Dashboard Organization",
+					},
+				}
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+
+				// Mock getting the dashboard to succeed
+				dashboardResponse := &dashboards.GetDashboardByUIDOK{
+					Payload: &models.DashboardFullWithMeta{
+						Dashboard: map[string]interface{}{
+							"uid":   "test-dashboard-uid",
+							"title": "Test Dashboard",
+						},
+					},
+				}
+				mockGrafanaClient.On("GetDashboardByUID", "test-dashboard-uid").Return(dashboardResponse, nil)
+
+				// Mock the dashboard deletion to fail
+				mockGrafanaClient.On("DeleteDashboardByUID", "test-dashboard-uid").Return(nil, errors.New("dashboard deletion failed"))
+
+				By("Marking the dashboard ConfigMap for deletion")
+				createdConfigMap := &v1.ConfigMap{}
+				err := k8sClient.Get(ctx, namespacedName, createdConfigMap)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(k8sClient.Delete(ctx, createdConfigMap)).To(Succeed())
+
+				By("Reconciling the dashboard deletion")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: namespacedName,
+				})
+
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("dashboard deletion failed"))
+				Expect(result).To(Equal(reconcile.Result{}))
+			})
+		})
+
+		Context("When testing edge cases and error conditions", func() {
+			var mockGrafanaClient *mocks.MockGrafanaClient
+
+			BeforeEach(func() {
+				mockGrafanaClient = &mocks.MockGrafanaClient{}
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(mockGrafanaClient, nil)
+				// Note: Only set mock expectations when they are actually needed
+			})
+
+			AfterEach(func() {
+				mockGrafanaClient.AssertExpectations(GinkgoT())
+				mockGrafanaGen.AssertExpectations(GinkgoT())
+			})
+
+			It("should handle organization label in labels instead of annotations", func() {
+				// Set up mock expectations for organization operations
+				mockGrafanaClient.On("OrgID").Return(int64(1))
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+
+				// Test ConfigMap with organization in labels instead of annotations
+				// Note: Using a valid Kubernetes label value (no spaces, alphanumeric + dashes/dots/underscores)
+				configMapWithLabelOrg := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "retry-test-dashboard",
+						Name:      "dashboard-with-label-org",
+						Namespace: dashboardNamespace,
+						Labels: map[string]string{
+							DashboardSelectorLabelName:                 DashboardSelectorLabelValue,
+							"observability.giantswarm.io/organization": "test-dashboard-org",
+						},
+					},
+					Data: map[string]string{
+						"dashboard.json": `{
+							"uid": "test-dashboard-uid",
+							"title": "Test Dashboard"
+						}`,
+					},
+				}
+
+				// Mock the organization lookup to succeed
+				orgResponse := &orgs.GetOrgByNameOK{
+					Payload: &models.OrgDetailsDTO{
+						ID:   int64(2),
+						Name: "test-dashboard-org",
+					},
+				}
+				mockGrafanaClient.On("GetOrgByName", "test-dashboard-org").Return(orgResponse, nil)
+
+				// Mock the dashboard creation to succeed
+				dashboardResponse := &dashboards.PostDashboardOK{
+					Payload: &models.PostDashboardOKBody{},
+				}
+				mockGrafanaClient.On("PostDashboard", mock.Anything).Return(dashboardResponse, nil)
+
+				By("Creating a dashboard ConfigMap with organization in labels")
+				Expect(k8sClient.Create(ctx, configMapWithLabelOrg)).To(Succeed())
+
+				By("First reconciliation - should add finalizer only")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-with-label-org",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Second reconciliation - should process the dashboard successfully")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-with-label-org",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				// Clean up
+				Expect(k8sClient.Delete(ctx, configMapWithLabelOrg)).To(Succeed())
+			})
+
+			It("should handle ConfigMap with no organization label or annotation", func() {
+				configMapWithoutOrg := &v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dashboard-without-org",
+						Namespace: dashboardNamespace,
+						Labels: map[string]string{
+							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+						},
+					},
+					Data: map[string]string{
+						"dashboard.json": `{
+							"uid": "test-dashboard-uid",
+							"title": "Test Dashboard"
+						}`,
+					},
+				}
+
+				By("Creating a dashboard ConfigMap without organization")
+				Expect(k8sClient.Create(ctx, configMapWithoutOrg)).To(Succeed())
+
+				By("First reconciliation - should add finalizer only")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-without-org",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Second reconciliation - should succeed but skip dashboard processing")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-without-org",
+						Namespace: dashboardNamespace,
+					},
+				})
+				// Should succeed because missing organization is handled gracefully
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				// Clean up
+				Expect(k8sClient.Delete(ctx, configMapWithoutOrg)).To(Succeed())
+			})
+
+			It("should handle dashboard with missing UID", func() {
+				// Set up mock expectations for organization operations
+				mockGrafanaClient.On("OrgID").Return(int64(1))
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+
+				configMapWithoutUID := &v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dashboard-without-uid",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
 							DashboardSelectorLabelName: DashboardSelectorLabelValue,
@@ -234,48 +649,262 @@ var _ = Describe("Dashboard Controller", func() {
 					},
 					Data: map[string]string{
 						"dashboard.json": `{
-							"uid": "retry-test-dashboard-uid",
-							"title": "Retry Test Dashboard",
-							"tags": ["test"],
-							"panels": []
+							"title": "Test Dashboard Without UID"
 						}`,
 					},
 				}
-				Expect(k8sClient.Create(ctx, retryTestConfigMap)).To(Succeed())
 
-				retryNamespacedName := types.NamespacedName{
-					Name:      "retry-test-dashboard",
-					Namespace: dashboardNamespace,
+				// Mock the organization lookup to succeed
+				orgResponse := &orgs.GetOrgByNameOK{
+					Payload: &models.OrgDetailsDTO{
+						ID:   int64(2),
+						Name: "Test Dashboard Organization",
+					},
 				}
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
 
-				By("First reconciliation - should fail with Grafana unavailable")
+				By("Creating a dashboard ConfigMap without UID")
+				Expect(k8sClient.Create(ctx, configMapWithoutUID)).To(Succeed())
+
+				By("First reconciliation - should add finalizer only")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
-					NamespacedName: retryNamespacedName,
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-without-uid",
+						Namespace: dashboardNamespace,
+					},
 				})
-				Expect(err).To(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{}))
+				Expect(err).NotTo(HaveOccurred())
 
-				By("Making Grafana available again")
-				mockGrafanaGen.shouldReturnError = false
-
-				By("Second reconciliation - should now fail with 'dashboard configuration skipped'")
+				By("Second reconciliation - should succeed but skip dashboard without UID")
 				result, err = reconciler.Reconcile(ctx, reconcile.Request{
-					NamespacedName: retryNamespacedName,
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-without-uid",
+						Namespace: dashboardNamespace,
+					},
 				})
-				// This will still fail but with a different error message indicating the test limitation
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("dashboard configuration skipped for testing"))
+				// Should succeed because missing UID is handled gracefully
+				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
 				// Clean up
-				Expect(k8sClient.Delete(ctx, retryTestConfigMap)).To(Succeed())
+				Expect(k8sClient.Delete(ctx, configMapWithoutUID)).To(Succeed())
+			})
+
+			It("should handle dashboard with existing ID that needs cleaning", func() {
+				// Set up mock expectations for organization operations
+				mockGrafanaClient.On("OrgID").Return(int64(1))
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+
+				configMapWithID := &v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dashboard-with-id",
+						Namespace: dashboardNamespace,
+						Labels: map[string]string{
+							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+						},
+						Annotations: map[string]string{
+							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+						},
+					},
+					Data: map[string]string{
+						"dashboard.json": `{
+							"id": 123,
+							"uid": "test-dashboard-uid",
+							"title": "Test Dashboard With ID"
+						}`,
+					},
+				}
+
+				// Mock the organization lookup to succeed
+				orgResponse := &orgs.GetOrgByNameOK{
+					Payload: &models.OrgDetailsDTO{
+						ID:   int64(2),
+						Name: "Test Dashboard Organization",
+					},
+				}
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+
+				// Mock the dashboard creation to succeed
+				dashboardResponse := &dashboards.PostDashboardOK{
+					Payload: &models.PostDashboardOKBody{},
+				}
+				mockGrafanaClient.On("PostDashboard", mock.MatchedBy(func(cmd interface{}) bool {
+					// Verify that the dashboard ID was cleaned (removed)
+					if saveCmd, ok := cmd.(*models.SaveDashboardCommand); ok {
+						if dashboard, ok := saveCmd.Dashboard.(map[string]interface{}); ok {
+							// ID should be cleaned/removed
+							_, hasID := dashboard["id"]
+							return !hasID // Should not have ID after cleaning
+						}
+					}
+					return false
+				})).Return(dashboardResponse, nil)
+
+				By("Creating a dashboard ConfigMap with existing ID")
+				Expect(k8sClient.Create(ctx, configMapWithID)).To(Succeed())
+
+				By("First reconciliation - should add finalizer only")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-with-id",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Second reconciliation - should process and clean the dashboard ID")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-with-id",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				// Clean up
+				Expect(k8sClient.Delete(ctx, configMapWithID)).To(Succeed())
+			})
+
+			It("should handle ConfigMap with invalid JSON", func() {
+				// Set up mock expectations for organization operations
+				mockGrafanaClient.On("OrgID").Return(int64(1))
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+
+				configMapWithInvalidJSON := &v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dashboard-invalid-json",
+						Namespace: dashboardNamespace,
+						Labels: map[string]string{
+							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+						},
+						Annotations: map[string]string{
+							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+						},
+					},
+					Data: map[string]string{
+						"dashboard.json": `{
+							"uid": "test-dashboard-uid"
+							"title": "Invalid JSON - missing comma"
+						}`,
+					},
+				}
+
+				// Mock the organization lookup to succeed
+				orgResponse := &orgs.GetOrgByNameOK{
+					Payload: &models.OrgDetailsDTO{
+						ID:   int64(2),
+						Name: "Test Dashboard Organization",
+					},
+				}
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+
+				By("Creating a dashboard ConfigMap with invalid JSON")
+				Expect(k8sClient.Create(ctx, configMapWithInvalidJSON)).To(Succeed())
+
+				By("First reconciliation - should add finalizer only")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-invalid-json",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Second reconciliation - should succeed but skip invalid JSON")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "dashboard-invalid-json",
+						Namespace: dashboardNamespace,
+					},
+				})
+				// Should succeed because invalid JSON is handled gracefully
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				// Clean up
+				Expect(k8sClient.Delete(ctx, configMapWithInvalidJSON)).To(Succeed())
+			})
+
+			It("should handle ConfigMap with multiple dashboards", func() {
+				// Set up mock expectations for organization operations
+				mockGrafanaClient.On("OrgID").Return(int64(1))
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+
+				configMapWithMultipleDashboards := &v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "multiple-dashboards",
+						Namespace: dashboardNamespace,
+						Labels: map[string]string{
+							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+						},
+						Annotations: map[string]string{
+							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+						},
+					},
+					Data: map[string]string{
+						"dashboard1.json": `{
+							"uid": "dashboard-1",
+							"title": "First Dashboard"
+						}`,
+						"dashboard2.json": `{
+							"uid": "dashboard-2", 
+							"title": "Second Dashboard"
+						}`,
+						"dashboard3.json": `{
+							"uid": "dashboard-3",
+							"title": "Third Dashboard",
+							"id": 456
+						}`,
+					},
+				}
+
+				// Mock the organization lookup to succeed
+				orgResponse := &orgs.GetOrgByNameOK{
+					Payload: &models.OrgDetailsDTO{
+						ID:   int64(2),
+						Name: "Test Dashboard Organization",
+					},
+				}
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+
+				// Mock dashboard creation for all three dashboards
+				dashboardResponse := &dashboards.PostDashboardOK{
+					Payload: &models.PostDashboardOKBody{},
+				}
+				mockGrafanaClient.On("PostDashboard", mock.Anything).Return(dashboardResponse, nil).Times(3)
+
+				By("Creating a ConfigMap with multiple dashboards")
+				Expect(k8sClient.Create(ctx, configMapWithMultipleDashboards)).To(Succeed())
+
+				By("First reconciliation - should add finalizer only")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "multiple-dashboards",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Second reconciliation - should process all dashboards")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      "multiple-dashboards",
+						Namespace: dashboardNamespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				// Clean up
+				Expect(k8sClient.Delete(ctx, configMapWithMultipleDashboards)).To(Succeed())
 			})
 		})
 
 		Context("When testing edge cases", func() {
 			BeforeEach(func() {
 				// Use "working" Grafana for edge case tests (though it will still fail with test message)
-				mockGrafanaGen.shouldReturnError = false
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("dashboard configuration skipped for testing"))
 			})
 
 			It("should handle ConfigMap without dashboard labels", func() {
