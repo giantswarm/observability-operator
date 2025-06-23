@@ -6,46 +6,21 @@ import (
 	"net/url"
 	"time"
 
-	grafana "github.com/grafana/grafana-openapi-client-go/client"
+	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
+	"github.com/grafana/grafana-openapi-client-go/client/orgs"
+	"github.com/grafana/grafana-openapi-client-go/models"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
-	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
+	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
-
-// MockGrafanaClientGenerator is a simple mock for the GrafanaClientGenerator interface
-type MockGrafanaClientGenerator struct {
-	shouldReturnError bool
-
-	// Call tracking
-	CallCount int
-	LastURL   *url.URL
-}
-
-func (m *MockGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Context, k8sClient client.Client, grafanaURL *url.URL) (*grafana.GrafanaHTTPAPI, error) {
-	m.CallCount++
-	m.LastURL = grafanaURL
-
-	if m.shouldReturnError {
-		return nil, errors.New("grafana service unavailable")
-	}
-
-	// For the working scenario, we'll return an error that indicates
-	// the dashboard configuration should be skipped (simulating a scenario
-	// where Grafana client generation succeeds but dashboard operations are not performed)
-	// This is a limitation of the current test approach - we can't easily mock the complex Grafana API
-	return nil, errors.New("dashboard configuration skipped for testing")
-}
-
-// Ensure MockGrafanaClientGenerator implements the interface
-var _ grafanaclient.GrafanaClientGenerator = (*MockGrafanaClientGenerator)(nil)
 
 var _ = Describe("Dashboard Controller", func() {
 	Context("When reconciling a dashboard ConfigMap", func() {
@@ -61,7 +36,8 @@ var _ = Describe("Dashboard Controller", func() {
 			reconciler         *DashboardReconciler
 			dashboardConfigMap *v1.ConfigMap
 			namespacedName     types.NamespacedName
-			mockGrafanaGen     *MockGrafanaClientGenerator
+			mockGrafanaGen     *mocks.MockGrafanaClientGenerator
+			mockGrafanaClient  *mocks.MockGrafanaClient
 		)
 
 		BeforeEach(func() {
@@ -113,8 +89,9 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			// Create fresh mock for each test
-			mockGrafanaGen = &MockGrafanaClientGenerator{}
+			// Create fresh mocks for each test
+			mockGrafanaGen = &mocks.MockGrafanaClientGenerator{}
+			mockGrafanaClient = &mocks.MockGrafanaClient{}
 
 			// Setup reconciler with mock client generator
 			grafanaURL, _ := url.Parse("http://localhost:3000")
@@ -183,10 +160,78 @@ var _ = Describe("Dashboard Controller", func() {
 			}
 		})
 
+		Context("When Grafana is available", func() {
+			BeforeEach(func() {
+				// Configure mock for successful Grafana client generation
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).
+					Return(mockGrafanaClient, nil)
+
+				// Setup mock client methods for successful operation
+				mockGrafanaClient.On("OrgID").Return(int64(1))
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(
+					&orgs.GetOrgByNameOK{
+						Payload: &models.OrgDetailsDTO{
+							ID:   1,
+							Name: "Test Dashboard Organization",
+						},
+					}, nil)
+
+				// The PostDashboard call happens on the same client after WithOrgID
+				mockGrafanaClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
+					&dashboards.PostDashboardOK{
+						Payload: &models.PostDashboardOKBody{
+							UID: func() *string { s := "test-dashboard-uid"; return &s }(),
+						},
+					}, nil)
+			})
+
+			It("should successfully create a dashboard", func() {
+				By("Creating a dashboard ConfigMap")
+				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
+
+				By("First reconciliation - should add finalizer")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: namespacedName,
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				By("Checking that the finalizer was added")
+				createdConfigMap := &v1.ConfigMap{}
+				err = k8sClient.Get(ctx, namespacedName, createdConfigMap)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Finalizer should be added on the first reconciliation
+				hasFinalizerAdded := false
+				for _, finalizer := range createdConfigMap.Finalizers {
+					if finalizer == DashboardFinalizer {
+						hasFinalizerAdded = true
+						break
+					}
+				}
+				Expect(hasFinalizerAdded).To(BeTrue())
+
+				By("Second reconciliation - should configure dashboard in Grafana")
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: namespacedName,
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				// Verify mock expectations were met
+				mockGrafanaGen.AssertExpectations(GinkgoT())
+				mockGrafanaClient.AssertExpectations(GinkgoT())
+			})
+		})
+
 		Context("When Grafana is unavailable", func() {
 			BeforeEach(func() {
 				// Configure mock to return errors (Grafana unavailable)
-				mockGrafanaGen.shouldReturnError = true
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).
+					Return(nil, errors.New("grafana service unavailable"))
 			})
 
 			It("should handle Grafana unavailability gracefully", func() {
@@ -256,15 +301,33 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(result).To(Equal(reconcile.Result{}))
 
 				By("Making Grafana available again")
-				mockGrafanaGen.shouldReturnError = false
+				// Clear previous expectations and set up successful mock
+				mockGrafanaGen.ExpectedCalls = nil
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).
+					Return(mockGrafanaClient, nil)
 
-				By("Second reconciliation - should now fail with 'dashboard configuration skipped'")
+				// Setup mock client methods for successful dashboard operation
+				mockGrafanaClient.On("OrgID").Return(int64(1))
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+				mockGrafanaClient.On("GetOrgByName", "Test Dashboard Organization").Return(
+					&orgs.GetOrgByNameOK{
+						Payload: &models.OrgDetailsDTO{
+							ID:   1,
+							Name: "Test Dashboard Organization",
+						},
+					}, nil)
+				mockGrafanaClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
+					&dashboards.PostDashboardOK{
+						Payload: &models.PostDashboardOKBody{
+							UID: func() *string { s := "test-dashboard-uid"; return &s }(),
+						},
+					}, nil)
+
+				By("Second reconciliation - should now succeed")
 				result, err = reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: retryNamespacedName,
 				})
-				// This will still fail but with a different error message indicating the test limitation
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("dashboard configuration skipped for testing"))
+				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
 				// Clean up
@@ -274,8 +337,26 @@ var _ = Describe("Dashboard Controller", func() {
 
 		Context("When testing edge cases", func() {
 			BeforeEach(func() {
-				// Use "working" Grafana for edge case tests (though it will still fail with test message)
-				mockGrafanaGen.shouldReturnError = false
+				// Use working Grafana for edge case tests
+				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).
+					Return(mockGrafanaClient, nil)
+
+				// Setup mock client methods for successful operation
+				mockGrafanaClient.On("OrgID").Return(int64(1))
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
+				mockGrafanaClient.On("GetOrgByName", mock.AnythingOfType("string")).Return(
+					&orgs.GetOrgByNameOK{
+						Payload: &models.OrgDetailsDTO{
+							ID:   1,
+							Name: "Test Dashboard Organization",
+						},
+					}, nil)
+				mockGrafanaClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
+					&dashboards.PostDashboardOK{
+						Payload: &models.PostDashboardOKBody{
+							UID: func() *string { s := "test-dashboard-uid"; return &s }(),
+						},
+					}, nil)
 			})
 
 			It("should handle ConfigMap without dashboard labels", func() {
@@ -287,6 +368,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Labels: map[string]string{
 							"app": "some-other-app",
 						},
+						// Note: no organization annotation
 					},
 					Data: map[string]string{
 						"config.yml": "some: config",
@@ -302,13 +384,9 @@ var _ = Describe("Dashboard Controller", func() {
 					},
 				})
 
-				// Note: In a real environment, the controller manager's label selector predicate
-				// would prevent this ConfigMap from being reconciled. However, since we're calling
-				// Reconcile() directly in the test, it will process any ConfigMap.
-				// The controller will still fail because it tries to generate a Grafana client
-				// for any ConfigMap it processes, regardless of labels.
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("dashboard configuration skipped for testing"))
+				// Should succeed since dashboard processing will be skipped due to missing organization annotation
+				// The controller will add finalizer first, then skip dashboard processing when it finds no organization
+				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
 				// Clean up
