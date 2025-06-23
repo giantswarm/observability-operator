@@ -17,7 +17,6 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/blang/semver/v4"
-	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
@@ -75,7 +74,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	clusterShardingStrategy, err := commonmonitoring.GetClusterShardingStrategy(cluster)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("failed to get cluster sharding strategy: %w", err)
 	}
 
 	shardingStrategy := a.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
@@ -83,7 +82,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	alloyConfig, err := a.generateAlloyConfig(ctx, cluster, tenants, observabilityBundleVersion)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate alloy config: %w", err)
 	}
 
 	data := struct {
@@ -104,8 +103,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	alloyMetricsAppVersion, err := a.getAlloyMetricsAppVersion(ctx, cluster)
 	if err != nil {
-		logger.Error(err, "alloy-service - failed to get Alloy metrics app version")
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("failed to get alloy metrics app version: %w", err)
 	}
 
 	if alloyMetricsAppVersion.LT(alloyMetricsRuleLoadingFixedAppVersion) {
@@ -116,7 +114,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	var values bytes.Buffer
 	err = alloyMonitoringConfigTemplate.Execute(&values, data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to template alloy monitoring config: %w", err)
 	}
 
 	configMapData := make(map[string]string)
@@ -130,12 +128,12 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 	organization, err := a.Read(ctx, cluster)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", fmt.Errorf("failed to read organization: %w", err)
 	}
 
 	provider, err := common.GetClusterProvider(cluster)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", fmt.Errorf("failed to get cluster provider: %w", err)
 	}
 
 	data := struct {
@@ -208,7 +206,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 	err = alloyConfigTemplate.Execute(&values, data)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to template alloy config: %w", err)
 	}
 
 	return values.String(), nil
@@ -236,7 +234,11 @@ func (a *Service) getAlloyMetricsAppVersion(ctx context.Context, cluster *cluste
 	var currentApp appv1.App
 	err = a.Client.Get(ctx, appMeta, &currentApp)
 	if err != nil {
-		return version, err
+		return version, fmt.Errorf("failed to get alloy metrics app: %w", err)
 	}
-	return semver.Parse(currentApp.Spec.Version)
+	v, err := semver.Parse(currentApp.Spec.Version)
+	if err != nil {
+		return version, fmt.Errorf("failed to parse alloy metrics app version: %w", err)
+	}
+	return v, nil
 }
