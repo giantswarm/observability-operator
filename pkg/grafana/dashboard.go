@@ -11,16 +11,8 @@ import (
 
 // ConfigureDashboard configures a dashboard
 func (s *Service) ConfigureDashboard(ctx context.Context, dash *dashboard.Dashboard) error {
-	logger := log.FromContext(ctx).WithValues("Dashboard UID", dash.UID(), "Dashboard Org", dash.Organization())
-
-	// Validate the dashboard first
-	if validationErrors := dash.Validate(); len(validationErrors) > 0 {
-		logger.Info("Skipping dashboard due to validation errors", "errors", validationErrors)
-		// Return nil to indicate successful handling (graceful skip)
-		return nil
-	}
-
-	return s.withinOrganization(dash, func() error {
+	return s.withinOrganization(ctx, dash, func(ctx context.Context) error {
+		logger := log.FromContext(ctx)
 		// Prepare dashboard content for Grafana API using local function
 		dashboardContent := prepareForGrafanaAPI(dash)
 
@@ -36,16 +28,8 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dash *dashboard.Dashbo
 }
 
 func (s *Service) DeleteDashboard(ctx context.Context, dash *dashboard.Dashboard) error {
-	logger := log.FromContext(ctx).WithValues("Dashboard UID", dash.UID(), "Dashboard Org", dash.Organization())
-
-	// Validate the dashboard first
-	if validationErrors := dash.Validate(); len(validationErrors) > 0 {
-		logger.Info("Skipping dashboard deletion due to validation errors", "errors", validationErrors)
-		// Return nil to indicate successful handling (graceful skip)
-		return nil
-	}
-
-	return s.withinOrganization(dash, func() error {
+	return s.withinOrganization(ctx, dash, func(ctx context.Context) error {
+		logger := log.FromContext(ctx)
 		_, err := s.grafanaClient.GetDashboardByUID(dash.UID())
 		if err != nil {
 			return fmt.Errorf("failed to get dashboard: %w", err)
@@ -62,7 +46,16 @@ func (s *Service) DeleteDashboard(ctx context.Context, dash *dashboard.Dashboard
 }
 
 // withinOrganization executes the given function within the context of the dashboard's organization
-func (s *Service) withinOrganization(dash *dashboard.Dashboard, fn func() error) error {
+func (s *Service) withinOrganization(ctx context.Context, dash *dashboard.Dashboard, fn func(ctx context.Context) error) error {
+	logger := log.FromContext(ctx)
+
+	// Validate the dashboard first
+	if validationErrors := dash.Validate(); len(validationErrors) > 0 {
+		logger.Info("Skipping dashboard due to validation errors", "errors", validationErrors)
+		// Return nil to indicate successful handling (graceful skip)
+		return nil
+	}
+
 	// Switch context to the dashboard-defined org
 	organization, err := s.FindOrgByName(dash.Organization())
 	if err != nil {
@@ -71,9 +64,10 @@ func (s *Service) withinOrganization(dash *dashboard.Dashboard, fn func() error)
 	currentOrgID := s.grafanaClient.OrgID()
 	s.grafanaClient.WithOrgID(organization.ID)
 	defer s.grafanaClient.WithOrgID(currentOrgID)
+	ctx = log.IntoContext(ctx, logger.WithValues("organization", organization.Name, "dashboard", dash.UID()))
 
 	// Execute the provided function within the organization context
-	return fn()
+	return fn(ctx)
 }
 
 // prepareForGrafanaAPI removes the "id" field which can cause conflicts during dashboard creation/update
