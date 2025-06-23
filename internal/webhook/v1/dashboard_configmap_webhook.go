@@ -37,7 +37,7 @@ var dashboardconfigmaplog = logf.Log.WithName("dashboardconfigmap-resource")
 
 // SetupDashboardConfigMapWebhookWithManager registers the webhook for ConfigMap in the manager.
 func SetupDashboardConfigMapWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
+	err := ctrl.NewWebhookManagedBy(mgr).
 		For(&corev1.ConfigMap{}).
 		WithValidator(&DashboardConfigMapValidator{
 			client:          mgr.GetClient(),
@@ -45,6 +45,11 @@ func SetupDashboardConfigMapWebhookWithManager(mgr ctrl.Manager) error {
 		}).
 		WithCustomPath("/validate-dashboard-configmap").
 		Complete()
+	if err != nil {
+		return fmt.Errorf("failed to build dashboard webhook manager: %w", err)
+	}
+
+	return nil
 }
 
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.

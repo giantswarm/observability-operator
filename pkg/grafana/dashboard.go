@@ -2,8 +2,10 @@ package grafana
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
-	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
@@ -57,8 +59,7 @@ func (s *Service) withinOrganization(ctx context.Context, dash *dashboard.Dashbo
 	// Switch context to the dashboard-defined org
 	organization, err := s.FindOrgByName(dash.Organization())
 	if err != nil {
-		logger.Error(err, "Failed to find organization")
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to find organization: %w", err)
 	}
 	currentOrgID := s.grafanaAPI.OrgID()
 	s.grafanaAPI.WithOrgID(organization.ID)

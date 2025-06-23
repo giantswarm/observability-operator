@@ -2,9 +2,9 @@ package monitoring
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -67,12 +67,12 @@ func GetMimirIngressPassword(ctx context.Context, k8sClient client.Client) (stri
 		Namespace: mimirNamespace,
 	}, secret)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get mimir secret: %w", err)
 	}
 
 	mimirPassword, err := readMimirAuthPasswordFromSecret(*secret)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read mimir auth password from secret: %w", err)
 	}
 
 	return mimirPassword, nil
@@ -80,33 +80,35 @@ func GetMimirIngressPassword(ctx context.Context, k8sClient client.Client) (stri
 
 func readMimirAuthPasswordFromSecret(secret corev1.Secret) (string, error) {
 	if credentials, ok := secret.Data["credentials"]; !ok {
-		return "", errors.New("credentials key not found in secret")
+		return "", fmt.Errorf("credentials key not found in secret")
 	} else {
 		var secretData string
 
 		err := yaml.Unmarshal(credentials, &secretData)
 		if err != nil {
-			return "", errors.WithStack(err)
+			return "", fmt.Errorf("failed to unmarshal credentials from secret: %w", err)
 		}
 		return secretData, nil
 	}
 }
 
-func GetClusterShardingStrategy(cluster metav1.Object) (*sharding.Strategy, error) {
-	var err error
+func GetClusterShardingStrategy(cluster metav1.Object) (s *sharding.Strategy, err error) {
 	var scaleUpSeriesCount, scaleDownPercentage float64
 	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-up-series-count"]; ok {
 		if scaleUpSeriesCount, err = strconv.ParseFloat(value, 64); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse scale-up series count: %w", err)
 		}
 	}
 	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-down-percentage"]; ok {
 		if scaleDownPercentage, err = strconv.ParseFloat(value, 64); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse scale-down percentage: %w", err)
 		}
 	}
-	return &sharding.Strategy{
+
+	s = &sharding.Strategy{
 		ScaleUpSeriesCount:  scaleUpSeriesCount,
 		ScaleDownPercentage: scaleDownPercentage,
-	}, nil
+	}
+
+	return s, nil
 }

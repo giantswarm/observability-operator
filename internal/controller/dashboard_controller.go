@@ -2,9 +2,9 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -55,12 +55,7 @@ func SetupDashboardReconciler(mgr manager.Manager, conf config.Config, grafanaCl
 		grafanaClientGen: grafanaClientGen,
 	}
 
-	err := r.SetupWithManager(mgr)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.SetupWithManager(mgr)
 }
 
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
@@ -80,12 +75,16 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	dashboard := &v1.ConfigMap{}
 	err := r.Get(ctx, req.NamespacedName, dashboard)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		if client.IgnoreNotFound(err) != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to get dashboard configmap: %w", err)
+		}
+
+		return ctrl.Result{}, nil
 	}
 
 	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
 	grafanaService := grafana.NewService(r.Client, grafanaAPI)
@@ -108,10 +107,10 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 		})
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to create label selector predicate: %w", err)
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	err = ctrl.NewControllerManagedBy(mgr).
 		Named("dashboard").
 		For(&v1.ConfigMap{}, builder.WithPredicates(labelSelectorPredicate)).
 		// Watch for grafana pod's status changes
@@ -142,6 +141,11 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
+	if err != nil {
+		return fmt.Errorf("failed to build controller: %w", err)
+	}
+
+	return nil
 }
 
 // reconcileCreate ensures the Grafana dashboard described in configmap is created in Grafana.
@@ -152,28 +156,23 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
-	if err != nil || finalizerAdded {
-		return errors.WithStack(err)
+	if err != nil {
+		return fmt.Errorf("failed to ensure finalizer is added: %w", err)
+	}
+	if finalizerAdded {
+		return nil
 	}
 
 	// Convert ConfigMap to domain objects using mapper
-	dashboards, err := r.dashboardMapper.FromConfigMap(dashboard)
-	if err != nil {
-		logger.Error(err, "Failed to convert ConfigMap to domain objects")
-		return errors.WithStack(err)
-	}
+	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
+		
 
 	// Validate and process each dashboard
 	for _, dashboard := range dashboards {
-		errs := dashboard.Validate()
-		if len(errs) > 0 {
-			logger.Error(errs[0], "Dashboard validation failed", "uid", dashboard.UID(), "organization", dashboard.Organization())
-			return errors.WithStack(errs[0])
-		}
-		logger.Info("Processing dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
+		logger.Info("Configuring dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
 		err = grafanaService.ConfigureDashboard(ctx, dashboard)
 		if err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("failed to configure dashboard: %w", err)
 		}
 		logger.Info("Configured dashboard in Grafana", "uid", dashboard.UID(), "organization", dashboard.Organization())
 	}
@@ -191,24 +190,18 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 	}
 
 	// Convert ConfigMap to domain objects using mapper
-	dashboards, err := r.dashboardMapper.FromConfigMap(dashboard)
-	if err != nil {
-		logger.Error(err, "Failed to convert ConfigMap to domain objects during deletion")
-		// Continue with deletion even if conversion fails to avoid stuck finalizers
-	} else {
-		for _, dashboard := range dashboards {
-			err = grafanaService.DeleteDashboard(ctx, dashboard)
-			if err != nil {
-				logger.Error(err, "Failed to delete dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
-				return errors.WithStack(err)
-			}
-		}
+	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
+  for _, dashboard := range dashboards {
+    err = grafanaService.DeleteDashboard(ctx, dashboard)
+    if err != nil {
+      return fmt.Errorf("failed to delete dashboard: %w", err)
+    }
 	}
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return nil
