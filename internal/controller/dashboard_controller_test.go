@@ -633,14 +633,9 @@ var _ = Describe("Dashboard Controller", func() {
 			BeforeEach(func() {
 				mockGrafanaClient = &mocks.MockGrafanaClient{}
 				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(mockGrafanaClient, nil)
-				// Note: Only set mock expectations when they are actually needed
 			})
 
 			AfterEach(func() {
-				// Only assert expectations if they were set
-				if len(mockGrafanaClient.ExpectedCalls) > 0 {
-					mockGrafanaClient.AssertExpectations(GinkgoT())
-				}
 				mockGrafanaGen.AssertExpectations(GinkgoT())
 			})
 
@@ -652,25 +647,6 @@ var _ = Describe("Dashboard Controller", func() {
 				// Mock the Orgs service
 				mockOrgsClient := &mocks.MockOrgsClient{}
 				mockGrafanaClient.On("Orgs").Return(mockOrgsClient)
-
-				// Test ConfigMap with organization in labels instead of annotations
-				// Note: Using a valid Kubernetes label value (no spaces, alphanumeric + dashes/dots/underscores)
-				configMapWithLabelOrg := &v1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "dashboard-with-label-org",
-						Namespace: dashboardNamespace,
-						Labels: map[string]string{
-							DashboardSelectorLabelName:                 DashboardSelectorLabelValue,
-							"observability.giantswarm.io/organization": "test-dashboard-org",
-						},
-					},
-					Data: map[string]string{
-						"dashboard.json": `{
-							"uid": "test-dashboard-uid",
-							"title": "Test Dashboard"
-						}`,
-					},
-				}
 
 				// Mock the organization lookup to succeed
 				orgResponse := &orgs.GetOrgByNameOK{
@@ -690,6 +666,25 @@ var _ = Describe("Dashboard Controller", func() {
 					Payload: &models.PostDashboardOKBody{},
 				}
 				mockDashboardsClient.On("PostDashboard", mock.Anything).Return(dashboardResponse, nil)
+
+				// Test ConfigMap with organization in labels instead of annotations
+				// Note: Using a valid Kubernetes label value (no spaces, alphanumeric + dashes/dots/underscores)
+				configMapWithLabelOrg := &v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dashboard-with-label-org",
+						Namespace: dashboardNamespace,
+						Labels: map[string]string{
+							DashboardSelectorLabelName:                 DashboardSelectorLabelValue,
+							"observability.giantswarm.io/organization": "test-dashboard-org",
+						},
+					},
+					Data: map[string]string{
+						"dashboard.json": `{
+							"uid": "test-dashboard-uid",
+							"title": "Test Dashboard"
+						}`,
+					},
+				}
 
 				By("Creating a dashboard ConfigMap with organization in labels")
 				Expect(k8sClient.Create(ctx, configMapWithLabelOrg)).To(Succeed())
@@ -763,10 +758,7 @@ var _ = Describe("Dashboard Controller", func() {
 
 			It("should handle dashboard with missing UID gracefully", func() {
 				// No mock expectations for organization operations since validation will fail early
-
-				// Mock the Orgs service
-				mockOrgsClient := &mocks.MockOrgsClient{}
-				mockGrafanaClient.On("Orgs").Return(mockOrgsClient)
+				// The controller should skip Grafana calls when dashboard has no UID
 
 				configMapWithoutUID := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -785,8 +777,6 @@ var _ = Describe("Dashboard Controller", func() {
 						}`,
 					},
 				}
-
-				// No organization lookup mock needed since dashboard will be skipped due to missing UID
 
 				By("Creating a dashboard ConfigMap without UID")
 				Expect(k8sClient.Create(ctx, configMapWithoutUID)).To(Succeed())
@@ -901,10 +891,7 @@ var _ = Describe("Dashboard Controller", func() {
 
 			It("should handle ConfigMap with invalid JSON gracefully", func() {
 				// No mock expectations for organization operations since validation will fail early
-
-				// Mock the Orgs service
-				mockOrgsClient := &mocks.MockOrgsClient{}
-				mockGrafanaClient.On("Orgs").Return(mockOrgsClient)
+				// The controller should skip Grafana calls when JSON is invalid
 
 				configMapWithInvalidJSON := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -924,8 +911,6 @@ var _ = Describe("Dashboard Controller", func() {
 						}`,
 					},
 				}
-
-				// No mock expectations needed - service layer will skip due to validation errors
 
 				By("Creating a dashboard ConfigMap with invalid JSON")
 				Expect(k8sClient.Create(ctx, configMapWithInvalidJSON)).To(Succeed())
@@ -967,6 +952,21 @@ var _ = Describe("Dashboard Controller", func() {
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
 				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
 
+				// Mock the organization lookup to succeed
+				orgResponse := &orgs.GetOrgByNameOK{
+					Payload: &models.OrgDetailsDTO{
+						ID:   int64(2),
+						Name: "Test Dashboard Organization",
+					},
+				}
+				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+
+				// Mock dashboard creation for all three dashboards
+				dashboardResponse := &dashboards.PostDashboardOK{
+					Payload: &models.PostDashboardOKBody{},
+				}
+				mockDashboardsClient.On("PostDashboard", mock.Anything).Return(dashboardResponse, nil).Times(3)
+
 				configMapWithMultipleDashboards := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "multiple-dashboards",
@@ -994,21 +994,6 @@ var _ = Describe("Dashboard Controller", func() {
 						}`,
 					},
 				}
-
-				// Mock the organization lookup to succeed
-				orgResponse := &orgs.GetOrgByNameOK{
-					Payload: &models.OrgDetailsDTO{
-						ID:   int64(2),
-						Name: "Test Dashboard Organization",
-					},
-				}
-				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
-
-				// Mock dashboard creation for all three dashboards
-				dashboardResponse := &dashboards.PostDashboardOK{
-					Payload: &models.PostDashboardOKBody{},
-				}
-				mockDashboardsClient.On("PostDashboard", mock.Anything).Return(dashboardResponse, nil).Times(3)
 
 				By("Creating a ConfigMap with multiple dashboards")
 				Expect(k8sClient.Create(ctx, configMapWithMultipleDashboards)).To(Succeed())
