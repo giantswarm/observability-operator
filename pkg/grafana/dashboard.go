@@ -21,7 +21,7 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboardCM *v1.Config
 		err := s.PublishDashboard(dashboard)
 		if err != nil {
 			logger.Error(err, "Failed updating dashboard")
-			return err
+			return fmt.Errorf("failed to update dashboard: %w", err)
 		}
 
 		logger.Info("updated dashboard")
