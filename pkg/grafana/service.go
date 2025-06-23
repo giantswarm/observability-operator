@@ -1,8 +1,9 @@
 package grafana
 
 import (
-	grafanaClient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	grafanaClient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
 
 type Service struct {

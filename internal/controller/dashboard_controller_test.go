@@ -15,11 +15,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/client/orgs"
 	"github.com/grafana/grafana-openapi-client-go/models"
+
+	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
 var _ = Describe("Dashboard Controller", func() {
