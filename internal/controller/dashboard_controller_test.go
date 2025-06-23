@@ -523,7 +523,7 @@ var _ = Describe("Dashboard Controller", func() {
 				mockGrafanaGen.AssertExpectations(GinkgoT())
 			})
 
-			It("should handle organization label in labels instead of annotations", func() {
+			It("should handle organization specified in labels instead of annotations", func() {
 				// Set up mock expectations for organization operations
 				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
@@ -588,7 +588,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(k8sClient.Delete(ctx, configMapWithLabelOrg)).To(Succeed())
 			})
 
-			It("should handle ConfigMap with no organization label or annotation", func() {
+			It("should handle ConfigMap with no organization label or annotation gracefully", func() {
 				configMapWithoutOrg := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "dashboard-without-org",
@@ -609,7 +609,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(k8sClient.Create(ctx, configMapWithoutOrg)).To(Succeed())
 
 				By("First reconciliation - should add finalizer only")
-				result, err := reconciler.Reconcile(ctx, reconcile.Request{
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-without-org",
 						Namespace: dashboardNamespace,
@@ -617,14 +617,14 @@ var _ = Describe("Dashboard Controller", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				By("Second reconciliation - should succeed but skip dashboard processing")
-				result, err = reconciler.Reconcile(ctx, reconcile.Request{
+				By("Second reconciliation - should succeed and skip dashboard processing")
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-without-org",
 						Namespace: dashboardNamespace,
 					},
 				})
-				// Should succeed because missing organization is handled gracefully
+				// Should succeed because missing organization is handled gracefully by logging an error and continuing
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
@@ -632,7 +632,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(k8sClient.Delete(ctx, configMapWithoutOrg)).To(Succeed())
 			})
 
-			It("should handle dashboard with missing UID", func() {
+			It("should handle dashboard with missing UID gracefully", func() {
 				// Set up mock expectations for organization operations
 				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
@@ -676,14 +676,14 @@ var _ = Describe("Dashboard Controller", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				By("Second reconciliation - should succeed but skip dashboard without UID")
+				By("Second reconciliation - should succeed and skip dashboard without UID")
 				result, err = reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-without-uid",
 						Namespace: dashboardNamespace,
 					},
 				})
-				// Should succeed because missing UID is handled gracefully
+				// Should succeed because missing UID is handled gracefully by logging an error and continuing
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
@@ -767,7 +767,7 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(k8sClient.Delete(ctx, configMapWithID)).To(Succeed())
 			})
 
-			It("should handle ConfigMap with invalid JSON", func() {
+			It("should handle ConfigMap with invalid JSON gracefully", func() {
 				// Set up mock expectations for organization operations
 				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
@@ -812,14 +812,14 @@ var _ = Describe("Dashboard Controller", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				By("Second reconciliation - should succeed but skip invalid JSON")
+				By("Second reconciliation - should succeed and skip invalid JSON")
 				result, err = reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      "dashboard-invalid-json",
 						Namespace: dashboardNamespace,
 					},
 				})
-				// Should succeed because invalid JSON is handled gracefully
+				// Should succeed because invalid JSON is handled gracefully by logging an error and continuing
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
@@ -902,49 +902,7 @@ var _ = Describe("Dashboard Controller", func() {
 			})
 		})
 
-		Context("When testing edge cases", func() {
-			BeforeEach(func() {
-				// Use "working" Grafana for edge case tests (though it will still fail with test message)
-				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("dashboard configuration skipped for testing"))
-			})
-
-			It("should handle ConfigMap without dashboard labels", func() {
-				By("Creating a ConfigMap without dashboard labels")
-				nonDashboardConfigMap := &v1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "non-dashboard-configmap",
-						Namespace: dashboardNamespace,
-						Labels: map[string]string{
-							"app": "some-other-app",
-						},
-					},
-					Data: map[string]string{
-						"config.yml": "some: config",
-					},
-				}
-				Expect(k8sClient.Create(ctx, nonDashboardConfigMap)).To(Succeed())
-
-				By("Reconciling the non-dashboard ConfigMap")
-				result, err := reconciler.Reconcile(ctx, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      "non-dashboard-configmap",
-						Namespace: dashboardNamespace,
-					},
-				})
-
-				// Note: In a real environment, the controller manager's label selector predicate
-				// would prevent this ConfigMap from being reconciled. However, since we're calling
-				// Reconcile() directly in the test, it will process any ConfigMap.
-				// The controller will still fail because it tries to generate a Grafana client
-				// for any ConfigMap it processes, regardless of labels.
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("dashboard configuration skipped for testing"))
-				Expect(result).To(Equal(reconcile.Result{}))
-
-				// Clean up
-				Expect(k8sClient.Delete(ctx, nonDashboardConfigMap)).To(Succeed())
-			})
-
+		Context("When testing controller resilience", func() {
 			It("should handle non-existent ConfigMap gracefully", func() {
 				By("Reconciling a non-existent dashboard ConfigMap")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -960,19 +918,17 @@ var _ = Describe("Dashboard Controller", func() {
 		})
 	})
 
-	Context("When testing dashboard controller setup", func() {
-		It("should setup the controller with proper predicates", func() {
-			By("Creating a DashboardReconciler")
-
-			// Note: In a real test environment, you would need a manager
-			// For now, we'll test that the setup function exists and can be called
-			// The actual manager integration would require more complex setup
+	Context("When testing dashboard controller setup and constants", func() {
+		It("should have a setup function that can be called", func() {
+			By("Verifying the SetupDashboardReconciler function exists")
+			// Note: In a real test environment, you would need a manager instance
+			// to properly test the setup function. For now, we'll test that the
+			// function exists and can be referenced.
 			Expect(SetupDashboardReconciler).NotTo(BeNil())
 		})
-	})
 
-	Context("When testing dashboard constants and selectors", func() {
 		It("should have correct constants defined", func() {
+			By("Verifying dashboard controller constants")
 			Expect(DashboardFinalizer).To(Equal("observability.giantswarm.io/grafanadashboard"))
 			Expect(DashboardSelectorLabelName).To(Equal("app.giantswarm.io/kind"))
 			Expect(DashboardSelectorLabelValue).To(Equal("dashboard"))

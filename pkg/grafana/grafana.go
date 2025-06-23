@@ -146,7 +146,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 	s.grafanaClient.WithOrgID(organization.ID)
 	defer s.grafanaClient.WithOrgID(currentOrgID)
 
-	configuredDatasourcesInGrafana, err := s.listDatasourcesForOrganization(ctx)
+	configuredDatasourcesInGrafana, err := s.listDatasourcesForOrganization()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list datasources: %w", err)
 	}
@@ -231,7 +231,7 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 	return updatedDatasources, nil
 }
 
-func (s *Service) listDatasourcesForOrganization(ctx context.Context) ([]Datasource, error) {
+func (s *Service) listDatasourcesForOrganization() ([]Datasource, error) {
 	resp, err := s.grafanaClient.GetDataSources()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get configured datasources: %w", err)
