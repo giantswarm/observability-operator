@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +25,7 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 
 	password, err := commonmonitoring.GetMimirIngressPassword(ctx, pas.Client)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("failed to get mimir ingress password: %w", err)
 	}
 
 	config := RemoteWriteConfig{
@@ -60,7 +59,7 @@ func (pas PrometheusAgentService) buildRemoteWriteSecret(ctx context.Context,
 
 	marshalledValues, err := yaml.Marshal(config)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("failed to marshal remote write config: %w", err)
 	}
 
 	return &corev1.Secret{
