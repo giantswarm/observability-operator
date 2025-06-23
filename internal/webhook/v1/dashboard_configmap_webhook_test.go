@@ -190,10 +190,9 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 				"title": "Test Dashboard without UID",
 				"panels": []
 			}`
-
 			_, err := validator.ValidateCreate(ctx, invalidConfigMap)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("dashboard UID not found"))
+			Expect(err.Error()).To(ContainSubstring("dashboard UID is missing"))
 		})
 
 		It("Should reject dashboard ConfigMaps with missing organization", func() {
@@ -203,10 +202,9 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 				"app.giantswarm.io/kind": "dashboard",
 			}
 			invalidConfigMap.Annotations = nil
-
 			_, err := validator.ValidateCreate(ctx, invalidConfigMap)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("organization label not found"))
+			Expect(err.Error()).To(ContainSubstring("dashboard organization is missing"))
 		})
 
 		It("Should reject dashboard ConfigMaps with invalid JSON", func() {
@@ -220,7 +218,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			_, err := validator.ValidateCreate(ctx, invalidConfigMap)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to parse dashboard"))
+			Expect(err.Error()).To(ContainSubstring("invalid JSON format"))
 		})
 
 		It("Should accept dashboard ConfigMaps with organization in annotation", func() {
@@ -359,7 +357,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			_, err := validator.ValidateCreate(ctx, mixedConfigMap)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("dashboard UID not found"))
+			Expect(err.Error()).To(ContainSubstring("dashboard UID is missing"))
 		})
 
 		It("Should validate dashboard ConfigMaps on update operations", func() {
@@ -385,7 +383,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			_, err := validator.ValidateUpdate(ctx, obj, invalidUpdatedObj)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("dashboard UID not found"))
+			Expect(err.Error()).To(ContainSubstring("dashboard UID is missing"))
 		})
 
 		It("Should handle empty ConfigMap data gracefully", func() {
@@ -433,7 +431,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			_, err := validator.ValidateCreate(ctx, nonJSONConfigMap)
 			Expect(err).To(HaveOccurred()) // Mapper currently tries to parse all files as JSON
-			Expect(err.Error()).To(ContainSubstring("failed to parse dashboard"))
+			Expect(err.Error()).To(ContainSubstring("invalid JSON format"))
 		})
 
 		It("Should handle dashboard ConfigMaps with complex validation scenarios", func() {
@@ -514,7 +512,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			_, err = validator.ValidateCreate(ctx, mixedConfigMap)
 			Expect(err).To(HaveOccurred()) // Non-JSON files will cause parsing errors
-			Expect(err.Error()).To(ContainSubstring("failed to parse dashboard"))
+			Expect(err.Error()).To(ContainSubstring("invalid JSON format"))
 		})
 
 		It("Should validate organization handling edge cases", func() {
@@ -595,7 +593,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			_, err := validator.ValidateCreate(ctx, noUIDConfigMap)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("dashboard UID not found"))
+			Expect(err.Error()).To(ContainSubstring("dashboard UID is missing"))
 			// Error message format is: "failed to parse dashboard: dashboard UID not found in configmap"
 
 			By("Testing error aggregation for multiple validation failures")
@@ -610,8 +608,8 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			_, err = validator.ValidateCreate(ctx, multiErrorConfigMap)
 			Expect(err).To(HaveOccurred())
-			// Should report the first error encountered (organization missing in this case)
-			Expect(err.Error()).To(ContainSubstring("organization label not found"))
+			// Should report the first error encountered (UID missing in this case since UID validation comes first)
+			Expect(err.Error()).To(ContainSubstring("dashboard UID is missing"))
 
 			By("Testing JSON parsing error details")
 			invalidJSONConfigMap := obj.DeepCopy()
@@ -623,7 +621,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			_, err = validator.ValidateCreate(ctx, invalidJSONConfigMap)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to parse dashboard"))
+			Expect(err.Error()).To(ContainSubstring("dashboard validation failed"))
 		})
 
 		It("Should handle webhook performance and resource constraints", func() {
@@ -675,5 +673,100 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			Expect(err).NotTo(HaveOccurred()) // Should handle multiple dashboards efficiently
 		})
 
+		Context("When testing additional edge cases and security scenarios", func() {
+			It("Should handle Unicode characters in organization names", func() {
+				By("Testing organization with Unicode characters")
+				unicodeOrgConfigMap := obj.DeepCopy()
+				unicodeOrgConfigMap.Annotations["observability.giantswarm.io/organization"] = "组织-العربية-русский-🏢"
+
+				_, err := validator.ValidateCreate(ctx, unicodeOrgConfigMap)
+				Expect(err).NotTo(HaveOccurred()) // Unicode should be allowed
+			})
+
+			It("Should handle extremely large dashboard JSON gracefully", func() {
+				By("Creating a dashboard with thousands of panels")
+				extremeConfigMap := obj.DeepCopy()
+
+				// Create JSON with 1000 panels to test memory/performance limits
+				panels := ""
+				for i := 0; i < 1000; i++ {
+					if i > 0 {
+						panels += ","
+					}
+					panels += fmt.Sprintf(`{
+						"id": %d,
+						"title": "Panel %d",
+						"type": "graph",
+						"targets": [{"expr": "metric_%d"}],
+						"description": "This is a very long description that might consume significant memory when parsing large numbers of panels in a single dashboard configuration"
+					}`, i, i, i)
+				}
+
+				extremeJSON := fmt.Sprintf(`{
+					"uid": "extreme-dashboard",
+					"title": "Extreme Size Dashboard",
+					"panels": [%s]
+				}`, panels)
+				extremeConfigMap.Data["dashboard.json"] = extremeJSON
+
+				_, err := validator.ValidateCreate(ctx, extremeConfigMap)
+				Expect(err).NotTo(HaveOccurred()) // Should handle extreme size gracefully
+			})
+
+			It("Should handle empty string values gracefully", func() {
+				By("Testing dashboard with empty UID string")
+				emptyUIDConfigMap := obj.DeepCopy()
+				emptyUIDConfigMap.Data["dashboard.json"] = `{
+					"uid": "",
+					"title": "Dashboard with Empty UID"
+				}`
+
+				_, err := validator.ValidateCreate(ctx, emptyUIDConfigMap)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("dashboard UID is missing"))
+
+				By("Testing organization with empty string")
+				emptyOrgConfigMap := obj.DeepCopy()
+				emptyOrgConfigMap.Annotations["observability.giantswarm.io/organization"] = ""
+
+				_, err = validator.ValidateCreate(ctx, emptyOrgConfigMap)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("dashboard organization is missing"))
+			})
+
+			It("Should handle malformed data gracefully", func() {
+				By("Testing with binary data in ConfigMap")
+				binaryConfigMap := obj.DeepCopy()
+				binaryConfigMap.Data["binary.json"] = string([]byte{0x00, 0x01, 0x02, 0xFF})
+
+				_, err := validator.ValidateCreate(ctx, binaryConfigMap)
+				Expect(err).To(HaveOccurred()) // Binary data should fail JSON parsing
+				Expect(err.Error()).To(ContainSubstring("invalid JSON format"))
+
+				By("Testing with extremely nested JSON")
+				deeplyNestedConfigMap := obj.DeepCopy()
+				// Create deeply nested JSON structure
+				nestedJSON := `{"uid": "nested-dashboard", "level1": {"level2": {"level3": {"level4": {"level5": {"value": "deep"}}}}}}`
+				deeplyNestedConfigMap.Data["nested.json"] = nestedJSON
+
+				_, err = validator.ValidateCreate(ctx, deeplyNestedConfigMap)
+				Expect(err).NotTo(HaveOccurred()) // Deep nesting should be allowed
+			})
+
+			It("Should validate against JSON injection attacks", func() {
+				By("Testing with JSON containing potential injection patterns")
+				injectionConfigMap := obj.DeepCopy()
+				injectionConfigMap.Data["dashboard.json"] = `{
+					"uid": "injection-test",
+					"title": "Test Dashboard",
+					"malicious": "'; DROP TABLE dashboards; --",
+					"script": "<script>alert('xss')</script>",
+					"unicode_escape": "\u0000\u001f"
+				}`
+
+				_, err := validator.ValidateCreate(ctx, injectionConfigMap)
+				Expect(err).NotTo(HaveOccurred()) // JSON parsing should handle these safely
+			})
+		})
 	})
 })

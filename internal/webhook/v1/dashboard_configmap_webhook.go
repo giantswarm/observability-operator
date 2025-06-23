@@ -113,10 +113,7 @@ func (v *DashboardConfigMapValidator) ValidateDelete(ctx context.Context, obj ru
 // validateDashboard validates a dashboard ConfigMap using domain validation logic
 func (v *DashboardConfigMapValidator) validateDashboard(configmap *corev1.ConfigMap) (admission.Warnings, error) {
 	// Convert ConfigMap to domain objects using mapper
-	dashboards, err := v.dashboardMapper.FromConfigMap(configmap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse dashboard: %w", err)
-	}
+	dashboards := v.dashboardMapper.FromConfigMap(configmap)
 
 	// Validate each dashboard using domain validation directly
 	for _, dash := range dashboards {

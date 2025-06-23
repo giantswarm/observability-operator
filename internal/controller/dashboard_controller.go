@@ -165,9 +165,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 	// Convert ConfigMap to domain objects using mapper
 	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
-		
-
-	// Validate and process each dashboard
+	// Process each dashboard
 	for _, dashboard := range dashboards {
 		logger.Info("Configuring dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
 		err = grafanaService.ConfigureDashboard(ctx, dashboard)
@@ -182,8 +180,6 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 // reconcileDelete deletes the grafana dashboard.
 func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error {
-	logger := log.FromContext(ctx)
-
 	// We do not need to delete anything if there is no finalizer on the grafana dashboard
 	if !controllerutil.ContainsFinalizer(dashboard, DashboardFinalizer) {
 		return nil
@@ -191,15 +187,15 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 
 	// Convert ConfigMap to domain objects using mapper
 	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
-  for _, dashboard := range dashboards {
-    err = grafanaService.DeleteDashboard(ctx, dashboard)
-    if err != nil {
-      return fmt.Errorf("failed to delete dashboard: %w", err)
-    }
+	for _, dashboard := range dashboards {
+		err := grafanaService.DeleteDashboard(ctx, dashboard)
+		if err != nil {
+			return fmt.Errorf("failed to delete dashboard: %w", err)
+		}
 	}
 
 	// Finalizer handling needs to come last.
-	err = r.finalizerHelper.EnsureRemoved(ctx, dashboard)
+	err := r.finalizerHelper.EnsureRemoved(ctx, dashboard)
 	if err != nil {
 		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}

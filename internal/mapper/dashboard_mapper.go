@@ -2,7 +2,6 @@ package mapper
 
 import (
 	"encoding/json"
-	"fmt"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -20,53 +19,49 @@ func New() *DashboardMapper {
 }
 
 // FromConfigMap converts a Kubernetes ConfigMap to domain Dashboard objects
-func (m *DashboardMapper) FromConfigMap(cm *v1.ConfigMap) ([]*dashboard.Dashboard, error) {
-	org, err := m.extractOrganization(cm)
-	if err != nil {
-		return nil, err
-	}
+func (m *DashboardMapper) FromConfigMap(cm *v1.ConfigMap) []*dashboard.Dashboard {
+	org := m.extractOrganization(cm)
 
 	var dashboards []*dashboard.Dashboard
 
 	for _, dashboardString := range cm.Data {
 		var content map[string]any
 		if err := json.Unmarshal([]byte(dashboardString), &content); err != nil {
-			return nil, fmt.Errorf("%w: %v", dashboard.ErrInvalidJSON, err)
+			// Create a dashboard with nil content for invalid JSON - let service layer handle validation
+			dash := dashboard.New("", org, nil)
+			dashboards = append(dashboards, dash)
+			continue
 		}
 
-		uid, err := m.extractUID(content)
-		if err != nil {
-			return nil, err
-		}
-
+		uid := m.extractUID(content)
 		dash := dashboard.New(uid, org, content)
 		dashboards = append(dashboards, dash)
 	}
 
-	return dashboards, nil
+	return dashboards
 }
 
-// extractOrganization - exact copy of existing getOrgFromDashboardConfigmap
-func (m *DashboardMapper) extractOrganization(cm *v1.ConfigMap) (string, error) {
+// extractOrganization - returns organization or empty string if not found
+func (m *DashboardMapper) extractOrganization(cm *v1.ConfigMap) string {
 	// Try to look for an annotation first
 	annotations := cm.GetAnnotations()
 	if annotations != nil && annotations[grafanaOrganizationLabel] != "" {
-		return annotations[grafanaOrganizationLabel], nil
+		return annotations[grafanaOrganizationLabel]
 	}
 
 	// Then look for a label
 	labels := cm.GetLabels()
 	if labels != nil && labels[grafanaOrganizationLabel] != "" {
-		return labels[grafanaOrganizationLabel], nil
+		return labels[grafanaOrganizationLabel]
 	}
 
-	return "", dashboard.ErrMissingOrganization
+	return ""
 }
 
-func (m *DashboardMapper) extractUID(content map[string]any) (string, error) {
+func (m *DashboardMapper) extractUID(content map[string]any) string {
 	uid, ok := content["uid"].(string)
 	if !ok {
-		return "", dashboard.ErrMissingUID
+		return ""
 	}
-	return uid, nil
+	return uid
 }
