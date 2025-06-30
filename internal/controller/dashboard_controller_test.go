@@ -6,6 +6,9 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
+	"github.com/grafana/grafana-openapi-client-go/client/orgs"
+	"github.com/grafana/grafana-openapi-client-go/models"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -990,6 +993,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Annotations: map[string]string{
 							"observability.giantswarm.io/organization": "Test Dashboard Organization",
 						},
+						// Note: no organization annotation
 					},
 					Data: map[string]string{
 						"dashboard1.json": `{
@@ -1042,6 +1046,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Namespace: dashboardNamespace,
 					},
 				})
+
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
