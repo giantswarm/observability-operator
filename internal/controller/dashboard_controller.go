@@ -190,6 +190,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 // reconcileDelete deletes the grafana dashboard.
 func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error {
+	logger := log.FromContext(ctx)
 	// We do not need to delete anything if there is no finalizer on the grafana dashboard
 	if !controllerutil.ContainsFinalizer(dashboard, DashboardFinalizer) {
 		return nil
@@ -197,7 +198,7 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 
 	// Convert ConfigMap to domain objects using mapper
 	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
-  	// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
+	// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
 	for _, dash := range dashboards {
 		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
 			logger.Error(nil, "Dashboard validation failed during reconciliation - webhook may have been bypassed",
@@ -206,7 +207,7 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 			return fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors)
 		}
 	}
-  
+
 	for _, dashboard := range dashboards {
 		err := grafanaService.DeleteDashboard(ctx, dashboard)
 		if err != nil {
