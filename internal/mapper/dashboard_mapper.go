@@ -28,13 +28,12 @@ func (m *DashboardMapper) FromConfigMap(cm *v1.ConfigMap) []*dashboard.Dashboard
 		var content map[string]any
 		if err := json.Unmarshal([]byte(dashboardString), &content); err != nil {
 			// Create a dashboard with nil content for invalid JSON - let service layer handle validation
-			dash := dashboard.New("", org, nil)
+			dash := dashboard.New(org, nil)
 			dashboards = append(dashboards, dash)
 			continue
 		}
 
-		uid := m.extractUID(content)
-		dash := dashboard.New(uid, org, content)
+		dash := dashboard.New(org, content)
 		dashboards = append(dashboards, dash)
 	}
 
@@ -56,12 +55,4 @@ func (m *DashboardMapper) extractOrganization(cm *v1.ConfigMap) string {
 	}
 
 	return ""
-}
-
-func (m *DashboardMapper) extractUID(content map[string]any) string {
-	uid, ok := content["uid"].(string)
-	if !ok {
-		return ""
-	}
-	return uid
 }

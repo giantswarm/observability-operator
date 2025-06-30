@@ -13,7 +13,7 @@ func TestPrepareForGrafanaAPI(t *testing.T) {
 		"id":    123, // Should be removed
 	}
 
-	d := dashboard.New("test-uid", "test-org", content)
+	d := dashboard.New("test-org", content)
 	prepared := prepareForGrafanaAPI(d)
 
 	if _, hasID := prepared["id"]; hasID {
@@ -42,7 +42,7 @@ func TestPrepareForGrafanaAPIWithoutID(t *testing.T) {
 		// No ID field
 	}
 
-	d := dashboard.New("test-uid", "test-org", content)
+	d := dashboard.New("test-org", content)
 	prepared := prepareForGrafanaAPI(d)
 
 	if len(prepared) != 2 {
