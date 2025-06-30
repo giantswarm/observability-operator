@@ -148,7 +148,6 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-// reconcileCreate creates the dashboard.
 // reconcileCreate ensures the Grafana dashboard described in configmap is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
@@ -166,10 +165,9 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 	// Convert ConfigMap to domain objects using mapper
 	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
-
 	// Process each dashboard
 	for _, dashboard := range dashboards {
-		logger.Info("Processing dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
+		logger.Info("Configuring dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
 		err = grafanaService.ConfigureDashboard(ctx, dashboard)
 		if err != nil {
 			return fmt.Errorf("failed to configure dashboard: %w", err)
@@ -189,7 +187,6 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 
 	// Convert ConfigMap to domain objects using mapper
 	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
-
 	for _, dashboard := range dashboards {
 		err := grafanaService.DeleteDashboard(ctx, dashboard)
 		if err != nil {

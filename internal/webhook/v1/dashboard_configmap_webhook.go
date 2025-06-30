@@ -18,6 +18,7 @@ package v1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -27,6 +28,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"github.com/giantswarm/observability-operator/internal/mapper"
 )
 
 // dashboardconfigmaplog is for logging in this package.
@@ -36,7 +39,10 @@ var dashboardconfigmaplog = logf.Log.WithName("dashboardconfigmap-resource")
 func SetupDashboardConfigMapWebhookWithManager(mgr ctrl.Manager) error {
 	err := ctrl.NewWebhookManagedBy(mgr).
 		For(&corev1.ConfigMap{}).
-		WithValidator(&DashboardConfigMapValidator{client: mgr.GetClient()}).
+		WithValidator(&DashboardConfigMapValidator{
+			client:          mgr.GetClient(),
+			dashboardMapper: mapper.New(),
+		}).
 		WithCustomPath("/validate-dashboard-configmap").
 		Complete()
 	if err != nil {
@@ -58,7 +64,8 @@ func SetupDashboardConfigMapWebhookWithManager(mgr ctrl.Manager) error {
 //
 // +kubebuilder:object:generate=false
 type DashboardConfigMapValidator struct {
-	client client.Client
+	client          client.Client
+	dashboardMapper *mapper.DashboardMapper
 }
 
 var _ webhook.CustomValidator = &DashboardConfigMapValidator{}
@@ -77,8 +84,7 @@ func (v *DashboardConfigMapValidator) ValidateCreate(ctx context.Context, obj ru
 
 	dashboardconfigmaplog.Info("Validation for dashboard ConfigMap upon creation", "name", configmap.GetName())
 
-	// TODO: Add dashboard validation logic here
-	return nil, nil
+	return v.validateDashboard(configmap)
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type ConfigMap.
@@ -95,13 +101,28 @@ func (v *DashboardConfigMapValidator) ValidateUpdate(ctx context.Context, oldObj
 
 	dashboardconfigmaplog.Info("Validation for dashboard ConfigMap upon update", "name", configmap.GetName())
 
-	// TODO: Add dashboard validation logic here
-	return nil, nil
+	return v.validateDashboard(configmap)
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type ConfigMap.
 func (v *DashboardConfigMapValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	// We have nothing to validate on deletion
+	return nil, nil
+}
+
+// validateDashboard validates a dashboard ConfigMap using domain validation logic
+func (v *DashboardConfigMapValidator) validateDashboard(configmap *corev1.ConfigMap) (admission.Warnings, error) {
+	// Convert ConfigMap to domain objects using mapper
+	dashboards := v.dashboardMapper.FromConfigMap(configmap)
+
+	// Validate each dashboard using domain validation directly
+	for _, dash := range dashboards {
+		errs := dash.Validate()
+		if len(errs) > 0 {
+			return nil, fmt.Errorf("dashboard validation failed for uid %s: %w", dash.UID(), errors.Join(errs...))
+		}
+	}
+
 	return nil, nil
 }
 
