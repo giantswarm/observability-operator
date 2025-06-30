@@ -6,6 +6,9 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
+	"github.com/grafana/grafana-openapi-client-go/client/orgs"
+	"github.com/grafana/grafana-openapi-client-go/models"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -14,10 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
-	"github.com/grafana/grafana-openapi-client-go/client/orgs"
-	"github.com/grafana/grafana-openapi-client-go/models"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/mapper"
@@ -705,6 +704,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Namespace: dashboardNamespace,
 					},
 				})
+
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
@@ -984,6 +984,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Annotations: map[string]string{
 							"observability.giantswarm.io/organization": "Test Dashboard Organization",
 						},
+						// Note: no organization annotation
 					},
 					Data: map[string]string{
 						"dashboard1.json": `{
@@ -1021,6 +1022,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Namespace: dashboardNamespace,
 					},
 				})
+
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 

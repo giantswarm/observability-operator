@@ -12,8 +12,16 @@ type Dashboard struct {
 	content      map[string]any
 }
 
-// New creates a new Dashboard domain object
-func New(uid, organization string, content map[string]any) *Dashboard {
+// New creates a new Dashboard domain object, extracting the UID from the content
+func New(organization string, content map[string]any) *Dashboard {
+	// Extract UID from content
+	uid := ""
+	if content != nil {
+		if uidValue, ok := content["uid"].(string); ok {
+			uid = uidValue
+		}
+	}
+
 	return &Dashboard{
 		uid:          uid,
 		organization: organization,
