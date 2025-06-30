@@ -3,6 +3,7 @@ package querier
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -57,7 +58,7 @@ func QueryTSDBHeadSeries(ctx context.Context, query string, metricsQueryURL stri
 	// Create new client.
 	c, err := api.NewClient(config)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to create client: %w", err)
 	}
 
 	// Run query against client.
@@ -67,7 +68,7 @@ func QueryTSDBHeadSeries(ctx context.Context, query string, metricsQueryURL stri
 	val, _, err := api.Query(queryContext, query, time.Now())
 	cancel()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to query prometheus: %w", err)
 	}
 
 	switch val.Type() {
