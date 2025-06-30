@@ -14,42 +14,41 @@ const (
 )
 
 func (s *Service) ConfigureDashboard(ctx context.Context, dashboardCM *v1.ConfigMap) error {
-	return s.processDashboards(ctx, dashboardCM, func(ctx context.Context, dashboard map[string]any, dashboardUID string) {
+	return s.processDashboards(ctx, dashboardCM, func(ctx context.Context, dashboard map[string]any, dashboardUID string) error {
 		logger := log.FromContext(ctx)
 
 		// Create or update dashboard
 		err := s.PublishDashboard(dashboard)
 		if err != nil {
-			logger.Error(err, "Failed updating dashboard")
-			return
+			return fmt.Errorf("failed to update dashboard: %w", err)
 		}
 
 		logger.Info("updated dashboard")
+		return nil
 	})
 }
 
 func (s *Service) DeleteDashboard(ctx context.Context, dashboardCM *v1.ConfigMap) error {
 
-	return s.processDashboards(ctx, dashboardCM, func(ctx context.Context, dashboard map[string]any, dashboardUID string) {
+	return s.processDashboards(ctx, dashboardCM, func(ctx context.Context, dashboard map[string]any, dashboardUID string) error {
 		logger := log.FromContext(ctx)
 
-		_, err := s.grafanaAPI.Dashboards.GetDashboardByUID(dashboardUID)
+		_, err := s.grafanaClient.Dashboards().GetDashboardByUID(dashboardUID)
 		if err != nil {
-			logger.Error(err, "Failed getting dashboard")
-			return
+			return fmt.Errorf("failed to get dashboard: %w", err)
 		}
 
-		_, err = s.grafanaAPI.Dashboards.DeleteDashboardByUID(dashboardUID)
+		_, err = s.grafanaClient.Dashboards().DeleteDashboardByUID(dashboardUID)
 		if err != nil {
-			logger.Error(err, "Failed deleting dashboard")
-			return
+			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
 
 		logger.Info("deleted dashboard")
+		return nil
 	})
 }
 
-func (s *Service) processDashboards(ctx context.Context, dashboardCM *v1.ConfigMap, f func(ctx context.Context, dashboard map[string]any, dashboardUID string)) error {
+func (s *Service) processDashboards(ctx context.Context, dashboardCM *v1.ConfigMap, f func(ctx context.Context, dashboard map[string]any, dashboardUID string) error) error {
 	logger := log.FromContext(ctx)
 
 	dashboardOrg, err := getOrgFromDashboardConfigmap(dashboardCM)
@@ -67,9 +66,9 @@ func (s *Service) processDashboards(ctx context.Context, dashboardCM *v1.ConfigM
 	if err != nil {
 		return fmt.Errorf("failed to find organization: %w", err)
 	}
-	currentOrgID := s.grafanaAPI.OrgID()
-	s.grafanaAPI.WithOrgID(organization.ID)
-	defer s.grafanaAPI.WithOrgID(currentOrgID)
+	currentOrgID := s.grafanaClient.OrgID()
+	s.grafanaClient.WithOrgID(organization.ID)
+	defer s.grafanaClient.WithOrgID(currentOrgID)
 
 	for _, dashboardString := range dashboardCM.Data {
 		var dashboard map[string]any
@@ -92,7 +91,10 @@ func (s *Service) processDashboards(ctx context.Context, dashboardCM *v1.ConfigM
 		dashboardLogger := logger.WithValues("Dashboard UID", dashboardUID)
 		ctx = log.IntoContext(ctx, dashboardLogger)
 
-		f(ctx, dashboard, dashboardUID)
+		err = f(ctx, dashboard, dashboardUID)
+		if err != nil {
+			return fmt.Errorf("failed to process dashboard %q: %w", dashboardUID, err)
+		}
 	}
 
 	return nil

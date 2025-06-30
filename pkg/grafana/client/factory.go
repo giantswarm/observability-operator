@@ -28,7 +28,7 @@ const (
 
 // GrafanaClientGenerator defines the interface for generating Grafana clients
 type GrafanaClientGenerator interface {
-	GenerateGrafanaClient(ctx context.Context, k8sClient client.Client, grafanaURL *url.URL) (*grafana.GrafanaHTTPAPI, error)
+	GenerateGrafanaClient(ctx context.Context, k8sClient client.Client, grafanaURL *url.URL) (GrafanaClient, error)
 }
 
 // DefaultGrafanaClientGenerator is the default implementation
@@ -36,7 +36,7 @@ type DefaultGrafanaClientGenerator struct{}
 
 // GenerateGrafanaClient creates a new Grafana client by fetching credentials
 // and TLS configuration from Kubernetes secrets.
-func (g *DefaultGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Context, k8sClient client.Client, grafanaURL *url.URL) (*grafana.GrafanaHTTPAPI, error) {
+func (g *DefaultGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Context, k8sClient client.Client, grafanaURL *url.URL) (GrafanaClient, error) {
 	// Get Grafana admin credentials from secret
 	adminSecret := &corev1.Secret{}
 	adminSecretKey := client.ObjectKey{Namespace: grafanaNamespace, Name: grafanaAdminSecretName}
@@ -100,5 +100,5 @@ func (g *DefaultGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Contex
 		TLSConfig:  clientTLSConfig,
 	}
 
-	return grafana.NewHTTPClientWithConfig(nil, cfg), nil
+	return NewGrafanaClient(grafana.NewHTTPClientWithConfig(nil, cfg)), nil
 }
