@@ -704,6 +704,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Namespace: dashboardNamespace,
 					},
 				})
+
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
