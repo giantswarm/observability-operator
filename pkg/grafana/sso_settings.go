@@ -29,7 +29,7 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 		return nil
 	}
 
-	resp, err := s.grafanaAPI.SsoSettings.GetProviderSettings(ssoProvider, nil)
+	resp, err := s.grafanaClient.SsoSettings().GetProviderSettings(ssoProvider)
 	if err != nil {
 		return fmt.Errorf("failed to get SSO provider settings for %s: %w", ssoProvider, err)
 	}
@@ -54,7 +54,7 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 	logger.Info("configuring SSO settings")
 
 	// Update the provider settings
-	_, err = s.grafanaAPI.SsoSettings.UpdateProviderSettings(ssoProvider,
+	_, err = s.grafanaClient.SsoSettings().UpdateProviderSettings(ssoProvider,
 		&models.UpdateProviderSettingsParamsBody{
 			ID:       resp.Payload.ID,
 			Provider: resp.Payload.Provider,
