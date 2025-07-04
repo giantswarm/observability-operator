@@ -134,7 +134,7 @@ receivers:
 
 - name: togithub
   webhook_configs:
-  - url: "http://alertmanager-to-github.default.svc/v1/webhook?owner=giantswarm&repo=giantswarm&labels=testing"
+  - url: "http://alertmanager-to-github.giantswarm.svc/v1/webhook?owner=giantswarm&repo=giantswarm&labels=testing"
 
 
 {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
