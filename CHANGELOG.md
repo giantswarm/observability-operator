@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Alloy-metrics RAM reservations / limits tuning.
+
 ## [0.34.0] - 2025-07-02
 
 ### Added
