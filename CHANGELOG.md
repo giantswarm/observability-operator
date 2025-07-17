@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- CRDs are managed via MCB so we need to clean them up from the operator.
+
 ## [0.35.0] - 2025-07-10
 
 ### Changed
