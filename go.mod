@@ -27,7 +27,7 @@ require (
 	k8s.io/client-go v0.33.3
 	sigs.k8s.io/cluster-api v1.10.4
 	sigs.k8s.io/controller-runtime v0.21.0
-	sigs.k8s.io/yaml v1.5.0
+	sigs.k8s.io/yaml v1.6.0
 )
 
 require go.yaml.in/yaml/v2 v2.4.2 // indirect
