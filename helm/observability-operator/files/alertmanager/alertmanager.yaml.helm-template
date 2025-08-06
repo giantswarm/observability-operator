@@ -284,6 +284,13 @@ inhibit_rules:
   equal: [cluster_id]
 
 - source_matchers:
+    - inhibit_observability_agents_down=true
+  target_matchers:
+    - cancel_if_observability_agents_down
+    - cancel_if_monitoring_agent_down=true
+  equal: [cluster_id]
+
+- source_matchers:
     - inhibit_monitoring_agent_down=true
   target_matchers:
     - cancel_if_monitoring_agent_down=true
