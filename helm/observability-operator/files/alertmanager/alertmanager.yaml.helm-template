@@ -70,6 +70,12 @@ route:
     - severity="page"
     continue: true
 
+  # incident.io
+  - receiver: incident_io
+    matchers:
+    - severity="page"
+    continue: true
+
   # Team Atlas Slack
   - receiver: team_atlas_slack
     matchers:
@@ -241,6 +247,14 @@ receivers:
   opsgenie_configs:
   - api_key: {{ .Values.monitoring.opsgenieApiKey }}
     tags: '{{`{{ (index .Alerts 0).Labels.alertname }},{{ (index .Alerts 0).Labels.cluster_type }},{{ (index .Alerts 0).Labels.severity }},{{ (index .Alerts 0).Labels.team }},{{ (index .Alerts 0).Labels.area }},{{ (index .Alerts 0).Labels.service_priority }},{{ (index .Alerts 0).Labels.provider }},{{ (index .Alerts 0).Labels.installation }},{{ (index .Alerts 0).Labels.pipeline }},{{ (index .Alerts 0).Labels.customer }}`}}'
+
+- name: incident_io
+  webhook_configs:
+  - url: https://api.incident.io/v2/alert_events/alertmanager/{{ .Values.monitoring.incidentioAlertSourceConfigID }}
+    send_resolved: true
+    http_config:
+      authorization:
+        credentials: {{ .Values.monitoring.incidentioCredentials }}
 
 inhibit_rules:
 - source_matchers:
