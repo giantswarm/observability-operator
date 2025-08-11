@@ -5,14 +5,22 @@ set -euo pipefail
 # This script sets up the environment and runs the operator locally.
 
 NAMESPACE="monitoring"
+CERTSDIR="tmp-certs"
 declare -a OLLYOPARGS
 declare GRAFANAPORTFORWARDPID MIMIRPORTFORWARDPID ALERTMANAGERPORTFORWARDPID
 
+# Retrieves the webhook certificates from the cluster
+function getWebhookCerts {
+    mkdir -p $CERTSDIR || true
+    for file in "ca.crt" "tls.crt" "tls.key"; do
+        kubectl -n "$NAMESPACE" get secret observability-operator-webhook-server-cert -ojson | jq -r ".data[\"$file\"]" | base64 -d > "$CERTSDIR/$file"
+    done
+}
 
 # Define the arguments for the observability-operator
 function defineOLLYOPARGS {
     # We take all args from the deployment, except the leader-elect one which we don't want for local development
-    mapfile -t OLLYOPARGS < <(kubectl -n "$NAMESPACE" get deployment observability-operator -ojson | jq -Mr '.spec.template.spec.containers[0].args[]' | grep -v "leader-elect")
+    mapfile -t OLLYOPARGS < <(kubectl -n "$NAMESPACE" get deployment observability-operator -ojson | jq -Mr '.spec.template.spec.containers[0].args[]' | grep -v "leader-elect" | grep -v "webhook-cert-path")
 }
 
 # Populate environment variables
@@ -21,9 +29,20 @@ function setEnvFromSecrets {
 
   for specenv in $(kubectl get deployment -n "$NAMESPACE" observability-operator -ojson | jq -c -M '.spec.template.spec.containers[0].env[]') ; do
     envname=$(echo "$specenv" | jq -r '.name')
-    secretname=$(echo "$specenv" | jq -r '.valueFrom.secretKeyRef.name')
-    secretkey=$(echo "$specenv" | jq -r '.valueFrom.secretKeyRef.key')
-    envvalue=$(kubectl get secret -n "$NAMESPACE" "$secretname" -ojson | jq -c -M -r '.data["'"$secretkey"'"]' | base64 -d)
+    # Let's look for a direct value
+    envvalue=$(echo "$specenv" | jq -r '.value')
+
+    # If the value is null, we check if it is a secret reference
+    if [[ "$envvalue" == "null" ]]; then
+      secretname=$(echo "$specenv" | jq -r '.valueFrom.secretKeyRef.name')
+      secretkey=$(echo "$specenv" | jq -r '.valueFrom.secretKeyRef.key')
+      envvalue=$(kubectl get secret -n "$NAMESPACE" "$secretname" -ojson | jq -c -M -r '.data["'"$secretkey"'"]' | base64 -d)
+    fi
+
+    if [[ "$envvalue" == "null" ]]; then
+        echo "### WARNING: Value for environment variable '$envname' could not be determined. Skipping..."
+        continue
+    fi
 
     echo "### setting $envname"
     export "$envname"="$envvalue"
@@ -100,11 +119,12 @@ function main {
   # make sure the script restores cluster at exit
   trap cleanupAtExit SIGINT SIGQUIT SIGABRT SIGTERM EXIT
 
-  echo "### set env vars set"
+  echo "### define env vars"
   setEnvFromSecrets
   echo "### define ollyop args"
   defineOLLYOPARGS
-  echo "### ollyorg args set"
+  echo "### retrieve webhook certs"
+  getWebhookCerts
 
   echo "### starting port-forward"
   grafanaPortForward
@@ -115,7 +135,7 @@ function main {
   pauseInClusterOperator
 
   echo "### Running operator"
-  go run . "${OLLYOPARGS[@]}" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180/prometheus -alertmanager-url http://localhost:8181
+  go run ./... "${OLLYOPARGS[@]}" --webhook-cert-path="$CERTSDIR" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180/prometheus -alertmanager-url http://localhost:8181
 
   echo "### Cleanup"
 }
