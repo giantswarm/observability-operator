@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Mimir Cardinality` datasource for Grafana `Shared Org`
+
 ## [0.36.0] - 2025-07-18
 
 ### Removed
