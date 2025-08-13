@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update `UpsertOrganization` in /pkg/grafana/grafana.go file so that it can update GrafanaOrganization CRs with a matching Grafana Org's ID given that both share the same name.
+
 ## [0.36.0] - 2025-07-18
 
 ### Removed
