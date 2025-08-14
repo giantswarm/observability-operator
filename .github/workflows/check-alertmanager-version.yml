@@ -7,7 +7,7 @@ jobs:
   validate-alertmanager:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run alertmanager version sync check
         run: ./hack/bin/check-alertmanager-version.sh

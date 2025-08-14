@@ -299,6 +299,13 @@ inhibit_rules:
     - cancel_if_monitoring_agent_down=true
   equal: [cluster_id]
 
+# When a cluster looks broken
+- source_matchers:
+    - inhibit_cluster_broken=true
+  target_matchers:
+    - cancel_if_cluster_broken=true
+  equal: [cluster_id]
+
 # When metrics are unreliable (mimir broken)
 - source_matchers:
     - inhibit_metrics_broken=true

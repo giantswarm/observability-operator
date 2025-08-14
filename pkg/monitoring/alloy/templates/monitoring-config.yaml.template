@@ -55,7 +55,7 @@ alloy:
     resources:
       limits:
         cpu: 100m
-        memory: 1024Mi
+        memory: 768Mi
       requests:
         cpu: 25m
         memory: 512Mi
@@ -104,6 +104,7 @@ verticalPodAutoscaler:
       controlledValues: "RequestsAndLimits"
       maxAllowed: 
         cpu: 500m
+        memory: 10Gi
       minAllowed:
         cpu: 25m
         memory: 512Mi

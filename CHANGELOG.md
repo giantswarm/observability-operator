@@ -7,12 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.0] - 2025-08-13
+
+### Changed
+
+- Update `UpsertOrganization` in /pkg/grafana/grafana.go file so that it can update GrafanaOrganization CRs with a matching Grafana Org's ID given that both share the same name.
+
+## [0.36.0] - 2025-07-18
+
+### Removed
+
+- CRDs are managed via MCB so we need to clean them up from the operator.
+
+## [0.35.0] - 2025-07-10
+
+### Changed
+
+- Alloy-metrics RAM reservations / limits tuning.
+
+## [0.34.0] - 2025-07-02
+
 ### Added
 
+- **Dashboard domain validation**: Added `pkg/domain/dashboard/` package with Dashboard type and validation rules (UID format, organization presence, content structure)
+- **Dashboard mapper**: Added `internal/mapper/` package for converting ConfigMaps to domain objects
+
+### Changed
+
+- **Dashboard processing**: Refactored controller and Grafana service to use domain objects and mapper pattern for better separation of concerns
+- **Dashboard ConfigMap validation webhook**:
+  - Added Kubernetes validating webhook to validate dashboard ConfigMaps with `app.giantswarm.io/kind=dashboard` label.
+  - Includes comprehensive test coverage, Helm chart integration with `webhook.validatingWebhooks.dashboardConfigMap.enabled` configuration, and kubebuilder scaffolding.
+  - Webhook is validating dashboard JSON structure and required fields.
+- **Dashboard domain validation**: Added `pkg/domain/dashboard/` package with Dashboard type and validation rules (UID format, organization presence, content structure)
+- **Dashboard mapper**: Added `internal/mapper/` package for converting ConfigMaps to domain objects
+
+### Changed
+
+- **Dashboard processing**: Refactored controller and Grafana service to use domain objects and mapper pattern for better separation of concerns
+- **Dashboard ConfigMap validation webhook**:
+  - Added Kubernetes validating webhook to validate dashboard ConfigMaps with `app.giantswarm.io/kind=dashboard` label.
+  - Includes comprehensive test coverage, Helm chart integration with `webhook.validatingWebhooks.dashboardConfigMap.enabled` configuration, and kubebuilder scaffolding.
+  - Webhook is validating dashboard JSON structure and required fields.
+- **Dashboard domain validation**: Added `pkg/domain/dashboard/` package with Dashboard type and validation rules (UID format, organization presence, content structure)
+- **Dashboard mapper**: Added `internal/mapper/` package for converting ConfigMaps to domain objects
+
+### Changed
+
+- **Dashboard processing**: Refactored controller and Grafana service to use domain objects and mapper pattern for better separation of concerns
 - **Dashboard ConfigMap validation webhook**:
   - Added Kubernetes validating webhook to validate dashboard ConfigMaps with `app.giantswarm.io/kind=dashboard` label.
   - Includes comprehensive test coverage, Helm chart integration with `webhook.validatingWebhooks.dashboardConfigMap.enabled` configuration, and kubebuilder scaffolding.
   - Webhook is ready for business logic implementation to validate dashboard JSON structure and required fields.
+- New `cancel_if_cluster_broken` alertmanager inhibition.
 
 ## [0.33.1] - 2025-06-19
 
@@ -566,7 +613,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.33.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.37.0...HEAD
+[0.37.0]: https://github.com/giantswarm/observability-operator/compare/v0.36.0...v0.37.0
+[0.36.0]: https://github.com/giantswarm/observability-operator/compare/v0.35.0...v0.36.0
+[0.35.0]: https://github.com/giantswarm/observability-operator/compare/v0.34.0...v0.35.0
+[0.34.0]: https://github.com/giantswarm/observability-operator/compare/v0.33.1...v0.34.0
 [0.33.1]: https://github.com/giantswarm/observability-operator/compare/v0.33.0...v0.33.1
 [0.33.0]: https://github.com/giantswarm/observability-operator/compare/v0.32.1...v0.33.0
 [0.32.1]: https://github.com/giantswarm/observability-operator/compare/v0.32.0...v0.32.1
