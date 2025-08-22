@@ -54,7 +54,7 @@ git clone https://github.com/grafana/prometheus-alertmanager.git "$REPO_DIR"
 cd "$REPO_DIR"
 
 echo "Checking out commit: $ALERTMANAGER_COMMIT"
-git checkout "$ALERTMANAGER_COMMIT"
+git -c advice.detachedHead=false checkout "$ALERTMANAGER_COMMIT"
 
 # Show some info about the current state
 echo "✓ Repository ready for go run"
