@@ -3,6 +3,7 @@ global:
   http_config:
     proxy_from_environment: true
   slack_api_url: "https://slack.com/api/chat.postMessage"
+  pagerduty_url: "https://events.eu.pagerduty.com/v2/enqueue"
 
 templates:
   - notification-template.tmpl
@@ -66,6 +67,12 @@ route:
 
   # Team Ops Opsgenie
   - receiver: opsgenie_router
+    matchers:
+    - severity="page"
+    continue: true
+
+  # PagerDuty
+  - receiver: pagerduty
     matchers:
     - severity="page"
     continue: true
@@ -241,6 +248,10 @@ receivers:
   opsgenie_configs:
   - api_key: {{ .Values.monitoring.opsgenieApiKey }}
     tags: '{{`{{ (index .Alerts 0).Labels.alertname }},{{ (index .Alerts 0).Labels.cluster_type }},{{ (index .Alerts 0).Labels.severity }},{{ (index .Alerts 0).Labels.team }},{{ (index .Alerts 0).Labels.area }},{{ (index .Alerts 0).Labels.service_priority }},{{ (index .Alerts 0).Labels.provider }},{{ (index .Alerts 0).Labels.installation }},{{ (index .Alerts 0).Labels.pipeline }},{{ (index .Alerts 0).Labels.customer }}`}}'
+
+- name: pagerduty
+  pagerduty_config:
+  - routing_key: {{ .Values.observability.pagerdutyToken }}
 
 inhibit_rules:
 - source_matchers:
