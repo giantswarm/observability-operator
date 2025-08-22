@@ -18,6 +18,9 @@ alerting:
   grafanaAddress: ""
   slackAPIToken: ""
 
+observability:
+  pagerdutyToken: ""
+
 monitoring:
   agent: alloy
   enabled: false
