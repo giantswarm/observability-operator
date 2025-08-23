@@ -33,9 +33,11 @@ function setEnvFromSecrets {
 
 # Port-forward the Grafana service
 function grafanaPortForward {
-  while true; do
-    kubectl port-forward -n "$NAMESPACE" svc/grafana 3000:80 &>/dev/null || true
-  done &
+  (
+    while true; do
+      kubectl port-forward -n "$NAMESPACE" svc/grafana 3000:80 &>/dev/null || true
+    done
+  )&
   GRAFANAPORTFORWARDPID="$!"
 }
 
@@ -48,9 +50,11 @@ function stopGrafanaPortForward {
 
 # Port-forward the mimir service
 function mimirPortForward {
-  while true; do
-    kubectl port-forward -n mimir svc/mimir-gateway 8180:80 &>/dev/null || true
-  done &
+  (
+    while true; do
+     kubectl port-forward -n mimir svc/mimir-gateway 8180:80 &>/dev/null || true
+    done
+  )&
   MIMIRPORTFORWARDPID="$!"
 }
 
