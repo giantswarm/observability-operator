@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Mimir Cardinality` datasource for Grafana `Shared Org`
 - Add Alertmanager PagerDuty router
 
 ## [0.37.0] - 2025-08-13
