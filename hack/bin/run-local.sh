@@ -30,10 +30,10 @@ function setEnvFromSecrets {
   for specenv in $(kubectl get deployment -n "$NAMESPACE" observability-operator -ojson | jq -c -M '.spec.template.spec.containers[0].env[]') ; do
     envname=$(echo "$specenv" | jq -r '.name')
     # Let's look for a direct value
-    envvalue=$(echo "$specenv" | jq -r '.value')
+    envvalue=$(echo "$specenv" | jq -r '.value | strings')
 
     # If the value is null, we check if it is a secret reference
-    if [[ "$envvalue" == "null" ]]; then
+    if [[ -z "$envvalue" ]]; then
       secretname=$(echo "$specenv" | jq -r '.valueFrom.secretKeyRef.name')
       secretkey=$(echo "$specenv" | jq -r '.valueFrom.secretKeyRef.key')
       envvalue=$(kubectl get secret -n "$NAMESPACE" "$secretname" -ojson | jq -c -M -r '.data["'"$secretkey"'"]' | base64 -d)
