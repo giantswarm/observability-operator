@@ -5,15 +5,16 @@ set -euo pipefail
 # This script sets up the environment and runs the operator locally.
 
 NAMESPACE="monitoring"
-CERTSDIR="tmp-certs"
+CERTSDIRTEMPLATE="olly-certs-tmp-XXXXXXX"
+TMPCERTSDIR="$(mktemp -d -t "$CERTSDIRTEMPLATE" || "$CERTSDIRTEMPLATE")"
+
 declare -a OLLYOPARGS
 declare GRAFANAPORTFORWARDPID MIMIRPORTFORWARDPID ALERTMANAGERPORTFORWARDPID
 
 # Retrieves the webhook certificates from the cluster
 function getWebhookCerts {
-    mkdir -p $CERTSDIR || true
     for file in "ca.crt" "tls.crt" "tls.key"; do
-        kubectl -n "$NAMESPACE" get secret observability-operator-webhook-server-cert -ojson | jq -r ".data[\"$file\"]" | base64 -d > "$CERTSDIR/$file"
+        kubectl -n "$NAMESPACE" get secret observability-operator-webhook-server-cert -ojson | jq -r ".data[\"$file\"]" | base64 -d > "$TMPCERTSDIR/$file"
     done
 }
 
@@ -111,6 +112,7 @@ function cleanupAtExit {
   stopMimirPortForward
   stopAlertmanagerPortForward
   resumeInClusterOperator
+  rm -r "$TMPCERTSDIR"
 }
 
 
@@ -135,7 +137,7 @@ function main {
   pauseInClusterOperator
 
   echo "### Running operator"
-  go run ./cmd "${OLLYOPARGS[@]}" --webhook-cert-path="$CERTSDIR" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180/prometheus -alertmanager-url http://localhost:8181
+  go run ./cmd "${OLLYOPARGS[@]}" --webhook-cert-path="$TMPCERTSDIR" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180/prometheus -alertmanager-url http://localhost:8181
 
   echo "### Cleanup"
 }
