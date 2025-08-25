@@ -3,7 +3,7 @@ global:
   http_config:
     proxy_from_environment: true
   slack_api_url: "https://slack.com/api/chat.postMessage"
-{{- if .Values.observability.pagerdutyToken }}
+{{- if .Values.alerting.pagerdutyToken }}
   pagerduty_url: "https://events.eu.pagerduty.com/v2/enqueue"
 {{- end }}
 
@@ -75,7 +75,7 @@ route:
     continue: true
 {{- end }}
 
-{{- if .Values.observability.pagerdutyToken }}
+{{- if .Values.alerting.pagerdutyToken }}
   # PagerDuty
   - receiver: pagerduty
     matchers:
@@ -259,10 +259,10 @@ receivers:
     tags: '{{`{{ (index .Alerts 0).Labels.alertname }},{{ (index .Alerts 0).Labels.cluster_type }},{{ (index .Alerts 0).Labels.severity }},{{ (index .Alerts 0).Labels.team }},{{ (index .Alerts 0).Labels.area }},{{ (index .Alerts 0).Labels.service_priority }},{{ (index .Alerts 0).Labels.provider }},{{ (index .Alerts 0).Labels.installation }},{{ (index .Alerts 0).Labels.pipeline }},{{ (index .Alerts 0).Labels.customer }}`}}'
 {{- end }}
 
-{{- if .Values.observability.pagerdutyToken }}
+{{- if .Values.alerting.pagerdutyToken }}
 - name: pagerduty
   pagerduty_configs:
-  - routing_key: {{ .Values.observability.pagerdutyToken }}
+  - routing_key: {{ .Values.alerting.pagerdutyToken }}
 {{- end }}
 
 inhibit_rules:

@@ -17,8 +17,6 @@ alerting:
   alertmanagerURL: ""
   grafanaAddress: ""
   slackAPIToken: ""
-
-observability:
   pagerdutyToken: ""
 
 monitoring:
