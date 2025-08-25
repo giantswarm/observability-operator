@@ -135,7 +135,7 @@ function main {
   pauseInClusterOperator
 
   echo "### Running operator"
-  go run ./... "${OLLYOPARGS[@]}" --webhook-cert-path="$CERTSDIR" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180/prometheus -alertmanager-url http://localhost:8181
+  go run ./cmd "${OLLYOPARGS[@]}" --webhook-cert-path="$CERTSDIR" -grafana-url http://localhost:3000 -monitoring-metrics-query-url http://localhost:8180/prometheus -alertmanager-url http://localhost:8181
 
   echo "### Cleanup"
 }
