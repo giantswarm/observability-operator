@@ -36,10 +36,10 @@ function setEnvFromSecrets {
     if [[ -z "$envvalue" ]]; then
       secretname=$(echo "$specenv" | jq -r '.valueFrom.secretKeyRef.name')
       secretkey=$(echo "$specenv" | jq -r '.valueFrom.secretKeyRef.key')
-      envvalue=$(kubectl get secret -n "$NAMESPACE" "$secretname" -ojson | jq -c -M -r '.data["'"$secretkey"'"]' | base64 -d)
+      envvalue=$(kubectl get secret -n "$NAMESPACE" "$secretname" -ojson | jq -c -M -r '.data["'"$secretkey"'"] | strings | @base64d')
     fi
 
-    if [[ "$envvalue" == "null" ]]; then
+    if [[ -z "$envvalue" ]]; then
         echo "### WARNING: Value for environment variable '$envname' could not be determined. Skipping..."
         continue
     fi
