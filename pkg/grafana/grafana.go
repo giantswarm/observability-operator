@@ -89,7 +89,15 @@ func (s *Service) UpsertOrganization(ctx context.Context, organization *Organiza
 	currentOrganization, err := s.findOrgByID(organization.ID)
 	if err != nil {
 		if errors.Is(err, ErrOrganizationNotFound) {
-			logger.Info("organization id not found, creating")
+			foundByNameOrganization, err := s.FindOrgByName(organization.Name)
+			if err == nil && foundByNameOrganization != nil {
+				// If the organization does not exist in Grafana, but we found it by name, we can use that ID.
+				logger.Info("found organization with the same name", foundByNameOrganization.Name, "id", foundByNameOrganization.ID)
+				organization.ID = foundByNameOrganization.ID
+				return nil
+			}
+
+			logger.Info("organization name not found, creating")
 
 			// If organization does not exist in Grafana, create it
 			createdOrg, err := s.grafanaClient.Orgs().CreateOrg(&models.CreateOrgCommand{
