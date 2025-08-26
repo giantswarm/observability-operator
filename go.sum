@@ -226,8 +226,8 @@ github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+
 github.com/googleapis/gax-go/v2 v2.0.5/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5mhpdKc/us6bOk=
 github.com/grafana/grafana-openapi-client-go v0.0.0-20250821140309-7f4c35f8ae28 h1:gYaJpohvgVSUPoP85lHIIbzxL5onX4i/8MMPdJLraqg=
 github.com/grafana/grafana-openapi-client-go v0.0.0-20250821140309-7f4c35f8ae28/go.mod h1:AOzHLStinAJHJmcih1eEbIRImxpT6enYUsZLnnOvhbo=
-github.com/grafana/prometheus-alertmanager v0.25.1-0.20250305143719-fa9fa7096626 h1:QsMYtDseSPq8hXvoNtA64unFiawJaE5kryizcMsVZWg=
-github.com/grafana/prometheus-alertmanager v0.25.1-0.20250305143719-fa9fa7096626/go.mod h1:FGdGvhI40Dq+CTQaSzK9evuve774cgOUdGfVO04OXkw=
+github.com/grafana/prometheus-alertmanager v0.25.1-0.20250620093340-be61a673dee6 h1:oJnbhG6ZNy10AjsgNeAtAKeGHogIGOMfAsBH6fYYa5M=
+github.com/grafana/prometheus-alertmanager v0.25.1-0.20250620093340-be61a673dee6/go.mod h1:O/QP1BCm0HHIzbKvgMzqb5sSyH88rzkFk84F4TfJjBU=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0 h1:gmcG1KaJ57LophUzW0Hy8NmPhnMZb4M0+kPpLofRdBo=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.24.0 h1:TmHmbvxPmaegwhDubVz0lICL0J5Ka2vwTzhoePEXsGE=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.24.0/go.mod h1:qztMSjm835F2bXf+5HKAPIS5qsmQDqZna/PgVt4rWtI=
