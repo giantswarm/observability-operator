@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.39.0] - 2025-08-26
+
 ### Changed
 
 - Update PagerDuty notification template, to include relevant information about the alert.
@@ -625,7 +627,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.38.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.39.0...HEAD
+[0.39.0]: https://github.com/giantswarm/observability-operator/compare/v0.38.0...v0.39.0
 [0.38.0]: https://github.com/giantswarm/observability-operator/compare/v0.37.0...v0.38.0
 [0.37.0]: https://github.com/giantswarm/observability-operator/compare/v0.36.0...v0.37.0
 [0.36.0]: https://github.com/giantswarm/observability-operator/compare/v0.35.0...v0.36.0
