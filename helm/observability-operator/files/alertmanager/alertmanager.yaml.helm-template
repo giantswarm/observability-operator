@@ -262,7 +262,29 @@ receivers:
 {{- if .Values.alerting.pagerdutyToken }}
 - name: pagerduty
   pagerduty_configs:
+  # TODO: Replace opsgenie templates used here with something else.
   - routing_key: {{ .Values.alerting.pagerdutyToken }}
+    source: '{{`{{ template "opsgenie.default.source" . }}`}}'
+    description: '{{`{{ template "opsgenie.default.message" . }}`}}'
+    # There is currently no way to send all alerts labels to PagerDuty as details.
+    # See https://github.com/prometheus/alertmanager/issues/3218
+    details: {
+      _description: '{{`{{ template "opsgenie.default.description" . }}`}}',
+      alertname: '{{`{{ .CommonLabels.alertname }}`}}',
+      area: '{{`{{ .CommonLabels.area }}`}}',
+      cluster_type: '{{`{{ .CommonLabels.cluster_type }}`}}',
+      customer: '{{`{{ .CommonLabels.customer }}`}}',
+      installation: '{{`{{ .CommonLabels.installation }}`}}',
+      pipeline: '{{`{{ .CommonLabels.pipeline }}`}}',
+      provider: '{{`{{ .CommonLabels.provider }}`}}',
+      service_priority: '{{`{{ .CommonLabels.service_priority }}`}}',
+      severity: '{{`{{ .CommonLabels.severity }}`}}',
+      team: '{{`{{ .CommonLabels.team }}`}}',
+      # This is to avoid the big text chunk about firing and resolved alerts.
+      # We already have firing alerts informations templated in our description.
+      firing: null,
+      resolved: null
+    }
 {{- end }}
 
 inhibit_rules:
