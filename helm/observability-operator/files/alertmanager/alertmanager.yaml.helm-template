@@ -3,6 +3,9 @@ global:
   http_config:
     proxy_from_environment: true
   slack_api_url: "https://slack.com/api/chat.postMessage"
+{{- if .Values.alerting.pagerdutyToken }}
+  pagerduty_url: "https://events.eu.pagerduty.com/v2/enqueue"
+{{- end }}
 
 templates:
   - notification-template.tmpl
@@ -64,11 +67,21 @@ route:
     - team=~"tenet|tinkerers"
     continue: false
 
+{{- if .Values.monitoring.opsgenieApiKey }}
   # Team Ops Opsgenie
   - receiver: opsgenie_router
     matchers:
     - severity="page"
     continue: true
+{{- end }}
+
+{{- if .Values.alerting.pagerdutyToken }}
+  # PagerDuty
+  - receiver: pagerduty
+    matchers:
+    - severity="page"
+    continue: true
+{{- end }}
 
   # Team Atlas Slack
   - receiver: team_atlas_slack
@@ -115,6 +128,7 @@ route:
 receivers:
 - name: root
 
+{{- if .Values.monitoring.opsgenieApiKey }}
 - name: heartbeat
   webhook_configs:
   - send_resolved: false
@@ -126,6 +140,7 @@ receivers:
       enable_http2: true
       proxy_from_environment: true
     url: https://api.opsgenie.com/v2/heartbeats/{{ .Values.managementCluster.name }}/ping
+{{- end }}
 
 {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
 - name: blackhole
@@ -237,10 +252,18 @@ receivers:
     send_resolved: true
     actions: *slack-actions
 
+{{- if .Values.monitoring.opsgenieApiKey }}
 - name: opsgenie_router
   opsgenie_configs:
   - api_key: {{ .Values.monitoring.opsgenieApiKey }}
     tags: '{{`{{ (index .Alerts 0).Labels.alertname }},{{ (index .Alerts 0).Labels.cluster_type }},{{ (index .Alerts 0).Labels.severity }},{{ (index .Alerts 0).Labels.team }},{{ (index .Alerts 0).Labels.area }},{{ (index .Alerts 0).Labels.service_priority }},{{ (index .Alerts 0).Labels.provider }},{{ (index .Alerts 0).Labels.installation }},{{ (index .Alerts 0).Labels.pipeline }},{{ (index .Alerts 0).Labels.customer }}`}}'
+{{- end }}
+
+{{- if .Values.alerting.pagerdutyToken }}
+- name: pagerduty
+  pagerduty_configs:
+  - routing_key: {{ .Values.alerting.pagerdutyToken }}
+{{- end }}
 
 inhibit_rules:
 - source_matchers:

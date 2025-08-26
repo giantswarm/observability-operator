@@ -17,6 +17,7 @@ alerting:
   alertmanagerURL: ""
   grafanaAddress: ""
   slackAPIToken: ""
+  pagerdutyToken: ""
 
 monitoring:
   agent: alloy

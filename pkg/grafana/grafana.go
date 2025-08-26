@@ -69,6 +69,18 @@ var defaultDatasources = []Datasource{
 	},
 }
 
+// Extra public datasources (added to "Shared Org")
+var extraPublicDatasources = []Datasource{
+	{
+		Name:      "Mimir Cardinality",
+		UID:       "gs-mimir-cardinality",
+		Type:      "marcusolsson-json-datasource",
+		URL:       "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/",
+		IsDefault: false,
+		Access:    datasourceProxyAccessMode,
+	},
+}
+
 func (s *Service) UpsertOrganization(ctx context.Context, organization *Organization) error {
 	logger := log.FromContext(ctx)
 	logger.Info("upserting organization")
@@ -176,6 +188,24 @@ func (s *Service) ConfigureDefaultDatasources(ctx context.Context, organization 
 		}
 		if !found {
 			datasourcesToCreate = append(datasourcesToCreate, defaultDatasource)
+		}
+	}
+
+	if organization.Name == SharedOrg.Name {
+		logger.Info("organization is shared org, adding extra public datasources")
+		for _, extraDatasource := range extraPublicDatasources {
+			found := false
+			for _, configuredDatasource := range configuredDatasourcesInGrafana {
+				if configuredDatasource.Name == extraDatasource.Name {
+					found = true
+					// We need to extract the ID from the configured datasource
+					datasourcesToUpdate = append(datasourcesToUpdate, extraDatasource.withID(configuredDatasource.ID))
+					break
+				}
+			}
+			if !found {
+				datasourcesToCreate = append(datasourcesToCreate, extraDatasource)
+			}
 		}
 	}
 
