@@ -134,5 +134,5 @@ replace (
 	github.com/hashicorp/go-retryablehttp => github.com/hashicorp/go-retryablehttp v0.7.8
 	// Replacing prometheus/alertmanager with grafana mimir fork to support the same alertmanager configuration options.
 	// Renovate will update this to the latest version of the fork whenever a new version of Mimir is available.
-	github.com/prometheus/alertmanager => github.com/grafana/prometheus-alertmanager v0.25.1-0.20250305143719-fa9fa7096626
+	github.com/prometheus/alertmanager => github.com/grafana/prometheus-alertmanager v0.25.1-0.20250620093340-be61a673dee6
 )
