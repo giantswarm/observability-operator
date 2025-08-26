@@ -81,6 +81,14 @@ route:
     matchers:
     - severity="page"
     continue: true
+
+  - receiver: pagerduty
+    matchers:
+    - alertname="Heartbeat"
+    continue: true
+    group_wait: 30s
+    group_interval: 30s
+    repeat_interval: 15m
 {{- end }}
 
   # Team Atlas Slack
