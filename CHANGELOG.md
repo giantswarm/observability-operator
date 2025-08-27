@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
 - Send all_pipelines alert label to PagerDuty
 
 ## [0.39.0] - 2025-08-27
