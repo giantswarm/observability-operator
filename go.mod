@@ -13,7 +13,7 @@ require (
 	github.com/go-openapi/runtime v0.28.0
 	github.com/grafana/grafana-openapi-client-go v0.0.0-20250821140309-7f4c35f8ae28
 	github.com/onsi/ginkgo/v2 v2.25.1
-	github.com/onsi/gomega v1.38.1
+	github.com/onsi/gomega v1.38.2
 	github.com/opsgenie/opsgenie-go-sdk-v2 v1.2.23
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.0
 	github.com/prometheus/alertmanager v0.28.1
