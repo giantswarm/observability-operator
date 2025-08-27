@@ -279,6 +279,7 @@ receivers:
     details: {
       _description: '{{`{{ template "opsgenie.default.description" . }}`}}',
       alertname: '{{`{{ .CommonLabels.alertname }}`}}',
+      all_pipelines: '{{`{{ .CommonLabels.all_pipelines }}`}}',
       area: '{{`{{ .CommonLabels.area }}`}}',
       cluster_type: '{{`{{ .CommonLabels.cluster_type }}`}}',
       customer: '{{`{{ .CommonLabels.customer }}`}}',
