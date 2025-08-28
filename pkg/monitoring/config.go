@@ -11,6 +11,19 @@ import (
 
 const MonitoringLabel = "giantswarm.io/monitoring"
 
+// QueueConfig represents the configuration for the remote write queue.
+type QueueConfig struct {
+	BatchSendDeadline *string
+	Capacity          *int
+	MaxBackoff        *string
+	MaxSamplesPerSend *int
+	MaxShards         *int
+	MinBackoff        *string
+	MinShards         *int
+	RetryOnHttp429    *bool
+	SampleAgeLimit    *string
+}
+
 // Config represents the configuration used by the monitoring package.
 type Config struct {
 	Enabled bool
@@ -25,6 +38,7 @@ type Config struct {
 	WALTruncateFrequency time.Duration
 	PrometheusVersion    string
 	MetricsQueryURL      string
+	QueueConfig          QueueConfig
 }
 
 // Monitoring should be enabled when all conditions are met:

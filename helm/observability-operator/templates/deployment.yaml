@@ -39,6 +39,33 @@ spec:
         - --monitoring-sharding-scale-up-series-count={{ $.Values.monitoring.sharding.scaleUpSeriesCount }}
         - --monitoring-sharding-scale-down-percentage={{ $.Values.monitoring.sharding.scaleDownPercentage }}
         - --monitoring-wal-truncate-frequency={{ $.Values.monitoring.wal.truncateFrequency }}
+        {{- if .Values.monitoring.queueConfig.batchSendDeadline }}
+        - --monitoring-queue-config-batch-send-deadline={{ $.Values.monitoring.queueConfig.batchSendDeadline }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.capacity }}
+        - --monitoring-queue-config-capacity={{ $.Values.monitoring.queueConfig.capacity }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.maxBackoff }}
+        - --monitoring-queue-config-max-backoff={{ $.Values.monitoring.queueConfig.maxBackoff }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.maxSamplesPerSend }}
+        - --monitoring-queue-config-max-samples-per-send={{ $.Values.monitoring.queueConfig.maxSamplesPerSend }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.maxShards }}
+        - --monitoring-queue-config-max-shards={{ $.Values.monitoring.queueConfig.maxShards }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.minBackoff }}
+        - --monitoring-queue-config-min-backoff={{ $.Values.monitoring.queueConfig.minBackoff }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.minShards }}
+        - --monitoring-queue-config-min-shards={{ $.Values.monitoring.queueConfig.minShards }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.retryOnHttp429 }}
+        - --monitoring-queue-config-retry-on-http-429={{ $.Values.monitoring.queueConfig.retryOnHttp429 }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.sampleAgeLimit }}
+        - --monitoring-queue-config-sample-age-limit={{ $.Values.monitoring.queueConfig.sampleAgeLimit }}
+        {{- end }}
         - --operator-namespace={{ include "resource.default.namespace" . }}
         {{- if .Values.monitoring.prometheusVersion }}
         - --prometheus-version={{ $.Values.monitoring.prometheusVersion }}

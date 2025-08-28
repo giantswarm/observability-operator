@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add configurable `queue_config` fields for Alloy remote write. All Alloy `queue_config` fields (`batch_send_deadline`, `capacity`, `max_backoff`, `max_samples_per_send`, `max_shards`, `min_backoff`, `min_shards`, `retry_on_http_429`, `sample_age_limit`) are now configurable via helm values and command line flags. When not configured, Alloy defaults are used.
+
 ## [0.40.0] - 2025-08-27
 
 ### Added

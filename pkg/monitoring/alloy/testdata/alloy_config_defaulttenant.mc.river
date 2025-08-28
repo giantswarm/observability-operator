@@ -120,8 +120,8 @@ prometheus.remote_write "giantswarm" {
     }
     queue_config {
       capacity             = 30000
-      max_shards           = 10
       max_samples_per_send = 150000
+      max_shards           = 10
       sample_age_limit     = "30m"
     }
   }
