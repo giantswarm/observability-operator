@@ -55,26 +55,7 @@ The queue configuration can also be set via command line flags:
 
 ## Queue Configuration Parameters
 
-### `batchSendDeadline`
-Maximum time samples wait in the buffer before sending. Smaller values reduce latency but may increase network overhead.
-
-### `capacity`
-Number of samples to buffer per shard. Higher values allow for better batching but use more memory.
-
-### `maxBackoff` / `minBackoff`
-Control the retry delay range. The backoff time starts at `minBackoff` and doubles for each retry up to `maxBackoff`.
-
-### `maxSamplesPerSend`
-Maximum number of samples per send request. Higher values improve throughput but may hit server-side limits.
-
-### `maxShards` / `minShards`
-Control the number of concurrent shards. More shards increase parallelism but also resource usage. Alloy automatically scales shards between these limits based on queue pressure.
-
-### `retryOnHttp429`
-Whether to retry when receiving HTTP 429 (Too Many Requests) responses. When enabled, Alloy respects `Retry-After` headers.
-
-### `sampleAgeLimit`
-Maximum age of samples to send. Older samples are dropped. Use "0s" to disable (send all samples regardless of age).
+For detailed information about each queue configuration parameter, see the [Grafana Alloy prometheus.remote_write queue_config documentation](https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.remote_write/#queue_config).
 
 ## Tuning Guidelines
 
@@ -97,7 +78,7 @@ Maximum age of samples to send. Older samples are dropped. Use "0s" to disable (
 
 ## Monitoring
 
-Monitor these metrics to understand queue behavior:
+Monitor these metrics to understand queue behavior. These are visible on the Grafana dashboard `Prometheus / Remote Write` with ID `promRW001/prometheus-remote-write`:
 
 - `prometheus_remote_storage_shards`: Current number of shards
 - `prometheus_remote_storage_shards_desired`: Desired number of shards
