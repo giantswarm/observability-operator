@@ -94,6 +94,7 @@ func (g *DefaultGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Contex
 	cfg := &grafana.TransportConfig{
 		Schemes:    []string{grafanaURL.Scheme},
 		BasePath:   "/api",
+		OrgID:      1,
 		Host:       grafanaURL.Host,
 		BasicAuth:  url.UserPassword(string(adminUsernameBytes), string(adminPasswordBytes)),
 		NumRetries: clientConfigNumRetries,
