@@ -92,7 +92,7 @@ func (s *Service) ConfigureGrafanaSSO(ctx context.Context) error {
 	}
 
 	// Configure SSO settings in Grafana
-	organizations := make([]Organization, len(organizationList.Items))
+	organizations := make([]Organization, 0)
 	for i, organization := range organizationList.Items {
 		if !organization.GetDeletionTimestamp().IsZero() {
 			// Skip organizations that are being deleted
