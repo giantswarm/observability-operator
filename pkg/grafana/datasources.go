@@ -91,19 +91,18 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 	// Multi-tenant header value is a pipe-separated list of tenant IDs
 	multiTenantIDsHeaderValue := strings.Join(organization.TenantIDs, "|")
 
-	// Create Loki datasource
-	lokiDatasource := Loki().Merge(Datasource{
+	// Add Loki datasource
+	datasources = append(datasources, DatasourceLoki().Merge(Datasource{
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
 		},
 		SecureJSONData: map[string]string{
 			"httpHeaderValue1": multiTenantIDsHeaderValue,
 		},
-	})
-	datasources = append(datasources, lokiDatasource)
+	}))
 
-	// Create Mimir datasource for metrics only
-	mimirDatasource := Mimir().Merge(Datasource{
+	// Add Mimir datasource for metrics only
+	datasources = append(datasources, DatasourceMimir().Merge(Datasource{
 		Name:      "Mimir",
 		UID:       "gs-mimir",
 		IsDefault: true,
@@ -117,12 +116,12 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 		SecureJSONData: map[string]string{
 			"httpHeaderValue1": multiTenantIDsHeaderValue,
 		},
-	})
-	datasources = append(datasources, mimirDatasource)
+	}))
 
 	for _, tenant := range organization.TenantIDs {
-		// Create one Mimir datasource per tenant for rules
-		mimirRuleDatasource := Mimir().Merge(Datasource{
+		// Add one Mimir datasource per tenant for rules
+		// This datasource allows managing recording and alerting rules in Grafana
+		datasources = append(datasources, DatasourceMimir().Merge(Datasource{
 			Name: fmt.Sprintf("Mimir - %s", tenant),
 			UID:  fmt.Sprintf("gs-mimir-%s", tenant),
 			JSONData: map[string]any{
@@ -133,11 +132,10 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 			SecureJSONData: map[string]string{
 				"httpHeaderValue1": tenant,
 			},
-		})
-		datasources = append(datasources, mimirRuleDatasource)
+		}))
 
-		// Create one Alertmanager datasource per tenant
-		dsAlertmanager := Alertmanager().Merge(Datasource{
+		// Add one Alertmanager datasource per tenant
+		datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
 			Name: fmt.Sprintf("Mimir Alertmanager - %s", tenant),
 			UID:  fmt.Sprintf("gs-mimir-alertmanager-%s", tenant),
 			JSONData: map[string]any{
@@ -146,21 +144,19 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 			SecureJSONData: map[string]string{
 				"httpHeaderValue1": tenant,
 			},
-		})
-		datasources = append(datasources, dsAlertmanager)
+		}))
 	}
 
 	if organization.Name == SharedOrg.Name {
 		// Add Mimir Cardinality datasources to the "Shared Org"
-		mimirCardinalityDatasource := MimirCardinality().Merge(Datasource{
+		datasources = append(datasources, DatasourceMimirCardinality().Merge(Datasource{
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
 			},
 			SecureJSONData: map[string]string{
 				"httpHeaderValue1": multiTenantIDsHeaderValue,
 			},
-		})
-		datasources = append(datasources, mimirCardinalityDatasource)
+		}))
 	}
 
 	return datasources
