@@ -1,9 +1,11 @@
 package grafana
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -13,12 +15,12 @@ import (
 func (s *Service) SetupOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	var errs []error
 
-	// Update the datasources in the CR's status
+	// Configure the organization's datasources
 	if err := s.ConfigureDatasources(ctx, grafanaOrganization); err != nil {
 		errs = append(errs, err)
 	}
 
-	// Configure Grafana RBAC
+	// Configure the organization's authorization settings
 	if err := s.ConfigureGrafanaSSO(ctx); err != nil {
 		errs = append(errs, err)
 	}
@@ -40,8 +42,8 @@ func (s *Service) DeleteOrganization(ctx context.Context, grafanaOrganization *v
 	return nil
 }
 
+// ConfigureOrganization creates or updates the organization in Grafana and returns the organization ID.
 func (s *Service) ConfigureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (int64, error) {
-	// Create or update organization in Grafana
 	organization := NewOrganization(grafanaOrganization)
 
 	err := s.UpsertOrganization(ctx, &organization)
@@ -52,18 +54,21 @@ func (s *Service) ConfigureOrganization(ctx context.Context, grafanaOrganization
 	return organization.ID, nil
 }
 
+// ConfigureDatasources ensures the datasources for the given GrafanaOrganization are up to date.
 func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
-	logger.Info("configuring data sources")
+	logger.Info("configuring datasources")
 
-	// Create or update organization in Grafana
 	var organization = NewOrganization(grafanaOrganization)
-	datasources, err := s.ConfigureDefaultDatasources(ctx, organization)
+
+	// Configure the datasources for the organization
+	datasources, err := s.ConfigureDatasource(ctx, organization)
 	if err != nil {
 		return fmt.Errorf("ConfigureDatasources: failed to configure default datasources: %w", err)
 	}
 
+	// Build the list of configured datasources for the status
 	var configuredDatasources = make([]v1alpha1.DataSource, len(datasources))
 	for i, datasource := range datasources {
 		configuredDatasources[i] = v1alpha1.DataSource{
@@ -72,18 +77,28 @@ func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization 
 		}
 	}
 
-	logger.Info("updating datasources in the grafanaOrganization status")
-	grafanaOrganization.Status.DataSources = configuredDatasources
-	if err := s.client.Status().Update(ctx, grafanaOrganization); err != nil {
-		return fmt.Errorf("ConfigureDatasources: failed to update grafanaOrganization status: %w", err)
+	// Sort the datasources by ID to ensure consistent ordering
+	slices.SortStableFunc(configuredDatasources, func(a, b v1alpha1.DataSource) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+
+	// Update the status if the datasources have changed
+	if !slices.Equal(grafanaOrganization.Status.DataSources, configuredDatasources) {
+		logger.Info("updating datasources in the GrafanaOrganization status")
+		grafanaOrganization.Status.DataSources = configuredDatasources
+		if err := s.client.Status().Update(ctx, grafanaOrganization); err != nil {
+			return fmt.Errorf("ConfigureDatasources: failed to update GrafanaOrganization status: %w", err)
+		}
+		logger.Info("updated datasources in the GrafanaOrganization status")
 	}
-	logger.Info("updated datasources in the grafanaOrganization status")
-	logger.Info("configured data sources")
+
+	logger.Info("configured datasources")
 
 	return nil
 }
 
-// ConfigureGrafana ensures the RBAC configuration is set in Grafana.
+// ConfigureGrafana ensures the SSO settings in Grafana are up to date based on the current
+// list of GrafanaOrganization CRs.
 func (s *Service) ConfigureGrafanaSSO(ctx context.Context) error {
 	organizationList := v1alpha1.GrafanaOrganizationList{}
 	err := s.client.List(ctx, &organizationList)
