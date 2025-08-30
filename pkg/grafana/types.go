@@ -1,10 +1,7 @@
 package grafana
 
 import (
-	"strings"
-
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
-	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 )
 
 type Organization struct {
@@ -40,34 +37,29 @@ func NewOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) Organiza
 }
 
 type Datasource struct {
-	ID        int64
-	UID       string
-	Name      string
-	IsDefault bool
-	Type      string
-	URL       string
-	Access    string
-	JSONData  map[string]interface{}
+	ID             int64
+	UID            string
+	Name           string
+	Type           string
+	URL            string
+	IsDefault      bool
+	JSONData       map[string]any
+	SecureJSONData map[string]string
+	Access         string
 }
 
-func (d Datasource) withID(id int64) Datasource {
-	d.ID = id
-	return d
-}
-
-func (d Datasource) buildJSONData() map[string]interface{} {
+func (d *Datasource) setJSONData(key string, value any) {
 	if d.JSONData == nil {
-		d.JSONData = make(map[string]interface{})
+		d.JSONData = make(map[string]any)
 	}
 
-	// Add tenant header name
-	d.JSONData["httpHeaderName1"] = common.OrgIDHeader
-
-	return d.JSONData
+	d.JSONData[key] = value
 }
 
-func (d Datasource) buildSecureJSONData(organization Organization) map[string]string {
-	return map[string]string{
-		"httpHeaderValue1": strings.Join(organization.TenantIDs, "|"),
+func (d *Datasource) setSecureJSONData(key, value string) {
+	if d.SecureJSONData == nil {
+		d.SecureJSONData = make(map[string]string)
 	}
+
+	d.SecureJSONData[key] = value
 }

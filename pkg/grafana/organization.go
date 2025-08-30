@@ -61,7 +61,9 @@ func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization 
 	logger.Info("configuring datasources")
 
 	var organization = NewOrganization(grafanaOrganization)
-	datasources, err := s.ConfigureDefaultDatasources(ctx, organization)
+
+	// Configure the datasources for the organization
+	datasources, err := s.ConfigureDatasource(ctx, organization)
 	if err != nil {
 		return fmt.Errorf("ConfigureDatasources: failed to configure default datasources: %w", err)
 	}
