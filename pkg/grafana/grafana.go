@@ -81,6 +81,7 @@ var extraPublicDatasources = []Datasource{
 	},
 }
 
+// UpsertOrganization creates or updates an organization in Grafana based on the provided Organization struct.
 func (s *Service) UpsertOrganization(ctx context.Context, organization *Organization) error {
 	logger := log.FromContext(ctx)
 	logger.Info("upserting organization")

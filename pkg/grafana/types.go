@@ -16,6 +16,7 @@ type Organization struct {
 	Viewers   []string
 }
 
+// NewOrganization creates a new Organization instance from a GrafanaOrganization custom resource.
 func NewOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) Organization {
 	tenantIDs := make([]string, len(grafanaOrganization.Spec.Tenants))
 	for i, tenant := range grafanaOrganization.Spec.Tenants {
