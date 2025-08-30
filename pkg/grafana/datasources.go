@@ -12,11 +12,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	grafanadatasources "github.com/giantswarm/observability-operator/pkg/grafana/datasources"
 )
 
 // ConfigureDatasources ensures the datasources for the given organization are up to date.
 // It creates, updates, or deletes datasources as necessary to match the desired state.
-func (s *Service) ConfigureDatasource(ctx context.Context, organization Organization) ([]Datasource, error) {
+func (s *Service) ConfigureDatasource(ctx context.Context, organization Organization) ([]grafanadatasources.Datasource, error) {
 	logger := log.FromContext(ctx)
 
 	// Configure Grafana client to use the correct organization
@@ -36,7 +37,7 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 	// Update or delete existing datasources
 	for _, currentDatasource := range resp.GetPayload() {
 		// Check if the current datasource exists in the desired datasources
-		index := slices.IndexFunc(desiredDatasources, func(d Datasource) bool {
+		index := slices.IndexFunc(desiredDatasources, func(d grafanadatasources.Datasource) bool {
 			return d.UID == currentDatasource.UID
 		})
 
@@ -85,49 +86,53 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 // generateDatasources generates the list of datasources for a given organization.
 // It configures the datasources to use the appropriate multi-tenant headers based on the organization's tenant IDs.
 // It returns the list of desired datasources.
-func (s *Service) generateDatasources(ctx context.Context, organization Organization) (datasources []Datasource) {
+func (s *Service) generateDatasources(ctx context.Context, organization Organization) (datasources []grafanadatasources.Datasource) {
 	// Multi-tenant header value is a pipe-separated list of tenant IDs
 	multiTenantIDsHeaderValue := strings.Join(organization.TenantIDs, "|")
 
-	// Create Alertmanager datasource
-	// TODO: might need to change to multiple datasources: 1 per tenant
-	dsAlertmanager := datasourceAlertmanager
-	dsAlertmanager.setJSONData("httpHeaderName1", common.OrgIDHeader)
-	dsAlertmanager.setSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
-	datasources = append(datasources, dsAlertmanager)
-
 	// Create Loki datasource
-	lokiDatasource := datasourceLoki
-	lokiDatasource.setJSONData("httpHeaderName1", common.OrgIDHeader)
-	lokiDatasource.setSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
+	lokiDatasource := grafanadatasources.Loki()
+	lokiDatasource.SetJSONData("httpHeaderName1", common.OrgIDHeader)
+	lokiDatasource.SetSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
 	datasources = append(datasources, lokiDatasource)
 
 	// Create Mimir datasource for metrics only
-	mimirDatasource := datasourceMimir
+	mimirDatasource := grafanadatasources.Mimir()
 	mimirDatasource.Name = "Mimir"
 	mimirDatasource.UID = "gs-mimir"
 	mimirDatasource.IsDefault = true
-	mimirDatasource.setJSONData("allowAsRecordingRulesTarget", false)
-	mimirDatasource.setJSONData("manageAlerts", false)
-	mimirDatasource.setJSONData("httpHeaderName1", common.OrgIDHeader)
-	mimirDatasource.setSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
+	mimirDatasource.SetJSONData("allowAsRecordingRulesTarget", false)
+	mimirDatasource.SetJSONData("manageAlerts", false)
+	mimirDatasource.SetJSONData("httpHeaderName1", common.OrgIDHeader)
+	mimirDatasource.SetSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
 	datasources = append(datasources, mimirDatasource)
 
-	// Create one Mimir datasource per tenant for rules
 	for _, tenant := range organization.TenantIDs {
-		mimirRuleDatasource := datasourceMimir
+		// Create one Mimir datasource per tenant for rules
+		mimirRuleDatasource := grafanadatasources.Mimir()
 		mimirRuleDatasource.Name = fmt.Sprintf("Mimir - %s", tenant)
 		mimirRuleDatasource.UID = fmt.Sprintf("gs-mimir-%s", tenant)
-		mimirRuleDatasource.setJSONData("httpHeaderName1", common.OrgIDHeader)
-		mimirRuleDatasource.setSecureJSONData("httpHeaderValue1", tenant)
+		mimirRuleDatasource.SetJSONData("allowAsRecordingRulesTarget", true)
+		mimirRuleDatasource.SetJSONData("manageAlerts", true)
+		mimirRuleDatasource.SetJSONData("httpHeaderName1", common.OrgIDHeader)
+		mimirRuleDatasource.SetSecureJSONData("httpHeaderValue1", tenant)
 		datasources = append(datasources, mimirRuleDatasource)
+
+		// Create one Alertmanager datasource per tenant
+		dsAlertmanager := grafanadatasources.Alertmanager()
+		dsAlertmanager.Name = fmt.Sprintf("Mimir Alertmanager - %s", tenant)
+		dsAlertmanager.UID = fmt.Sprintf("gs-mimir-alertmanager-%s", tenant)
+		dsAlertmanager.SetJSONData("httpHeaderName1", common.OrgIDHeader)
+		dsAlertmanager.SetSecureJSONData("httpHeaderValue1", tenant)
+		datasources = append(datasources, dsAlertmanager)
+
 	}
 
 	if organization.Name == SharedOrg.Name {
 		// Add extra public datasources to the "Shared Org"
-		for _, extraDatasource := range extraPublicDatasources {
-			extraDatasource.setJSONData("httpHeaderName1", common.OrgIDHeader)
-			extraDatasource.setSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
+		for _, extraDatasource := range grafanadatasources.ExtraPublic() {
+			extraDatasource.SetJSONData("httpHeaderName1", common.OrgIDHeader)
+			extraDatasource.SetSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
 			datasources = append(datasources, extraDatasource)
 		}
 	}
@@ -137,7 +142,7 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 
 // createDatasource creates the given datasource in Grafana.
 // It returns the created datasource with its ID set.
-func (s *Service) createDatasource(ctx context.Context, datasource Datasource) (Datasource, error) {
+func (s *Service) createDatasource(ctx context.Context, datasource grafanadatasources.Datasource) (grafanadatasources.Datasource, error) {
 	created, err := s.grafanaClient.Datasources().AddDataSource(
 		&models.AddDataSourceCommand{
 			UID:            datasource.UID,
@@ -150,11 +155,11 @@ func (s *Service) createDatasource(ctx context.Context, datasource Datasource) (
 			Access:         models.DsAccess(datasource.Access),
 		})
 	if err != nil {
-		return Datasource{}, fmt.Errorf("failed to create datasource %q: %w", datasource.UID, err)
+		return grafanadatasources.Datasource{}, fmt.Errorf("failed to create datasource %q: %w", datasource.UID, err)
 	}
 
 	if created.Payload == nil || created.Payload.ID == nil {
-		return Datasource{}, fmt.Errorf("failed to create datasource %q: response payload or ID is nil", datasource.UID)
+		return grafanadatasources.Datasource{}, fmt.Errorf("failed to create datasource %q: response payload or ID is nil", datasource.UID)
 	}
 
 	datasource.ID = *created.Payload.ID
@@ -165,7 +170,7 @@ func (s *Service) createDatasource(ctx context.Context, datasource Datasource) (
 // updateDatasource updates the given datasource in Grafana.
 // The datasource is identified by its UID.
 // It returns the updated datasource with its ID set.
-func (s *Service) updateDatasource(ctx context.Context, datasource Datasource) (Datasource, error) {
+func (s *Service) updateDatasource(ctx context.Context, datasource grafanadatasources.Datasource) (grafanadatasources.Datasource, error) {
 	resp, err := s.grafanaClient.Datasources().UpdateDataSourceByUID(
 		datasource.UID,
 		&models.UpdateDataSourceCommand{
@@ -179,11 +184,11 @@ func (s *Service) updateDatasource(ctx context.Context, datasource Datasource) (
 			Access:         models.DsAccess(datasource.Access),
 		})
 	if err != nil {
-		return Datasource{}, fmt.Errorf("failed to update datasource %q: %w", datasource.UID, err)
+		return grafanadatasources.Datasource{}, fmt.Errorf("failed to update datasource %q: %w", datasource.UID, err)
 	}
 
 	if resp.Payload == nil || resp.Payload.ID == nil {
-		return Datasource{}, fmt.Errorf("failed to update datasource %q: response payload or ID is nil", datasource.UID)
+		return grafanadatasources.Datasource{}, fmt.Errorf("failed to update datasource %q: response payload or ID is nil", datasource.UID)
 	}
 
 	datasource.ID = *resp.Payload.ID

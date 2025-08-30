@@ -35,31 +35,3 @@ func NewOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) Organiza
 		Viewers:   grafanaOrganization.Spec.RBAC.Viewers,
 	}
 }
-
-type Datasource struct {
-	ID             int64
-	UID            string
-	Name           string
-	Type           string
-	URL            string
-	IsDefault      bool
-	JSONData       map[string]any
-	SecureJSONData map[string]string
-	Access         string
-}
-
-func (d *Datasource) setJSONData(key string, value any) {
-	if d.JSONData == nil {
-		d.JSONData = make(map[string]any)
-	}
-
-	d.JSONData[key] = value
-}
-
-func (d *Datasource) setSecureJSONData(key, value string) {
-	if d.SecureJSONData == nil {
-		d.SecureJSONData = make(map[string]string)
-	}
-
-	d.SecureJSONData[key] = value
-}
