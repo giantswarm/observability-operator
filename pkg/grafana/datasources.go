@@ -89,47 +89,76 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 	// Multi-tenant header value is a pipe-separated list of tenant IDs
 	multiTenantIDsHeaderValue := strings.Join(organization.TenantIDs, "|")
 
-	// Create Alertmanager datasource
-	// TODO: might need to change to multiple datasources: 1 per tenant
-	dsAlertmanager := datasourceAlertmanager
-	dsAlertmanager.setJSONData("httpHeaderName1", common.OrgIDHeader)
-	dsAlertmanager.setSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
-	datasources = append(datasources, dsAlertmanager)
-
 	// Create Loki datasource
-	lokiDatasource := datasourceLoki
-	lokiDatasource.setJSONData("httpHeaderName1", common.OrgIDHeader)
-	lokiDatasource.setSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
+	lokiDatasource := Loki().Merge(Datasource{
+		JSONData: map[string]any{
+			"httpHeaderName1": common.OrgIDHeader,
+		},
+		SecureJSONData: map[string]string{
+			"httpHeaderValue1": multiTenantIDsHeaderValue,
+		},
+	})
 	datasources = append(datasources, lokiDatasource)
 
 	// Create Mimir datasource for metrics only
-	mimirDatasource := datasourceMimir
-	mimirDatasource.Name = "Mimir"
-	mimirDatasource.UID = "gs-mimir"
-	mimirDatasource.IsDefault = true
-	mimirDatasource.setJSONData("allowAsRecordingRulesTarget", false)
-	mimirDatasource.setJSONData("manageAlerts", false)
-	mimirDatasource.setJSONData("httpHeaderName1", common.OrgIDHeader)
-	mimirDatasource.setSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
+	mimirDatasource := Mimir().Merge(Datasource{
+		Name:      "Mimir",
+		UID:       "gs-mimir",
+		IsDefault: true,
+		JSONData: map[string]any{
+			// Disable rules management and recording rules target for the multi-tenant datasource
+			// as this is currently not supported by Mimir ruler.
+			"allowAsRecordingRulesTarget": false,
+			"manageAlerts":                false,
+			"httpHeaderName1":             common.OrgIDHeader,
+		},
+		SecureJSONData: map[string]string{
+			"httpHeaderValue1": multiTenantIDsHeaderValue,
+		},
+	})
 	datasources = append(datasources, mimirDatasource)
 
-	// Create one Mimir datasource per tenant for rules
 	for _, tenant := range organization.TenantIDs {
-		mimirRuleDatasource := datasourceMimir
-		mimirRuleDatasource.Name = fmt.Sprintf("Mimir - %s", tenant)
-		mimirRuleDatasource.UID = fmt.Sprintf("gs-mimir-%s", tenant)
-		mimirRuleDatasource.setJSONData("httpHeaderName1", common.OrgIDHeader)
-		mimirRuleDatasource.setSecureJSONData("httpHeaderValue1", tenant)
+		// Create one Mimir datasource per tenant for rules
+		mimirRuleDatasource := Mimir().Merge(Datasource{
+			Name: fmt.Sprintf("Mimir - %s", tenant),
+			UID:  fmt.Sprintf("gs-mimir-%s", tenant),
+			JSONData: map[string]any{
+				"allowAsRecordingRulesTarget": true,
+				"manageAlerts":                true,
+				"httpHeaderName1":             common.OrgIDHeader,
+			},
+			SecureJSONData: map[string]string{
+				"httpHeaderValue1": tenant,
+			},
+		})
 		datasources = append(datasources, mimirRuleDatasource)
+
+		// Create one Alertmanager datasource per tenant
+		dsAlertmanager := Alertmanager().Merge(Datasource{
+			Name: fmt.Sprintf("Mimir Alertmanager - %s", tenant),
+			UID:  fmt.Sprintf("gs-mimir-alertmanager-%s", tenant),
+			JSONData: map[string]any{
+				"httpHeaderName1": common.OrgIDHeader,
+			},
+			SecureJSONData: map[string]string{
+				"httpHeaderValue1": tenant,
+			},
+		})
+		datasources = append(datasources, dsAlertmanager)
 	}
 
 	if organization.Name == SharedOrg.Name {
-		// Add extra public datasources to the "Shared Org"
-		for _, extraDatasource := range extraPublicDatasources {
-			extraDatasource.setJSONData("httpHeaderName1", common.OrgIDHeader)
-			extraDatasource.setSecureJSONData("httpHeaderValue1", multiTenantIDsHeaderValue)
-			datasources = append(datasources, extraDatasource)
-		}
+		// Add Mimir Cardinality datasources to the "Shared Org"
+		mimirCardinalityDatasource := MimirCardinality().Merge(Datasource{
+			JSONData: map[string]any{
+				"httpHeaderName1": common.OrgIDHeader,
+			},
+			SecureJSONData: map[string]string{
+				"httpHeaderValue1": multiTenantIDsHeaderValue,
+			},
+		})
+		datasources = append(datasources, mimirCardinalityDatasource)
 	}
 
 	return datasources

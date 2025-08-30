@@ -1,32 +1,36 @@
 package grafana
 
-// Default datasources used in every organization
-var (
-	// Alertmanager datasource
-	datasourceAlertmanager = Datasource{
-		Name:      "Mimir Alertmanager",
-		UID:       "gs-mimir-alertmanager",
-		Type:      "alertmanager",
-		IsDefault: true,
-		URL:       "http://mimir-alertmanager.mimir.svc:8080",
-		Access:    datasourceProxyAccessMode,
+const (
+	datasourceProxyAccessMode = "proxy"
+)
+
+// Alertmanager datasource
+func Alertmanager() Datasource {
+	return Datasource{
+		Type:   "alertmanager",
+		URL:    "http://mimir-alertmanager.mimir.svc:8080",
+		Access: datasourceProxyAccessMode,
 		JSONData: map[string]any{
 			"handleGrafanaManagedAlerts": false,
 			"implementation":             "mimir",
 		},
 	}
+}
 
-	// Loki datasource
-	datasourceLoki = Datasource{
+// Loki datasource
+func Loki() Datasource {
+	return Datasource{
 		Name:   "Loki",
 		UID:    "gs-loki",
 		Type:   "loki",
 		URL:    "http://loki-gateway.loki.svc",
 		Access: datasourceProxyAccessMode,
 	}
+}
 
-	// Mimir datasource
-	datasourceMimir = Datasource{
+// Mimir datasource
+func Mimir() Datasource {
+	return Datasource{
 		Type:   "prometheus",
 		URL:    "http://mimir-gateway.mimir.svc/prometheus",
 		Access: datasourceProxyAccessMode,
@@ -44,16 +48,16 @@ var (
 			"timeInterval":      "60s",
 		},
 	}
-)
+}
 
-// Extra public datasources added to "Shared Org"
-var extraPublicDatasources = []Datasource{
-	{
+// MimirCardinality datasource for querying cardinality data from Mimir
+func MimirCardinality() Datasource {
+	return Datasource{
 		Name:      "Mimir Cardinality",
 		UID:       "gs-mimir-cardinality",
 		Type:      "marcusolsson-json-datasource",
 		URL:       "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/",
 		IsDefault: false,
 		Access:    datasourceProxyAccessMode,
-	},
+	}
 }
