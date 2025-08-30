@@ -165,17 +165,16 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 // createDatasource creates the given datasource in Grafana.
 // It returns the created datasource with its ID set.
 func (s *Service) createDatasource(ctx context.Context, datasource Datasource) (Datasource, error) {
-	created, err := s.grafanaClient.Datasources().AddDataSource(
-		&models.AddDataSourceCommand{
-			UID:            datasource.UID,
-			Name:           datasource.Name,
-			Type:           datasource.Type,
-			URL:            datasource.URL,
-			IsDefault:      datasource.IsDefault,
-			JSONData:       models.JSON(datasource.JSONData),
-			SecureJSONData: datasource.SecureJSONData,
-			Access:         models.DsAccess(datasource.Access),
-		})
+	created, err := s.grafanaClient.Datasources().AddDataSource(&models.AddDataSourceCommand{
+		UID:            datasource.UID,
+		Name:           datasource.Name,
+		Type:           datasource.Type,
+		URL:            datasource.URL,
+		IsDefault:      datasource.IsDefault,
+		JSONData:       models.JSON(datasource.JSONData),
+		SecureJSONData: datasource.SecureJSONData,
+		Access:         models.DsAccess(datasource.Access),
+	})
 	if err != nil {
 		return Datasource{}, fmt.Errorf("failed to create datasource %q: %w", datasource.UID, err)
 	}
@@ -193,18 +192,16 @@ func (s *Service) createDatasource(ctx context.Context, datasource Datasource) (
 // The datasource is identified by its UID.
 // It returns the updated datasource with its ID set.
 func (s *Service) updateDatasource(ctx context.Context, datasource Datasource) (Datasource, error) {
-	resp, err := s.grafanaClient.Datasources().UpdateDataSourceByUID(
-		datasource.UID,
-		&models.UpdateDataSourceCommand{
-			UID:            datasource.UID,
-			Name:           datasource.Name,
-			Type:           datasource.Type,
-			URL:            datasource.URL,
-			IsDefault:      datasource.IsDefault,
-			JSONData:       models.JSON(datasource.JSONData),
-			SecureJSONData: datasource.SecureJSONData,
-			Access:         models.DsAccess(datasource.Access),
-		})
+	resp, err := s.grafanaClient.Datasources().UpdateDataSourceByUID(datasource.UID, &models.UpdateDataSourceCommand{
+		UID:            datasource.UID,
+		Name:           datasource.Name,
+		Type:           datasource.Type,
+		URL:            datasource.URL,
+		IsDefault:      datasource.IsDefault,
+		JSONData:       models.JSON(datasource.JSONData),
+		SecureJSONData: datasource.SecureJSONData,
+		Access:         models.DsAccess(datasource.Access),
+	})
 	if err != nil {
 		return Datasource{}, fmt.Errorf("failed to update datasource %q: %w", datasource.UID, err)
 	}
