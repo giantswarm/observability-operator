@@ -19,13 +19,13 @@ import (
 func (s *Service) ConfigureDatasource(ctx context.Context, organization Organization) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
+	// Generate the desired datasources for the organization
+	desiredDatasources := s.generateDatasources(ctx, organization)
+
 	// Configure Grafana client to use the correct organization
 	currentOrgID := s.grafanaClient.OrgID()
 	s.grafanaClient.WithOrgID(organization.ID)
 	defer s.grafanaClient.WithOrgID(currentOrgID)
-
-	// Generate the desired datasources for the organization
-	desiredDatasources := s.generateDatasources(ctx, organization)
 
 	// Fetch the currently configured datasources in Grafana
 	resp, err := s.grafanaClient.Datasources().GetDataSources()
@@ -67,6 +67,8 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 	for index := range desiredDatasources {
 		desiredDatasource := desiredDatasources[index]
 
+		// If the datasource ID is 0, it means it does not exist yet and needs to be created
+		// We already took care of updating existing datasources ID in the previous loop
 		if desiredDatasource.ID == 0 {
 			logger.Info("creating datasource", "datasource", desiredDatasource.UID)
 			desiredDatasource, err = s.createDatasource(ctx, desiredDatasource)
