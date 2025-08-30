@@ -1,9 +1,11 @@
 package grafana
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -64,6 +66,7 @@ func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization 
 		return fmt.Errorf("ConfigureDatasources: failed to configure default datasources: %w", err)
 	}
 
+	// Build the list of configured datasources for the status
 	var configuredDatasources = make([]v1alpha1.DataSource, len(datasources))
 	for i, datasource := range datasources {
 		configuredDatasources[i] = v1alpha1.DataSource{
@@ -72,12 +75,20 @@ func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization 
 		}
 	}
 
-	logger.Info("updating datasources in the grafanaOrganization status")
-	grafanaOrganization.Status.DataSources = configuredDatasources
-	if err := s.client.Status().Update(ctx, grafanaOrganization); err != nil {
-		return fmt.Errorf("ConfigureDatasources: failed to update grafanaOrganization status: %w", err)
+	// Sort the datasources by ID to ensure consistent ordering
+	slices.SortStableFunc(configuredDatasources, func(a, b v1alpha1.DataSource) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+
+	// Update the status if the datasources have changed
+	if !slices.Equal(grafanaOrganization.Status.DataSources, configuredDatasources) {
+		logger.Info("updating datasources in the GrafanaOrganization status")
+		grafanaOrganization.Status.DataSources = configuredDatasources
+		if err := s.client.Status().Update(ctx, grafanaOrganization); err != nil {
+			return fmt.Errorf("ConfigureDatasources: failed to update GrafanaOrganization status: %w", err)
+		}
+		logger.Info("updated datasources in the GrafanaOrganization status")
 	}
-	logger.Info("updated datasources in the grafanaOrganization status")
 
 	logger.Info("configured datasources")
 
