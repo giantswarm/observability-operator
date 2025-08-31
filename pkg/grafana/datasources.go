@@ -91,9 +91,12 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 	// Multi-tenant header value is a pipe-separated list of tenant IDs
 	multiTenantIDsHeaderValue := strings.Join(organization.TenantIDs, "|")
 
-	// Add Loki datasource
+	// Add Loki datasource for logs only
 	datasources = append(datasources, DatasourceLoki().Merge(Datasource{
+		Name: "Loki",
+		UID:  "gs-loki",
 		JSONData: map[string]any{
+			"manageAlerts":    false,
 			"httpHeaderName1": common.OrgIDHeader,
 		},
 		SecureJSONData: map[string]string{
@@ -119,6 +122,19 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 	}))
 
 	for _, tenant := range organization.TenantIDs {
+		// Add one Loki datasource per tenant for rules
+		datasources = append(datasources, DatasourceLoki().Merge(Datasource{
+			Name: fmt.Sprintf("Loki - %s", tenant),
+			UID:  fmt.Sprintf("gs-loki-%s", tenant),
+			JSONData: map[string]any{
+				"manageAlerts":    true,
+				"httpHeaderName1": common.OrgIDHeader,
+			},
+			SecureJSONData: map[string]string{
+				"httpHeaderValue1": tenant,
+			},
+		}))
+
 		// Add one Mimir datasource per tenant for rules
 		// This datasource allows managing recording and alerting rules in Grafana
 		datasources = append(datasources, DatasourceMimir().Merge(Datasource{

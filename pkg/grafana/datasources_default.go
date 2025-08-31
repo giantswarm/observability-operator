@@ -32,8 +32,6 @@ var (
 	// Datasource for Loki
 	DatasourceLoki = buildDatasourceGenerator(Datasource{
 		Type:   "loki",
-		Name:   "Loki",
-		UID:    "gs-loki",
 		URL:    "http://loki-gateway.loki.svc",
 		Access: datasourceProxyAccessMode,
 	})
