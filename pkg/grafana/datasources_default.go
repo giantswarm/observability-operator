@@ -1,6 +1,10 @@
 package grafana
 
+import "fmt"
+
 const (
+	// datasourceUIDPrefix is the prefix for all datasources managed by the operator
+	datasourceUIDPrefix       = "gs-"
 	datasourceProxyAccessMode = "proxy"
 )
 
@@ -59,7 +63,7 @@ var (
 		return Datasource{
 			Type:   "marcusolsson-json-datasource",
 			Name:   "Mimir Cardinality",
-			UID:    "gs-mimir-cardinality",
+			UID:    fmt.Sprintf("%smimir-cardinality", datasourceUIDPrefix),
 			URL:    "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/",
 			Access: datasourceProxyAccessMode,
 		}

@@ -52,7 +52,9 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 			// Set the ID of the updated datasource
 			desiredDatasources[index] = desiredDatasource
 			logger.Info("updated datasource", "datasource", desiredDatasource.UID)
-		} else {
+		}
+
+		if strings.HasPrefix(currentDatasource.UID, datasourceUIDPrefix) {
 			// Delete the datasource as it is no longer desired
 			logger.Info("deleting datasource", "datasource", currentDatasource.UID)
 			err := s.deleteDatasource(ctx, currentDatasource.UID)
@@ -94,7 +96,7 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 	// Add Loki datasource for logs only
 	datasources = append(datasources, DatasourceLoki().Merge(Datasource{
 		Name: "Loki",
-		UID:  "gs-loki",
+		UID:  fmt.Sprintf("%sloki", datasourceUIDPrefix),
 		JSONData: map[string]any{
 			"manageAlerts":    false,
 			"httpHeaderName1": common.OrgIDHeader,
@@ -107,7 +109,7 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 	// Add Mimir datasource for metrics only
 	datasources = append(datasources, DatasourceMimir().Merge(Datasource{
 		Name:      "Mimir",
-		UID:       "gs-mimir",
+		UID:       fmt.Sprintf("%smimir", datasourceUIDPrefix),
 		IsDefault: true,
 		JSONData: map[string]any{
 			// Disable rules management and recording rules target for the multi-tenant datasource
@@ -125,7 +127,7 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 		// Add one Loki datasource per tenant for rules
 		datasources = append(datasources, DatasourceLoki().Merge(Datasource{
 			Name: fmt.Sprintf("Loki - %s", tenant),
-			UID:  fmt.Sprintf("gs-loki-%s", tenant),
+			UID:  fmt.Sprintf("%sloki-%s", datasourceUIDPrefix, tenant),
 			JSONData: map[string]any{
 				"manageAlerts":    true,
 				"httpHeaderName1": common.OrgIDHeader,
@@ -139,7 +141,7 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 		// This datasource allows managing recording and alerting rules in Grafana
 		datasources = append(datasources, DatasourceMimir().Merge(Datasource{
 			Name: fmt.Sprintf("Mimir - %s", tenant),
-			UID:  fmt.Sprintf("gs-mimir-%s", tenant),
+			UID:  fmt.Sprintf("%smimir-%s", datasourceUIDPrefix, tenant),
 			JSONData: map[string]any{
 				"allowAsRecordingRulesTarget": true,
 				"manageAlerts":                true,
@@ -153,7 +155,7 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 		// Add one Alertmanager datasource per tenant
 		datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
 			Name: fmt.Sprintf("Mimir Alertmanager - %s", tenant),
-			UID:  fmt.Sprintf("gs-mimir-alertmanager-%s", tenant),
+			UID:  fmt.Sprintf("%smimir-alertmanager-%s", datasourceUIDPrefix, tenant),
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
 			},
