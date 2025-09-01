@@ -96,6 +96,7 @@ func (s *Service) ConfigureGrafanaSSO(ctx context.Context) error {
 	for _, organization := range organizationList.Items {
 		if !organization.GetDeletionTimestamp().IsZero() {
 			// Skip organizations that are being deleted
+			// see https://github.com/giantswarm/observability-operator/pull/525
 			continue
 		}
 
