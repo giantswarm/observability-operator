@@ -92,10 +92,17 @@ func (s *Service) ConfigureGrafanaSSO(ctx context.Context) error {
 	}
 
 	// Configure SSO settings in Grafana
-	organizations := make([]Organization, len(organizationList.Items))
-	for i, organization := range organizationList.Items {
-		organizations[i] = NewOrganization(&organization)
+	organizations := make([]Organization, 0)
+	for _, organization := range organizationList.Items {
+		if !organization.GetDeletionTimestamp().IsZero() {
+			// Skip organizations that are being deleted
+			// see https://github.com/giantswarm/observability-operator/pull/525
+			continue
+		}
+
+		organizations = append(organizations, NewOrganization(&organization))
 	}
+
 	err = s.ConfigureSSOSettings(ctx, organizations)
 	if err != nil {
 		return fmt.Errorf("ConfigureGrafanaSSO: failed to configure SSO settings: %w", err)

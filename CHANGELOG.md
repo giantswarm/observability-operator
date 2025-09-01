@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix an issue where organizations were not being deleted in Grafana when the corresponding GrafanaOrganization CR was deleted.
+- Fix an issue where SSO settings contained configuration for organizations that no longer existed.
 
 ## [0.40.0] - 2025-08-27
 
