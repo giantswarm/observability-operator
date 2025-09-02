@@ -400,10 +400,9 @@ kubectl -n mimir port-forward svc/mimir-gateway 8080
 ```
 
 - Then we can make requests using [`mimirtool`](https://grafana.com/docs/mimir/latest/manage/tools/mimirtool/):
-
-- `--user` is the basic auth username
-- `--key` is the basic auth password
-- `--id` is the tenant ID to access
+  - `--user` is the basic auth username
+  - `--key` is the basic auth password
+  - `--id` is the tenant ID to access
 
 ```sh
 $ mimirtool rules list --address=http://127.0.0.1:8080 --user admin --password strongpassword --id tenant1
