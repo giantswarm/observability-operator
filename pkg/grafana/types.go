@@ -69,7 +69,7 @@ func (d Datasource) Merge(src Datasource) Datasource {
 	if !IsZeroVar(src.URL) {
 		d.URL = src.URL
 	}
-	if !IsZeroVar(src.IsDefault) {
+	if d.IsDefault != src.IsDefault {
 		d.IsDefault = src.IsDefault
 	}
 	if !IsZeroVar(src.Access) {
