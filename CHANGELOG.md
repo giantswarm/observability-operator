@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Implement metrics for grafanaOrganizations.
+
 ## [0.37.0] - 2025-08-13
 
 ### Changed
