@@ -52,16 +52,16 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 			// Set the ID of the updated datasource
 			desiredDatasources[index] = desiredDatasource
 			logger.Info("updated datasource", "datasource", desiredDatasource.UID)
-		}
-
-		if strings.HasPrefix(currentDatasource.UID, datasourceUIDPrefix) {
-			// Delete the datasource as it is no longer desired
-			logger.Info("deleting datasource", "datasource", currentDatasource.UID)
-			err := s.deleteDatasource(ctx, currentDatasource.UID)
-			if err != nil {
-				return nil, err
+		} else {
+			if strings.HasPrefix(currentDatasource.UID, datasourceUIDPrefix) {
+				// Delete the datasource as it is no longer desired
+				logger.Info("deleting datasource", "datasource", currentDatasource.UID)
+				err := s.deleteDatasource(ctx, currentDatasource.UID)
+				if err != nil {
+					return nil, err
+				}
+				logger.Info("deleted datasource", "datasource", currentDatasource.UID)
 			}
-			logger.Info("deleted datasource", "datasource", currentDatasource.UID)
 		}
 	}
 
