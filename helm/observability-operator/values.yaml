@@ -17,6 +17,7 @@ alerting:
   alertmanagerURL: ""
   grafanaAddress: ""
   slackAPIToken: ""
+  pagerdutyToken: ""
 
 monitoring:
   agent: alloy
@@ -29,6 +30,17 @@ monitoring:
   wal:
     # -- Configures the WAL truncation frequency
     truncateFrequency: 15m
+  queueConfig:
+    # -- Queue configuration for remote write. If not set, Alloy defaults will be used
+    # batchSendDeadline: "5s"
+    capacity: 30000
+    # maxBackoff: "5s"
+    maxSamplesPerSend: 150000
+    maxShards: 10
+    # minBackoff: "30ms"
+    # minShards: 1
+    # retryOnHttp429: true
+    sampleAgeLimit: "30m"
 
 operator:
   # -- Configures the resources for the operator deployment

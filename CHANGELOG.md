@@ -11,6 +11,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Implement metrics for grafanaOrganizations.
 
+## [0.41.0] - 2025-09-01
+
+### Added
+
+- Add configurable `queue_config` fields for Alloy remote write. All Alloy `queue_config` fields (`batch_send_deadline`, `capacity`, `max_backoff`, `max_samples_per_send`, `max_shards`, `min_backoff`, `min_shards`, `retry_on_http_429`, `sample_age_limit`) are now configurable via helm values and command line flags. When not configured, Alloy defaults are used.
+
+### Fixed
+
+- Fix an issue where organizations were not being deleted in Grafana when the corresponding GrafanaOrganization CR was deleted.
+- Fix an issue where SSO settings contained configuration for organizations that no longer existed.
+
+## [0.40.0] - 2025-08-27
+
+### Added
+
+- Send all_pipelines alert label to PagerDuty
+
+## [0.39.0] - 2025-08-27
+
+### Added
+
+- Add Alertmanager PagerDuty heartbeat route
+
+### Changed
+
+- Update PagerDuty notification template, to include relevant information about the alert.
+- Upgrade `github.com/grafana/prometheus-alertmanager` dependency after the new mimir release.
+
+### Fixed
+
+- Fixed index out of range error in Alertmanager notification template
+
+## [0.38.0] - 2025-08-25
+
+### Added
+
+- `Mimir Cardinality` datasource for Grafana `Shared Org`
+- Add Alertmanager PagerDuty router
+
 ## [0.37.0] - 2025-08-13
 
 ### Changed
@@ -617,7 +656,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.37.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.41.0...HEAD
+[0.41.0]: https://github.com/giantswarm/observability-operator/compare/v0.40.0...v0.41.0
+[0.40.0]: https://github.com/giantswarm/observability-operator/compare/v0.39.0...v0.40.0
+[0.39.0]: https://github.com/giantswarm/observability-operator/compare/v0.38.0...v0.39.0
+[0.38.0]: https://github.com/giantswarm/observability-operator/compare/v0.37.0...v0.38.0
 [0.37.0]: https://github.com/giantswarm/observability-operator/compare/v0.36.0...v0.37.0
 [0.36.0]: https://github.com/giantswarm/observability-operator/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/giantswarm/observability-operator/compare/v0.34.0...v0.35.0

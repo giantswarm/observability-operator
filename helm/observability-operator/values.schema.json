@@ -92,6 +92,52 @@
                             "type": "string"
                         }
                     }
+                },
+                "queueConfig": {
+                    "type": "object",
+                    "description": "Queue configuration for remote write",
+                    "properties": {
+                        "batchSendDeadline": {
+                            "type": "string",
+                            "description": "Maximum time samples wait in the buffer before sending (e.g., '5s')"
+                        },
+                        "capacity": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Number of samples to buffer per shard"
+                        },
+                        "maxBackoff": {
+                            "type": "string",
+                            "description": "Maximum retry delay (e.g., '5s')"
+                        },
+                        "maxSamplesPerSend": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Maximum number of samples per send"
+                        },
+                        "maxShards": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Maximum number of concurrent shards"
+                        },
+                        "minBackoff": {
+                            "type": "string",
+                            "description": "Initial retry delay (e.g., '30ms')"
+                        },
+                        "minShards": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Minimum number of concurrent shards"
+                        },
+                        "retryOnHttp429": {
+                            "type": "boolean",
+                            "description": "Retry when an HTTP 429 status code is received"
+                        },
+                        "sampleAgeLimit": {
+                            "type": "string",
+                            "description": "Maximum age of samples to send (e.g., '30m')"
+                        }
+                    }
                 }
             }
         },

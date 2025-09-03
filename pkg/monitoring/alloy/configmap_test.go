@@ -10,6 +10,7 @@ import (
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	"github.com/giantswarm/observability-operator/pkg/common"
@@ -195,6 +196,12 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 				MonitoringConfig: monitoring.Config{
 					WALTruncateFrequency: time.Minute,
+					QueueConfig: monitoring.QueueConfig{
+						Capacity:          ptr.To(30000),
+						MaxShards:         ptr.To(10),
+						MaxSamplesPerSend: ptr.To(150000),
+						SampleAgeLimit:    ptr.To("30m"),
+					},
 				},
 			}
 

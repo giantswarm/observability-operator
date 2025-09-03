@@ -154,10 +154,15 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		Tenants         []string
 		DefaultTenantID string
 
-		QueueConfigCapacity          int
-		QueueConfigMaxSamplesPerSend int
-		QueueConfigMaxShards         int
-		QueueConfigSampleAgeLimit    string
+		QueueConfigBatchSendDeadline *string
+		QueueConfigCapacity          *int
+		QueueConfigMaxBackoff        *string
+		QueueConfigMaxSamplesPerSend *int
+		QueueConfigMaxShards         *int
+		QueueConfigMinBackoff        *string
+		QueueConfigMinShards         *int
+		QueueConfigRetryOnHttp429    *bool
+		QueueConfigSampleAgeLimit    *string
 
 		WALTruncateFrequency string
 
@@ -181,10 +186,15 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		Tenants:         tenants,
 		DefaultTenantID: commonmonitoring.DefaultWriteTenant,
 
-		QueueConfigCapacity:          commonmonitoring.QueueConfigCapacity,
-		QueueConfigMaxSamplesPerSend: commonmonitoring.QueueConfigMaxSamplesPerSend,
-		QueueConfigMaxShards:         commonmonitoring.QueueConfigMaxShards,
-		QueueConfigSampleAgeLimit:    commonmonitoring.QueueConfigSampleAgeLimit,
+		QueueConfigBatchSendDeadline: a.MonitoringConfig.QueueConfig.BatchSendDeadline,
+		QueueConfigCapacity:          a.MonitoringConfig.QueueConfig.Capacity,
+		QueueConfigMaxBackoff:        a.MonitoringConfig.QueueConfig.MaxBackoff,
+		QueueConfigMaxSamplesPerSend: a.MonitoringConfig.QueueConfig.MaxSamplesPerSend,
+		QueueConfigMaxShards:         a.MonitoringConfig.QueueConfig.MaxShards,
+		QueueConfigMinBackoff:        a.MonitoringConfig.QueueConfig.MinBackoff,
+		QueueConfigMinShards:         a.MonitoringConfig.QueueConfig.MinShards,
+		QueueConfigRetryOnHttp429:    a.MonitoringConfig.QueueConfig.RetryOnHttp429,
+		QueueConfigSampleAgeLimit:    a.MonitoringConfig.QueueConfig.SampleAgeLimit,
 
 		WALTruncateFrequency: a.MonitoringConfig.WALTruncateFrequency.String(),
 

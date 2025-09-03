@@ -92,8 +92,15 @@ func (g *DefaultGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Contex
 	}
 
 	cfg := &grafana.TransportConfig{
-		Schemes:    []string{grafanaURL.Scheme},
-		BasePath:   "/api",
+		Schemes:  []string{grafanaURL.Scheme},
+		BasePath: "/api",
+		// Initialize the client with the first organization.
+		// This enforces requests to be made in the context of the
+		// first org, if not specified otherwise via the WithOrgID() method.
+		// This overrides the server side defined org context,
+		// see https://grafana.com/docs/grafana/latest/developers/http_api/user/#switch-user-context-for-signed-in-user
+		// This ensures operations like deleting organizations other than the first org. work as expected.
+		OrgID:      1,
 		Host:       grafanaURL.Host,
 		BasicAuth:  url.UserPassword(string(adminUsernameBytes), string(adminPasswordBytes)),
 		NumRetries: clientConfigNumRetries,

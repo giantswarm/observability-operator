@@ -140,12 +140,37 @@ prometheus.remote_write "{{ . }}" {
     tls_config {
       insecure_skip_verify = {{ $.MimirRemoteWriteTLSInsecureSkipVerify }}
     }
+    {{- if or $.QueueConfigBatchSendDeadline $.QueueConfigCapacity $.QueueConfigMaxBackoff $.QueueConfigMaxSamplesPerSend $.QueueConfigMaxShards $.QueueConfigMinBackoff $.QueueConfigMinShards $.QueueConfigRetryOnHttp429 $.QueueConfigSampleAgeLimit }}
     queue_config {
+      {{- if $.QueueConfigBatchSendDeadline }}
+      batch_send_deadline = "{{ $.QueueConfigBatchSendDeadline }}"
+      {{- end }}
+      {{- if $.QueueConfigCapacity }}
       capacity             = {{ $.QueueConfigCapacity }}
-      max_shards           = {{ $.QueueConfigMaxShards }}
+      {{- end }}
+      {{- if $.QueueConfigMaxBackoff }}
+      max_backoff          = "{{ $.QueueConfigMaxBackoff }}"
+      {{- end }}
+      {{- if $.QueueConfigMaxSamplesPerSend }}
       max_samples_per_send = {{ $.QueueConfigMaxSamplesPerSend }}
+      {{- end }}
+      {{- if $.QueueConfigMaxShards }}
+      max_shards           = {{ $.QueueConfigMaxShards }}
+      {{- end }}
+      {{- if $.QueueConfigMinBackoff }}
+      min_backoff          = "{{ $.QueueConfigMinBackoff }}"
+      {{- end }}
+      {{- if $.QueueConfigMinShards }}
+      min_shards           = {{ $.QueueConfigMinShards }}
+      {{- end }}
+      {{- if $.QueueConfigRetryOnHttp429 }}
+      retry_on_http_429    = {{ $.QueueConfigRetryOnHttp429 }}
+      {{- end }}
+      {{- if $.QueueConfigSampleAgeLimit }}
       sample_age_limit     = "{{ $.QueueConfigSampleAgeLimit }}"
+      {{- end }}
     }
+    {{- end }}
   }
   wal {
     truncate_frequency = "{{ $.WALTruncateFrequency }}"

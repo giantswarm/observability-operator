@@ -96,8 +96,8 @@ prometheus.remote_write "tenant1" {
     }
     queue_config {
       capacity             = 30000
-      max_shards           = 10
       max_samples_per_send = 150000
+      max_shards           = 10
       sample_age_limit     = "30m"
     }
   }
@@ -173,8 +173,8 @@ prometheus.remote_write "tenant2" {
     }
     queue_config {
       capacity             = 30000
-      max_shards           = 10
       max_samples_per_send = 150000
+      max_shards           = 10
       sample_age_limit     = "30m"
     }
   }

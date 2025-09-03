@@ -54,7 +54,7 @@ git clone https://github.com/grafana/prometheus-alertmanager.git "$REPO_DIR"
 cd "$REPO_DIR"
 
 echo "Checking out commit: $ALERTMANAGER_COMMIT"
-git checkout "$ALERTMANAGER_COMMIT"
+git -c advice.detachedHead=false checkout "$ALERTMANAGER_COMMIT"
 
 # Show some info about the current state
 echo "✓ Repository ready for go run"
@@ -84,7 +84,7 @@ echo "Templating helm chart with test values..."
 echo "Namespace: alertmanager"
 echo "Setting monitoring.opsgenieApiKey to placeholder value"
 RENDERED_FILE="$TMP_DIR/rendered.yaml"
-helm template observability-operator "$PROJECT_ROOT/helm/observability-operator" --namespace alertmanager --set monitoring.opsgenieApiKey="apikey" > "$RENDERED_FILE"
+helm template observability-operator "$PROJECT_ROOT/helm/observability-operator" --namespace alertmanager --set monitoring.opsgenieApiKey="apikey" --set alerting.pagerdutyToken="token" > "$RENDERED_FILE"
 
 echo "✓ Helm chart rendered successfully"
 echo "Output file: $RENDERED_FILE"

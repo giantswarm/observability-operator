@@ -118,12 +118,63 @@ func runner() error {
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
 	flag.StringVar(&conf.Monitoring.MetricsQueryURL, "monitoring-metrics-query-url", "http://mimir-gateway.mimir.svc/prometheus",
 		"URL to query for cluster metrics")
+
+	// Queue configuration flags for Alloy remote write
+	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string
+	var queueCapacity, queueMaxSamplesPerSend, queueMaxShards, queueMinShards int
+	var queueRetryOnHttp429 bool
+
+	flag.StringVar(&queueBatchSendDeadline, "monitoring-queue-config-batch-send-deadline", "",
+		"Maximum time samples wait in the buffer before sending (e.g., '5s'). If empty, Alloy default is used.")
+	flag.IntVar(&queueCapacity, "monitoring-queue-config-capacity", 0,
+		"Number of samples to buffer per shard. If 0, Alloy default is used.")
+	flag.StringVar(&queueMaxBackoff, "monitoring-queue-config-max-backoff", "",
+		"Maximum retry delay (e.g., '5s'). If empty, Alloy default is used.")
+	flag.IntVar(&queueMaxSamplesPerSend, "monitoring-queue-config-max-samples-per-send", 0,
+		"Maximum number of samples per send. If 0, Alloy default is used.")
+	flag.IntVar(&queueMaxShards, "monitoring-queue-config-max-shards", 0,
+		"Maximum number of concurrent shards. If 0, Alloy default is used.")
+	flag.StringVar(&queueMinBackoff, "monitoring-queue-config-min-backoff", "",
+		"Initial retry delay (e.g., '30ms'). If empty, Alloy default is used.")
+	flag.IntVar(&queueMinShards, "monitoring-queue-config-min-shards", 0,
+		"Minimum number of concurrent shards. If 0, Alloy default is used.")
+	flag.BoolVar(&queueRetryOnHttp429, "monitoring-queue-config-retry-on-http-429", true,
+		"Retry when an HTTP 429 status code is received.")
+	flag.StringVar(&queueSampleAgeLimit, "monitoring-queue-config-sample-age-limit", "",
+		"Maximum age of samples to send (e.g., '30m'). If empty, Alloy default is used.")
+
 	opts := zap.Options{
 		Development: false,
 	}
-
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	// Set queue config based on flags (only if values were provided)
+	if queueBatchSendDeadline != "" {
+		conf.Monitoring.QueueConfig.BatchSendDeadline = &queueBatchSendDeadline
+	}
+	if queueCapacity > 0 {
+		conf.Monitoring.QueueConfig.Capacity = &queueCapacity
+	}
+	if queueMaxBackoff != "" {
+		conf.Monitoring.QueueConfig.MaxBackoff = &queueMaxBackoff
+	}
+	if queueMaxSamplesPerSend > 0 {
+		conf.Monitoring.QueueConfig.MaxSamplesPerSend = &queueMaxSamplesPerSend
+	}
+	if queueMaxShards > 0 {
+		conf.Monitoring.QueueConfig.MaxShards = &queueMaxShards
+	}
+	if queueMinBackoff != "" {
+		conf.Monitoring.QueueConfig.MinBackoff = &queueMinBackoff
+	}
+	if queueMinShards > 0 {
+		conf.Monitoring.QueueConfig.MinShards = &queueMinShards
+	}
+	conf.Monitoring.QueueConfig.RetryOnHttp429 = &queueRetryOnHttp429
+	if queueSampleAgeLimit != "" {
+		conf.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
+	}
 
 	// parse grafana URL
 	conf.GrafanaURL, err = url.Parse(grafanaURL)
