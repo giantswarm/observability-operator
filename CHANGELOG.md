@@ -9,9 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Add a Mimir and Loki datasources with rule support enabled for each tenant
-- Disable rules support on the default Mimir and Loki datasource
-- Add an Alertmanager datasources per tenant
 - Added a `generateDatasources` to generate all datasource needed for an organization
 - Major refactoring of the `ConfigureDefaultDatasources` method into `ConfigureDatasource`
 - Remove explicit logic to delete `gs-mimir-old` datasource (now covered)
