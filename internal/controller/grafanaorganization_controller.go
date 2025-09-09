@@ -143,8 +143,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 	return nil
 }
 
-// reconcileCreate creates the grafanaOrganization.
-// reconcileCreate ensures the Grafana organization described in grafanaOrganization CR is created in Grafana.
+// reconcileCreate ensures the Grafana organization described in GrafanaOrganization CR is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the CR
 // - Updating the CR status field
@@ -161,6 +160,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	logger := log.FromContext(ctx)
 
+	// Create or update the grafana organization
 	updatedID, err := grafanaService.ConfigureOrganization(ctx, grafanaOrganization)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to upsert grafanaOrganization: %w", err)
@@ -178,6 +178,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		logger.Info("updated orgID in the grafanaOrganization status")
 	}
 
+	// Configure the organization's datasources and authorization settings
 	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)
