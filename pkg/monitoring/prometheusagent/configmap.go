@@ -12,7 +12,6 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 )
 
@@ -45,7 +44,6 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_agent_active_series{cluster_id="%s"})by(pod))[6h:1h]))`, cluster.Name)
 	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, pas.MonitoringConfig.MetricsQueryURL)
 	if err != nil {
-		metrics.MimirQueryErrors.WithLabelValues().Inc()
 		return nil, fmt.Errorf("failed to query head series: %w", err)
 	}
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -33,9 +32,7 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 
 	// Reset all gauge metrics
 	GrafanaOrganizationTotal.Reset()
-	GrafanaOrganizationDataSources.Reset()
 	GrafanaOrganizationTenants.Reset()
-	GrafanaOrganizationAge.Reset()
 	GrafanaOrganizationInfo.Reset()
 
 	statusCounts := map[string]int{
@@ -43,8 +40,6 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 		"pending": 0,
 		"error":   0,
 	}
-
-	now := time.Now()
 
 	for _, org := range organizations.Items {
 		orgName := org.Name
@@ -67,14 +62,9 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 		statusCounts[status]++
 
 		// Update gauge metrics
-		GrafanaOrganizationDataSources.WithLabelValues(orgName, orgIDStr).Set(float64(len(org.Status.DataSources)))
 		GrafanaOrganizationTenants.WithLabelValues(orgName, orgIDStr).Set(float64(len(org.Spec.Tenants)))
 
-		// Calculate age
-		age := now.Sub(org.CreationTimestamp.Time).Seconds()
-		GrafanaOrganizationAge.WithLabelValues(orgName, orgIDStr).Set(age)
-
-		// Set info metric
+		// Set info metrics
 		GrafanaOrganizationInfo.WithLabelValues(orgName, displayName, orgIDStr, hasFinalizer).Set(1)
 	}
 
@@ -84,20 +74,4 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 	}
 
 	return nil
-}
-
-// RecordReconciliation records metrics for a reconciliation event
-func (c *GrafanaOrganizationCollector) RecordReconciliation(orgName, result string, duration time.Duration) {
-	GrafanaOrganizationReconciliations.WithLabelValues(orgName, result).Inc()
-	GrafanaOrganizationReconciliationDuration.WithLabelValues(orgName).Observe(duration.Seconds())
-}
-
-// RecordOperation records metrics for a specific operation
-func (c *GrafanaOrganizationCollector) RecordOperation(orgName, operation, result string) {
-	GrafanaOrganizationOperations.WithLabelValues(orgName, operation, result).Inc()
-}
-
-// RecordError records metrics for errors
-func (c *GrafanaOrganizationCollector) RecordError(orgName, errorType string) {
-	GrafanaOrganizationErrors.WithLabelValues(orgName, errorType).Inc()
 }

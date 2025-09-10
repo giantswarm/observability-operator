@@ -80,8 +80,6 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	err := r.Get(ctx, req.NamespacedName, grafanaOrganization)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			r.metricsCollector.RecordReconciliation(req.Name, "error", time.Since(startTime))
-			r.metricsCollector.RecordError(req.Name, "kubernetes_api")
 			return ctrl.Result{}, fmt.Errorf("failed to get GrafanaOrganization: %w", err)
 		}
 
@@ -90,8 +88,6 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
-		r.metricsCollector.RecordReconciliation(grafanaOrganization.Name, "error", time.Since(startTime))
-		r.metricsCollector.RecordError(grafanaOrganization.Name, "grafana_api")
 		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
@@ -101,10 +97,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
 		result, err := r.reconcileDelete(ctx, grafanaService, grafanaOrganization)
 		if err != nil {
-			r.metricsCollector.RecordReconciliation(grafanaOrganization.Name, "error", time.Since(startTime))
-			r.metricsCollector.RecordError(grafanaOrganization.Name, "configuration")
 		} else {
-			r.metricsCollector.RecordReconciliation(grafanaOrganization.Name, "success", time.Since(startTime))
 		}
 		return result, err
 	}
@@ -112,10 +105,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	// Handle non-deleted grafana organizations
 	result, err := r.reconcileCreate(ctx, grafanaService, grafanaOrganization)
 	if err != nil {
-		r.metricsCollector.RecordReconciliation(grafanaOrganization.Name, "error", time.Since(startTime))
-		r.metricsCollector.RecordError(grafanaOrganization.Name, "configuration")
 	} else {
-		r.metricsCollector.RecordReconciliation(grafanaOrganization.Name, "success", time.Since(startTime))
 	}
 	return result, err
 }
@@ -184,7 +174,6 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, grafanaOrganization)
 	if err != nil {
-		r.metricsCollector.RecordError(grafanaOrganization.Name, "kubernetes_api")
 		return ctrl.Result{}, fmt.Errorf("failed to ensure finalizer is added: %w", err)
 	}
 	if finalizerAdded {
@@ -195,11 +184,8 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	updatedID, err := grafanaService.ConfigureOrganization(ctx, grafanaOrganization)
 	if err != nil {
-		r.metricsCollector.RecordOperation(grafanaOrganization.Name, "create", "error")
-		r.metricsCollector.RecordError(grafanaOrganization.Name, "grafana_api")
 		return ctrl.Result{}, fmt.Errorf("failed to upsert grafanaOrganization: %w", err)
 	}
-	r.metricsCollector.RecordOperation(grafanaOrganization.Name, "create", "success")
 
 	// Update CR status if anything was changed
 	if grafanaOrganization.Status.OrgID != updatedID {
@@ -208,21 +194,15 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 		err = r.Client.Status().Update(ctx, grafanaOrganization)
 		if err != nil {
-			r.metricsCollector.RecordOperation(grafanaOrganization.Name, "update", "error")
-			r.metricsCollector.RecordError(grafanaOrganization.Name, "kubernetes_api")
 			return ctrl.Result{}, fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 		}
-		r.metricsCollector.RecordOperation(grafanaOrganization.Name, "update", "success")
 		logger.Info("updated orgID in the grafanaOrganization status")
 	}
 
 	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
-		r.metricsCollector.RecordOperation(grafanaOrganization.Name, "setup_datasources", "error")
-		r.metricsCollector.RecordError(grafanaOrganization.Name, "grafana_api")
 		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)
 	}
-	r.metricsCollector.RecordOperation(grafanaOrganization.Name, "setup_datasources", "success")
 
 	return ctrl.Result{}, nil
 }
@@ -236,32 +216,24 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 
 	err := grafanaService.DeleteOrganization(ctx, grafanaOrganization)
 	if err != nil {
-		r.metricsCollector.RecordOperation(grafanaOrganization.Name, "delete", "error")
-		r.metricsCollector.RecordError(grafanaOrganization.Name, "grafana_api")
 		return ctrl.Result{}, fmt.Errorf("failed to delete grafana organization: %w", err)
 	}
-	r.metricsCollector.RecordOperation(grafanaOrganization.Name, "delete", "success")
 
 	grafanaOrganization.Status.OrgID = 0
 	err = r.Client.Status().Update(ctx, grafanaOrganization)
 	if err != nil {
-		r.metricsCollector.RecordError(grafanaOrganization.Name, "kubernetes_api")
 		return ctrl.Result{}, fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 	}
 
 	// Configure Grafana RBAC
 	err = grafanaService.ConfigureGrafanaSSO(ctx)
 	if err != nil {
-		r.metricsCollector.RecordOperation(grafanaOrganization.Name, "configure_sso", "error")
-		r.metricsCollector.RecordError(grafanaOrganization.Name, "grafana_api")
 		return ctrl.Result{}, fmt.Errorf("failed to configure Grafana SSO: %w", err)
 	}
-	r.metricsCollector.RecordOperation(grafanaOrganization.Name, "configure_sso", "success")
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, grafanaOrganization)
 	if err != nil {
-		r.metricsCollector.RecordError(grafanaOrganization.Name, "kubernetes_api")
 		return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 

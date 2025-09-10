@@ -21,7 +21,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
@@ -69,7 +68,6 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, a.MonitoringConfig.MetricsQueryURL)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to query head series")
-		metrics.MimirQueryErrors.WithLabelValues().Inc()
 	}
 
 	clusterShardingStrategy, err := commonmonitoring.GetClusterShardingStrategy(cluster)
