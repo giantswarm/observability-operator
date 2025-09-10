@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 )
@@ -45,10 +44,6 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 		orgName := org.Name
 		orgIDStr := strconv.FormatInt(org.Status.OrgID, 10)
 		displayName := org.Spec.DisplayName
-		hasFinalizer := "false"
-		if controllerutil.ContainsFinalizer(&org, v1alpha1.GrafanaOrganizationFinalizer) {
-			hasFinalizer = "true"
-		}
 
 		// Determine status
 		status := "pending"
@@ -65,7 +60,7 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 		GrafanaOrganizationTenants.WithLabelValues(orgName, orgIDStr).Set(float64(len(org.Spec.Tenants)))
 
 		// Set info metrics
-		GrafanaOrganizationInfo.WithLabelValues(orgName, displayName, orgIDStr, hasFinalizer).Set(1)
+		GrafanaOrganizationInfo.WithLabelValues(orgName, displayName, orgIDStr).Set(1)
 	}
 
 	// Update total counts by status

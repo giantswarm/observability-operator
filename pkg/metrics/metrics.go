@@ -6,6 +6,10 @@ import (
 )
 
 var (
+	MimirQueryErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "observability_operator_mimir_head_series_query_errors_total",
+		Help: "Total number of reconciliations error",
+	}, nil)
 
 	// GrafanaOrganization metrics
 	GrafanaOrganizationTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -21,11 +25,12 @@ var (
 	GrafanaOrganizationInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_grafana_organization_info",
 		Help: "Information about GrafanaOrganization resources",
-	}, []string{"name", "display_name", "org_id", "has_finalizer"})
+	}, []string{"name", "display_name", "org_id"})
 )
 
 func init() {
 	metrics.Registry.MustRegister(
+		MimirQueryErrors,
 		GrafanaOrganizationTotal,
 		GrafanaOrganizationTenants,
 		GrafanaOrganizationInfo,

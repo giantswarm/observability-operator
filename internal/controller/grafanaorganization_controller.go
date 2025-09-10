@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
-	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,12 +62,10 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config,
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.0/pkg/reconcile
 func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	startTime := time.Now()
 
 	logger.Info("Started reconciling Grafana Organization")
 	defer func() {
-		duration := time.Since(startTime)
-		logger.Info("Finished reconciling Grafana Organization", "duration", duration)
+		logger.Info("Finished reconciling Grafana Organization")
 
 		// Collect metrics after reconciliation
 		if err := r.metricsCollector.CollectMetrics(ctx); err != nil {
@@ -95,19 +92,11 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
-		result, err := r.reconcileDelete(ctx, grafanaService, grafanaOrganization)
-		if err != nil {
-		} else {
-		}
-		return result, err
+		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaService, grafanaOrganization)
 	}
 
 	// Handle non-deleted grafana organizations
-	result, err := r.reconcileCreate(ctx, grafanaService, grafanaOrganization)
-	if err != nil {
-	} else {
-	}
-	return result, err
+	return r.reconcileCreate(ctx, grafanaService, grafanaOrganization)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -208,34 +197,34 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 }
 
 // reconcileDelete deletes the grafana organization.
-func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) {
+func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
 	// We do not need to delete anything if there is no finalizer on the grafana organization
 	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
-		return ctrl.Result{}, nil
+		return nil
 	}
 
 	err := grafanaService.DeleteOrganization(ctx, grafanaOrganization)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to delete grafana organization: %w", err)
+		return fmt.Errorf("failed to delete grafana organization: %w", err)
 	}
 
 	grafanaOrganization.Status.OrgID = 0
 	err = r.Client.Status().Update(ctx, grafanaOrganization)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to update grafanaOrganization status: %w", err)
+		return fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 	}
 
 	// Configure Grafana RBAC
 	err = grafanaService.ConfigureGrafanaSSO(ctx)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to configure Grafana SSO: %w", err)
+		return fmt.Errorf("failed to configure Grafana SSO: %w", err)
 	}
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, grafanaOrganization)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
+		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
-	return ctrl.Result{}, nil
+	return nil
 }
