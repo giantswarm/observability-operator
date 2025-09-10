@@ -50,9 +50,6 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 		if org.Status.OrgID > 0 {
 			status = "active"
 		}
-		if !org.DeletionTimestamp.IsZero() {
-			status = "error" // Consider resources being deleted as in error state for monitoring
-		}
 
 		statusCounts[status]++
 

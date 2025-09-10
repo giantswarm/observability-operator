@@ -35,7 +35,6 @@ import (
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
-	"github.com/giantswarm/observability-operator/pkg/metrics"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -255,8 +254,8 @@ func runner() error {
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
 	// Start background metrics collection for GrafanaOrganization resources
-	backgroundCollector := metrics.NewBackgroundMetricsCollector(mgr.GetClient(), 30*time.Second)
-	go backgroundCollector.Start()
+	// backgroundCollector := metrics.NewBackgroundMetricsCollector(mgr.GetClient(), 30*time.Second)
+	// go backgroundCollector.Start()
 
 	// Create Grafana client generator for dependency injection
 	grafanaClientGen := &grafanaclient.DefaultGrafanaClientGenerator{}
@@ -310,7 +309,7 @@ func runner() error {
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		// Stop background collector before exiting
-		backgroundCollector.Stop()
+		//backgroundCollector.Stop()
 		return fmt.Errorf("problem running manager: %w", err)
 	}
 
