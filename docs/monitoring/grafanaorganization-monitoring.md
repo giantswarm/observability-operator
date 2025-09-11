@@ -54,17 +54,6 @@ topk(10, observability_operator_grafana_organization_tenants)
 
 ## Advanced Configuration
 
-### Adjusting Metrics Collection Frequency
-
-The background metrics collector runs every 30 seconds by default. To adjust this:
-
-1. Modify the interval in `cmd/main.go`:
-   ```go
-   backgroundCollector := metrics.NewBackgroundMetricsCollector(mgr.GetClient(), 60*time.Second) // 60 seconds
-   ```
-
-2. Rebuild and redeploy the operator
-
 ### Adding Custom Metrics
 
 To add custom metrics:
