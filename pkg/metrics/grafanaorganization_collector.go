@@ -10,6 +10,12 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
+const (
+	ActiveStatus  = "active"
+	PendingStatus = "pending"
+	ErrorStatus   = "error"
+)
+
 // GrafanaOrganizationCollector collects metrics for GrafanaOrganization resources
 type GrafanaOrganizationCollector struct {
 	client client.Client
@@ -35,9 +41,9 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 	GrafanaOrganizationInfo.Reset()
 
 	statusCounts := map[string]int{
-		"active":  0,
-		"pending": 0,
-		"error":   0,
+		ActiveStatus:  0,
+		PendingStatus: 0,
+		ErrorStatus:   0,
 	}
 
 	for _, org := range organizations.Items {
@@ -46,9 +52,9 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 		displayName := org.Spec.DisplayName
 
 		// Determine status
-		status := "pending"
+		status := PendingStatus
 		if org.Status.OrgID > 0 {
-			status = "active"
+			status = ActiveStatus
 		}
 
 		statusCounts[status]++
