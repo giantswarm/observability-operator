@@ -1,0 +1,84 @@
+252,254c252,253
+>         enabled: true
+>         existingSecret: mimir-gateway-basic-auth-secret
+256a256,309
+>         # Enable perl module in nginx for tenant access control
+>         # This abuses the multiline string to inject multiple top-level config options.
+>         errorLogLevel: |-
+>           error;
+>           load_module modules/ngx_http_perl_module.so
+>         httpSnippet: |
+>           # Match basic auth user to its configured tenant IDs.
+>           # The $authorized_tenants variable will contain a pipe-separated list of tenant IDs the user is allowed to access.
+>           map $remote_user $authorized_tenants {
+>               include /etc/nginx/authorized-tenants/authorized_tenants.map;
+>           }
+> 
+>           # Restrict access to tenants based on X-Scope-OrgID header, using a perl script.
+>           # Access is granted if all tenants listed in X-Scope-OrgID header are contained in the $authorized_tenants variable.
+>           # If there is no X-Scope-OrgID header, the request is denied.
+>           # If $authorized_tenants is empty, the request is denied.
+>           # Both $authorized_tenants and X-Scope-OrgID can contain multiple pipe-separated values (e.g. "tenant1|tenant2").
+>           # https://grafana.com/docs/mimir/latest/configure/about-tenant-ids/
+>           # $tenant_access_authorized is set to 1 if access is allowed, 0 if access is denied
+>           perl_set $tenant_access_authorized '
+>               sub {
+>                 my $r = shift;
+> 
+>                 # url / and /ready are special cases for health checks and internal requests
+>                 # otherwise the requests will be blocked with 403
+>                 return 1 if $r->variable("uri") eq "/";
+>                 return 1 if $r->variable("uri") eq "/ready";
+> 
+>                 # Split the pipe-separated strings into arrays
+>                 my @authorized_tenants_array = split /\|/, $r->variable("authorized_tenants");
+>                 my @requested_ids = split /\|/, $r->variable("http_x_scope_orgid");
+> 
+>                 # Deny access if no tenants are requested
+>                 return 0 if !@requested_ids;
+> 
+>                 # Create a hash for for lookups
+>                 my %authorized_tenants_hash = map { $_ => 1 } @authorized_tenants_array;
+> 
+>                 # Check if all requested tenants are in the authorized tenants
+>                 foreach my $element (@requested_ids) {
+>                     unless (exists $authorized_tenants_hash{$element}) {
+>                         # Unauthorized tenant id
+>                         return 0;
+>                     }
+>                 }
+> 
+>                 # All tenant ids are authorized
+>                 return 1;
+>               }
+>           ';
+>         serverSnippet: |
+>           if ($tenant_access_authorized = 0) {
+>               return 403 'Forbidden';
+>           }
+258c311,333
+<         registry: gsoci.azurecr.io
+---
+>         registry: docker.io
+>         repository: nginxinc/nginx-unprivileged
+>         tag: 1.28-alpine-perl
+>     extraVolumes:
+>     - name: mimir-gateway-authorized-tenants
+>       secret:
+>         secretName: mimir-gateway-authorized-tenants
+>     - name: mimir-gateway-reload
+>       configMap:
+>         name: mimir-gateway-reload
+>         defaultMode: 0755
+>     extraVolumeMounts:
+>     - name: mimir-gateway-authorized-tenants
+>       mountPath: /etc/nginx/authorized-tenants
+>       readOnly: true
+>     # subPath is required to avoid symlinks
+>     # which are not executed by the entrypoint script
+>     - name: mimir-gateway-reload
+>       mountPath: /docker-entrypoint.d/config-watcher.sh
+>       subPath: config-watcher.sh
+>     - name: mimir-gateway-reload
+>       mountPath: /usr/bin/nginx-reload.sh
+>       subPath: nginx-reload.sh
