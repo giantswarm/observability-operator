@@ -34,15 +34,17 @@ type GrafanaOrganizationReconciler struct {
 	grafanaURL       *url.URL
 	finalizerHelper  FinalizerHelper
 	grafanaClientGen grafanaclient.GrafanaClientGenerator
+	cfg              config.Config
 }
 
-func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
+func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &GrafanaOrganizationReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
-		grafanaURL:       conf.GrafanaURL,
+		grafanaURL:       cfg.GrafanaURL,
 		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), v1alpha1.GrafanaOrganizationFinalizer),
 		grafanaClientGen: grafanaClientGen,
+		cfg:              cfg,
 	}
 
 	return r.SetupWithManager(mgr)
@@ -78,7 +80,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
-	grafanaService := grafana.NewService(r.Client, grafanaAPI)
+	grafanaService := grafana.NewService(r.Client, grafanaAPI, r.cfg)
 
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {

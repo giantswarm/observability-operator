@@ -5,6 +5,7 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/tracing"
 )
 
 type Config struct {
@@ -20,6 +21,7 @@ type Config struct {
 	ManagementCluster common.ManagementCluster
 
 	Monitoring monitoring.Config
+	Tracing    tracing.Config
 
 	Environment Environment
 }

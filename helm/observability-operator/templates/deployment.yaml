@@ -70,6 +70,7 @@ spec:
         {{- if .Values.monitoring.prometheusVersion }}
         - --prometheus-version={{ $.Values.monitoring.prometheusVersion }}
         {{- end }}
+        - --tracing-enabled={{ $.Values.tracing.enabled }}
         - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         env:
         - name: ENABLE_WEBHOOKS

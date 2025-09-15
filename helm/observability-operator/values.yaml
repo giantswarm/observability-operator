@@ -42,6 +42,10 @@ monitoring:
     # retryOnHttp429: true
     sampleAgeLimit: "30m"
 
+tracing:
+  # -- Enable or disable distributed tracing support
+  enabled: false
+
 operator:
   # -- Configures the resources for the operator deployment
   resources:

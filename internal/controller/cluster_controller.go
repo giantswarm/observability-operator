@@ -56,14 +56,14 @@ type ClusterMonitoringReconciler struct {
 	finalizerHelper FinalizerHelper
 }
 
-func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) error {
+func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) error {
 	managerClient := mgr.GetClient()
 
-	if conf.Environment.OpsgenieApiKey == "" {
-		return fmt.Errorf("OpsgenieApiKey not set: %q", conf.Environment.OpsgenieApiKey)
+	if cfg.Environment.OpsgenieApiKey == "" {
+		return fmt.Errorf("OpsgenieApiKey not set: %q", cfg.Environment.OpsgenieApiKey)
 	}
 
-	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(conf.Environment.OpsgenieApiKey, conf.ManagementCluster)
+	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(cfg.Environment.OpsgenieApiKey, cfg.ManagementCluster)
 	if err != nil {
 		return fmt.Errorf("unable to create heartbeat repository: %w", err)
 	}
@@ -74,32 +74,32 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
 		PasswordManager:        password.SimpleManager{},
-		ManagementCluster:      conf.ManagementCluster,
-		MonitoringConfig:       conf.Monitoring,
+		ManagementCluster:      cfg.ManagementCluster,
+		MonitoringConfig:       cfg.Monitoring,
 	}
 
 	alloyService := alloy.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
-		ManagementCluster:      conf.ManagementCluster,
-		MonitoringConfig:       conf.Monitoring,
+		ManagementCluster:      cfg.ManagementCluster,
+		MonitoringConfig:       cfg.Monitoring,
 	}
 
 	mimirService := mimir.MimirService{
 		Client:            managerClient,
 		PasswordManager:   password.SimpleManager{},
-		ManagementCluster: conf.ManagementCluster,
+		ManagementCluster: cfg.ManagementCluster,
 	}
 
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
-		ManagementCluster:          conf.ManagementCluster,
+		ManagementCluster:          cfg.ManagementCluster,
 		HeartbeatRepository:        heartbeatRepository,
 		PrometheusAgentService:     prometheusAgentService,
 		AlloyService:               alloyService,
 		MimirService:               mimirService,
-		MonitoringConfig:           conf.Monitoring,
-		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, conf.Monitoring),
+		MonitoringConfig:           cfg.Monitoring,
+		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg.Monitoring),
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
 

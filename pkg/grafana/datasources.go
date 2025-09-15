@@ -94,21 +94,40 @@ func (s *Service) generateDatasources(organization Organization) (datasources []
 	multiTenantIDsHeaderValue := strings.Join(organization.TenantIDs, "|")
 
 	// Add Loki datasource
-	datasources = append(datasources, DatasourceLoki().Merge(Datasource{
+	lokiDatasource := DatasourceLoki().Merge(Datasource{
 		Name: "Loki",
-		UID:  fmt.Sprintf("%sloki", datasourceUIDPrefix),
+		UID:  LokiDatasourceUID,
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
 		},
 		SecureJSONData: map[string]string{
 			"httpHeaderValue1": multiTenantIDsHeaderValue,
 		},
-	}))
+	})
+
+	// Add tracing integration if tracing is enabled
+	if s.cfg.Tracing.Enabled {
+		// Add derived fields for Loki to Tempo integration
+		lokiDatasource.JSONData["derivedFields"] = []map[string]any{
+			{
+				"name":          "traceID",
+				"matcherRegex":  "traceID=(\\w+)",
+				"datasourceUid": TempoDatasourceUID,
+				// Open a new tab when clicking the link
+				"targetBlank":     true,
+				"url":             "${__value.raw}",
+				"urlDisplayLabel": "Trace ID",
+			},
+		}
+
+	}
+
+	datasources = append(datasources, lokiDatasource)
 
 	// Add Mimir datasource
 	datasources = append(datasources, DatasourceMimir().Merge(Datasource{
 		Name:      "Mimir",
-		UID:       fmt.Sprintf("%smimir", datasourceUIDPrefix),
+		UID:       MimirDatasourceUID,
 		IsDefault: true,
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
@@ -121,7 +140,7 @@ func (s *Service) generateDatasources(organization Organization) (datasources []
 	// Add Alertmanager datasource
 	datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
 		Name: "Mimir Alertmanager",
-		UID:  fmt.Sprintf("%smimir-alertmanager", datasourceUIDPrefix),
+		UID:  MimirAlertmanagerDatasourceUID,
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
 		},
@@ -130,17 +149,20 @@ func (s *Service) generateDatasources(organization Organization) (datasources []
 		},
 	}))
 
-	// Add Tempo datasource
-	datasources = append(datasources, DatasourceTempo().Merge(Datasource{
-		Name: "Tempo",
-		UID:  fmt.Sprintf("%stempo", datasourceUIDPrefix),
-		JSONData: map[string]any{
-			"httpHeaderName1": common.OrgIDHeader,
-		},
-		SecureJSONData: map[string]string{
-			"httpHeaderValue1": multiTenantIDsHeaderValue,
-		},
-	}))
+	// Add Tempo datasource - only if tracing is enabled
+	if s.cfg.Tracing.Enabled {
+		datasources = append(datasources, DatasourceTempo().Merge(Datasource{
+			Name: "Tempo",
+			UID:  TempoDatasourceUID,
+			// TODO: Add multi-tenancy support
+			// JSONData: map[string]any{
+			// 	"httpHeaderName1": common.OrgIDHeader,
+			// },
+			// SecureJSONData: map[string]string{
+			// 	"httpHeaderValue1": multiTenantIDsHeaderValue,
+			// },
+		}))
+	}
 
 	if organization.Name == SharedOrg.Name {
 		// Add Mimir Cardinality datasources to the "Shared Org"

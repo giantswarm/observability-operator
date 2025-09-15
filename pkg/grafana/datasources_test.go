@@ -6,6 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/tracing"
 )
 
 func TestDatasourceTempo(t *testing.T) {
@@ -17,21 +20,27 @@ func TestDatasourceTempo(t *testing.T) {
 			name: "tempo datasource configuration",
 			expected: Datasource{
 				Type:   "tempo",
-				URL:    "http://tempo-gateway.tempo.svc",
+				URL:    "http://tempo-query-frontend.tempo.svc:3200",
 				Access: "proxy",
 				JSONData: map[string]any{
 					"serviceMap": map[string]any{
-						"datasourceUid": "gs-mimir",
+						"datasourceUid": MimirDatasourceUID,
 					},
-					"tracesToLogs": map[string]any{
-						"datasourceUid": "gs-loki",
-						"tags":          []string{"service_name", "pod"},
-						"mappedTags": []map[string]string{
-							{
-								"key":   "service_name",
-								"value": "service",
-							},
-						},
+					"nodeGraph": map[string]any{
+						"enabled": true,
+					},
+					"streamingEnabled": map[string]any{
+						"metrics": true,
+						"search":  true,
+					},
+					"tracesToLogsV2": map[string]any{
+						"datasourceUid":      LokiDatasourceUID,
+						"spanStartTimeShift": "-10m",
+						"spanEndTimeShift":   "10m",
+						"filterByTraceID":    true,
+					},
+					"tracesToMetrics": map[string]any{
+						"datasourceUid": MimirDatasourceUID,
 					},
 				},
 			},
@@ -101,39 +110,72 @@ func TestDatasourceMimirCardinality(t *testing.T) {
 
 func TestGenerateDatasources(t *testing.T) {
 	tests := []struct {
-		name         string
-		organization Organization
-		expectedLen  int
-		checkTempo   bool
-		checkShared  bool
+		name           string
+		organization   Organization
+		tracingEnabled bool
+		expectedLen    int
+		checkTempo     bool
+		checkShared    bool
 	}{
 		{
-			name: "regular organization",
+			name: "regular organization with tracing enabled",
 			organization: Organization{
 				ID:        1,
 				Name:      "test-org",
 				TenantIDs: []string{"tenant1", "tenant2"},
 			},
-			expectedLen: 4, // Loki, Mimir, Alertmanager, Tempo
-			checkTempo:  true,
-			checkShared: false,
+			tracingEnabled: true,
+			expectedLen:    4, // Loki, Mimir, Alertmanager, Tempo
+			checkTempo:     true,
+			checkShared:    false,
 		},
 		{
-			name: "shared organization",
+			name: "regular organization with tracing disabled",
+			organization: Organization{
+				ID:        1,
+				Name:      "test-org",
+				TenantIDs: []string{"tenant1", "tenant2"},
+			},
+			tracingEnabled: false,
+			expectedLen:    3, // Loki, Mimir, Alertmanager (no Tempo)
+			checkTempo:     false,
+			checkShared:    false,
+		},
+		{
+			name: "shared organization with tracing enabled",
 			organization: Organization{
 				ID:        1,
 				Name:      "Shared Org",
 				TenantIDs: []string{"tenant1"},
 			},
-			expectedLen: 5, // Loki, Mimir, Alertmanager, Tempo, Cardinality
-			checkTempo:  true,
-			checkShared: true,
+			tracingEnabled: true,
+			expectedLen:    5, // Loki, Mimir, Alertmanager, Tempo, Cardinality
+			checkTempo:     true,
+			checkShared:    true,
+		},
+		{
+			name: "shared organization with tracing disabled",
+			organization: Organization{
+				ID:        1,
+				Name:      "Shared Org",
+				TenantIDs: []string{"tenant1"},
+			},
+			tracingEnabled: false,
+			expectedLen:    4, // Loki, Mimir, Alertmanager, Cardinality (no Tempo)
+			checkTempo:     false,
+			checkShared:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := &Service{}
+			service := &Service{
+				cfg: config.Config{
+					Tracing: tracing.Config{
+						Enabled: tt.tracingEnabled,
+					},
+				},
+			}
 			result := service.generateDatasources(tt.organization)
 
 			assert.Len(t, result, tt.expectedLen)
@@ -145,7 +187,7 @@ func TestGenerateDatasources(t *testing.T) {
 			}
 
 			for _, ds := range result {
-				if ds.Name != "Mimir Cardinality" { // Cardinality has different logic
+				if ds.Name != "Mimir Cardinality" && ds.Type != "tempo" { // Cardinality has different logic, Tempo doesn't have multi-tenancy yet
 					assert.Equal(t, "X-Scope-OrgID", ds.JSONData["httpHeaderName1"])
 					assert.Equal(t, expectedHeaderValue, ds.SecureJSONData["httpHeaderValue1"])
 				}
@@ -165,16 +207,49 @@ func TestGenerateDatasources(t *testing.T) {
 				require.NotNil(t, tempoDS, "Tempo datasource should be present")
 				assert.Equal(t, "Tempo", tempoDS.Name)
 				assert.Equal(t, "gs-tempo", tempoDS.UID)
-				assert.Equal(t, "http://tempo-gateway.tempo.svc", tempoDS.URL)
+				assert.Equal(t, "http://tempo-query-frontend.tempo.svc:3200", tempoDS.URL)
 
 				// Check tempo-specific configurations
 				serviceMap, ok := tempoDS.JSONData["serviceMap"].(map[string]any)
 				require.True(t, ok, "serviceMap should be present and be a map")
-				assert.Equal(t, "gs-mimir", serviceMap["datasourceUid"])
+				assert.Equal(t, MimirDatasourceUID, serviceMap["datasourceUid"])
 
-				tracesToLogs, ok := tempoDS.JSONData["tracesToLogs"].(map[string]any)
-				require.True(t, ok, "tracesToLogs should be present and be a map")
-				assert.Equal(t, "gs-loki", tracesToLogs["datasourceUid"])
+				nodeGraph, ok := tempoDS.JSONData["nodeGraph"].(map[string]any)
+				require.True(t, ok, "nodeGraph should be present and be a map")
+				assert.Equal(t, true, nodeGraph["enabled"])
+
+				tracesToLogsV2, ok := tempoDS.JSONData["tracesToLogsV2"].(map[string]any)
+				require.True(t, ok, "tracesToLogsV2 should be present and be a map")
+				assert.Equal(t, LokiDatasourceUID, tracesToLogsV2["datasourceUid"])
+			}
+
+			// Find and validate Loki datasource for derived fields
+			var lokiDS *Datasource
+			for _, ds := range result {
+				if ds.Type == "loki" {
+					lokiDS = &ds
+					break
+				}
+			}
+			require.NotNil(t, lokiDS, "Loki datasource should be present")
+			assert.Equal(t, "Loki", lokiDS.Name)
+			assert.Equal(t, "gs-loki", lokiDS.UID)
+
+			// Check Loki derived fields based on tracing configuration
+			if tt.tracingEnabled {
+				derivedFields, ok := lokiDS.JSONData["derivedFields"].([]map[string]any)
+				require.True(t, ok, "derivedFields should be present and be a slice when tracing is enabled")
+				require.Len(t, derivedFields, 1, "Should have exactly one derived field")
+
+				field := derivedFields[0]
+				assert.Equal(t, "traceID", field["name"])
+				assert.Equal(t, "traceID=(\\w+)", field["matcherRegex"])
+				assert.Equal(t, "gs-tempo", field["datasourceUid"])
+				assert.Equal(t, "${__value.raw}", field["url"])
+				assert.Equal(t, "Trace ID", field["urlDisplayLabel"])
+			} else {
+				_, hasDerivedFields := lokiDS.JSONData["derivedFields"]
+				assert.False(t, hasDerivedFields, "derivedFields should not be present when tracing is disabled")
 			}
 
 			if tt.checkShared {
@@ -260,9 +335,8 @@ func TestDatasourceUIDPrefix(t *testing.T) {
 			hasUID:         false,
 		},
 		{
-			name:           "cardinality datasource has predefined UID with gs- prefix",
+			name:           "cardinality datasource has predefined UID",
 			datasourceFunc: DatasourceMimirCardinality,
-			expectedPrefix: "gs-",
 			hasUID:         true,
 		},
 	}
