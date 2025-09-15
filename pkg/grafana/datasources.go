@@ -20,7 +20,7 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 	logger := log.FromContext(ctx)
 
 	// Generate the desired datasources for the organization
-	desiredDatasources := s.generateDatasources(ctx, organization)
+	desiredDatasources := s.generateDatasources(organization)
 
 	// Configure Grafana client to use the correct organization
 	currentOrgID := s.grafanaClient.OrgID()
@@ -45,7 +45,7 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 			desiredDatasource := desiredDatasources[index]
 
 			logger.Info("updating datasource", "datasource", desiredDatasource.UID)
-			desiredDatasource, err = s.updateDatasource(ctx, desiredDatasource)
+			desiredDatasource, err = s.updateDatasource(desiredDatasource)
 			if err != nil {
 				return nil, err
 			}
@@ -56,7 +56,7 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 			if strings.HasPrefix(currentDatasource.UID, datasourceUIDPrefix) {
 				// Delete the datasource as it is no longer desired
 				logger.Info("deleting datasource", "datasource", currentDatasource.UID)
-				err := s.deleteDatasource(ctx, currentDatasource.UID)
+				err := s.deleteDatasource(currentDatasource.UID)
 				if err != nil {
 					return nil, err
 				}
@@ -73,7 +73,7 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 		// We already took care of updating existing datasources ID in the previous loop
 		if desiredDatasource.ID == 0 {
 			logger.Info("creating datasource", "datasource", desiredDatasource.UID)
-			desiredDatasource, err = s.createDatasource(ctx, desiredDatasource)
+			desiredDatasource, err = s.createDatasource(desiredDatasource)
 			if err != nil {
 				return nil, err
 			}
@@ -89,7 +89,7 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 // generateDatasources generates the list of datasources for a given organization.
 // It configures the datasources to use the appropriate multi-tenant headers based on the organization's tenant IDs.
 // It returns the list of desired datasources.
-func (s *Service) generateDatasources(ctx context.Context, organization Organization) (datasources []Datasource) {
+func (s *Service) generateDatasources(organization Organization) (datasources []Datasource) {
 	// Multi-tenant header value is a pipe-separated list of tenant IDs
 	multiTenantIDsHeaderValue := strings.Join(organization.TenantIDs, "|")
 
@@ -130,6 +130,18 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 		},
 	}))
 
+	// Add Tempo datasource
+	datasources = append(datasources, DatasourceTempo().Merge(Datasource{
+		Name: "Tempo",
+		UID:  fmt.Sprintf("%stempo", datasourceUIDPrefix),
+		JSONData: map[string]any{
+			"httpHeaderName1": common.OrgIDHeader,
+		},
+		SecureJSONData: map[string]string{
+			"httpHeaderValue1": multiTenantIDsHeaderValue,
+		},
+	}))
+
 	if organization.Name == SharedOrg.Name {
 		// Add Mimir Cardinality datasources to the "Shared Org"
 		datasources = append(datasources, DatasourceMimirCardinality().Merge(Datasource{
@@ -147,7 +159,7 @@ func (s *Service) generateDatasources(ctx context.Context, organization Organiza
 
 // createDatasource creates the given datasource in Grafana.
 // It returns the created datasource with its ID set.
-func (s *Service) createDatasource(ctx context.Context, datasource Datasource) (Datasource, error) {
+func (s *Service) createDatasource(datasource Datasource) (Datasource, error) {
 	created, err := s.grafanaClient.Datasources().AddDataSource(&models.AddDataSourceCommand{
 		UID:            datasource.UID,
 		Name:           datasource.Name,
@@ -174,7 +186,7 @@ func (s *Service) createDatasource(ctx context.Context, datasource Datasource) (
 // updateDatasource updates the given datasource in Grafana.
 // The datasource is identified by its UID.
 // It returns the updated datasource with its ID set.
-func (s *Service) updateDatasource(ctx context.Context, datasource Datasource) (Datasource, error) {
+func (s *Service) updateDatasource(datasource Datasource) (Datasource, error) {
 	resp, err := s.grafanaClient.Datasources().UpdateDataSourceByUID(datasource.UID, &models.UpdateDataSourceCommand{
 		UID:            datasource.UID,
 		Name:           datasource.Name,
@@ -200,7 +212,7 @@ func (s *Service) updateDatasource(ctx context.Context, datasource Datasource) (
 
 // deleteDatasource deletes the datasource with the given UID.
 // If the datasource does not exist, no error is returned.
-func (s *Service) deleteDatasource(ctx context.Context, uid string) error {
+func (s *Service) deleteDatasource(uid string) error {
 	_, err := s.grafanaClient.Datasources().DeleteDataSourceByUID(uid)
 	if err != nil {
 		var notFound *datasources.DeleteDataSourceByUIDNotFound

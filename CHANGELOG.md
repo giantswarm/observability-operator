@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add Tempo datasource with multi-tenant support for distributed tracing
+  - Service map integration with Mimir for metrics correlation
+  - Traces to logs correlation with Loki for enhanced debugging
+  - Node graph visualization enabled for trace span relationships
+  - Search functionality enabled for trace discovery
+
 ### Changed
 
 - Added a `generateDatasources` to generate all datasource needed for an organization

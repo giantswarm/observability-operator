@@ -68,4 +68,37 @@ var (
 			Access: datasourceProxyAccessMode,
 		}
 	}
+
+	// Datasource for Tempo distributed tracing backend
+	DatasourceTempo = func() Datasource {
+		return Datasource{
+			Type:   "tempo",
+			URL:    "http://tempo-gateway.tempo.svc",
+			Access: datasourceProxyAccessMode,
+			JSONData: map[string]any{
+				// Service Map configuration - generates visual service dependency maps
+				// from trace data using metrics from the connected Prometheus datasource
+				// Non-default: Links to our Mimir instance for service map generation
+				"serviceMap": map[string]any{
+					"datasourceUid": "gs-mimir",
+				},
+
+				// Traces to Logs correlation - allows jumping from trace spans
+				// to related log entries in Loki for better debugging context
+				// Non-default: Configured for our specific Loki instance and tag mapping
+				"tracesToLogs": map[string]any{
+					"datasourceUid": "gs-loki",
+
+					// Map common Kubernetes/service mesh tags to log labels
+					"tags": []string{"service_name", "pod"},
+					"mappedTags": []map[string]string{
+						{
+							"key":   "service_name",
+							"value": "service", // Maps to 'service' label in logs
+						},
+					},
+				},
+			},
+		}
+	}
 )
