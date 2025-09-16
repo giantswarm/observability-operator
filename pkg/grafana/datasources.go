@@ -111,7 +111,7 @@ func (s *Service) generateDatasources(organization Organization) (datasources []
 		lokiDatasource.JSONData["derivedFields"] = []map[string]any{
 			{
 				"name":          "traceID",
-				"matcherRegex":  "traceID=(\\w+)",
+				"matcherRegex":  "[tT]race_?[Ii][dD]\"?[:=](\\w+)",
 				"datasourceUid": TempoDatasourceUID,
 				// Open a new tab when clicking the link
 				"targetBlank":     true,
