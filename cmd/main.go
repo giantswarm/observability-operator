@@ -39,7 +39,7 @@ import (
 )
 
 var (
-	conf config.Config
+	cfg config.Config
 
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
@@ -65,58 +65,62 @@ func runner() error {
 	var grafanaURL string
 	var err error
 
-	flag.StringVar(&conf.MetricsAddr, "metrics-bind-address", ":8080",
+	flag.StringVar(&cfg.MetricsAddr, "metrics-bind-address", ":8080",
 		"The address the metric endpoint binds to.")
-	flag.StringVar(&conf.ProbeAddr, "health-probe-bind-address", ":8081",
+	flag.StringVar(&cfg.ProbeAddr, "health-probe-bind-address", ":8081",
 		"The address the probe endpoint binds to.")
-	flag.BoolVar(&conf.EnableLeaderElection, "leader-elect", false,
+	flag.BoolVar(&cfg.EnableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&conf.SecureMetrics, "metrics-secure", false,
+	flag.BoolVar(&cfg.SecureMetrics, "metrics-secure", false,
 		"If set the metrics endpoint is served securely")
-	flag.BoolVar(&conf.EnableHTTP2, "enable-http2", false,
+	flag.BoolVar(&cfg.EnableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	flag.StringVar(&conf.WebhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
+	flag.StringVar(&cfg.WebhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
 		"Path to the directory where the webhook server will store its TLS certificate and key.")
-	flag.StringVar(&conf.OperatorNamespace, "operator-namespace", "",
+	flag.StringVar(&cfg.OperatorNamespace, "operator-namespace", "",
 		"The namespace where the observability-operator is running.")
 	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local", "grafana URL")
 
 	// Management cluster configuration flags.
-	flag.StringVar(&conf.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
+	flag.StringVar(&cfg.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
 		"The base domain of the management cluster.")
-	flag.StringVar(&conf.ManagementCluster.Customer, "management-cluster-customer", "",
+	flag.StringVar(&cfg.ManagementCluster.Customer, "management-cluster-customer", "",
 		"The customer of the management cluster.")
-	flag.BoolVar(&conf.ManagementCluster.InsecureCA, "management-cluster-insecure-ca", false,
+	flag.BoolVar(&cfg.ManagementCluster.InsecureCA, "management-cluster-insecure-ca", false,
 		"Flag to indicate if the management cluster has an insecure CA that should be trusted")
-	flag.StringVar(&conf.ManagementCluster.Name, "management-cluster-name", "",
+	flag.StringVar(&cfg.ManagementCluster.Name, "management-cluster-name", "",
 		"The name of the management cluster.")
-	flag.StringVar(&conf.ManagementCluster.Pipeline, "management-cluster-pipeline", "",
+	flag.StringVar(&cfg.ManagementCluster.Pipeline, "management-cluster-pipeline", "",
 		"The pipeline of the management cluster.")
-	flag.StringVar(&conf.ManagementCluster.Region, "management-cluster-region", "",
+	flag.StringVar(&cfg.ManagementCluster.Region, "management-cluster-region", "",
 		"The region of the management cluster.")
 
 	// Monitoring configuration flags.
-	flag.BoolVar(&conf.Monitoring.AlertmanagerEnabled, "alertmanager-enabled", false,
+	flag.BoolVar(&cfg.Monitoring.AlertmanagerEnabled, "alertmanager-enabled", false,
 		"Enable Alertmanager controller.")
-	flag.StringVar(&conf.Monitoring.AlertmanagerSecretName, "alertmanager-secret-name", "",
+	flag.StringVar(&cfg.Monitoring.AlertmanagerSecretName, "alertmanager-secret-name", "",
 		"The name of the secret containing the Alertmanager configuration.")
-	flag.StringVar(&conf.Monitoring.AlertmanagerURL, "alertmanager-url", "",
+	flag.StringVar(&cfg.Monitoring.AlertmanagerURL, "alertmanager-url", "",
 		"The URL of the Alertmanager API.")
-	flag.StringVar(&conf.Monitoring.MonitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
+	flag.StringVar(&cfg.Monitoring.MonitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
 		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
-	flag.BoolVar(&conf.Monitoring.Enabled, "monitoring-enabled", false,
+	flag.BoolVar(&cfg.Monitoring.Enabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
-	flag.Float64Var(&conf.Monitoring.DefaultShardingStrategy.ScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
+	flag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
 		"Configures the number of time series needed to add an extra prometheus agent shard.")
-	flag.Float64Var(&conf.Monitoring.DefaultShardingStrategy.ScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
+	flag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
 		"Configures the percentage of removed series to scale down the number of prometheus agent shards.")
-	flag.StringVar(&conf.Monitoring.PrometheusVersion, "prometheus-version", "",
+	flag.StringVar(&cfg.Monitoring.PrometheusVersion, "prometheus-version", "",
 		"The version of Prometheus Agents to deploy.")
-	flag.DurationVar(&conf.Monitoring.WALTruncateFrequency, "monitoring-wal-truncate-frequency", 2*time.Hour,
+	flag.DurationVar(&cfg.Monitoring.WALTruncateFrequency, "monitoring-wal-truncate-frequency", 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
-	flag.StringVar(&conf.Monitoring.MetricsQueryURL, "monitoring-metrics-query-url", "http://mimir-gateway.mimir.svc/prometheus",
+	flag.StringVar(&cfg.Monitoring.MetricsQueryURL, "monitoring-metrics-query-url", "http://mimir-gateway.mimir.svc/prometheus",
 		"URL to query for cluster metrics")
+
+	// Tracing configuration flags.
+	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
+		"Enable distributed tracing support in Grafana.")
 
 	// Queue configuration flags for Alloy remote write
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string
@@ -150,33 +154,33 @@ func runner() error {
 
 	// Set queue config based on flags (only if values were provided)
 	if queueBatchSendDeadline != "" {
-		conf.Monitoring.QueueConfig.BatchSendDeadline = &queueBatchSendDeadline
+		cfg.Monitoring.QueueConfig.BatchSendDeadline = &queueBatchSendDeadline
 	}
 	if queueCapacity > 0 {
-		conf.Monitoring.QueueConfig.Capacity = &queueCapacity
+		cfg.Monitoring.QueueConfig.Capacity = &queueCapacity
 	}
 	if queueMaxBackoff != "" {
-		conf.Monitoring.QueueConfig.MaxBackoff = &queueMaxBackoff
+		cfg.Monitoring.QueueConfig.MaxBackoff = &queueMaxBackoff
 	}
 	if queueMaxSamplesPerSend > 0 {
-		conf.Monitoring.QueueConfig.MaxSamplesPerSend = &queueMaxSamplesPerSend
+		cfg.Monitoring.QueueConfig.MaxSamplesPerSend = &queueMaxSamplesPerSend
 	}
 	if queueMaxShards > 0 {
-		conf.Monitoring.QueueConfig.MaxShards = &queueMaxShards
+		cfg.Monitoring.QueueConfig.MaxShards = &queueMaxShards
 	}
 	if queueMinBackoff != "" {
-		conf.Monitoring.QueueConfig.MinBackoff = &queueMinBackoff
+		cfg.Monitoring.QueueConfig.MinBackoff = &queueMinBackoff
 	}
 	if queueMinShards > 0 {
-		conf.Monitoring.QueueConfig.MinShards = &queueMinShards
+		cfg.Monitoring.QueueConfig.MinShards = &queueMinShards
 	}
-	conf.Monitoring.QueueConfig.RetryOnHttp429 = &queueRetryOnHttp429
+	cfg.Monitoring.QueueConfig.RetryOnHttp429 = &queueRetryOnHttp429
 	if queueSampleAgeLimit != "" {
-		conf.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
+		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
 	}
 
 	// parse grafana URL
-	conf.GrafanaURL, err = url.Parse(grafanaURL)
+	cfg.GrafanaURL, err = url.Parse(grafanaURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse grafana url: %w", err)
 	}
@@ -184,7 +188,7 @@ func runner() error {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	// Load environment variables.
-	_, err = env.UnmarshalFromEnviron(&conf.Environment)
+	_, err = env.UnmarshalFromEnviron(&cfg.Environment)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal environment variables: %w", err)
 	}
@@ -201,13 +205,13 @@ func runner() error {
 	}
 
 	tlsOpts := []func(*tls.Config){}
-	if !conf.EnableHTTP2 {
+	if !cfg.EnableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
 	webhookServer := webhook.NewServer(webhook.Options{
 		TLSOpts: tlsOpts,
-		CertDir: conf.WebhookCertPath,
+		CertDir: cfg.WebhookCertPath,
 	})
 
 	discardHelmSecretsSelector, err := labels.Parse("owner notin (helm,Helm)")
@@ -218,13 +222,13 @@ func runner() error {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
-			BindAddress:   conf.MetricsAddr,
-			SecureServing: conf.SecureMetrics,
+			BindAddress:   cfg.MetricsAddr,
+			SecureServing: cfg.SecureMetrics,
 			TLSOpts:       tlsOpts,
 		},
 		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: conf.ProbeAddr,
-		LeaderElection:         conf.EnableLeaderElection,
+		HealthProbeBindAddress: cfg.ProbeAddr,
+		LeaderElection:         cfg.EnableLeaderElection,
 		LeaderElectionID:       "5c99b45b.giantswarm.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
@@ -256,27 +260,27 @@ func runner() error {
 	// Create Grafana client generator for dependency injection
 	grafanaClientGen := &grafanaclient.DefaultGrafanaClientGenerator{}
 	// Setup controller for the Cluster resource.
-	err = controller.SetupClusterMonitoringReconciler(mgr, conf)
+	err = controller.SetupClusterMonitoringReconciler(mgr, cfg)
 	if err != nil {
 		return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
 	}
 
 	// Setup controller for the GrafanaOrganization resource.
-	err = controller.SetupGrafanaOrganizationReconciler(mgr, conf, grafanaClientGen)
+	err = controller.SetupGrafanaOrganizationReconciler(mgr, cfg, grafanaClientGen)
 	if err != nil {
 		return fmt.Errorf("unable to setup controller (GrafanaOrganizationReconciler): %w", err)
 	}
 
-	if conf.Monitoring.AlertmanagerEnabled {
+	if cfg.Monitoring.AlertmanagerEnabled {
 		// Setup controller for Alertmanager
-		err = controller.SetupAlertmanagerReconciler(mgr, conf)
+		err = controller.SetupAlertmanagerReconciler(mgr, cfg)
 		if err != nil {
 			return fmt.Errorf("unable to setup controller (AlertmanagerReconciler): %w", err)
 		}
 	}
 
 	// Setup controller for the Dashboard resource.
-	err = controller.SetupDashboardReconciler(mgr, conf, grafanaClientGen)
+	err = controller.SetupDashboardReconciler(mgr, cfg, grafanaClientGen)
 	if err != nil {
 		return fmt.Errorf("unable to create controller (Dashboard): %w", err)
 	}

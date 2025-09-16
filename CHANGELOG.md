@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add Tempo datasource support for distributed tracing
+  - Conditional creation based on `--tracing-enabled` flag and Helm values support via `tracing.enabled` configuration (defaults to `false`)
+  - Full integration with service maps, traces-to-logs, and traces-to-metrics correlations
+  - Connects to `http://tempo-query-frontend.tempo.svc:3200` service
+  - Comprehensive test coverage for both enabled and disabled scenarios
+
 ### Changed
 
 - Added a `generateDatasources` to generate all datasource needed for an organization

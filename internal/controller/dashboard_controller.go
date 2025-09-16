@@ -35,6 +35,7 @@ type DashboardReconciler struct {
 	finalizerHelper  FinalizerHelper
 	dashboardMapper  *mapper.DashboardMapper
 	grafanaClientGen grafanaclient.GrafanaClientGenerator
+	cfg              config.Config
 }
 
 const (
@@ -44,15 +45,16 @@ const (
 	DashboardSelectorLabelValue = "dashboard"
 )
 
-func SetupDashboardReconciler(mgr manager.Manager, conf config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
+func SetupDashboardReconciler(mgr manager.Manager, cfg config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &DashboardReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 
-		grafanaURL:       conf.GrafanaURL,
+		grafanaURL:       cfg.GrafanaURL,
 		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
 		dashboardMapper:  mapper.New(),
 		grafanaClientGen: grafanaClientGen,
+		cfg:              cfg,
 	}
 
 	return r.SetupWithManager(mgr)
@@ -87,7 +89,7 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
-	grafanaService := grafana.NewService(r.Client, grafanaAPI)
+	grafanaService := grafana.NewService(r.Client, grafanaAPI, r.cfg)
 
 	// Handle deleted grafana dashboards
 	if !dashboard.DeletionTimestamp.IsZero() {

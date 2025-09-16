@@ -39,9 +39,9 @@ type configRequest struct {
 	AlertmanagerConfig string            `json:"alertmanager_config"`
 }
 
-func New(conf pkgconfig.Config) Service {
+func New(cfg pkgconfig.Config) Service {
 	service := Service{
-		alertmanagerURL: strings.TrimSuffix(conf.Monitoring.AlertmanagerURL, "/"),
+		alertmanagerURL: strings.TrimSuffix(cfg.Monitoring.AlertmanagerURL, "/"),
 	}
 
 	return service
