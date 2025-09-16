@@ -243,7 +243,7 @@ func TestGenerateDatasources(t *testing.T) {
 
 				field := derivedFields[0]
 				assert.Equal(t, "traceID", field["name"])
-				assert.Equal(t, "traceID=(\\w+)", field["matcherRegex"])
+				assert.Equal(t, "[tT]race_?[Ii][dD]\"?[:=](\\w+)", field["matcherRegex"])
 				assert.Equal(t, "gs-tempo", field["datasourceUid"])
 				assert.Equal(t, "${__value.raw}", field["url"])
 				assert.Equal(t, "Trace ID", field["urlDisplayLabel"])

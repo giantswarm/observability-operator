@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Full integration with service maps, traces-to-logs, and traces-to-metrics correlations
   - Connects to `http://tempo-query-frontend.tempo.svc:3200` service
   - Comprehensive test coverage for both enabled and disabled scenarios
+- Update Loki datasource for logs-to-traces support
 
 ### Changed
 
