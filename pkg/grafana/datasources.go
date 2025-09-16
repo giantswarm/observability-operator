@@ -154,13 +154,12 @@ func (s *Service) generateDatasources(organization Organization) (datasources []
 		datasources = append(datasources, DatasourceTempo().Merge(Datasource{
 			Name: "Tempo",
 			UID:  TempoDatasourceUID,
-			// TODO: Add multi-tenancy support
-			// JSONData: map[string]any{
-			// 	"httpHeaderName1": common.OrgIDHeader,
-			// },
-			// SecureJSONData: map[string]string{
-			// 	"httpHeaderValue1": multiTenantIDsHeaderValue,
-			// },
+			JSONData: map[string]any{
+				"httpHeaderName1": common.OrgIDHeader,
+			},
+			SecureJSONData: map[string]string{
+				"httpHeaderValue1": multiTenantIDsHeaderValue,
+			},
 		}))
 	}
 
