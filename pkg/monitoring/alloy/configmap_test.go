@@ -13,9 +13,8 @@ import (
 	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
-	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 var managementClusterName = "dummy-cluster"
@@ -187,20 +186,22 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			// Create a dummy Service with minimal dependencies.
 			service := &Service{
 				OrganizationRepository: &MockOrganizationRepository{},
-				ManagementCluster: common.ManagementCluster{
-					InsecureCA: false,
-					Customer:   "dummy-customer",
-					Name:       "dummy-cluster",
-					Pipeline:   "dummy-pipeline",
-					Region:     "dummy-region",
-				},
-				MonitoringConfig: monitoring.Config{
-					WALTruncateFrequency: time.Minute,
-					QueueConfig: monitoring.QueueConfig{
-						Capacity:          ptr.To(30000),
-						MaxShards:         ptr.To(10),
-						MaxSamplesPerSend: ptr.To(150000),
-						SampleAgeLimit:    ptr.To("30m"),
+				Config: config.Config{
+					Cluster: config.ClusterConfig{
+						InsecureCA: false,
+						Customer:   "dummy-customer",
+						Name:       "dummy-cluster",
+						Pipeline:   "dummy-pipeline",
+						Region:     "dummy-region",
+					},
+					Monitoring: config.MonitoringConfig{
+						WALTruncateFrequency: time.Minute,
+						QueueConfig: config.QueueConfig{
+							Capacity:          ptr.To(30000),
+							MaxShards:         ptr.To(10),
+							MaxSamplesPerSend: ptr.To(150000),
+							SampleAgeLimit:    ptr.To("30m"),
+						},
 					},
 				},
 			}

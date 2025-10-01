@@ -50,7 +50,7 @@ func SetupDashboardReconciler(mgr manager.Manager, cfg config.Config, grafanaCli
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 
-		grafanaURL:       cfg.GrafanaURL,
+		grafanaURL:       cfg.Grafana.URL,
 		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
 		dashboardMapper:  mapper.New(),
 		grafanaClientGen: grafanaClientGen,

@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/giantswarm/observability-operator/pkg/config"
-	"github.com/giantswarm/observability-operator/pkg/tracing"
 )
 
 func TestDatasourceTempo(t *testing.T) {
@@ -171,7 +170,7 @@ func TestGenerateDatasources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			service := &Service{
 				cfg: config.Config{
-					Tracing: tracing.Config{
+					Tracing: config.TracingConfig{
 						Enabled: tt.tracingEnabled,
 					},
 				},

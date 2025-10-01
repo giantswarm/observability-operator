@@ -19,7 +19,6 @@ import (
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
-	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
@@ -39,7 +38,7 @@ var (
 type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
 	Client            client.Client
-	ManagementCluster common.ManagementCluster
+	ManagementCluster config.ClusterConfig
 	// PrometheusAgentService is the service for managing PrometheusAgent resources.
 	PrometheusAgentService prometheusagent.PrometheusAgentService
 	// AlloyService is the service which manages Alloy monitoring agent configuration.
@@ -51,7 +50,7 @@ type ClusterMonitoringReconciler struct {
 	// BundleConfigurationService is the service for configuring the observability bundle.
 	BundleConfigurationService *bundle.BundleConfigurationService
 	// MonitoringConfig is the configuration for the monitoring package.
-	MonitoringConfig monitoring.Config
+	MonitoringConfig config.MonitoringConfig
 	// FinalizerHelper is the helper for managing finalizers.
 	finalizerHelper FinalizerHelper
 }
@@ -63,7 +62,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		return fmt.Errorf("OpsgenieApiKey not set: %q", cfg.Environment.OpsgenieApiKey)
 	}
 
-	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(cfg.Environment.OpsgenieApiKey, cfg.ManagementCluster)
+	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(cfg.Environment.OpsgenieApiKey, cfg)
 	if err != nil {
 		return fmt.Errorf("unable to create heartbeat repository: %w", err)
 	}
@@ -74,32 +73,30 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
 		PasswordManager:        password.SimpleManager{},
-		ManagementCluster:      cfg.ManagementCluster,
-		MonitoringConfig:       cfg.Monitoring,
+		Config:                 cfg,
 	}
 
 	alloyService := alloy.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
-		ManagementCluster:      cfg.ManagementCluster,
-		MonitoringConfig:       cfg.Monitoring,
+		Config:                 cfg,
 	}
 
 	mimirService := mimir.MimirService{
-		Client:            managerClient,
-		PasswordManager:   password.SimpleManager{},
-		ManagementCluster: cfg.ManagementCluster,
+		Client:          managerClient,
+		PasswordManager: password.SimpleManager{},
+		Config:          cfg,
 	}
 
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
-		ManagementCluster:          cfg.ManagementCluster,
+		ManagementCluster:          cfg.Cluster,
 		HeartbeatRepository:        heartbeatRepository,
 		PrometheusAgentService:     prometheusAgentService,
 		AlloyService:               alloyService,
 		MimirService:               mimirService,
 		MonitoringConfig:           cfg.Monitoring,
-		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg.Monitoring),
+		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
 

@@ -15,10 +15,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/pkg/bundle"
-	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
+	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
@@ -87,62 +87,70 @@ var _ = Describe("Cluster Controller", func() {
 			// Setup reconciler with actual services instead of mocks
 			organizationRepository := organization.NewNamespaceRepository(k8sClient)
 
-			bundleService := bundle.NewBundleConfigurationService(k8sClient, monitoring.Config{
-				Enabled:         true,
-				MonitoringAgent: commonmonitoring.MonitoringAgentPrometheus,
+			bundleService := bundle.NewBundleConfigurationService(k8sClient, config.Config{
+				Monitoring: config.MonitoringConfig{
+					Enabled:         true,
+					MonitoringAgent: commonmonitoring.MonitoringAgentPrometheus,
+				},
 			})
 
 			prometheusAgentService := prometheusagent.PrometheusAgentService{
 				Client:                 k8sClient,
 				OrganizationRepository: organizationRepository,
 				PasswordManager:        password.SimpleManager{},
-				ManagementCluster: common.ManagementCluster{
-					Name:     "management-cluster",
-					Pipeline: "testing",
-					Region:   "eu-west-1",
-					Customer: "giantswarm",
-				},
-				MonitoringConfig: monitoring.Config{
-					Enabled:         true,
-					MonitoringAgent: commonmonitoring.MonitoringAgentPrometheus,
+				Config: config.Config{
+					Cluster: config.ClusterConfig{
+						Name:     "management-cluster",
+						Pipeline: "testing",
+						Region:   "eu-west-1",
+						Customer: "giantswarm",
+					},
+					Monitoring: config.MonitoringConfig{
+						Enabled:         true,
+						MonitoringAgent: commonmonitoring.MonitoringAgentPrometheus,
+					},
 				},
 			}
 
 			alloyService := alloy.Service{
 				Client:                 k8sClient,
 				OrganizationRepository: organizationRepository,
-				ManagementCluster: common.ManagementCluster{
-					Name:     "management-cluster",
-					Pipeline: "testing",
-					Region:   "eu-west-1",
-					Customer: "giantswarm",
-				},
-				MonitoringConfig: monitoring.Config{
-					Enabled:         true,
-					MonitoringAgent: commonmonitoring.MonitoringAgentAlloy,
+				Config: config.Config{
+					Cluster: config.ClusterConfig{
+						Name:     "management-cluster",
+						Pipeline: "testing",
+						Region:   "eu-west-1",
+						Customer: "giantswarm",
+					},
+					Monitoring: config.MonitoringConfig{
+						Enabled:         true,
+						MonitoringAgent: commonmonitoring.MonitoringAgentAlloy,
+					},
 				},
 			}
 
 			mimirService := mimir.MimirService{
 				Client:          k8sClient,
 				PasswordManager: password.SimpleManager{},
-				ManagementCluster: common.ManagementCluster{
-					Name:     "management-cluster",
-					Pipeline: "testing",
-					Region:   "eu-west-1",
-					Customer: "giantswarm",
+				Config: config.Config{
+					Cluster: config.ClusterConfig{
+						Name:     "management-cluster",
+						Pipeline: "testing",
+						Region:   "eu-west-1",
+						Customer: "giantswarm",
+					},
 				},
 			}
 
 			reconciler = &ClusterMonitoringReconciler{
 				Client: k8sClient,
-				ManagementCluster: common.ManagementCluster{
+				ManagementCluster: config.ClusterConfig{
 					Name:     "management-cluster",
 					Pipeline: "testing",
 					Region:   "eu-west-1",
 					Customer: "giantswarm",
 				},
-				MonitoringConfig: monitoring.Config{
+				MonitoringConfig: config.MonitoringConfig{
 					Enabled:         true,
 					MonitoringAgent: commonmonitoring.MonitoringAgentPrometheus,
 				},

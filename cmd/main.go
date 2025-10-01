@@ -62,41 +62,57 @@ func main() {
 }
 
 func runner() error {
-	var grafanaURL string
-	var err error
+	// Parse flags
+	if err := parseFlags(); err != nil {
+		return fmt.Errorf("failed to parse flags: %w", err)
+	}
 
-	flag.StringVar(&cfg.MetricsAddr, "metrics-bind-address", ":8080",
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return fmt.Errorf("configuration validation failed: %w", err)
+	}
+
+	// Continue with the rest of the setup
+	return setupApplication()
+}
+
+// parseFlags parses all command line flags and updates the configuration.
+func parseFlags() error {
+	var grafanaURL string
+
+	// Operator configuration flags
+	flag.StringVar(&cfg.Operator.MetricsAddr, "metrics-bind-address", ":8080",
 		"The address the metric endpoint binds to.")
-	flag.StringVar(&cfg.ProbeAddr, "health-probe-bind-address", ":8081",
+	flag.StringVar(&cfg.Operator.ProbeAddr, "health-probe-bind-address", ":8081",
 		"The address the probe endpoint binds to.")
-	flag.BoolVar(&cfg.EnableLeaderElection, "leader-elect", false,
+	flag.BoolVar(&cfg.Operator.EnableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&cfg.SecureMetrics, "metrics-secure", false,
+	flag.BoolVar(&cfg.Operator.SecureMetrics, "metrics-secure", false,
 		"If set the metrics endpoint is served securely")
-	flag.BoolVar(&cfg.EnableHTTP2, "enable-http2", false,
+	flag.BoolVar(&cfg.Operator.EnableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	flag.StringVar(&cfg.WebhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
+	flag.StringVar(&cfg.Operator.WebhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
 		"Path to the directory where the webhook server will store its TLS certificate and key.")
-	flag.StringVar(&cfg.OperatorNamespace, "operator-namespace", "",
+	flag.StringVar(&cfg.Operator.OperatorNamespace, "operator-namespace", "",
 		"The namespace where the observability-operator is running.")
 	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local", "grafana URL")
 
-	// Management cluster configuration flags.
-	flag.StringVar(&cfg.ManagementCluster.BaseDomain, "management-cluster-base-domain", "",
+	// Management cluster configuration flags
+	flag.StringVar(&cfg.Cluster.BaseDomain, "management-cluster-base-domain", "",
 		"The base domain of the management cluster.")
-	flag.StringVar(&cfg.ManagementCluster.Customer, "management-cluster-customer", "",
+	flag.StringVar(&cfg.Cluster.Customer, "management-cluster-customer", "",
 		"The customer of the management cluster.")
-	flag.BoolVar(&cfg.ManagementCluster.InsecureCA, "management-cluster-insecure-ca", false,
+	flag.BoolVar(&cfg.Cluster.InsecureCA, "management-cluster-insecure-ca", false,
 		"Flag to indicate if the management cluster has an insecure CA that should be trusted")
-	flag.StringVar(&cfg.ManagementCluster.Name, "management-cluster-name", "",
+	flag.StringVar(&cfg.Cluster.Name, "management-cluster-name", "",
 		"The name of the management cluster.")
-	flag.StringVar(&cfg.ManagementCluster.Pipeline, "management-cluster-pipeline", "",
+	flag.StringVar(&cfg.Cluster.Pipeline, "management-cluster-pipeline", "",
 		"The pipeline of the management cluster.")
-	flag.StringVar(&cfg.ManagementCluster.Region, "management-cluster-region", "",
+	flag.StringVar(&cfg.Cluster.Region, "management-cluster-region", "",
 		"The region of the management cluster.")
 
-	// Monitoring configuration flags.
+	// Monitoring configuration flags
 	flag.BoolVar(&cfg.Monitoring.AlertmanagerEnabled, "alertmanager-enabled", false,
 		"Enable Alertmanager controller.")
 	flag.StringVar(&cfg.Monitoring.AlertmanagerSecretName, "alertmanager-secret-name", "",
@@ -118,11 +134,31 @@ func runner() error {
 	flag.StringVar(&cfg.Monitoring.MetricsQueryURL, "monitoring-metrics-query-url", "http://mimir-gateway.mimir.svc/prometheus",
 		"URL to query for cluster metrics")
 
-	// Tracing configuration flags.
+	// Tracing configuration flags
 	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
 		"Enable distributed tracing support in Grafana.")
 
 	// Queue configuration flags for Alloy remote write
+	parseQueueConfigFlags()
+
+	// Zap logging options
+	opts := zap.Options{
+		Development: false,
+	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
+
+	// Post-process configuration
+	if err := postProcessConfig(grafanaURL); err != nil {
+		return fmt.Errorf("failed to post-process configuration: %w", err)
+	}
+
+	return nil
+}
+
+// parseQueueConfigFlags parses the queue configuration flags.
+func parseQueueConfigFlags() {
+	// Use temporary variables since QueueConfig fields are pointers
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string
 	var queueCapacity, queueMaxSamplesPerSend, queueMaxShards, queueMinShards int
 	var queueRetryOnHttp429 bool
@@ -146,49 +182,91 @@ func runner() error {
 	flag.StringVar(&queueSampleAgeLimit, "monitoring-queue-config-sample-age-limit", "",
 		"Maximum age of samples to send (e.g., '30m'). If empty, Alloy default is used.")
 
-	opts := zap.Options{
-		Development: false,
+	// Store the temporary variables for post-processing
+	queueConfigVars = &queueConfigVariables{
+		BatchSendDeadline: queueBatchSendDeadline,
+		Capacity:          queueCapacity,
+		MaxBackoff:        queueMaxBackoff,
+		MaxSamplesPerSend: queueMaxSamplesPerSend,
+		MaxShards:         queueMaxShards,
+		MinBackoff:        queueMinBackoff,
+		MinShards:         queueMinShards,
+		RetryOnHttp429:    queueRetryOnHttp429,
+		SampleAgeLimit:    queueSampleAgeLimit,
 	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+}
 
-	// Set queue config based on flags (only if values were provided)
-	if queueBatchSendDeadline != "" {
-		cfg.Monitoring.QueueConfig.BatchSendDeadline = &queueBatchSendDeadline
-	}
-	if queueCapacity > 0 {
-		cfg.Monitoring.QueueConfig.Capacity = &queueCapacity
-	}
-	if queueMaxBackoff != "" {
-		cfg.Monitoring.QueueConfig.MaxBackoff = &queueMaxBackoff
-	}
-	if queueMaxSamplesPerSend > 0 {
-		cfg.Monitoring.QueueConfig.MaxSamplesPerSend = &queueMaxSamplesPerSend
-	}
-	if queueMaxShards > 0 {
-		cfg.Monitoring.QueueConfig.MaxShards = &queueMaxShards
-	}
-	if queueMinBackoff != "" {
-		cfg.Monitoring.QueueConfig.MinBackoff = &queueMinBackoff
-	}
-	if queueMinShards > 0 {
-		cfg.Monitoring.QueueConfig.MinShards = &queueMinShards
-	}
-	cfg.Monitoring.QueueConfig.RetryOnHttp429 = &queueRetryOnHttp429
-	if queueSampleAgeLimit != "" {
-		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
-	}
+// queueConfigVariables holds temporary queue config values from flags
+type queueConfigVariables struct {
+	BatchSendDeadline string
+	Capacity          int
+	MaxBackoff        string
+	MaxSamplesPerSend int
+	MaxShards         int
+	MinBackoff        string
+	MinShards         int
+	RetryOnHttp429    bool
+	SampleAgeLimit    string
+}
 
-	// parse grafana URL
-	cfg.GrafanaURL, err = url.Parse(grafanaURL)
+var queueConfigVars *queueConfigVariables
+
+// postProcessConfig performs post-processing on the configuration after flag parsing.
+func postProcessConfig(grafanaURL string) error {
+	// Parse grafana URL
+	var err error
+	cfg.Grafana.URL, err = url.Parse(grafanaURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse grafana url: %w", err)
 	}
 
+	// Apply queue config from temporary variables
+	if queueConfigVars != nil {
+		applyQueueConfig()
+	}
+
+	return nil
+}
+
+// applyQueueConfig applies the queue configuration from temporary variables to the config.
+func applyQueueConfig() {
+	if queueConfigVars.BatchSendDeadline != "" {
+		cfg.Monitoring.QueueConfig.BatchSendDeadline = &queueConfigVars.BatchSendDeadline
+	}
+	if queueConfigVars.Capacity > 0 {
+		cfg.Monitoring.QueueConfig.Capacity = &queueConfigVars.Capacity
+	}
+	if queueConfigVars.MaxBackoff != "" {
+		cfg.Monitoring.QueueConfig.MaxBackoff = &queueConfigVars.MaxBackoff
+	}
+	if queueConfigVars.MaxSamplesPerSend > 0 {
+		cfg.Monitoring.QueueConfig.MaxSamplesPerSend = &queueConfigVars.MaxSamplesPerSend
+	}
+	if queueConfigVars.MaxShards > 0 {
+		cfg.Monitoring.QueueConfig.MaxShards = &queueConfigVars.MaxShards
+	}
+	if queueConfigVars.MinBackoff != "" {
+		cfg.Monitoring.QueueConfig.MinBackoff = &queueConfigVars.MinBackoff
+	}
+	if queueConfigVars.MinShards > 0 {
+		cfg.Monitoring.QueueConfig.MinShards = &queueConfigVars.MinShards
+	}
+	cfg.Monitoring.QueueConfig.RetryOnHttp429 = &queueConfigVars.RetryOnHttp429
+	if queueConfigVars.SampleAgeLimit != "" {
+		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueConfigVars.SampleAgeLimit
+	}
+}
+
+// setupApplication sets up the application after configuration is complete.
+func setupApplication() error {
+	// Set up logging
+	opts := zap.Options{
+		Development: false,
+	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	// Load environment variables.
-	_, err = env.UnmarshalFromEnviron(&cfg.Environment)
+	// Load environment variables
+	_, err := env.UnmarshalFromEnviron(&cfg.Environment)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal environment variables: %w", err)
 	}
@@ -205,13 +283,13 @@ func runner() error {
 	}
 
 	tlsOpts := []func(*tls.Config){}
-	if !cfg.EnableHTTP2 {
+	if !cfg.Operator.EnableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
 	webhookServer := webhook.NewServer(webhook.Options{
 		TLSOpts: tlsOpts,
-		CertDir: cfg.WebhookCertPath,
+		CertDir: cfg.Operator.WebhookCertPath,
 	})
 
 	discardHelmSecretsSelector, err := labels.Parse("owner notin (helm,Helm)")
@@ -222,13 +300,13 @@ func runner() error {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
-			BindAddress:   cfg.MetricsAddr,
-			SecureServing: cfg.SecureMetrics,
+			BindAddress:   cfg.Operator.MetricsAddr,
+			SecureServing: cfg.Operator.SecureMetrics,
 			TLSOpts:       tlsOpts,
 		},
 		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: cfg.ProbeAddr,
-		LeaderElection:         cfg.EnableLeaderElection,
+		HealthProbeBindAddress: cfg.Operator.ProbeAddr,
+		LeaderElection:         cfg.Operator.EnableLeaderElection,
 		LeaderElectionID:       "5c99b45b.giantswarm.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the

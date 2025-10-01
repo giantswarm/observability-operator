@@ -41,7 +41,7 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, 
 	r := &GrafanaOrganizationReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
-		grafanaURL:       cfg.GrafanaURL,
+		grafanaURL:       cfg.Grafana.URL,
 		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), v1alpha1.GrafanaOrganizationFinalizer),
 		grafanaClientGen: grafanaClientGen,
 		cfg:              cfg,

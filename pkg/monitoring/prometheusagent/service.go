@@ -12,10 +12,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
 
@@ -23,8 +22,7 @@ type PrometheusAgentService struct {
 	client.Client
 	organization.OrganizationRepository
 	PasswordManager password.Manager
-	common.ManagementCluster
-	MonitoringConfig monitoring.Config
+	config.Config
 }
 
 // ReconcileRemoteWriteConfiguration ensures that the prometheus remote write config is present in the cluster.
@@ -59,14 +57,14 @@ func (pas PrometheusAgentService) createOrUpdateConfigMap(ctx context.Context,
 
 	current := &corev1.ConfigMap{}
 	// Get the current configmap if it exists.
-	err := pas.Get(ctx, objectKey, current)
+	err := pas.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		configMap, err := pas.buildRemoteWriteConfig(ctx, cluster, logger, sharding.DefaultShards)
 		if err != nil {
 			return fmt.Errorf("failed to build remote write config: %w", err)
 		}
 
-		err = pas.Create(ctx, configMap)
+		err = pas.Client.Create(ctx, configMap)
 		if err != nil {
 			return fmt.Errorf("failed to create remote write configmap: %w", err)
 		}
@@ -86,7 +84,7 @@ func (pas PrometheusAgentService) createOrUpdateConfigMap(ctx context.Context,
 	}
 
 	if !reflect.DeepEqual(current.Data, desired.Data) || !reflect.DeepEqual(current.Finalizers, desired.Finalizers) {
-		err = pas.Update(ctx, desired)
+		err = pas.Client.Update(ctx, desired)
 		if err != nil {
 			return fmt.Errorf("failed to update prometheus agent remote write configmap: %w", err)
 		}
@@ -103,7 +101,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 
 	current := &corev1.Secret{}
 	// Get the current secret if it exists.
-	err := pas.Get(ctx, objectKey, current)
+	err := pas.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		logger.Info("generating remote write secret for the prometheus agent")
 		secret, err := pas.buildRemoteWriteSecret(ctx, cluster)
@@ -112,7 +110,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		}
 		logger.Info("generated the remote write secret for the prometheus agent")
 
-		err = pas.Create(ctx, secret)
+		err = pas.Client.Create(ctx, secret)
 		if err != nil {
 			return fmt.Errorf("failed to create remote write secret: %w", err)
 		}
@@ -126,7 +124,7 @@ func (pas PrometheusAgentService) createOrUpdateSecret(ctx context.Context,
 		return fmt.Errorf("failed to build remote write secret: %w", err)
 	}
 	if !reflect.DeepEqual(current.Data, desired.Data) || !reflect.DeepEqual(current.Finalizers, desired.Finalizers) {
-		err = pas.Update(ctx, desired)
+		err = pas.Client.Update(ctx, desired)
 		if err != nil {
 			return fmt.Errorf("failed to update remote write secret: %w", err)
 		}
@@ -163,7 +161,7 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 	}
 	configMap := &corev1.ConfigMap{}
 	// Get the current configmap if it exists.
-	err := pas.Get(ctx, objectKey, configMap)
+	err := pas.Client.Get(ctx, objectKey, configMap)
 	if apierrors.IsNotFound(err) {
 		// Ignore cases where the configmap is not found (if it was manually deleted, for instance).
 		return nil
@@ -171,7 +169,7 @@ func (pas PrometheusAgentService) deleteConfigMap(ctx context.Context, cluster *
 		return fmt.Errorf("failed to get remote write configmap: %w", err)
 	}
 
-	err = pas.Delete(ctx, configMap)
+	err = pas.Client.Delete(ctx, configMap)
 	if err != nil {
 		return fmt.Errorf("failed to delete remote write configmap: %w", err)
 	}
@@ -185,7 +183,7 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 	}
 	secret := &corev1.Secret{}
 	// Get the current secret if it exists.
-	err := pas.Get(ctx, objectKey, secret)
+	err := pas.Client.Get(ctx, objectKey, secret)
 	if apierrors.IsNotFound(err) {
 		// Ignore cases where the secret is not found (if it was manually deleted, for instance).
 		return nil
@@ -193,7 +191,7 @@ func (pas PrometheusAgentService) deleteSecret(ctx context.Context, cluster *clu
 		return fmt.Errorf("failed to get remote write secret: %w", err)
 	}
 
-	err = pas.Delete(ctx, secret)
+	err = pas.Client.Delete(ctx, secret)
 	if err != nil {
 		return fmt.Errorf("failed to delete remote write secret: %w", err)
 	}
