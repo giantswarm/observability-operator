@@ -222,6 +222,24 @@
                 }
             }
         },
+        "tracing": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable or disable distributed tracing support"
+                }
+            }
+        },
+        "logging": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable or disable logging support"
+                }
+            }
+        },
         "webhook": {
             "type": "object",
             "properties": {
