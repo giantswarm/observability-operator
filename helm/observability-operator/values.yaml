@@ -46,6 +46,10 @@ tracing:
   # -- Enable or disable distributed tracing support
   enabled: false
 
+logging:
+  # -- Enable or disable logging support
+  enabled: false
+
 operator:
   # -- Configures the resources for the operator deployment
   resources:
