@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add logging-enabled flag towards the logging-operator -> observability-operator merger.
+
 ## [0.42.0] - 2025-09-17
 
 ### Added
