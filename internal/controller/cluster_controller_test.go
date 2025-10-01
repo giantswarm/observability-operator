@@ -144,15 +144,17 @@ var _ = Describe("Cluster Controller", func() {
 
 			reconciler = &ClusterMonitoringReconciler{
 				Client: k8sClient,
-				ManagementCluster: config.ClusterConfig{
-					Name:     "management-cluster",
-					Pipeline: "testing",
-					Region:   "eu-west-1",
-					Customer: "giantswarm",
-				},
-				MonitoringConfig: config.MonitoringConfig{
-					Enabled:         true,
-					MonitoringAgent: commonmonitoring.MonitoringAgentPrometheus,
+				Config: config.Config{
+					Cluster: config.ClusterConfig{
+						Name:     "management-cluster",
+						Pipeline: "testing",
+						Region:   "eu-west-1",
+						Customer: "giantswarm",
+					},
+					Monitoring: config.MonitoringConfig{
+						Enabled:         true,
+						MonitoringAgent: commonmonitoring.MonitoringAgentPrometheus,
+					},
 				},
 				BundleConfigurationService: bundleService,
 				PrometheusAgentService:     prometheusAgentService,

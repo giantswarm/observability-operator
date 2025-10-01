@@ -77,9 +77,7 @@ func runner() error {
 }
 
 // parseFlags parses all command line flags and updates the configuration.
-func parseFlags() error {
-	var grafanaURL string
-
+func parseFlags() (err error) {
 	// Operator configuration flags
 	flag.StringVar(&cfg.Operator.MetricsAddr, "metrics-bind-address", ":8080",
 		"The address the metric endpoint binds to.")
@@ -97,9 +95,14 @@ func parseFlags() error {
 	flag.StringVar(&cfg.Operator.OperatorNamespace, "operator-namespace", "",
 		"The namespace where the observability-operator is running.")
 
-    // Grafana configuration flags
-    var grafanaURL string
+	// Grafana configuration flags
+	var grafanaURL string
 	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local", "grafana URL")
+	// Parse Grafana URL
+	cfg.Grafana.URL, err = url.Parse(grafanaURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse grafana URL: %w", err)
+	}
 
 	// Management cluster configuration flags
 	flag.StringVar(&cfg.Cluster.BaseDomain, "management-cluster-base-domain", "",
@@ -137,12 +140,12 @@ func parseFlags() error {
 	flag.StringVar(&cfg.Monitoring.MetricsQueryURL, "monitoring-metrics-query-url", "http://mimir-gateway.mimir.svc/prometheus",
 		"URL to query for cluster metrics")
 
+	// Queue configuration flags for Alloy remote write
+	parseMonitoringQueueConfigFlags()
+
 	// Tracing configuration flags
 	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
 		"Enable distributed tracing support in Grafana.")
-
-	// Queue configuration flags for Alloy remote write
-	parseQueueConfigFlags()
 
 	// Zap logging options
 	opts := zap.Options{
@@ -151,17 +154,12 @@ func parseFlags() error {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	// Post-process configuration
-	if err := postProcessConfig(grafanaURL); err != nil {
-		return fmt.Errorf("failed to post-process configuration: %w", err)
-	}
-
 	return nil
 }
 
-// parseQueueConfigFlags parses the queue configuration flags.
-func parseQueueConfigFlags() {
-	// Use temporary variables since QueueConfig fields are pointers
+// parseMonitoringQueueConfigFlags parses the queue configuration flags and applies them directly to the config.
+func parseMonitoringQueueConfigFlags() {
+	// Use temporary variables to capture flag values
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string
 	var queueCapacity, queueMaxSamplesPerSend, queueMaxShards, queueMinShards int
 	var queueRetryOnHttp429 bool
@@ -171,92 +169,44 @@ func parseQueueConfigFlags() {
 	flag.IntVar(&queueCapacity, "monitoring-queue-config-capacity", 0,
 		"Number of samples to buffer per shard. If 0, Alloy default is used.")
 	flag.StringVar(&queueMaxBackoff, "monitoring-queue-config-max-backoff", "",
-		"Maximum retry delay (e.g., '5s'). If empty, Alloy default is used.")
+		"Maximum backoff time between retries (e.g., '5m'). If empty, Alloy default is used.")
 	flag.IntVar(&queueMaxSamplesPerSend, "monitoring-queue-config-max-samples-per-send", 0,
-		"Maximum number of samples per send. If 0, Alloy default is used.")
+		"Maximum number of samples to send in a single request. If 0, Alloy default is used.")
 	flag.IntVar(&queueMaxShards, "monitoring-queue-config-max-shards", 0,
-		"Maximum number of concurrent shards. If 0, Alloy default is used.")
+		"Maximum number of shards to use. If 0, Alloy default is used.")
 	flag.StringVar(&queueMinBackoff, "monitoring-queue-config-min-backoff", "",
-		"Initial retry delay (e.g., '30ms'). If empty, Alloy default is used.")
+		"Minimum backoff time between retries (e.g., '30ms'). If empty, Alloy default is used.")
 	flag.IntVar(&queueMinShards, "monitoring-queue-config-min-shards", 0,
-		"Minimum number of concurrent shards. If 0, Alloy default is used.")
-	flag.BoolVar(&queueRetryOnHttp429, "monitoring-queue-config-retry-on-http-429", true,
+		"Minimum number of shards to use. If 0, Alloy default is used.")
+	flag.BoolVar(&queueRetryOnHttp429, "monitoring-queue-config-retry-on-http-429", false,
 		"Retry when an HTTP 429 status code is received.")
 	flag.StringVar(&queueSampleAgeLimit, "monitoring-queue-config-sample-age-limit", "",
 		"Maximum age of samples to send (e.g., '30m'). If empty, Alloy default is used.")
 
-	// Store the temporary variables for post-processing
-	queueConfigVars = &queueConfigVariables{
-		BatchSendDeadline: queueBatchSendDeadline,
-		Capacity:          queueCapacity,
-		MaxBackoff:        queueMaxBackoff,
-		MaxSamplesPerSend: queueMaxSamplesPerSend,
-		MaxShards:         queueMaxShards,
-		MinBackoff:        queueMinBackoff,
-		MinShards:         queueMinShards,
-		RetryOnHttp429:    queueRetryOnHttp429,
-		SampleAgeLimit:    queueSampleAgeLimit,
+	if queueBatchSendDeadline != "" {
+		cfg.Monitoring.QueueConfig.BatchSendDeadline = &queueBatchSendDeadline
 	}
-}
-
-// queueConfigVariables holds temporary queue config values from flags
-type queueConfigVariables struct {
-	BatchSendDeadline string
-	Capacity          int
-	MaxBackoff        string
-	MaxSamplesPerSend int
-	MaxShards         int
-	MinBackoff        string
-	MinShards         int
-	RetryOnHttp429    bool
-	SampleAgeLimit    string
-}
-
-var queueConfigVars *queueConfigVariables
-
-// postProcessConfig performs post-processing on the configuration after flag parsing.
-func postProcessConfig(grafanaURL string) error {
-	// Parse grafana URL
-	var err error
-	cfg.Grafana.URL, err = url.Parse(grafanaURL)
-	if err != nil {
-		return fmt.Errorf("failed to parse grafana url: %w", err)
+	if queueCapacity > 0 {
+		cfg.Monitoring.QueueConfig.Capacity = &queueCapacity
 	}
-
-	// Apply queue config from temporary variables
-	if queueConfigVars != nil {
-		applyQueueConfig()
+	if queueMaxBackoff != "" {
+		cfg.Monitoring.QueueConfig.MaxBackoff = &queueMaxBackoff
 	}
-
-	return nil
-}
-
-// applyQueueConfig applies the queue configuration from temporary variables to the config.
-func applyQueueConfig() {
-	if queueConfigVars.BatchSendDeadline != "" {
-		cfg.Monitoring.QueueConfig.BatchSendDeadline = &queueConfigVars.BatchSendDeadline
+	if queueMaxSamplesPerSend > 0 {
+		cfg.Monitoring.QueueConfig.MaxSamplesPerSend = &queueMaxSamplesPerSend
 	}
-	if queueConfigVars.Capacity > 0 {
-		cfg.Monitoring.QueueConfig.Capacity = &queueConfigVars.Capacity
+	if queueMaxShards > 0 {
+		cfg.Monitoring.QueueConfig.MaxShards = &queueMaxShards
 	}
-	if queueConfigVars.MaxBackoff != "" {
-		cfg.Monitoring.QueueConfig.MaxBackoff = &queueConfigVars.MaxBackoff
+	if queueMinBackoff != "" {
+		cfg.Monitoring.QueueConfig.MinBackoff = &queueMinBackoff
 	}
-	if queueConfigVars.MaxSamplesPerSend > 0 {
-		cfg.Monitoring.QueueConfig.MaxSamplesPerSend = &queueConfigVars.MaxSamplesPerSend
+	if queueMinShards > 0 {
+		cfg.Monitoring.QueueConfig.MinShards = &queueMinShards
 	}
-	if queueConfigVars.MaxShards > 0 {
-		cfg.Monitoring.QueueConfig.MaxShards = &queueConfigVars.MaxShards
-	}
-	if queueConfigVars.MinBackoff != "" {
-		cfg.Monitoring.QueueConfig.MinBackoff = &queueConfigVars.MinBackoff
-	}
-	if queueConfigVars.MinShards > 0 {
-		cfg.Monitoring.QueueConfig.MinShards = &queueConfigVars.MinShards
-	}
-	cfg.Monitoring.QueueConfig.RetryOnHttp429 = &queueConfigVars.RetryOnHttp429
-	if queueConfigVars.SampleAgeLimit != "" {
-		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueConfigVars.SampleAgeLimit
+	cfg.Monitoring.QueueConfig.RetryOnHttp429 = &queueRetryOnHttp429
+	if queueSampleAgeLimit != "" {
+		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
 	}
 }
 

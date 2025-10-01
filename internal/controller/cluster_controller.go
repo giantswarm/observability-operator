@@ -37,8 +37,8 @@ var (
 // ClusterMonitoringReconciler reconciles a Cluster object
 type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
-	Client            client.Client
-	ManagementCluster config.ClusterConfig
+	Client client.Client
+	Config config.Config
 	// PrometheusAgentService is the service for managing PrometheusAgent resources.
 	PrometheusAgentService prometheusagent.PrometheusAgentService
 	// AlloyService is the service which manages Alloy monitoring agent configuration.
@@ -49,8 +49,6 @@ type ClusterMonitoringReconciler struct {
 	MimirService mimir.MimirService
 	// BundleConfigurationService is the service for configuring the observability bundle.
 	BundleConfigurationService *bundle.BundleConfigurationService
-	// MonitoringConfig is the configuration for the monitoring package.
-	MonitoringConfig config.MonitoringConfig
 	// FinalizerHelper is the helper for managing finalizers.
 	finalizerHelper FinalizerHelper
 }
@@ -90,12 +88,11 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
-		ManagementCluster:          cfg.Cluster,
+		Config:                     cfg,
 		HeartbeatRepository:        heartbeatRepository,
 		PrometheusAgentService:     prometheusAgentService,
 		AlloyService:               alloyService,
 		MimirService:               mimirService,
-		MonitoringConfig:           cfg.Monitoring,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
@@ -164,14 +161,14 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Linting is disabled for the following line as otherwise it fails with the following error:
 	// "should not use built-in type string as key for value"
-	logger := log.FromContext(ctx).WithValues("installation", r.ManagementCluster.Name) // nolint
+	logger := log.FromContext(ctx).WithValues("installation", r.Config.Cluster.Name) // nolint
 	ctx = log.IntoContext(ctx, logger)
 
-	if !r.MonitoringConfig.Enabled {
+	if !r.Config.Monitoring.Enabled {
 		logger.Info("monitoring is disabled at the installation level.")
 	}
 
-	if !r.MonitoringConfig.IsMonitored(cluster) {
+	if !r.Config.Monitoring.IsMonitored(cluster) {
 		logger.Info("monitoring is disabled for this cluster.")
 	}
 
@@ -202,7 +199,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Management cluster specific configuration
-	if cluster.Name == r.ManagementCluster.Name {
+	if cluster.Name == r.Config.Cluster.Name {
 		result := r.reconcileManagementCluster(ctx)
 		if result != nil {
 			return *result, nil
@@ -210,7 +207,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Enforce prometheus-agent as monitoring agent when observability-bundle version < 1.6.0
-	monitoringAgent := r.MonitoringConfig.MonitoringAgent
+	monitoringAgent := r.Config.Monitoring.MonitoringAgent
 	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to configure get observability-bundle version")
@@ -229,7 +226,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Cluster specific configuration
-	if r.MonitoringConfig.IsMonitored(cluster) {
+	if r.Config.Monitoring.IsMonitored(cluster) {
 		switch monitoringAgent {
 		case commonmonitoring.MonitoringAgentPrometheus:
 			// Create or update PrometheusAgent remote write configuration.
@@ -281,7 +278,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 
 		// Cluster specific configuration
-		if r.MonitoringConfig.IsMonitored(cluster) {
+		if r.Config.Monitoring.IsMonitored(cluster) {
 			// Delete PrometheusAgent remote write configuration.
 			err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 			if err != nil {
@@ -299,7 +296,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		// TODO add deletion of rules in the Mimir ruler on cluster deletion
 
 		// Management cluster specific configuration
-		if cluster.Name == r.ManagementCluster.Name {
+		if cluster.Name == r.Config.Cluster.Name {
 			err := r.tearDown(ctx)
 			if err != nil {
 				logger.Error(err, "failed to tear down the monitoring stack")
@@ -322,7 +319,7 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 	logger := log.FromContext(ctx)
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
-	if r.MonitoringConfig.Enabled {
+	if r.Config.Monitoring.Enabled {
 		err := r.HeartbeatRepository.CreateOrUpdate(ctx)
 		if err != nil {
 			logger.Error(err, "failed to create or update heartbeat")

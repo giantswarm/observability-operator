@@ -10,7 +10,6 @@ import (
 	"github.com/blang/semver/v4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
@@ -180,7 +179,6 @@ func TestGenerateAlloyConfig(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			// Create a dummy Service with minimal dependencies.
@@ -197,10 +195,10 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					Monitoring: config.MonitoringConfig{
 						WALTruncateFrequency: time.Minute,
 						QueueConfig: config.QueueConfig{
-							Capacity:          ptr.To(30000),
-							MaxShards:         ptr.To(10),
-							MaxSamplesPerSend: ptr.To(150000),
-							SampleAgeLimit:    ptr.To("30m"),
+							Capacity:          &[]int{30000}[0],
+							MaxShards:         &[]int{10}[0],
+							MaxSamplesPerSend: &[]int{150000}[0],
+							SampleAgeLimit:    &[]string{"30m"}[0],
 						},
 					},
 				},
