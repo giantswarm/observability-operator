@@ -96,6 +96,9 @@ func parseFlags() error {
 		"Path to the directory where the webhook server will store its TLS certificate and key.")
 	flag.StringVar(&cfg.Operator.OperatorNamespace, "operator-namespace", "",
 		"The namespace where the observability-operator is running.")
+
+    // Grafana configuration flags
+    var grafanaURL string
 	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local", "grafana URL")
 
 	// Management cluster configuration flags
