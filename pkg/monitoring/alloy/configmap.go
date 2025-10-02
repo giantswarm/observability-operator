@@ -18,9 +18,9 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/blang/semver/v4"
 
-	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
@@ -66,7 +66,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	// Compute the number of shards based on the number of series.
 	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", service="%s"})by(pod))[6h:1h]))`, cluster.Name, commonmonitoring.AlloyMonitoringAgentAppName)
-	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, a.MonitoringConfig.MetricsQueryURL)
+	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, a.Monitoring.MetricsQueryURL)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to query head series")
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
@@ -77,7 +77,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		return nil, fmt.Errorf("failed to get cluster sharding strategy: %w", err)
 	}
 
-	shardingStrategy := a.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
+	shardingStrategy := a.Monitoring.DefaultShardingStrategy.Merge(clusterShardingStrategy)
 	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
 	alloyConfig, err := a.generateAlloyConfig(ctx, cluster, tenants, observabilityBundleVersion)
@@ -131,7 +131,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		return "", fmt.Errorf("failed to read organization: %w", err)
 	}
 
-	provider, err := common.GetClusterProvider(cluster)
+	provider, err := config.GetClusterProvider(cluster)
 	if err != nil {
 		return "", fmt.Errorf("failed to get cluster provider: %w", err)
 	}
@@ -179,38 +179,38 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		MimirRemoteWriteAPIURLKey:             mimirRemoteWriteAPIURLKey,
 		MimirRemoteWriteAPINameKey:            mimirRemoteWriteAPINameKey,
 		MimirRemoteWriteTimeout:               commonmonitoring.RemoteWriteTimeout,
-		MimirRemoteWriteTLSInsecureSkipVerify: a.InsecureCA,
+		MimirRemoteWriteTLSInsecureSkipVerify: a.Cluster.InsecureCA,
 
 		ClusterID: cluster.Name,
 
 		Tenants:         tenants,
 		DefaultTenantID: commonmonitoring.DefaultWriteTenant,
 
-		QueueConfigBatchSendDeadline: a.MonitoringConfig.QueueConfig.BatchSendDeadline,
-		QueueConfigCapacity:          a.MonitoringConfig.QueueConfig.Capacity,
-		QueueConfigMaxBackoff:        a.MonitoringConfig.QueueConfig.MaxBackoff,
-		QueueConfigMaxSamplesPerSend: a.MonitoringConfig.QueueConfig.MaxSamplesPerSend,
-		QueueConfigMaxShards:         a.MonitoringConfig.QueueConfig.MaxShards,
-		QueueConfigMinBackoff:        a.MonitoringConfig.QueueConfig.MinBackoff,
-		QueueConfigMinShards:         a.MonitoringConfig.QueueConfig.MinShards,
-		QueueConfigRetryOnHttp429:    a.MonitoringConfig.QueueConfig.RetryOnHttp429,
-		QueueConfigSampleAgeLimit:    a.MonitoringConfig.QueueConfig.SampleAgeLimit,
+		QueueConfigBatchSendDeadline: a.Monitoring.QueueConfig.BatchSendDeadline,
+		QueueConfigCapacity:          a.Monitoring.QueueConfig.Capacity,
+		QueueConfigMaxBackoff:        a.Monitoring.QueueConfig.MaxBackoff,
+		QueueConfigMaxSamplesPerSend: a.Monitoring.QueueConfig.MaxSamplesPerSend,
+		QueueConfigMaxShards:         a.Monitoring.QueueConfig.MaxShards,
+		QueueConfigMinBackoff:        a.Monitoring.QueueConfig.MinBackoff,
+		QueueConfigMinShards:         a.Monitoring.QueueConfig.MinShards,
+		QueueConfigRetryOnHttp429:    a.Monitoring.QueueConfig.RetryOnHttp429,
+		QueueConfigSampleAgeLimit:    a.Monitoring.QueueConfig.SampleAgeLimit,
 
-		WALTruncateFrequency: a.MonitoringConfig.WALTruncateFrequency.String(),
+		WALTruncateFrequency: a.Monitoring.WALTruncateFrequency.String(),
 
 		ExternalLabels: map[string]string{
 			"cluster_id":       cluster.Name,
-			"cluster_type":     common.GetClusterType(cluster, a.ManagementCluster),
-			"customer":         a.Customer,
-			"installation":     a.Name,
+			"cluster_type":     a.Cluster.GetClusterType(cluster),
+			"customer":         a.Cluster.Customer,
+			"installation":     a.Cluster.Name,
 			"organization":     organization,
-			"pipeline":         a.Pipeline,
+			"pipeline":         a.Cluster.Pipeline,
 			"provider":         provider,
-			"region":           a.Region,
+			"region":           a.Cluster.Region,
 			"service_priority": commonmonitoring.GetServicePriority(cluster),
 		},
 
-		IsWorkloadCluster:              common.IsWorkloadCluster(cluster, a.ManagementCluster),
+		IsWorkloadCluster:              a.Cluster.IsWorkloadCluster(cluster),
 		IsSupportingExtraQueryMatchers: observabilityBundleVersion.GE(versionSupportingExtraQueryMatchers),
 	}
 

@@ -1,4 +1,4 @@
-package monitoring
+package config
 
 import (
 	"strconv"
@@ -24,8 +24,8 @@ type QueueConfig struct {
 	SampleAgeLimit    *string
 }
 
-// Config represents the configuration used by the monitoring package.
-type Config struct {
+// MonitoringConfig represents the configuration used by the monitoring package.
+type MonitoringConfig struct {
 	Enabled bool
 
 	AlertmanagerSecretName string
@@ -41,10 +41,10 @@ type Config struct {
 	QueueConfig          QueueConfig
 }
 
-// Monitoring should be enabled when all conditions are met:
+// IsMonitored should be enabled when all conditions are met:
 //   - global monitoring flag is enabled
 //   - monitoring label is not set or is set to true on the cluster object
-func (c Config) IsMonitored(cluster *clusterv1.Cluster) bool {
+func (c MonitoringConfig) IsMonitored(cluster *clusterv1.Cluster) bool {
 	if !c.Enabled {
 		return false
 	}
@@ -62,4 +62,11 @@ func (c Config) IsMonitored(cluster *clusterv1.Cluster) bool {
 		return true
 	}
 	return monitoringEnabled
+}
+
+// Validate validates the monitoring configuration
+func (c MonitoringConfig) Validate() error {
+	// Add validation logic here if needed
+	// For now, monitoring config is always valid
+	return nil
 }

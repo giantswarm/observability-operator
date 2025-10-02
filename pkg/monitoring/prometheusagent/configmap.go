@@ -10,8 +10,8 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/yaml"
 
-	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 )
@@ -24,26 +24,26 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		return nil, fmt.Errorf("failed to get cluster organization: %w", err)
 	}
 
-	provider, err := common.GetClusterProvider(cluster)
+	provider, err := config.GetClusterProvider(cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster provider: %w", err)
 	}
 
 	externalLabels := map[string]string{
 		"cluster_id":       cluster.Name,
-		"cluster_type":     common.GetClusterType(cluster, pas.ManagementCluster),
-		"customer":         pas.Customer,
-		"installation":     pas.Name,
+		"cluster_type":     pas.Cluster.GetClusterType(cluster),
+		"customer":         pas.Cluster.Customer,
+		"installation":     pas.Cluster.Name,
 		"organization":     organization,
-		"pipeline":         pas.Pipeline,
+		"pipeline":         pas.Cluster.Pipeline,
 		"provider":         provider,
-		"region":           pas.Region,
+		"region":           pas.Cluster.Region,
 		"service_priority": commonmonitoring.GetServicePriority(cluster),
 	}
 
 	// Compute the number of shards based on the number of series.
 	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_agent_active_series{cluster_id="%s"})by(pod))[6h:1h]))`, cluster.Name)
-	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, pas.MonitoringConfig.MetricsQueryURL)
+	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, pas.Monitoring.MetricsQueryURL)
 	if err != nil {
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
 		return nil, fmt.Errorf("failed to query head series: %w", err)
@@ -54,17 +54,17 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		return nil, fmt.Errorf("failed to get cluster sharding strategy: %w", err)
 	}
 
-	shardingStrategy := pas.MonitoringConfig.DefaultShardingStrategy.Merge(clusterShardingStrategy)
+	shardingStrategy := pas.Monitoring.DefaultShardingStrategy.Merge(clusterShardingStrategy)
 	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
 	config, err := yaml.Marshal(RemoteWriteConfig{
 		PrometheusAgentConfig: &PrometheusAgentConfig{
 			ExternalLabels: externalLabels,
 			Image: &PrometheusAgentImage{
-				Tag: pas.MonitoringConfig.PrometheusVersion,
+				Tag: pas.Monitoring.PrometheusVersion,
 			},
 			Shards:  shards,
-			Version: pas.MonitoringConfig.PrometheusVersion,
+			Version: pas.Monitoring.PrometheusVersion,
 		},
 	})
 	if err != nil {

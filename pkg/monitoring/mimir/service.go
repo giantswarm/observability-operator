@@ -11,10 +11,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/common/secret"
+	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
@@ -25,9 +25,9 @@ const (
 )
 
 type MimirService struct {
-	client.Client
+	Client          client.Client
 	PasswordManager password.Manager
-	common.ManagementCluster
+	config.Config
 }
 
 // ConfigureMimir configures the ingress and its authentication (basic auth)
@@ -58,7 +58,7 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 	}
 
 	current := &corev1.Secret{}
-	err := ms.Get(ctx, objectKey, current)
+	err := ms.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		// First all secrets using the password from the mimirApiKey secret are deleted
 		// to ensure that they won't use an outdated password.
@@ -70,7 +70,7 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 		}
 
 		clusterList := &clusterv1.ClusterList{}
-		err = ms.List(ctx, clusterList)
+		err = ms.Client.List(ctx, clusterList)
 		if err != nil {
 			return fmt.Errorf("failed to list clusters: %w", err)
 		}
@@ -94,7 +94,7 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 		secret := secret.GenerateGenericSecret(
 			mimirApiKey, mimirNamespace, "credentials", password)
 
-		err = ms.Create(ctx, secret)
+		err = ms.Client.Create(ctx, secret)
 		if err != nil {
 			return fmt.Errorf("failed to create secret %s/%s: %w", mimirNamespace, mimirApiKey, err)
 		}
@@ -116,7 +116,7 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 	}
 
 	current := &corev1.Secret{}
-	err := ms.Get(ctx, objectKey, current)
+	err := ms.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
 		logger.Info("building ingress secret")
 
@@ -125,14 +125,14 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 			return fmt.Errorf("failed to get mimir ingress password: %w", err)
 		}
 
-		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(ms.Name, password)
+		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(ms.Cluster.Name, password)
 		if err != nil {
 			return fmt.Errorf("failed to generate htpasswd: %w", err)
 		}
 
 		secret := secret.GenerateGenericSecret(ingressAuthSecretName, mimirNamespace, "auth", htpasswd)
 
-		err = ms.Create(ctx, secret)
+		err = ms.Client.Create(ctx, secret)
 		if err != nil {
 			return fmt.Errorf("failed to create secret %s/%s: %w", mimirNamespace, ingressAuthSecretName, err)
 		}

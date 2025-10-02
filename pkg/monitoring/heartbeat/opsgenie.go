@@ -13,17 +13,17 @@ import (
 	"github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/giantswarm/observability-operator/pkg/common"
+	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 // OpsgenieHeartbeatRepository is a repository for managing heartbeats in Opsgenie.
 type OpsgenieHeartbeatRepository struct {
 	*heartbeat.Client
-	common.ManagementCluster
+	config.Config
 }
 
 // NewOpsgenieHeartbeatRepository creates a new OpsgenieHeartbeatRepository.
-func NewOpsgenieHeartbeatRepository(apiKey string, mc common.ManagementCluster) (HeartbeatRepository, error) {
+func NewOpsgenieHeartbeatRepository(apiKey string, cfg config.Config) (HeartbeatRepository, error) {
 	c := &client.Config{
 		ApiKey:         apiKey,
 		OpsGenieAPIURL: client.API_URL,
@@ -35,22 +35,22 @@ func NewOpsgenieHeartbeatRepository(apiKey string, mc common.ManagementCluster) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create heartbeat client: %w", err)
 	}
-	return &OpsgenieHeartbeatRepository{client, mc}, nil
+	return &OpsgenieHeartbeatRepository{client, cfg}, nil
 }
 
 // makeHeartbeat creates a new heartbeat for the management cluster.
 func (r OpsgenieHeartbeatRepository) makeHeartbeat() *heartbeat.Heartbeat {
 	tags := []string{
 		"team: atlas",
-		fmt.Sprintf("installation: %s", r.Name),
+		fmt.Sprintf("installation: %s", r.Config.Cluster.Name),
 		"managed-by: observability-operator",
-		fmt.Sprintf("pipeline: %s", r.Pipeline),
+		fmt.Sprintf("pipeline: %s", r.Config.Cluster.Pipeline),
 	}
 	// Tags need to be sorted alphabetically to avoid unnecessary heartbeat updates
 	sort.Strings(tags)
 
 	return &heartbeat.Heartbeat{
-		Name:         r.Name,
+		Name:         r.Config.Cluster.Name,
 		Description:  "📗 Runbook: https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/heartbeat-expired/",
 		Interval:     60,
 		IntervalUnit: string(heartbeat.Minutes),
@@ -61,7 +61,7 @@ func (r OpsgenieHeartbeatRepository) makeHeartbeat() *heartbeat.Heartbeat {
 		},
 		AlertTags:     tags,
 		AlertPriority: "P3",
-		AlertMessage:  fmt.Sprintf("Heartbeat [%s] is expired.", r.Name),
+		AlertMessage:  fmt.Sprintf("Heartbeat [%s] is expired.", r.Config.Cluster.Name),
 	}
 }
 
@@ -118,7 +118,7 @@ func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("checking if heartbeat exists")
-	_, err := r.Get(ctx, r.Name)
+	_, err := r.Get(ctx, r.Config.Cluster.Name)
 	if err != nil {
 		apiErr, ok := err.(*client.ApiError)
 		if ok && apiErr.StatusCode == http.StatusNotFound {
@@ -130,14 +130,14 @@ func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
 
 	// The final ping to the heartbeat cleans up any opened heartbeat alerts for the cluster being deleted.
 	logger.Info("triggering final heartbeat ping")
-	_, err = r.Ping(ctx, r.Name)
+	_, err = r.Ping(ctx, r.Config.Cluster.Name)
 	if err != nil {
 		return fmt.Errorf("failed to ping heartbeat: %w", err)
 	}
 	logger.Info("triggered final heartbeat ping")
 
 	logger.Info("deleting heartbeat")
-	_, err = r.Client.Delete(ctx, r.Name)
+	_, err = r.Client.Delete(ctx, r.Config.Cluster.Name)
 	if err != nil {
 		return fmt.Errorf("failed to delete heartbeat: %w", err)
 	}
