@@ -1,0 +1,3 @@
+admin tenant1|tenant2|tenant3;
+foo tenant1|tenant2;
+bar tenant3;
