@@ -60,6 +60,8 @@ alloy:
         cpu: 25m
         memory: 512Mi
     {{- end }}
+    ## Needed to to be able to support ScrapeConfig CRs
+    stabilityLevel: experimental
   controller:
     type: statefulset
     replicas: {{ .Replicas }}

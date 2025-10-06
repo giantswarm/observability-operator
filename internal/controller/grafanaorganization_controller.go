@@ -35,15 +35,17 @@ type GrafanaOrganizationReconciler struct {
 	grafanaURL       *url.URL
 	finalizerHelper  FinalizerHelper
 	grafanaClientGen grafanaclient.GrafanaClientGenerator
+	cfg              config.Config
 }
 
-func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
+func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &GrafanaOrganizationReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
-		grafanaURL:       conf.GrafanaURL,
+		grafanaURL:       cfg.Grafana.URL,
 		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), v1alpha1.GrafanaOrganizationFinalizer),
 		grafanaClientGen: grafanaClientGen,
+		cfg:              cfg,
 	}
 
 	return r.SetupWithManager(mgr)
@@ -79,7 +81,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
-	grafanaService := grafana.NewService(r.Client, grafanaAPI)
+	grafanaService := grafana.NewService(r.Client, grafanaAPI, r.cfg)
 
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
@@ -144,8 +146,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 	return nil
 }
 
-// reconcileCreate creates the grafanaOrganization.
-// reconcileCreate ensures the Grafana organization described in grafanaOrganization CR is created in Grafana.
+// reconcileCreate ensures the Grafana organization described in GrafanaOrganization CR is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the CR
 // - Updating the CR status field
@@ -162,6 +163,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	logger := log.FromContext(ctx)
 
+	// Create or update the grafana organization
 	updatedID, err := grafanaService.ConfigureOrganization(ctx, grafanaOrganization)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to upsert grafanaOrganization: %w", err)
@@ -179,6 +181,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		logger.Info("updated orgID in the grafanaOrganization status")
 	}
 
+	// Configure the organization's datasources and authorization settings
 	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)

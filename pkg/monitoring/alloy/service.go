@@ -13,10 +13,9 @@ import (
 
 	"github.com/blang/semver/v4"
 
-	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 const (
@@ -27,8 +26,7 @@ const (
 type Service struct {
 	client.Client
 	organization.OrganizationRepository
-	common.ManagementCluster
-	MonitoringConfig monitoring.Config
+	config.Config
 }
 
 func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {

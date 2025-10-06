@@ -19,7 +19,6 @@ import (
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
-	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
@@ -38,8 +37,8 @@ var (
 // ClusterMonitoringReconciler reconciles a Cluster object
 type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
-	Client            client.Client
-	ManagementCluster common.ManagementCluster
+	Client client.Client
+	Config config.Config
 	// PrometheusAgentService is the service for managing PrometheusAgent resources.
 	PrometheusAgentService prometheusagent.PrometheusAgentService
 	// AlloyService is the service which manages Alloy monitoring agent configuration.
@@ -50,20 +49,18 @@ type ClusterMonitoringReconciler struct {
 	MimirService mimir.MimirService
 	// BundleConfigurationService is the service for configuring the observability bundle.
 	BundleConfigurationService *bundle.BundleConfigurationService
-	// MonitoringConfig is the configuration for the monitoring package.
-	MonitoringConfig monitoring.Config
 	// FinalizerHelper is the helper for managing finalizers.
 	finalizerHelper FinalizerHelper
 }
 
-func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) error {
+func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) error {
 	managerClient := mgr.GetClient()
 
-	if conf.Environment.OpsgenieApiKey == "" {
-		return fmt.Errorf("OpsgenieApiKey not set: %q", conf.Environment.OpsgenieApiKey)
+	if cfg.Environment.OpsgenieApiKey == "" {
+		return fmt.Errorf("OpsgenieApiKey not set: %q", cfg.Environment.OpsgenieApiKey)
 	}
 
-	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(conf.Environment.OpsgenieApiKey, conf.ManagementCluster)
+	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(cfg.Environment.OpsgenieApiKey, cfg)
 	if err != nil {
 		return fmt.Errorf("unable to create heartbeat repository: %w", err)
 	}
@@ -74,32 +71,29 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, conf config.Config) e
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
 		PasswordManager:        password.SimpleManager{},
-		ManagementCluster:      conf.ManagementCluster,
-		MonitoringConfig:       conf.Monitoring,
+		Config:                 cfg,
 	}
 
 	alloyService := alloy.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
-		ManagementCluster:      conf.ManagementCluster,
-		MonitoringConfig:       conf.Monitoring,
+		Config:                 cfg,
 	}
 
 	mimirService := mimir.MimirService{
-		Client:            managerClient,
-		PasswordManager:   password.SimpleManager{},
-		ManagementCluster: conf.ManagementCluster,
+		Client:          managerClient,
+		PasswordManager: password.SimpleManager{},
+		Config:          cfg,
 	}
 
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
-		ManagementCluster:          conf.ManagementCluster,
+		Config:                     cfg,
 		HeartbeatRepository:        heartbeatRepository,
 		PrometheusAgentService:     prometheusAgentService,
 		AlloyService:               alloyService,
 		MimirService:               mimirService,
-		MonitoringConfig:           conf.Monitoring,
-		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, conf.Monitoring),
+		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
 
@@ -167,14 +161,14 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Linting is disabled for the following line as otherwise it fails with the following error:
 	// "should not use built-in type string as key for value"
-	logger := log.FromContext(ctx).WithValues("installation", r.ManagementCluster.Name) // nolint
+	logger := log.FromContext(ctx).WithValues("installation", r.Config.Cluster.Name) // nolint
 	ctx = log.IntoContext(ctx, logger)
 
-	if !r.MonitoringConfig.Enabled {
+	if !r.Config.Monitoring.Enabled {
 		logger.Info("monitoring is disabled at the installation level.")
 	}
 
-	if !r.MonitoringConfig.IsMonitored(cluster) {
+	if !r.Config.Monitoring.IsMonitored(cluster) {
 		logger.Info("monitoring is disabled for this cluster.")
 	}
 
@@ -205,7 +199,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Management cluster specific configuration
-	if cluster.Name == r.ManagementCluster.Name {
+	if cluster.Name == r.Config.Cluster.Name {
 		result := r.reconcileManagementCluster(ctx)
 		if result != nil {
 			return *result, nil
@@ -213,7 +207,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Enforce prometheus-agent as monitoring agent when observability-bundle version < 1.6.0
-	monitoringAgent := r.MonitoringConfig.MonitoringAgent
+	monitoringAgent := r.Config.Monitoring.MonitoringAgent
 	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to configure get observability-bundle version")
@@ -232,7 +226,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Cluster specific configuration
-	if r.MonitoringConfig.IsMonitored(cluster) {
+	if r.Config.Monitoring.IsMonitored(cluster) {
 		switch monitoringAgent {
 		case commonmonitoring.MonitoringAgentPrometheus:
 			// Create or update PrometheusAgent remote write configuration.
@@ -284,7 +278,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 
 		// Cluster specific configuration
-		if r.MonitoringConfig.IsMonitored(cluster) {
+		if r.Config.Monitoring.IsMonitored(cluster) {
 			// Delete PrometheusAgent remote write configuration.
 			err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
 			if err != nil {
@@ -302,7 +296,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		// TODO add deletion of rules in the Mimir ruler on cluster deletion
 
 		// Management cluster specific configuration
-		if cluster.Name == r.ManagementCluster.Name {
+		if cluster.Name == r.Config.Cluster.Name {
 			err := r.tearDown(ctx)
 			if err != nil {
 				logger.Error(err, "failed to tear down the monitoring stack")
@@ -325,7 +319,7 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 	logger := log.FromContext(ctx)
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
-	if r.MonitoringConfig.Enabled {
+	if r.Config.Monitoring.Enabled {
 		err := r.HeartbeatRepository.CreateOrUpdate(ctx)
 		if err != nil {
 			logger.Error(err, "failed to create or update heartbeat")
