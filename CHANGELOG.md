@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add support for PrometheusOperator `ScrapeConfig` CRDs. This requires --stability.level=experimental
+
 ## [0.42.0] - 2025-09-17
 
 ### Added
