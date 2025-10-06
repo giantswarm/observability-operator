@@ -11,7 +11,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 )
@@ -24,7 +23,7 @@ func (pas PrometheusAgentService) buildRemoteWriteConfig(ctx context.Context,
 		return nil, fmt.Errorf("failed to get cluster organization: %w", err)
 	}
 
-	provider, err := config.GetClusterProvider(cluster)
+	provider, err := pas.Config.Cluster.GetClusterProvider(cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster provider: %w", err)
 	}

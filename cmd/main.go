@@ -147,6 +147,10 @@ func parseFlags() (err error) {
 	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
 		"Enable distributed tracing support in Grafana.")
 
+	// Logging configuration flags
+	flag.BoolVar(&cfg.Logging.Enabled, "logging-enabled", false,
+		"Enable logging support in Grafana.")
+
 	// Zap logging options
 	opts := zap.Options{
 		Development: false,

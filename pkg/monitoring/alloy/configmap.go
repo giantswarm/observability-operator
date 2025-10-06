@@ -20,7 +20,6 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
@@ -131,7 +130,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		return "", fmt.Errorf("failed to read organization: %w", err)
 	}
 
-	provider, err := config.GetClusterProvider(cluster)
+	provider, err := a.Config.Cluster.GetClusterProvider(cluster)
 	if err != nil {
 		return "", fmt.Errorf("failed to get cluster provider: %w", err)
 	}
