@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Implement metrics for grafanaOrganizations.
+- Implement 2 metrics for grafanaOrganizations: info and tenants.
 
 ## [0.41.0] - 2025-09-01
 

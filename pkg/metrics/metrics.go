@@ -12,11 +12,6 @@ var (
 	}, nil)
 
 	// GrafanaOrganization metrics
-	GrafanaOrganizationTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "observability_operator_grafana_organizations_total",
-		Help: "Total number of GrafanaOrganization resources",
-	}, []string{"status"}) // status: active, pending, error
-
 	GrafanaOrganizationTenants = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_grafana_organization_tenants",
 		Help: "Number of tenants associated with each GrafanaOrganization",
@@ -31,7 +26,6 @@ var (
 func init() {
 	metrics.Registry.MustRegister(
 		MimirQueryErrors,
-		GrafanaOrganizationTotal,
 		GrafanaOrganizationTenants,
 		GrafanaOrganizationInfo,
 	)

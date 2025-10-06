@@ -36,7 +36,6 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 	}
 
 	// Reset all gauge metrics
-	GrafanaOrganizationTotal.Reset()
 	GrafanaOrganizationTenants.Reset()
 	GrafanaOrganizationInfo.Reset()
 
@@ -64,11 +63,6 @@ func (c *GrafanaOrganizationCollector) CollectMetrics(ctx context.Context) error
 
 		// Set info metrics
 		GrafanaOrganizationInfo.WithLabelValues(orgName, displayName, orgIDStr).Set(1)
-	}
-
-	// Update total counts by status
-	for status, count := range statusCounts {
-		GrafanaOrganizationTotal.WithLabelValues(status).Set(float64(count))
 	}
 
 	return nil
