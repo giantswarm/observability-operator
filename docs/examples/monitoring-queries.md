@@ -4,18 +4,6 @@ This document provides example PromQL queries for monitoring GrafanaOrganization
 
 ## Basic Resource Monitoring
 
-### Total Organizations by Status
-```promql
-# Get count of organizations by status
-observability_operator_grafana_organizations_total
-
-# Organizations that are active
-observability_operator_grafana_organizations_total{status="active"}
-
-# Organizations stuck in pending state
-observability_operator_grafana_organizations_total{status="pending"}
-```
-
 ### Organization Information
 ```promql
 # Get all organization details
@@ -26,6 +14,12 @@ observability_operator_grafana_organization_info{has_finalizer="true"}
 
 # Organizations without Grafana org ID (not yet created)
 observability_operator_grafana_organization_info{org_id="0"}
+
+# Get count of organizations by status
+count(observability_operator_grafana_organization_info) by (status)
+
+# Organizations that are active
+observability_operator_grafana_organization_info(status="active")
 ```
 
 ## Configuration Monitoring

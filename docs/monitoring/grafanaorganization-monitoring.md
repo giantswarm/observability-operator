@@ -4,12 +4,12 @@ This guide explains how to monitor GrafanaOrganization custom resources deployed
 
 ## Overview
 
-The observability-operator provides comprehensive monitoring for GrafanaOrganization resources through:
+The observability-operator exposes prometheus-compatible metrics.
 
-- **Custom Prometheus metrics** - Detailed metrics about resource states, operations, and performance
-- **Prometheus alerting rules** - Pre-configured alerts for common issues and failures
-- **Grafana dashboard** - Visual monitoring dashboard for operations teams
-- **Background metrics collection** - Automatic periodic collection of resource metrics
+On top of the common metrics available for all renconcilers, the `grafanaOrganization` reconciler provides metrics per:
+
+- organization
+- tenant
 
 ## Available Metrics
 
@@ -19,14 +19,13 @@ The operator exposes the following metrics for GrafanaOrganization resources:
 
 | Metric | Type | Description | Labels |
 |--------|------|-------------|--------|
-| `observability_operator_grafana_organizations_total` | Gauge | Total number of GrafanaOrganization resources by status | `status` (active, pending, error) |
-| `observability_operator_grafana_organization_info` | Gauge | Information about GrafanaOrganization resources | `name`, `display_name`, `org_id`, `has_finalizer` |
+| `observability_operator_grafana_organization_info` | Gauge | Information about GrafanaOrganization resources | `name`, `status` (active, pending, error),`display_name`, `org_id` |
 
 ### Configuration Metrics
 
 | Metric | Type | Description | Labels |
 |--------|------|-------------|--------|
-| `observability_operator_grafana_organization_tenants` | Gauge | Number of tenants per organization | `name`, `org_id` |
+| `observability_operator_grafana_organization_tenants` | Gauge | Name of tenants per organization | `name`, `org_id` |
 
 ## Monitoring Best Practices
 
@@ -52,7 +51,7 @@ The operator exposes the following metrics for GrafanaOrganization resources:
 topk(10, observability_operator_grafana_organization_tenants)
 ```
 
-## Advanced Configuration
+## Extending the code to provide more observability data
 
 ### Adding Custom Metrics
 
