@@ -14,7 +14,7 @@ var (
 	// GrafanaOrganization metrics
 	GrafanaOrganizationTenants = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_grafana_organization_tenants",
-		Help: "Number of tenants associated with each GrafanaOrganization",
+		Help: "Name of tenants associated with each GrafanaOrganization",
 	}, []string{"name", "org_id"})
 
 	GrafanaOrganizationInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
