@@ -20,7 +20,7 @@ var (
 	GrafanaOrganizationInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_grafana_organization_info",
 		Help: "Information about GrafanaOrganization resources",
-	}, []string{"name", "display_name", "org_id"})
+	}, []string{"name", "display_name", "org_id", "status"}) // status: active, pending, error
 )
 
 func init() {

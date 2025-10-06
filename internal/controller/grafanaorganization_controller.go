@@ -169,6 +169,8 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, fmt.Errorf("failed to upsert grafanaOrganization: %w", err)
 	}
 
+	var orgStatus string
+
 	// Update CR status if anything was changed
 	if grafanaOrganization.Status.OrgID != updatedID {
 		logger.Info("updating orgID in the grafanaOrganization status")
@@ -176,8 +178,10 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 		err = r.Client.Status().Update(ctx, grafanaOrganization)
 		if err != nil {
+			orgStatus = "error"
 			return ctrl.Result{}, fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 		}
+		orgStatus = "active"
 		logger.Info("updated orgID in the grafanaOrganization status")
 	}
 
@@ -191,7 +195,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	metrics.GrafanaOrganizationTenants.WithLabelValues(grafanaOrganization.Name, fmt.Sprintf("%d", grafanaOrganization.Status.OrgID)).Set(float64(len(grafanaOrganization.Spec.Tenants)))
 
 	// Set info metrics
-	metrics.GrafanaOrganizationInfo.WithLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, fmt.Sprintf("%d", grafanaOrganization.Status.OrgID)).Set(1)
+	metrics.GrafanaOrganizationInfo.WithLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, fmt.Sprintf("%d", grafanaOrganization.Status.OrgID), orgStatus).Set(1)
 
 	return ctrl.Result{}, nil
 }
