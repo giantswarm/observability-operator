@@ -35,7 +35,6 @@ type GrafanaOrganizationReconciler struct {
 	grafanaURL       *url.URL
 	finalizerHelper  FinalizerHelper
 	grafanaClientGen grafanaclient.GrafanaClientGenerator
-	metricsCollector *metrics.GrafanaOrganizationCollector
 }
 
 func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
@@ -45,7 +44,6 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config,
 		grafanaURL:       conf.GrafanaURL,
 		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), v1alpha1.GrafanaOrganizationFinalizer),
 		grafanaClientGen: grafanaClientGen,
-		metricsCollector: metrics.NewGrafanaOrganizationCollector(mgr.GetClient()),
 	}
 
 	return r.SetupWithManager(mgr)
@@ -64,14 +62,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	logger := log.FromContext(ctx)
 
 	logger.Info("Started reconciling Grafana Organization")
-	defer func() {
-		logger.Info("Finished reconciling Grafana Organization")
-
-		// Collect metrics after reconciliation
-		if err := r.metricsCollector.CollectMetrics(ctx); err != nil {
-			logger.Error(err, "Failed to collect metrics")
-		}
-	}()
+	defer logger.Info("Finished reconciling Grafana Organization")
 
 	grafanaOrganization := &v1alpha1.GrafanaOrganization{}
 	err := r.Get(ctx, req.NamespacedName, grafanaOrganization)
@@ -192,6 +183,12 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)
 	}
+
+	// Update gauge metrics
+	metrics.GrafanaOrganizationTenants.WithLabelValues(grafanaOrganization.Name, fmt.Sprintf("%d", grafanaOrganization.Status.OrgID)).Set(float64(len(grafanaOrganization.Spec.Tenants)))
+
+	// Set info metrics
+	metrics.GrafanaOrganizationInfo.WithLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, fmt.Sprintf("%d", grafanaOrganization.Status.OrgID)).Set(1)
 
 	return ctrl.Result{}, nil
 }
