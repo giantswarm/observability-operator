@@ -7,22 +7,6 @@ remote.kubernetes.secret "credentials" {
   name      = "alloy-metrics"
   namespace = "kube-system"
 }
-// load rules for tenant giantswarm
-mimir.rules.kubernetes "giantswarm" {
-  address = "http://mimir-ruler.mimir.svc:8080/"
-  mimir_namespace_prefix = "dummy-cluster"
-  tenant_id = "giantswarm"
-  rule_selector {
-      match_labels = {
-        "observability.giantswarm.io/tenant" = "giantswarm",
-      }
-      match_expression {
-        key = "application.giantswarm.io/prometheus-rule-kind"
-        operator = "NotIn"
-        values = ["loki"]
-      }
-  }
-}
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
 // remote write pipeline configuration for tenant giantswarm
@@ -101,23 +85,6 @@ prometheus.operator.podmonitors "giantswarm" {
   }
 }
 
-prometheus.operator.scrapeconfigs "giantswarm" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
-  selector {
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["giantswarm"]
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
 // remote write pipeline configuration for tenant giantswarm
 prometheus.remote_write "giantswarm" {
   endpoint {
@@ -146,8 +113,8 @@ prometheus.remote_write "giantswarm" {
     truncate_frequency = "1m0s"
   }
   external_labels = {
-    "cluster_id" = "dummy-cluster",
-    "cluster_type" = "management_cluster",
+    "cluster_id" = "default-tenant-cluster",
+    "cluster_type" = "workload_cluster",
     "customer" = "dummy-customer",
     "installation" = "dummy-cluster",
     "organization" = "dummy-org",

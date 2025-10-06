@@ -123,6 +123,7 @@ prometheus.operator.podmonitors "{{ . }}" {
   }
 }
 
+{{- if $.IsSupportingScrapeConfigs }}
 prometheus.operator.scrapeconfigs "{{ . }}" {
   forward_to = [prometheus.remote_write.{{ . }}.receiver]
   selector {
@@ -139,6 +140,7 @@ prometheus.operator.scrapeconfigs "{{ . }}" {
     enabled = true
   }
 }
+{{- end }}
 
 // remote write pipeline configuration for tenant {{ . }}
 prometheus.remote_write "{{ . }}" {

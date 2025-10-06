@@ -36,6 +36,7 @@ var (
 
 	versionSupportingVPA                = semver.MustParse("1.7.0")
 	versionSupportingExtraQueryMatchers = semver.MustParse("1.9.0")
+	versionSupportingScrapeConfigs      = semver.MustParse("2.2.0")
 
 	alloyMetricsRuleLoadingFixedAppVersion            = semver.MustParse("0.10.0")
 	alloyMetricsRuleLoadingFixedContainerImageVersion = semver.MustParse("1.8.3")
@@ -168,6 +169,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		ExternalLabels map[string]string
 
 		IsSupportingExtraQueryMatchers bool
+		IsSupportingScrapeConfigs      bool
 	}{
 		AlloySecretName:      commonmonitoring.AlloyMonitoringAgentAppName,
 		AlloySecretNamespace: commonmonitoring.AlloyMonitoringAgentAppNamespace,
@@ -211,6 +213,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		IsWorkloadCluster:              a.Cluster.IsWorkloadCluster(cluster),
 		IsSupportingExtraQueryMatchers: observabilityBundleVersion.GE(versionSupportingExtraQueryMatchers),
+		IsSupportingScrapeConfigs:      observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
 	}
 
 	err = alloyConfigTemplate.Execute(&values, data)
