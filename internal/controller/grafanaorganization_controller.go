@@ -163,13 +163,27 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	logger := log.FromContext(ctx)
 
+	// Determine initial status based on current state
+	var orgStatus string
+	if grafanaOrganization.Status.OrgID == 0 {
+		orgStatus = "pending"
+	} else {
+		orgStatus = "active"
+	}
+
 	// Create or update the grafana organization
 	updatedID, err := grafanaService.ConfigureOrganization(ctx, grafanaOrganization)
 	if err != nil {
+		// Set error status and update metric before returning
+		orgStatus = "error"
+		metrics.GrafanaOrganizationInfo.WithLabelValues(
+			grafanaOrganization.Name,
+			grafanaOrganization.Spec.DisplayName,
+			fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
+			orgStatus,
+		).Set(1)
 		return ctrl.Result{}, fmt.Errorf("failed to upsert grafanaOrganization: %w", err)
 	}
-
-	var orgStatus string
 
 	// Update CR status if anything was changed
 	if grafanaOrganization.Status.OrgID != updatedID {
@@ -179,6 +193,12 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		err = r.Client.Status().Update(ctx, grafanaOrganization)
 		if err != nil {
 			orgStatus = "error"
+			metrics.GrafanaOrganizationInfo.WithLabelValues(
+				grafanaOrganization.Name,
+				grafanaOrganization.Spec.DisplayName,
+				fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
+				orgStatus,
+			).Set(1)
 			return ctrl.Result{}, fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 		}
 		orgStatus = "active"
@@ -188,14 +208,29 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	// Configure the organization's datasources and authorization settings
 	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
+		orgStatus = "error"
+		metrics.GrafanaOrganizationInfo.WithLabelValues(
+			grafanaOrganization.Name,
+			grafanaOrganization.Spec.DisplayName,
+			fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
+			orgStatus,
+		).Set(1)
 		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)
 	}
 
 	// Update gauge metrics
-	metrics.GrafanaOrganizationTenants.WithLabelValues(grafanaOrganization.Name, fmt.Sprintf("%d", grafanaOrganization.Status.OrgID)).Set(float64(len(grafanaOrganization.Spec.Tenants)))
+	metrics.GrafanaOrganizationTenants.WithLabelValues(
+		grafanaOrganization.Name,
+		fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
+	).Set(float64(len(grafanaOrganization.Spec.Tenants)))
 
 	// Set info metrics
-	metrics.GrafanaOrganizationInfo.WithLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, fmt.Sprintf("%d", grafanaOrganization.Status.OrgID), orgStatus).Set(1)
+	metrics.GrafanaOrganizationInfo.WithLabelValues(
+		grafanaOrganization.Name,
+		grafanaOrganization.Spec.DisplayName,
+		fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
+		orgStatus,
+	).Set(1)
 
 	return ctrl.Result{}, nil
 }
@@ -206,6 +241,9 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 		return nil
 	}
+
+	// Store orgID before deletion for metric cleanup
+	orgID := fmt.Sprintf("%d", grafanaOrganization.Status.OrgID)
 
 	err := grafanaService.DeleteOrganization(ctx, grafanaOrganization)
 	if err != nil {
@@ -223,6 +261,12 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	if err != nil {
 		return fmt.Errorf("failed to configure Grafana SSO: %w", err)
 	}
+
+	// Clean up metrics - delete metric series for this organization
+	metrics.GrafanaOrganizationTenants.DeleteLabelValues(grafanaOrganization.Name, orgID)
+	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, "active")
+	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, "pending")
+	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, "error")
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, grafanaOrganization)
