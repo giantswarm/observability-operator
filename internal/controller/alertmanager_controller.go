@@ -68,7 +68,7 @@ func podEventHandler(cfg config.Config) handler.EventHandler {
 			{
 				NamespacedName: types.NamespacedName{
 					Name:      cfg.Monitoring.AlertmanagerSecretName,
-					Namespace: cfg.OperatorNamespace,
+					Namespace: cfg.Operator.OperatorNamespace,
 				},
 			},
 		}

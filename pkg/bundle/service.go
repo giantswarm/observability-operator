@@ -18,17 +18,17 @@ import (
 	"sigs.k8s.io/yaml"
 
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 const observabilityBundleAppName string = "observability-bundle"
 
 type BundleConfigurationService struct {
 	client client.Client
-	config monitoring.Config
+	config config.Config
 }
 
-func NewBundleConfigurationService(client client.Client, config monitoring.Config) *BundleConfigurationService {
+func NewBundleConfigurationService(client client.Client, config config.Config) *BundleConfigurationService {
 	return &BundleConfigurationService{
 		client: client,
 		config: config,
@@ -51,11 +51,11 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 	bundleConfiguration := bundleConfiguration{
 		Apps: map[string]app{},
 	}
-
+	isMonitored := s.config.Monitoring.IsMonitored(cluster)
 	switch monitoringAgent {
 	case commonmonitoring.MonitoringAgentPrometheus:
 		bundleConfiguration.Apps[commonmonitoring.MonitoringPrometheusAgentAppName] = app{
-			Enabled: s.config.IsMonitored(cluster),
+			Enabled: isMonitored,
 		}
 		bundleConfiguration.Apps[commonmonitoring.MonitoringAlloyAppName] = app{
 			Enabled: false,
@@ -66,7 +66,7 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 		}
 		bundleConfiguration.Apps[commonmonitoring.MonitoringAlloyAppName] = app{
 			AppName: commonmonitoring.AlloyMonitoringAgentAppName,
-			Enabled: s.config.IsMonitored(cluster),
+			Enabled: isMonitored,
 		}
 	default:
 		return fmt.Errorf("unsupported monitoring agent %q", monitoringAgent)
