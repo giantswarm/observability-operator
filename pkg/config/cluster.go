@@ -71,7 +71,7 @@ func (c ClusterConfig) GetClusterType(cluster *clusterv1.Cluster) string {
 }
 
 // GetClusterProvider returns the provider for the given cluster.
-func GetClusterProvider(cluster *clusterv1.Cluster) (string, error) {
+func (c ClusterConfig) GetClusterProvider(cluster *clusterv1.Cluster) (string, error) {
 	switch cluster.Spec.InfrastructureRef.Kind {
 	case AWSClusterKind:
 		return AWSClusterKindProvider, nil
