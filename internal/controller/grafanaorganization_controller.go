@@ -164,7 +164,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	logger := log.FromContext(ctx)
 
 	// Determine initial status based on current state
-	orgStatus := "pending"
+	orgStatus := metrics.OrgStatusPending
 	if grafanaOrganization.Status.OrgID > 0 {
 		orgStatus = "active"
 	}
@@ -173,7 +173,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	updatedID, err := grafanaService.ConfigureOrganization(ctx, grafanaOrganization)
 	if err != nil {
 		// Set error status and update metric before returning
-		orgStatus = "error"
+		orgStatus = metrics.OrgStatusError
 		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
 		return ctrl.Result{}, fmt.Errorf("failed to upsert grafanaOrganization: %w", err)
 	}
@@ -185,18 +185,18 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 		err = r.Client.Status().Update(ctx, grafanaOrganization)
 		if err != nil {
-			orgStatus = "error"
+			orgStatus = metrics.OrgStatusError
 			updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
 			return ctrl.Result{}, fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 		}
-		orgStatus = "active"
+		orgStatus = metrics.OrgStatusActive
 		logger.Info("updated orgID in the grafanaOrganization status")
 	}
 
 	// Configure the organization's datasources and authorization settings
 	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
-		orgStatus = "error"
+		orgStatus = metrics.OrgStatusError
 		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
 		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)
 	}

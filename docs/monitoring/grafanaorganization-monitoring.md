@@ -6,7 +6,7 @@ This guide explains how to monitor GrafanaOrganization custom resources deployed
 
 The observability-operator exposes prometheus-compatible metrics.
 
-On top of the common metrics available for all renconcilers, the `grafanaOrganization` reconciler provides metrics per:
+On top of the common metrics [common metrics exposed by the controller runtime](https://book.kubebuilder.io/reference/metrics-reference), the `grafanaOrganization` reconciler provides metrics per:
 
 - organization
 - tenant
@@ -58,8 +58,7 @@ topk(10, observability_operator_grafana_organization_tenants)
 To add custom metrics:
 
 1. Define the metric in `pkg/metrics/metrics.go`
-2. Update the collector in `pkg/metrics/grafanaorganization_collector.go`
-3. Add metric recording in the controller
+3. Add metric recording in the adequate controller
 
 Example:
 ```go
@@ -70,5 +69,5 @@ CustomMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 }, []string{"name"})
 
 // In controller
-r.metricsCollector.RecordCustomMetric(grafanaOrganization.Name, value)
+metrics.RecordCustomMetric(grafanaOrganization.Name, value)
 ```

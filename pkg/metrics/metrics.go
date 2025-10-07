@@ -23,6 +23,12 @@ var (
 	}, []string{"name", "display_name", "org_id", "status"}) // status: active, pending, error
 )
 
+const (
+	OrgStatusActive  = "active"
+	OrgStatusPending = "pending"
+	OrgStatusError   = "error"
+)
+
 func init() {
 	metrics.Registry.MustRegister(
 		MimirQueryErrors,

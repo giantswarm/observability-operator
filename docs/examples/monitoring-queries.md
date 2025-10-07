@@ -26,7 +26,7 @@ observability_operator_grafana_organization_info(status="active")
 # Total tenants across all organizations
 sum(observability_operator_grafana_organization_tenants)
 
-# Organizations with most tenants
+# top 5 organizations with most tenants
 topk(5, observability_operator_grafana_organization_tenants)
 
 # Organizations with single tenant
