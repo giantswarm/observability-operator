@@ -12,9 +12,9 @@ var (
 	}, nil)
 
 	// GrafanaOrganization metrics
-	GrafanaOrganizationTenants = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	GrafanaOrganizationTenantInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_grafana_organization_tenants",
-		Help: "Name of tenants associated with each GrafanaOrganization",
+		Help: "Information about tenant resources per organization",
 	}, []string{"name", "org_id"})
 
 	GrafanaOrganizationInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -32,7 +32,7 @@ const (
 func init() {
 	metrics.Registry.MustRegister(
 		MimirQueryErrors,
-		GrafanaOrganizationTenants,
+		GrafanaOrganizationTenantInfo,
 		GrafanaOrganizationInfo,
 	)
 }

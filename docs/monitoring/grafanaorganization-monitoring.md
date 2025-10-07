@@ -17,15 +17,15 @@ The operator exposes the following metrics for GrafanaOrganization resources:
 
 ### Resource State Metric
 
-| Metric | Type | Description | Labels |
-|--------|------|-------------|--------|
-| `observability_operator_grafana_organization_info` | Gauge | Information about GrafanaOrganization resources | `name`, `status` (active, pending, error),`display_name`, `org_id` |
+| Metric | Type | Description | Labels | Values |
+|--------|------|-------------|--------|--------|
+| `observability_operator_grafana_organization_info` | Gauge | Information about GrafanaOrganization resources | `name`, `status` (active, pending, error),`display_name`, `org_id` | Always set to 1 |
 
 ### Configuration Metric
 
-| Metric | Type | Description | Labels |
-|--------|------|-------------|--------|
-| `observability_operator_grafana_organization_tenants` | Gauge | Name of tenants per organization | `name`, `org_id` |
+| Metric | Type | Description | Labels | Values |
+|--------|------|-------------|--------|--------|
+| `observability_operator_grafana_organization_tenant_info` | Gauge | Information about tenant resources per organization | `name`, `org_id` | Always set to 1 |
 
 ## Extending the code to provide more observability data
 
@@ -34,7 +34,7 @@ The operator exposes the following metrics for GrafanaOrganization resources:
 To add custom metrics:
 
 1. Define the metric in `pkg/metrics/metrics.go`
-3. Add metric recording in the adequate controller
+2. Add metric recording in the adequate controller
 
 Example:
 ```go
@@ -47,3 +47,5 @@ CustomMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 // In controller
 metrics.RecordCustomMetric(grafanaOrganization.Name, value)
 ```
+
+See prometheus go package [upstream documentation](https://pkg.go.dev/github.com/prometheus/client_golang@v1.23.2/prometheus) for more information.

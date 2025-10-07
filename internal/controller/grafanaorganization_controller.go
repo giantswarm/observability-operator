@@ -201,13 +201,15 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)
 	}
 
-	// Update gauge metrics
-	metrics.GrafanaOrganizationTenants.WithLabelValues(
-		grafanaOrganization.Name,
-		fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
-	).Set(float64(len(grafanaOrganization.Spec.Tenants)))
-
 	// Set info metrics
+	for _, tenant := range grafanaOrganization.Spec.Tenants {
+		// for each tenant in the organization, set a metric with tenant name and org id
+		metrics.GrafanaOrganizationTenantInfo.WithLabelValues(
+			string(tenant),
+			fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
+		).Set(1)
+	}
+
 	updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
 
 	return ctrl.Result{}, nil
@@ -241,7 +243,9 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	}
 
 	// Clean up metrics - delete metric series for this organization
-	metrics.GrafanaOrganizationTenants.DeleteLabelValues(grafanaOrganization.Name, orgID)
+	for _, tenant := range grafanaOrganization.Spec.Tenants {
+		metrics.GrafanaOrganizationTenantInfo.DeleteLabelValues(string(tenant), orgID)
+	}
 	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, "active")
 	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, "pending")
 	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, "error")

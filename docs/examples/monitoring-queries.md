@@ -24,13 +24,13 @@ observability_operator_grafana_organization_info(status="active")
 ### Tenants
 ```promql
 # Total tenants across all organizations
-sum(observability_operator_grafana_organization_tenants)
+sum(observability_operator_grafana_organization_tenant_info)
 
 # top 5 organizations with most tenants
-topk(5, observability_operator_grafana_organization_tenants)
+topk(5, count(observability_operator_grafana_organization_tenant_info) by (org_id))
 
 # Organizations with single tenant
-observability_operator_grafana_organization_tenants == 1
+count(observability_operator_grafana_organization_tenant_info) by (org_id) == 1
 ```
 
 ## Health Checks
