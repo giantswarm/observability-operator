@@ -174,12 +174,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	if err != nil {
 		// Set error status and update metric before returning
 		orgStatus = "error"
-		metrics.GrafanaOrganizationInfo.WithLabelValues(
-			grafanaOrganization.Name,
-			grafanaOrganization.Spec.DisplayName,
-			fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
-			orgStatus,
-		).Set(1)
+		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
 		return ctrl.Result{}, fmt.Errorf("failed to upsert grafanaOrganization: %w", err)
 	}
 
@@ -191,12 +186,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		err = r.Client.Status().Update(ctx, grafanaOrganization)
 		if err != nil {
 			orgStatus = "error"
-			metrics.GrafanaOrganizationInfo.WithLabelValues(
-				grafanaOrganization.Name,
-				grafanaOrganization.Spec.DisplayName,
-				fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
-				orgStatus,
-			).Set(1)
+			updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
 			return ctrl.Result{}, fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 		}
 		orgStatus = "active"
@@ -207,12 +197,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
 	if err != nil {
 		orgStatus = "error"
-		metrics.GrafanaOrganizationInfo.WithLabelValues(
-			grafanaOrganization.Name,
-			grafanaOrganization.Spec.DisplayName,
-			fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
-			orgStatus,
-		).Set(1)
+		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
 		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)
 	}
 
@@ -223,12 +208,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	).Set(float64(len(grafanaOrganization.Spec.Tenants)))
 
 	// Set info metrics
-	metrics.GrafanaOrganizationInfo.WithLabelValues(
-		grafanaOrganization.Name,
-		grafanaOrganization.Spec.DisplayName,
-		fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
-		orgStatus,
-	).Set(1)
+	updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
 
 	return ctrl.Result{}, nil
 }
@@ -273,4 +253,13 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	}
 
 	return nil
+}
+
+func updateGrafanaOrganizationInfoMetric(organizationName string, displayName string, orgID int64, status string) {
+	metrics.GrafanaOrganizationInfo.WithLabelValues(
+		organizationName,
+		displayName,
+		fmt.Sprintf("%d", orgID),
+		status,
+	).Set(1)
 }
