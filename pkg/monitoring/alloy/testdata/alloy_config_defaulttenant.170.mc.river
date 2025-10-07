@@ -9,15 +9,17 @@ remote.kubernetes.secret "credentials" {
 }
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
-// remote write pipeline configuration for tenant tenant1
-
-prometheus.operator.servicemonitors "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver]
+// remote write pipeline configuration for tenant giantswarm
+prometheus.operator.servicemonitors "giantswarm_legacy" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
   selector {
     match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+    match_expression {
       key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant1"]
+      operator = "DoesNotExist"
     }
   }
   scrape {
@@ -28,13 +30,16 @@ prometheus.operator.servicemonitors "tenant1" {
   }
 }
 
-prometheus.operator.podmonitors "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver]
+prometheus.operator.podmonitors "giantswarm_legacy" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
   selector {
     match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+    match_expression {
       key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant1"]
+      operator = "DoesNotExist"
     }
   }
   scrape {
@@ -45,8 +50,43 @@ prometheus.operator.podmonitors "tenant1" {
   }
 }
 
-// remote write pipeline configuration for tenant tenant1
-prometheus.remote_write "tenant1" {
+
+prometheus.operator.servicemonitors "giantswarm" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["giantswarm"]
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.operator.podmonitors "giantswarm" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["giantswarm"]
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+// remote write pipeline configuration for tenant giantswarm
+prometheus.remote_write "giantswarm" {
   endpoint {
     url            = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
     name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
@@ -57,7 +97,7 @@ prometheus.remote_write "tenant1" {
       password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
     }
     headers = {
-      "X-Scope-OrgID" = "tenant1",
+      "X-Scope-OrgID" = "giantswarm",
     }
     tls_config {
       insecure_skip_verify = false
@@ -79,84 +119,7 @@ prometheus.remote_write "tenant1" {
     "installation" = "dummy-cluster",
     "organization" = "dummy-org",
     "pipeline" = "dummy-pipeline",
-    "provider" = "capa",
-    "region" = "dummy-region",
-    "service_priority" = "highest",
-  }
-}
-
-
-// remote write pipeline configuration for tenant tenant2
-
-prometheus.operator.servicemonitors "tenant2" {
-  forward_to = [prometheus.remote_write.tenant2.receiver]
-  selector {
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant2"]
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
-prometheus.operator.podmonitors "tenant2" {
-  forward_to = [prometheus.remote_write.tenant2.receiver]
-  selector {
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant2"]
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
-// remote write pipeline configuration for tenant tenant2
-prometheus.remote_write "tenant2" {
-  endpoint {
-    url            = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
-    name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
-    enable_http2   = false
-    remote_timeout = "60s"
-    basic_auth {
-      username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-      password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
-    }
-    headers = {
-      "X-Scope-OrgID" = "tenant2",
-    }
-    tls_config {
-      insecure_skip_verify = false
-    }
-    queue_config {
-      capacity             = 30000
-      max_samples_per_send = 150000
-      max_shards           = 10
-      sample_age_limit     = "30m"
-    }
-  }
-  wal {
-    truncate_frequency = "1m0s"
-  }
-  external_labels = {
-    "cluster_id" = "dummy-cluster",
-    "cluster_type" = "management_cluster",
-    "customer" = "dummy-customer",
-    "installation" = "dummy-cluster",
-    "organization" = "dummy-org",
-    "pipeline" = "dummy-pipeline",
-    "provider" = "capa",
+    "provider" = "capz",
     "region" = "dummy-region",
     "service_priority" = "highest",
   }

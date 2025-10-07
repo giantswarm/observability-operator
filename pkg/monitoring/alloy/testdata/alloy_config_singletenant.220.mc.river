@@ -60,7 +60,6 @@ prometheus.operator.podmonitors "tenant1" {
     enabled = true
   }
 }
-
 prometheus.operator.scrapeconfigs "tenant1" {
   forward_to = [prometheus.remote_write.tenant1.receiver]
   selector {
