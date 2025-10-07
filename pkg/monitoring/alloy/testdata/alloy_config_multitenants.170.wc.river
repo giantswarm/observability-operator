@@ -7,60 +7,6 @@ remote.kubernetes.secret "credentials" {
   name      = "alloy-metrics"
   namespace = "kube-system"
 }
-// load rules for tenant tenant1
-mimir.rules.kubernetes "tenant1" {
-  address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
-  basic_auth {
-    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
-  }
-  extra_query_matchers {
-    matcher {
-        name       = "cluster_id"
-        match_type = "="
-        value      = "test-cluster"
-    }
-  }
-  mimir_namespace_prefix = "test-cluster"
-  tenant_id = "tenant1"
-  rule_selector {
-      match_labels = {
-        "observability.giantswarm.io/tenant" = "tenant1",
-      }
-      match_expression {
-        key = "application.giantswarm.io/prometheus-rule-kind"
-        operator = "NotIn"
-        values = ["loki"]
-      }
-  }
-}
-// load rules for tenant tenant2
-mimir.rules.kubernetes "tenant2" {
-  address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
-  basic_auth {
-    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
-  }
-  extra_query_matchers {
-    matcher {
-        name       = "cluster_id"
-        match_type = "="
-        value      = "test-cluster"
-    }
-  }
-  mimir_namespace_prefix = "test-cluster"
-  tenant_id = "tenant2"
-  rule_selector {
-      match_labels = {
-        "observability.giantswarm.io/tenant" = "tenant2",
-      }
-      match_expression {
-        key = "application.giantswarm.io/prometheus-rule-kind"
-        operator = "NotIn"
-        values = ["loki"]
-      }
-  }
-}
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
 // remote write pipeline configuration for tenant tenant1
@@ -83,23 +29,6 @@ prometheus.operator.servicemonitors "tenant1" {
 }
 
 prometheus.operator.podmonitors "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver]
-  selector {
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant1"]
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
-prometheus.operator.scrapeconfigs "tenant1" {
   forward_to = [prometheus.remote_write.tenant1.receiver]
   selector {
     match_expression {
@@ -177,23 +106,6 @@ prometheus.operator.servicemonitors "tenant2" {
 }
 
 prometheus.operator.podmonitors "tenant2" {
-  forward_to = [prometheus.remote_write.tenant2.receiver]
-  selector {
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant2"]
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = true
-  }
-}
-
-prometheus.operator.scrapeconfigs "tenant2" {
   forward_to = [prometheus.remote_write.tenant2.receiver]
   selector {
     match_expression {

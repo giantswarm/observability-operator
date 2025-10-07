@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix `ScrapeConfig` support to only be available for observability-bundles 2.2.0 (v32+).
+
 ## [0.43.0] - 2025-10-06
 
 ### Added
