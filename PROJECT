@@ -19,6 +19,18 @@ resources:
   webhooks:
     validation: true
     webhookVersion: v1
+- api:
+    crdVersion: v1
+  controller: false
+  domain: giantswarm.io
+  group: observability
+  kind: GrafanaOrganization
+  path: github.com/giantswarm/observability-operator/api/v1alpha2
+  version: v1alpha2
+  webhooks:
+    conversion: true
+    validation: true
+    webhookVersion: v1
 - controller: true
   domain: x-k8s.io
   group: cluster

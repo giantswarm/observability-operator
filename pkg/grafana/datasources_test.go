@@ -2,6 +2,8 @@ package grafana
 
 import (
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -115,54 +117,101 @@ func TestGenerateDatasources(t *testing.T) {
 		expectedLen    int
 		checkTempo     bool
 		checkShared    bool
+		checkAlerting  bool
 	}{
 		{
-			name: "regular organization with tracing enabled",
+			name: "regular organization with data-only tenants and tracing enabled",
 			organization: Organization{
-				ID:        1,
-				Name:      "test-org",
-				TenantIDs: []string{"tenant1", "tenant2"},
+				ID:   1,
+				Name: "test-org",
+				Tenants: []TenantConfig{
+					{Name: "tenant1", Types: []string{"data"}},
+					{Name: "tenant2", Types: []string{"data"}},
+				},
 			},
 			tracingEnabled: true,
-			expectedLen:    4, // Loki, Mimir, Alertmanager, Tempo
+			expectedLen:    3, // Loki, Mimir, Tempo (no Alertmanager - broken multi-tenant removed)
 			checkTempo:     true,
 			checkShared:    false,
+			checkAlerting:  false,
 		},
 		{
-			name: "regular organization with tracing disabled",
+			name: "regular organization with data-only tenants and tracing disabled",
 			organization: Organization{
-				ID:        1,
-				Name:      "test-org",
-				TenantIDs: []string{"tenant1", "tenant2"},
+				ID:   1,
+				Name: "test-org",
+				Tenants: []TenantConfig{
+					{Name: "tenant1", Types: []string{"data"}},
+					{Name: "tenant2", Types: []string{"data"}},
+				},
 			},
 			tracingEnabled: false,
-			expectedLen:    3, // Loki, Mimir, Alertmanager (no Tempo)
+			expectedLen:    2, // Loki, Mimir (no Tempo, no Alertmanager)
 			checkTempo:     false,
 			checkShared:    false,
+			checkAlerting:  false,
+		},
+		{
+			name: "organization with alerting-enabled tenants and tracing enabled",
+			organization: Organization{
+				ID:   1,
+				Name: "test-org",
+				Tenants: []TenantConfig{
+					{Name: "tenant1", Types: []string{"data", "alerting"}},
+					{Name: "tenant2", Types: []string{"data"}},
+				},
+			},
+			tracingEnabled: true,
+			expectedLen:    6, // Loki, Mimir, Tempo + Loki(tenant1), Mimir(tenant1), Alertmanager(tenant1)
+			checkTempo:     true,
+			checkShared:    false,
+			checkAlerting:  true,
+		},
+		{
+			name: "organization with alerting-enabled tenants and tracing disabled",
+			organization: Organization{
+				ID:   1,
+				Name: "test-org",
+				Tenants: []TenantConfig{
+					{Name: "tenant1", Types: []string{"data", "alerting"}},
+					{Name: "tenant2", Types: []string{"data"}},
+				},
+			},
+			tracingEnabled: false,
+			expectedLen:    5, // Loki, Mimir + Loki(tenant1), Mimir(tenant1), Alertmanager(tenant1)
+			checkTempo:     false,
+			checkShared:    false,
+			checkAlerting:  true,
 		},
 		{
 			name: "shared organization with tracing enabled",
 			organization: Organization{
-				ID:        1,
-				Name:      "Shared Org",
-				TenantIDs: []string{"tenant1"},
+				ID:   1,
+				Name: "Shared Org",
+				Tenants: []TenantConfig{
+					{Name: "tenant1", Types: []string{"data"}},
+				},
 			},
 			tracingEnabled: true,
-			expectedLen:    5, // Loki, Mimir, Alertmanager, Tempo, Cardinality
+			expectedLen:    4, // Loki, Mimir, Tempo, Cardinality (no Alertmanager)
 			checkTempo:     true,
 			checkShared:    true,
+			checkAlerting:  false,
 		},
 		{
 			name: "shared organization with tracing disabled",
 			organization: Organization{
-				ID:        1,
-				Name:      "Shared Org",
-				TenantIDs: []string{"tenant1"},
+				ID:   1,
+				Name: "Shared Org",
+				Tenants: []TenantConfig{
+					{Name: "tenant1", Types: []string{"data"}},
+				},
 			},
 			tracingEnabled: false,
-			expectedLen:    4, // Loki, Mimir, Alertmanager, Cardinality (no Tempo)
+			expectedLen:    3, // Loki, Mimir, Cardinality (no Tempo, no Alertmanager)
 			checkTempo:     false,
 			checkShared:    true,
+			checkAlerting:  false,
 		},
 	}
 
@@ -181,17 +230,33 @@ func TestGenerateDatasources(t *testing.T) {
 
 			// Check that all datasources have the correct multi-tenant headers
 			expectedHeaderValue := "tenant1|tenant2"
-			if len(tt.organization.TenantIDs) == 1 {
+			if len(tt.organization.Tenants) == 1 {
 				expectedHeaderValue = "tenant1"
 			}
 
+			// Check multi-tenant datasources
+			multiTenantDatasources := []string{"Loki", "Mimir", "Tempo"}
+			perTenantCount := 0
+
 			for _, ds := range result {
-				if ds.Name != "Mimir Cardinality" && ds.Type != "tempo" { // Cardinality has different logic, Tempo doesn't have multi-tenancy yet
+				// Check that all datasources have required fields
+				assert.True(t, ds.UID != "", "UID should not be empty for %s", ds.Name)
+				assert.True(t, ds.Name != "", "Name should not be empty")
+
+				// Multi-tenant datasources should have multi-tenant headers
+				if slices.Contains(multiTenantDatasources, ds.Name) && ds.Name != "Mimir Cardinality" {
 					assert.Equal(t, "X-Scope-OrgID", ds.JSONData["httpHeaderName1"])
 					assert.Equal(t, expectedHeaderValue, ds.SecureJSONData["httpHeaderValue1"])
 				}
-				assert.True(t, ds.UID != "", "UID should not be empty")
-				assert.True(t, ds.Name != "", "Name should not be empty")
+
+				// Count per-tenant datasources
+				if strings.Contains(ds.Name, "(") && strings.Contains(ds.Name, ")") {
+					perTenantCount++
+					// Per-tenant datasources should have single-tenant headers
+					assert.Equal(t, "X-Scope-OrgID", ds.JSONData["httpHeaderName1"])
+					// Should not be multi-tenant header
+					assert.NotEqual(t, expectedHeaderValue, ds.SecureJSONData["httpHeaderValue1"])
+				}
 			}
 
 			if tt.checkTempo {
@@ -261,6 +326,30 @@ func TestGenerateDatasources(t *testing.T) {
 					}
 				}
 				require.NotNil(t, cardinalityDS, "Cardinality datasource should be present for shared org")
+			}
+
+			if tt.checkAlerting {
+				// Validate that per-tenant alerting datasources are present
+				var perTenantMimir *Datasource
+				var perTenantAlertmanager *Datasource
+
+				for _, ds := range result {
+					if strings.Contains(ds.Name, "Mimir (") {
+						perTenantMimir = &ds
+					}
+					if strings.Contains(ds.Name, "Mimir Alertmanager (") {
+						perTenantAlertmanager = &ds
+					}
+				}
+
+				require.NotNil(t, perTenantMimir, "Per-tenant Mimir datasource should be present for alerting tenant")
+				require.NotNil(t, perTenantAlertmanager, "Per-tenant Alertmanager datasource should be present for alerting tenant")
+
+				// Validate single-tenant headers
+				assert.Equal(t, "X-Scope-OrgID", perTenantMimir.JSONData["httpHeaderName1"])
+				assert.Equal(t, "tenant1", perTenantMimir.SecureJSONData["httpHeaderValue1"])
+				assert.Equal(t, "X-Scope-OrgID", perTenantAlertmanager.JSONData["httpHeaderName1"])
+				assert.Equal(t, "tenant1", perTenantAlertmanager.SecureJSONData["httpHeaderValue1"])
 			}
 		})
 	}

@@ -1,22 +1,20 @@
 package grafana
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
-func (s *Service) SetupOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (s *Service) SetupOrganization(ctx context.Context, organization Organization) error {
 	var errs []error
 
 	// Configure the organization's datasources
-	if err := s.ConfigureDatasources(ctx, grafanaOrganization); err != nil {
+	if _, err := s.ConfigureDatasources(ctx, organization); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -32,10 +30,9 @@ func (s *Service) SetupOrganization(ctx context.Context, grafanaOrganization *v1
 	return nil
 }
 
-func (s *Service) DeleteOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (s *Service) DeleteOrganization(ctx context.Context, organization Organization) error {
 	// Delete organization in Grafana if it exists
-	var organization = NewOrganization(grafanaOrganization)
-	if grafanaOrganization.Status.OrgID > 0 {
+	if organization.ID > 0 {
 		return s.deleteOrganization(ctx, organization)
 	}
 
@@ -43,8 +40,11 @@ func (s *Service) DeleteOrganization(ctx context.Context, grafanaOrganization *v
 }
 
 // ConfigureOrganization creates or updates the organization in Grafana and returns the organization ID.
-func (s *Service) ConfigureOrganization(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) (int64, error) {
-	organization := NewOrganization(grafanaOrganization)
+func (s *Service) ConfigureOrganization(ctx context.Context, organization Organization) (int64, error) {
+	// Validate tenant access rules
+	if err := organization.ValidateTenantAccess(); err != nil {
+		return -1, fmt.Errorf("ConfigureOrganization: %w", err)
+	}
 
 	err := s.UpsertOrganization(ctx, &organization)
 	if err != nil {
@@ -55,46 +55,21 @@ func (s *Service) ConfigureOrganization(ctx context.Context, grafanaOrganization
 }
 
 // ConfigureDatasources ensures the datasources for the given GrafanaOrganization are up to date.
-func (s *Service) ConfigureDatasources(ctx context.Context, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+// It returns the list of configured datasources.
+func (s *Service) ConfigureDatasources(ctx context.Context, organization Organization) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
 	logger.Info("configuring datasources")
 
-	var organization = NewOrganization(grafanaOrganization)
-
 	// Configure the datasources for the organization
 	datasources, err := s.ConfigureDatasource(ctx, organization)
 	if err != nil {
-		return fmt.Errorf("ConfigureDatasources: failed to configure default datasources: %w", err)
-	}
-
-	// Build the list of configured datasources for the status
-	var configuredDatasources = make([]v1alpha1.DataSource, len(datasources))
-	for i, datasource := range datasources {
-		configuredDatasources[i] = v1alpha1.DataSource{
-			ID:   datasource.ID,
-			Name: datasource.Name,
-		}
-	}
-
-	// Sort the datasources by ID to ensure consistent ordering
-	slices.SortStableFunc(configuredDatasources, func(a, b v1alpha1.DataSource) int {
-		return cmp.Compare(a.ID, b.ID)
-	})
-
-	// Update the status if the datasources have changed
-	if !slices.Equal(grafanaOrganization.Status.DataSources, configuredDatasources) {
-		logger.Info("updating datasources in the GrafanaOrganization status")
-		grafanaOrganization.Status.DataSources = configuredDatasources
-		if err := s.client.Status().Update(ctx, grafanaOrganization); err != nil {
-			return fmt.Errorf("ConfigureDatasources: failed to update GrafanaOrganization status: %w", err)
-		}
-		logger.Info("updated datasources in the GrafanaOrganization status")
+		return nil, fmt.Errorf("ConfigureDatasources: failed to configure default datasources: %w", err)
 	}
 
 	logger.Info("configured datasources")
 
-	return nil
+	return datasources, nil
 }
 
 // ConfigureGrafana ensures the SSO settings in Grafana are up to date based on the current

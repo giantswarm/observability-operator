@@ -1,6 +1,4 @@
 ---
-# This secret is deployed via https://github.com/giantswarm/management-cluster-bases/blob/16e623dd03558a616fe92641dfbdd79b8807d462/bases/crds/giantswarm/kustomization.yaml#L11
-# If you edit this CRD, do not forget to edit the link to this CRD in MCB
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -98,6 +96,138 @@ spec:
                   minLength: 1
                   pattern: ^[a-zA-Z_][a-zA-Z0-9_]{0,149}$
                   type: string
+                type: array
+            required:
+            - displayName
+            - rbac
+            - tenants
+            type: object
+          status:
+            description: GrafanaOrganizationStatus defines the observed state of GrafanaOrganization
+            properties:
+              dataSources:
+                description: DataSources is a list of grafana data sources that are
+                  available to the Grafana organization.
+                items:
+                  description: DataSource defines the name and id for data sources.
+                  properties:
+                    ID:
+                      description: ID is the unique id of the data source.
+                      format: int64
+                      type: integer
+                    name:
+                      description: Name is the name of the data source.
+                      type: string
+                  required:
+                  - ID
+                  - name
+                  type: object
+                type: array
+              orgID:
+                description: OrgID is the actual organisation ID in grafana.
+                format: int64
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: false
+    subresources:
+      status: {}
+  - additionalPrinterColumns:
+    - jsonPath: .spec.displayName
+      name: DisplayName
+      type: string
+    - jsonPath: .status.orgID
+      name: OrgID
+      type: integer
+    name: v1alpha2
+    schema:
+      openAPIV3Schema:
+        description: GrafanaOrganization is the Schema describing a Grafana organization.
+          Its lifecycle is managed by the observability-operator.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: GrafanaOrganizationSpec defines the desired state of GrafanaOrganization
+            properties:
+              displayName:
+                description: DisplayName is the name displayed when viewing the organization
+                  in Grafana. It can be different from the actual org's name.
+                example: Giant Swarm
+                minLength: 1
+                type: string
+              rbac:
+                description: Access rules defines user permissions for interacting
+                  with the organization in Grafana.
+                properties:
+                  admins:
+                    description: Admins is a list of user organizations that have
+                      admin access to the grafanaorganization.
+                    items:
+                      type: string
+                    type: array
+                  editors:
+                    description: Editors is a list of user organizations that have
+                      editor access to the grafanaorganization.
+                    items:
+                      type: string
+                    type: array
+                  viewers:
+                    description: Viewers is a list of user organizations that have
+                      viewer access to the grafanaorganization.
+                    items:
+                      type: string
+                    type: array
+                required:
+                - admins
+                type: object
+              tenants:
+                description: Tenants is a list of tenants that are associated with
+                  the Grafana organization.
+                example:
+                - name: giantswarm
+                  types: '["data"]'
+                items:
+                  description: TenantConfig defines configuration for a specific tenant
+                  properties:
+                    name:
+                      description: Name is the unique identifier for the tenant
+                      maxLength: 150
+                      minLength: 1
+                      pattern: ^[a-zA-Z_][a-zA-Z0-9_]{0,149}$
+                      type: string
+                    types:
+                      default:
+                      - data
+                      description: Types defines what kind of access this tenant has
+                      items:
+                        description: TenantType represents the type of access a tenant
+                          has
+                        enum:
+                        - data
+                        - alerting
+                        type: string
+                      type: array
+                  required:
+                  - name
+                  type: object
+                minItems: 1
                 type: array
             required:
             - displayName

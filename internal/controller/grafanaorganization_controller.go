@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
@@ -42,7 +42,7 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, 
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		grafanaURL:       cfg.Grafana.URL,
-		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), v1alpha1.GrafanaOrganizationFinalizer),
+		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), v1alpha2.GrafanaOrganizationFinalizer),
 		grafanaClientGen: grafanaClientGen,
 		cfg:              cfg,
 	}
@@ -65,7 +65,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	logger.Info("Started reconciling Grafana Organization")
 	defer logger.Info("Finished reconciling Grafana Organization")
 
-	grafanaOrganization := &v1alpha1.GrafanaOrganization{}
+	grafanaOrganization := &v1alpha2.GrafanaOrganization{}
 	err := r.Get(ctx, req.NamespacedName, grafanaOrganization)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
@@ -95,13 +95,13 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	err := ctrl.NewControllerManagedBy(mgr).
 		Named("grafanaorganization").
-		For(&v1alpha1.GrafanaOrganization{}).
+		For(&v1alpha2.GrafanaOrganization{}).
 		// Watch for grafana pod's status changes
 		Watches(
 			&v1.Pod{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 				var logger = log.FromContext(ctx)
-				var organizations v1alpha1.GrafanaOrganizationList
+				var organizations v1alpha2.GrafanaOrganizationList
 
 				err := mgr.GetClient().List(ctx, &organizations)
 				if err != nil {
@@ -111,7 +111,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 
 				// Sort organizations by orgID to ensure the order is deterministic.
 				// This is important to prevent incorrect ordering of organizations on grafana restarts.
-				slices.SortStableFunc(organizations.Items, func(i, j v1alpha1.GrafanaOrganization) int {
+				slices.SortStableFunc(organizations.Items, func(i, j v1alpha2.GrafanaOrganization) int {
 					// if both orgs have a nil orgID, they are equal
 					// if one org has a nil orgID, it is higher than the other as it was not created in Grafana yet
 					if i.Status.OrgID == 0 && j.Status.OrgID == 0 {
@@ -150,7 +150,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 // - Adding the finalizer to the CR
 // - Updating the CR status field
 // - Renaming the Grafana Main Org.
-func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
+func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, grafanaOrganization)
 	if err != nil {
@@ -163,9 +163,13 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	logger := log.FromContext(ctx)
 
 	// Create or update the grafana organization
-	updatedID, err := grafanaService.ConfigureOrganization(ctx, grafanaOrganization)
+	// Convert v1alpha2 to domain organization
+	organization := grafana.NewOrganizationFromV2(grafanaOrganization)
+
+	// Configure organization in Grafana
+	updatedID, err := grafanaService.ConfigureOrganization(ctx, organization)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to upsert grafanaOrganization: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to configure organization: %w", err)
 	}
 
 	// Update CR status if anything was changed
@@ -181,7 +185,41 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Configure the organization's datasources and authorization settings
-	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
+	// Convert v1alpha2 to domain organization for setup
+	setupOrganization := grafana.NewOrganizationFromV2(grafanaOrganization)
+
+	// Configure datasources
+	datasources, err := grafanaService.ConfigureDatasources(ctx, setupOrganization)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to configure datasources: %w", err)
+	}
+
+	// Build the list of configured datasources for the status
+	var configuredDatasources = make([]v1alpha2.DataSource, len(datasources))
+	for i, datasource := range datasources {
+		configuredDatasources[i] = v1alpha2.DataSource{
+			ID:   datasource.ID,
+			Name: datasource.Name,
+		}
+	}
+
+	// Sort the datasources by ID to ensure consistent ordering
+	slices.SortStableFunc(configuredDatasources, func(a, b v1alpha2.DataSource) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+
+	// Update the status if the datasources have changed
+	if !slices.Equal(grafanaOrganization.Status.DataSources, configuredDatasources) {
+		logger.Info("updating datasources in the GrafanaOrganization status")
+		grafanaOrganization.Status.DataSources = configuredDatasources
+		if err := r.Client.Status().Update(ctx, grafanaOrganization); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update GrafanaOrganization status: %w", err)
+		}
+		logger.Info("updated datasources in the GrafanaOrganization status")
+	}
+
+	// Configure SSO
+	err = grafanaService.ConfigureGrafanaSSO(ctx)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)
 	}
@@ -190,13 +228,15 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 }
 
 // reconcileDelete deletes the grafana organization.
-func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
+func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) error {
 	// We do not need to delete anything if there is no finalizer on the grafana organization
-	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
+	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha2.GrafanaOrganizationFinalizer) {
 		return nil
 	}
 
-	err := grafanaService.DeleteOrganization(ctx, grafanaOrganization)
+	// Convert v1alpha2 to domain organization for deletion
+	organization := grafana.NewOrganizationFromV2(grafanaOrganization)
+	err := grafanaService.DeleteOrganization(ctx, organization)
 	if err != nil {
 		return fmt.Errorf("failed to delete grafana organization: %w", err)
 	}

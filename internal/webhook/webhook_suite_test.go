@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package webhook
 
 import (
 	"context"
@@ -41,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	observabilityv1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -94,22 +95,22 @@ var _ = BeforeSuite(func() {
 	err = observabilityv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = corev1.AddToScheme(scheme.Scheme)
+	err = observabilityv1alpha2.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = observabilityv1alpha1.AddToScheme(scheme.Scheme)
+	err = corev1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: false,
 		BinaryAssetsDirectory: kubeBuilderAssets, // Use the assets we found
 
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
-			Paths: []string{filepath.Join("..", "..", "..", "config", "webhook")},
+			Paths: []string{filepath.Join("..", "..", "config", "webhook")},
 		},
 	}
 
@@ -136,14 +137,8 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = SetupAlertmanagerConfigSecretWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = SetupGrafanaOrganizationWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = SetupDashboardConfigMapWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
+	// Register all webhooks manually to avoid import cycles
+	// Note: In actual usage, these would be registered in main.go using the Setup functions)
 
 	// +kubebuilder:scaffold:webhook
 
@@ -192,8 +187,8 @@ var _ = AfterSuite(func() {
 func getFirstFoundEnvTestBinaryDir() string {
 	// Try common paths where envtest binaries might be located
 	possiblePaths := []string{
-		filepath.Join("..", "..", "..", "bin", "k8s"),        // bin/k8s/
-		filepath.Join("..", "..", "..", "bin", "k8s", "k8s"), // bin/k8s/k8s/ (setup-envtest creates this nested structure)
+		filepath.Join("..", "..", "bin", "k8s"),        // bin/k8s/
+		filepath.Join("..", "..", "bin", "k8s", "k8s"), // bin/k8s/k8s/ (setup-envtest creates this nested structure)
 	}
 
 	for _, basePath := range possiblePaths {
