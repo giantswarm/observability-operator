@@ -246,9 +246,9 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	for _, tenant := range grafanaOrganization.Spec.Tenants {
 		metrics.GrafanaOrganizationTenantInfo.DeleteLabelValues(string(tenant), orgID)
 	}
-	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, "active")
-	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, "pending")
-	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, "error")
+	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, metrics.OrgStatusActive)
+	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, metrics.OrgStatusPending)
+	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, metrics.OrgStatusError)
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, grafanaOrganization)
