@@ -15,41 +15,17 @@ On top of the common metrics [common metrics exposed by the controller runtime](
 
 The operator exposes the following metrics for GrafanaOrganization resources:
 
-### Resource State Metrics
+### Resource State Metric
 
 | Metric | Type | Description | Labels |
 |--------|------|-------------|--------|
 | `observability_operator_grafana_organization_info` | Gauge | Information about GrafanaOrganization resources | `name`, `status` (active, pending, error),`display_name`, `org_id` |
 
-### Configuration Metrics
+### Configuration Metric
 
 | Metric | Type | Description | Labels |
 |--------|------|-------------|--------|
 | `observability_operator_grafana_organization_tenants` | Gauge | Name of tenants per organization | `name`, `org_id` |
-
-## Monitoring Best Practices
-
-### Key Metrics to Watch
-
-1. **Resource Status Distribution**
-   ```promql
-   observability_operator_grafana_organizations_total
-   ```
-   - Monitor for resources stuck in pending or error states
-
-2. **Reconciliation Success Rate**
-   ```promql
-   grafanaorganization:reconciliation_success_rate
-   ```
-   - Should be >95% under normal conditions
-   - Should be <5% under normal conditions
-
-### Custom Queries
-
-#### Tenant Distribution
-```promql
-topk(10, observability_operator_grafana_organization_tenants)
-```
 
 ## Extending the code to provide more observability data
 

@@ -39,12 +39,12 @@ observability_operator_grafana_organization_tenants == 1
 ```promql
 # Percentage of healthy organizations (active status)
 (
-  observability_operator_grafana_organizations_total{status="active"} /
-  sum(observability_operator_grafana_organizations_total)
+  count(observability_operator_grafana_organization_info{status="active"}) by (org_id) /
+  count(observability_operator_grafana_organizations_info) by (org_id)
 ) * 100
 
 # Organizations that should be investigated
-observability_operator_grafana_organizations_total{status!="active"}
+count(observability_operator_grafana_organizations_info{status!="active"}) by (org_id)
 ```
 
 ## Dashboard Queries
@@ -52,13 +52,10 @@ observability_operator_grafana_organizations_total{status!="active"}
 ### Summary Stats for Dashboard
 ```promql
 # For stat panels
-sum(observability_operator_grafana_organizations_total)
-observability_operator_grafana_organizations_total{status="active"}
-observability_operator_grafana_organizations_total{status="pending"}
-observability_operator_grafana_organizations_total{status="error"}
-
-# For tables
-observability_operator_grafana_organization_info
+count(observability_operator_grafana_organizations_info) by (org_id)
+count(observability_operator_grafana_organizations_info{status="active"}) by (org_id)
+count(observability_operator_grafana_organizations_info{status="pending"}) by (org_id)
+count(observability_operator_grafana_organizations_info{status="error"}) by (org_id)
 ```
 
 ## Custom Recording Rules
@@ -68,7 +65,7 @@ You can create custom recording rules for commonly used queries:
 ```yaml
 # Example recording rules
 - record: grafanaorg:total_by_status
-  expr: sum(observability_operator_grafana_organizations_total) by (status)
+  expr: sum(observability_operator_grafana_organizations_info) by (status)
 ```
 
 These queries provide comprehensive monitoring coverage for your GrafanaOrganization resources and can be used in dashboards, alerts, and operational runbooks.
