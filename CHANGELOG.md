@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.43.1] - 2025-10-07
+
 ### Fixed
 
 - Fix `ScrapeConfig` support to only be available for observability-bundles 2.2.0 (v32+).
@@ -681,7 +683,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.43.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.43.1...HEAD
+[0.43.1]: https://github.com/giantswarm/observability-operator/compare/v0.43.0...v0.43.1
 [0.43.0]: https://github.com/giantswarm/observability-operator/compare/v0.42.0...v0.43.0
 [0.42.0]: https://github.com/giantswarm/observability-operator/compare/v0.41.0...v0.42.0
 [0.41.0]: https://github.com/giantswarm/observability-operator/compare/v0.40.0...v0.41.0
