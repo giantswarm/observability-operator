@@ -164,7 +164,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	logger := log.FromContext(ctx)
 
 	// Determine initial status based on current state
-	orgStatus := pending
+	orgStatus := "pending"
 	if grafanaOrganization.Status.OrgID > 0 {
 		orgStatus = "active"
 	}

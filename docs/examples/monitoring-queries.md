@@ -9,9 +9,6 @@ This document provides example PromQL queries for monitoring GrafanaOrganization
 # Get all organization details
 observability_operator_grafana_organization_info
 
-# Organizations with finalizers
-observability_operator_grafana_organization_info{has_finalizer="true"}
-
 # Organizations without Grafana org ID (not yet created)
 observability_operator_grafana_organization_info{org_id="0"}
 
