@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Refactor webhook test suite architecture to use shared testutil package and individual test suites per API version
+
 ## [0.43.1] - 2025-10-07
 
 ### Fixed
