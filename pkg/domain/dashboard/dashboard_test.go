@@ -142,3 +142,55 @@ func TestUIDExtraction(t *testing.T) {
 		})
 	}
 }
+
+func TestContentWithoutID(t *testing.T) {
+	content := map[string]any{
+		"uid":   "test-uid",
+		"title": "Test Dashboard",
+		"id":    123, // Should be removed
+	}
+
+	d := dashboard.New("test-org", content)
+	contentWithoutID := d.ContentWithoutID()
+
+	if _, hasID := contentWithoutID["id"]; hasID {
+		t.Error("Expected 'id' field to be removed from prepared content")
+	}
+
+	if contentWithoutID["uid"] != "test-uid" {
+		t.Error("Expected 'uid' field to be preserved")
+	}
+
+	if contentWithoutID["title"] != "Test Dashboard" {
+		t.Error("Expected 'title' field to be preserved")
+	}
+
+	// Ensure original content is not modified (domain object should return copy)
+	originalContent := d.Content()
+	if _, hasID := originalContent["id"]; !hasID {
+		t.Error("Original domain object content should still have 'id' field")
+	}
+}
+
+func TestContentWithoutIDWithoutID(t *testing.T) {
+	content := map[string]any{
+		"uid":   "test-uid",
+		"title": "Test Dashboard",
+		// No ID field
+	}
+
+	d := dashboard.New("test-org", content)
+	contentWithoutID := d.ContentWithoutID()
+
+	if len(contentWithoutID) != 2 {
+		t.Errorf("Expected 2 fields in prepared content, got %d", len(contentWithoutID))
+	}
+
+	if contentWithoutID["uid"] != "test-uid" {
+		t.Error("Expected 'uid' field to be preserved")
+	}
+
+	if contentWithoutID["title"] != "Test Dashboard" {
+		t.Error("Expected 'title' field to be preserved")
+	}
+}

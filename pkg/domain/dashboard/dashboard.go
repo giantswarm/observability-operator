@@ -40,6 +40,13 @@ func (d *Dashboard) Content() map[string]any {
 	return content
 }
 
+// ContentWithoutID  removes the "id" field from the content which can cause conflicts during dashboard creation/update and returns it
+func (d Dashboard) ContentWithoutID() map[string]any {
+	content := d.Content()
+	delete(content, "id")
+	return content
+}
+
 // Validate performs domain validation logic
 func (d *Dashboard) Validate() []error {
 	var errors []error

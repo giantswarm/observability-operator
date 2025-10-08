@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 func TestDatasourceTempo(t *testing.T) {
@@ -110,55 +111,39 @@ func TestDatasourceMimirCardinality(t *testing.T) {
 func TestGenerateDatasources(t *testing.T) {
 	tests := []struct {
 		name           string
-		organization   Organization
+		organization   *organization.Organization
 		tracingEnabled bool
 		expectedLen    int
 		checkTempo     bool
 		checkShared    bool
 	}{
 		{
-			name: "regular organization with tracing enabled",
-			organization: Organization{
-				ID:        1,
-				Name:      "test-org",
-				TenantIDs: []string{"tenant1", "tenant2"},
-			},
+			name:           "regular organization with tracing enabled",
+			organization:   organization.New(1, "test-org", []string{"tenant1", "tenant2"}, nil, nil, nil),
 			tracingEnabled: true,
 			expectedLen:    4, // Loki, Mimir, Alertmanager, Tempo
 			checkTempo:     true,
 			checkShared:    false,
 		},
 		{
-			name: "regular organization with tracing disabled",
-			organization: Organization{
-				ID:        1,
-				Name:      "test-org",
-				TenantIDs: []string{"tenant1", "tenant2"},
-			},
+			name:           "regular organization with tracing disabled",
+			organization:   organization.New(1, "test-org", []string{"tenant1", "tenant2"}, nil, nil, nil),
 			tracingEnabled: false,
 			expectedLen:    3, // Loki, Mimir, Alertmanager (no Tempo)
 			checkTempo:     false,
 			checkShared:    false,
 		},
 		{
-			name: "shared organization with tracing enabled",
-			organization: Organization{
-				ID:        1,
-				Name:      "Shared Org",
-				TenantIDs: []string{"tenant1"},
-			},
+			name:           "shared organization with tracing enabled",
+			organization:   organization.New(1, "Shared Org", []string{"tenant1"}, nil, nil, nil),
 			tracingEnabled: true,
 			expectedLen:    5, // Loki, Mimir, Alertmanager, Tempo, Cardinality
 			checkTempo:     true,
 			checkShared:    true,
 		},
 		{
-			name: "shared organization with tracing disabled",
-			organization: Organization{
-				ID:        1,
-				Name:      "Shared Org",
-				TenantIDs: []string{"tenant1"},
-			},
+			name:           "shared organization with tracing disabled",
+			organization:   organization.New(1, "Shared Org", []string{"tenant1"}, nil, nil, nil),
 			tracingEnabled: false,
 			expectedLen:    4, // Loki, Mimir, Alertmanager, Cardinality (no Tempo)
 			checkTempo:     false,
@@ -181,7 +166,7 @@ func TestGenerateDatasources(t *testing.T) {
 
 			// Check that all datasources have the correct multi-tenant headers
 			expectedHeaderValue := "tenant1|tenant2"
-			if len(tt.organization.TenantIDs) == 1 {
+			if len(tt.organization.TenantIDs()) == 1 {
 				expectedHeaderValue = "tenant1"
 			}
 
