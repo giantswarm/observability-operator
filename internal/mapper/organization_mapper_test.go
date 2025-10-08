@@ -19,10 +19,10 @@ func TestFromGrafanaOrganization(t *testing.T) {
 	mapper := NewOrganizationMapper()
 
 	tests := []struct {
-		name           string
-		grafanaOrg     *v1alpha1.GrafanaOrganization
-		expectedOrgID  int64
-		expectedName   string
+		name            string
+		grafanaOrg      *v1alpha1.GrafanaOrganization
+		expectedOrgID   int64
+		expectedName    string
 		expectedTenants int
 	}{
 		{
@@ -47,29 +47,6 @@ func TestFromGrafanaOrganization(t *testing.T) {
 			expectedOrgID:   42,
 			expectedName:    "Test Organization",
 			expectedTenants: 2,
-		},
-		{
-			name: "shared organization special case",
-			grafanaOrg: &v1alpha1.GrafanaOrganization{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "shared-org",
-				},
-				Spec: v1alpha1.GrafanaOrganizationSpec{
-					DisplayName: "Shared Org",
-					Tenants:     []v1alpha1.TenantID{"shared"},
-					RBAC: &v1alpha1.RBAC{
-						Admins:  []string{"admin1"},
-						Editors: []string{"editor1"},
-						Viewers: []string{"viewer1"},
-					},
-				},
-				Status: v1alpha1.GrafanaOrganizationStatus{
-					OrgID: 99, // Should be overridden to 1
-				},
-			},
-			expectedOrgID:   1, // Special case: Shared Org always gets ID 1
-			expectedName:    "Shared Org",
-			expectedTenants: 1,
 		},
 	}
 

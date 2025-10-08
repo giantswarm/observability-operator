@@ -6,8 +6,9 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 	"github.com/grafana/grafana-openapi-client-go/models"
+
+	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 )
 
 // ConfigureDashboard configures a dashboard
@@ -58,7 +59,6 @@ func (s *Service) PublishDashboard(dashboard map[string]any) error {
 	}
 	return nil
 }
-
 
 // withinOrganization executes the given function within the context of the dashboard's organization
 func (s *Service) withinOrganization(ctx context.Context, dashboard *dashboard.Dashboard, fn func(ctx context.Context) error) error {
