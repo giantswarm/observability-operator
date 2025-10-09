@@ -41,7 +41,7 @@ func TestAPIs(t *testing.T) {
 var _ = BeforeSuite(func() {
 	// Create a new test suite instance
 	testSuite = testutil.NewWebhookTestSuite()
-	
+
 	// Set up the webhook test environment with all needed schemes and webhooks
 	config := testutil.WebhookSuiteConfig{
 		SuiteName: "V1Alpha1 Webhook Suite",
@@ -56,9 +56,9 @@ var _ = BeforeSuite(func() {
 			SetupGrafanaOrganizationWebhookWithManager,
 		},
 	}
-	
+
 	testSuite.SetupSuite(config)
-	
+
 	// Set the client for use in tests
 	k8sClient = testSuite.K8sClient
 })

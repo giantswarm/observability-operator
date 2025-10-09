@@ -226,7 +226,7 @@ func hasEnvTestBinaries(path string) bool {
 // with common default configurations
 func SetupWebhookTestSuite(webhookSetupFuncs ...WebhookSetupFunc) *WebhookTestSuite {
 	suite := NewWebhookTestSuite()
-	
+
 	config := WebhookSuiteConfig{
 		SuiteName: "Webhook Test Suite",
 		SchemeSetupFuncs: []SchemeSetupFunc{
@@ -243,7 +243,7 @@ func SetupWebhookTestSuite(webhookSetupFuncs ...WebhookSetupFunc) *WebhookTestSu
 		},
 		WebhookSetupFuncs: webhookSetupFuncs,
 	}
-	
+
 	suite.SetupSuite(config)
 	return suite
 }
