@@ -61,31 +61,37 @@ route:
 
   - receiver: team_atlas_github
     matchers:
+    - severity=~"ticket"
     - team="atlas"
     continue: true
 
   - receiver: team_phoenix_github
     matchers:
+    - severity=~"ticket"
     - team="phoenix"
     continue: true
 
   - receiver: team_shield_github
     matchers:
+    - severity=~"ticket"
     - team="shield"
     continue: true
 
   - receiver: team_rocket_github
     matchers:
+    - severity=~"ticket"
     - team="rocket"
     continue: true
 
   - receiver: team_honeybadger_github
     matchers:
+    - severity=~"ticket"
     - team="honeybadger"
     continue: true
 
   - receiver: team_tenet_github
     matchers:
+    - severity=~"ticket"
     - team="tenet"
     continue: true
 
