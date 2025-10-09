@@ -149,27 +149,6 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 	return nil
 }
 
-// listActiveGrafanaOrganizations retrieves all GrafanaOrganization CRs and converts them to domain objects
-func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx context.Context) ([]*organization.Organization, error) {
-	organizationList := &v1alpha1.GrafanaOrganizationList{}
-	err := r.Client.List(ctx, organizationList)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list grafana organizations: %w", err)
-	}
-
-	organizations := make([]*organization.Organization, 0, len(organizationList.Items))
-	for _, org := range organizationList.Items {
-		if !org.GetDeletionTimestamp().IsZero() {
-			// Skip organizations that are being deleted
-			// see https://github.com/giantswarm/observability-operator/pull/525
-			continue
-		}
-		organizations = append(organizations, r.organizationMapper.FromGrafanaOrganization(&org))
-	}
-
-	return organizations, nil
-}
-
 // reconcileCreate ensures the Grafana organization described in GrafanaOrganization CR is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the CR
@@ -238,18 +217,47 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		logger.Info("updated datasources in the GrafanaOrganization status")
 	}
 
-	// Configure SSO settings for all organizations
+	err = r.configureGrafanaSSOSettings(ctx, grafanaService)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+// listActiveGrafanaOrganizations retrieves all GrafanaOrganization CRs and converts them to domain objects
+func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx context.Context) ([]*organization.Organization, error) {
+	organizationList := &v1alpha1.GrafanaOrganizationList{}
+	err := r.Client.List(ctx, organizationList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list grafana organizations: %w", err)
+	}
+
+	organizations := make([]*organization.Organization, 0, len(organizationList.Items))
+	for _, org := range organizationList.Items {
+		if !org.GetDeletionTimestamp().IsZero() {
+			// Skip organizations that are being deleted
+			// see https://github.com/giantswarm/observability-operator/pull/525
+			continue
+		}
+		organizations = append(organizations, r.organizationMapper.FromGrafanaOrganization(&org))
+	}
+
+	return organizations, nil
+}
+
+// configureGrafanaSSOSettings configures Grafana SSO settings based on all active GrafanaOrganizations
+func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
 	allOrganizations, err := r.listActiveGrafanaOrganizations(ctx)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get all organizations for SSO configuration: %w", err)
+		return fmt.Errorf("failed to get all organizations for SSO configuration: %w", err)
 	}
 
 	err = grafanaService.ConfigureSSOSettings(ctx, allOrganizations)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to configure SSO: %w", err)
+		return fmt.Errorf("failed to configure SSO: %w", err)
 	}
-
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // reconcileDelete deletes the grafana organization.
@@ -273,15 +281,9 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		return fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 	}
 
-	// Configure Grafana RBAC for remaining organizations
-	allOrganizations, err := r.listActiveGrafanaOrganizations(ctx)
+	err = r.configureGrafanaSSOSettings(ctx, grafanaService)
 	if err != nil {
-		return fmt.Errorf("failed to get all organizations for SSO configuration: %w", err)
-	}
-
-	err = grafanaService.ConfigureSSOSettings(ctx, allOrganizations)
-	if err != nil {
-		return fmt.Errorf("failed to configure Grafana SSO: %w", err)
+		return err
 	}
 
 	// Finalizer handling needs to come last.

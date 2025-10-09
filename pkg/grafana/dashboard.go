@@ -16,8 +16,12 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 	return s.withinOrganization(ctx, dashboard, func(ctx context.Context) error {
 		logger := log.FromContext(ctx)
 
+		dashboardContent := dashboard.Content()
+		// removes the "id" field from the content which can cause conflicts during dashboard creation/update
+		delete(dashboardContent, "id")
+
 		// Create or update dashboard
-		err := s.PublishDashboard(dashboard.ContentWithoutID())
+		err := s.PublishDashboard(dashboardContent)
 		if err != nil {
 			return fmt.Errorf("failed to update dashboard: %w", err)
 		}
