@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package v1alpha1
 
 import (
 	"context"
@@ -28,6 +28,7 @@ import (
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
+// GrafanaOrganizationWebhookSpecs returns the Describe blocks for testing the GrafanaOrganization webhook
 var _ = Describe("GrafanaOrganization Validation", func() {
 	var ctx context.Context
 

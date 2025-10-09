@@ -32,6 +32,7 @@ import (
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller"
 	webhookcorev1 "github.com/giantswarm/observability-operator/internal/webhook/v1"
+	webhookcorev1alpha1 "github.com/giantswarm/observability-operator/internal/webhook/v1alpha1"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
@@ -325,11 +326,11 @@ func setupApplication() error {
 		if err = webhookcorev1.SetupAlertmanagerConfigSecretWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("unable to create webhook (Secret): %w", err)
 		}
-		if err = webhookcorev1.SetupGrafanaOrganizationWebhookWithManager(mgr); err != nil {
-			return fmt.Errorf("unable to create webhook (GrafanaOrganization): %w", err)
-		}
 		if err = webhookcorev1.SetupDashboardConfigMapWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("unable to create webhook (DashboardConfigMap): %w", err)
+		}
+		if err = webhookcorev1alpha1.SetupGrafanaOrganizationWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("unable to create webhook (GrafanaOrganization): %w", err)
 		}
 	}
 	//+kubebuilder:scaffold:builder
