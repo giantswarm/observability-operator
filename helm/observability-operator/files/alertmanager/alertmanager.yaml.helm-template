@@ -26,7 +26,7 @@ route:
     group_wait: 30s
     group_interval: 30s
     repeat_interval: 15m
-
+  
   {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
   - receiver: blackhole
     matchers:
@@ -59,6 +59,36 @@ route:
     matchers:
     - alertname=~"Falco.*"
     continue: false
+
+  - receiver: team_atlas_github
+    matchers:
+    - team="atlas"
+    continue: true
+
+  - receiver: team_phoenix_github
+    matchers:
+    - team="phoenix"
+    continue: true
+
+  - receiver: team_shield_github
+    matchers:
+    - team="shield"
+    continue: true
+
+  - receiver: team_rocket_github
+    matchers:
+    - team="rocket"
+    continue: true
+
+  - receiver: team_honeybadger_github
+    matchers:
+    - team="honeybadger"
+    continue: true
+
+  - receiver: team_tenet_github
+    matchers:
+    - team="tenet"
+    continue: true
 
   - receiver: team_tenet_slack
     repeat_interval: 14d
@@ -259,6 +289,30 @@ receivers:
       proxy_from_environment: true
     send_resolved: true
     actions: *slack-actions
+
+- name: team_atlas_github
+  webhook_configs:
+  - url: "http://alertmanager-to-github.giantswarm.svc:8080/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/atlas"
+
+- name: team_phoenix_github
+  webhook_configs:
+  - url: "http://alertmanager-to-github.giantswarm.svc:8080/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/phoenix"
+
+- name: team_shield_github
+  webhook_configs:
+  - url: "http://alertmanager-to-github.giantswarm.svc:8080/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/shield"
+
+- name: team_rocket_github
+  webhook_configs:
+  - url: "http://alertmanager-to-github.giantswarm.svc:8080/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/rocket"
+
+- name: team_honeybadger_github
+  webhook_configs:
+  - url: "http://alertmanager-to-github.giantswarm.svc:8080/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/honeybadger"
+
+- name: team_tenet_github
+  webhook_configs:
+  - url: "http://alertmanager-to-github.giantswarm.svc:8080/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/tenet"
 
 {{- if .Values.monitoring.opsgenieApiKey }}
 - name: opsgenie_router
