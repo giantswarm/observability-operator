@@ -26,7 +26,6 @@ route:
     group_wait: 30s
     group_interval: 30s
     repeat_interval: 15m
-  
   {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
   - receiver: blackhole
     matchers:
