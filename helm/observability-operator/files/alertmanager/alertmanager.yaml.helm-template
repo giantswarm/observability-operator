@@ -11,6 +11,15 @@ templates:
   - notification-template.tmpl
   - url-template.tmpl
 
+time_intervals:
+  - name: business-hours
+    time_intervals:
+    - times:
+      - start_time: 08:00
+        end_time: 18:00
+      weekdays: ['monday:friday']
+      location: "Europe/Berlin"
+
 route:
   group_by: [alertname, cluster_id, installation, status, team]
   group_interval: 15m
@@ -76,19 +85,30 @@ route:
 {{- end }}
 
 {{- if .Values.alerting.pagerdutyToken }}
-  # PagerDuty
+  # PagerDuty pipeline=stable
   - receiver: pagerduty
     matchers:
     - severity="page"
+    - pipeline="stable"
     continue: true
 
+  # PagerDuty pipeline=stable-testing
   - receiver: pagerduty
     matchers:
-    - alertname="Heartbeat"
+    - severity="page"
+    - pipeline="stable-testing"
+    active_time_intervals:
+    - business-hours
     continue: true
-    group_wait: 30s
-    group_interval: 30s
-    repeat_interval: 15m
+
+  # PagerDuty can't handle heartbeats for now
+  #- receiver: pagerduty
+  #  matchers:
+  #  - alertname="Heartbeat"
+  #  continue: true
+  #  group_wait: 30s
+  #  group_interval: 30s
+  #  repeat_interval: 15m
 {{- end }}
 
   # Team Atlas Slack
