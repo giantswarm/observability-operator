@@ -85,20 +85,33 @@ route:
 {{- end }}
 
 {{- if .Values.alerting.pagerdutyToken }}
+
+  {{- if eq .Values.managementCluster.pipeline "stable" }}
   # PagerDuty pipeline=stable
   - receiver: pagerduty
     matchers:
     - severity="page"
     - pipeline="stable"
+    - all_pipelines!="true"
     continue: true
+  {{- end }}
 
+  {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
   # PagerDuty pipeline=stable-testing
   - receiver: pagerduty
     matchers:
     - severity="page"
     - pipeline="stable-testing"
+    - all_pipelines!="true"
     active_time_intervals:
     - business-hours
+    continue: true
+  {{- end }}
+
+  # PagerDuty all-pipelines
+  - receiver: pagerduty
+    matchers:
+    - all_pipelines="true"
     continue: true
 
   # PagerDuty can't handle heartbeats for now
