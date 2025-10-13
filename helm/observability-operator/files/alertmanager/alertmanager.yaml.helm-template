@@ -3,7 +3,7 @@ global:
   http_config:
     proxy_from_environment: true
   slack_api_url: "https://slack.com/api/chat.postMessage"
-{{- if .Values.alerting.pagerdutyToken }}
+{{- if .Values.alerting.pagerdutyTokens }}
   pagerduty_url: "https://events.eu.pagerduty.com/v2/enqueue"
 {{- end }}
 
@@ -84,38 +84,41 @@ route:
     continue: true
 {{- end }}
 
-{{- if .Values.alerting.pagerdutyToken }}
+{{- range $.Values.alerting.pagerdutyTokens }}
 
-  {{- if eq .Values.managementCluster.pipeline "stable" }}
+  {{- if eq $.Values.managementCluster.pipeline "stable" }}
   # PagerDuty pipeline=stable
-  - receiver: pagerduty
+  - receiver: pagerduty-{{ .team }}
     matchers:
     - severity="page"
     - pipeline="stable"
     - all_pipelines!="true"
+    - team="{{ .team }}"
     continue: true
   {{- end }}
 
-  {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
+  {{- if eq $.Values.managementCluster.pipeline "stable-testing" }}
   # PagerDuty pipeline=stable-testing
-  - receiver: pagerduty
+  - receiver: pagerduty-{{ .team }}
     matchers:
     - severity="page"
     - pipeline="stable-testing"
     - all_pipelines!="true"
+    - team="{{ .team }}"
     active_time_intervals:
     - business-hours
     continue: true
   {{- end }}
 
   # PagerDuty all-pipelines
-  - receiver: pagerduty
+  - receiver: pagerduty-{{ .team }}
     matchers:
     - all_pipelines="true"
+    - team="{{ .team }}"
     continue: true
 
   # PagerDuty can't handle heartbeats for now
-  #- receiver: pagerduty
+  #- receiver: pagerduty-{{ .team }}
   #  matchers:
   #  - alertname="Heartbeat"
   #  continue: true
@@ -300,11 +303,11 @@ receivers:
     tags: '{{`{{ (index .Alerts 0).Labels.alertname }},{{ (index .Alerts 0).Labels.cluster_type }},{{ (index .Alerts 0).Labels.severity }},{{ (index .Alerts 0).Labels.team }},{{ (index .Alerts 0).Labels.area }},{{ (index .Alerts 0).Labels.service_priority }},{{ (index .Alerts 0).Labels.provider }},{{ (index .Alerts 0).Labels.installation }},{{ (index .Alerts 0).Labels.pipeline }},{{ (index .Alerts 0).Labels.customer }}`}}'
 {{- end }}
 
-{{- if .Values.alerting.pagerdutyToken }}
-- name: pagerduty
+{{- range $.Values.alerting.pagerdutyTokens }}
+- name: pagerduty-{{ .team }}
   pagerduty_configs:
   # TODO: Replace opsgenie templates used here with something else.
-  - routing_key: {{ .Values.alerting.pagerdutyToken }}
+  - routing_key: {{ .token }}
     source: '{{`{{ template "opsgenie.default.source" . }}`}}'
     description: '{{`{{ template "opsgenie.default.message" . }}`}}'
     # There is currently no way to send all alerts labels to PagerDuty as details.

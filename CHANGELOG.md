@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changes
 
 - Alertmanager / PagerDuty: only send alerts that have to page
+- Alertmanager / PagerDuty: team routing with 1 token per team
 
 ## [0.43.1] - 2025-10-07
 
