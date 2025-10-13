@@ -17,7 +17,11 @@ alerting:
   alertmanagerURL: ""
   grafanaAddress: ""
   slackAPIToken: ""
+  # -- Per-team pagerduty tokens
   pagerdutyTokens: {}
+  # Expected pagerdutyTokens contents:
+  #  - team: teamA
+  #    token: token-for-teamA
 
 monitoring:
   agent: alloy
