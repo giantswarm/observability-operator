@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Refactored Grafana package to use domain organization objects and moved status updates to controller layer.
 
+## [0.44.0] - 2025-10-14
+
+### Changed
+
+- Alertmanager / PagerDuty: only send alerts that have to page
+- Alertmanager / PagerDuty: team routing with 1 token per team
+
 ## [0.43.1] - 2025-10-07
 
 ### Fixed
@@ -687,7 +694,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.43.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.44.0...HEAD
+[0.44.0]: https://github.com/giantswarm/observability-operator/compare/v0.43.1...v0.44.0
 [0.43.1]: https://github.com/giantswarm/observability-operator/compare/v0.43.0...v0.43.1
 [0.43.0]: https://github.com/giantswarm/observability-operator/compare/v0.42.0...v0.43.0
 [0.42.0]: https://github.com/giantswarm/observability-operator/compare/v0.41.0...v0.42.0
