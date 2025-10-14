@@ -84,7 +84,7 @@ echo "Templating helm chart with test values..."
 echo "Namespace: alertmanager"
 echo "Setting monitoring.opsgenieApiKey to placeholder value"
 RENDERED_FILE="$TMP_DIR/rendered.yaml"
-helm template observability-operator "$PROJECT_ROOT/helm/observability-operator" --namespace alertmanager --set monitoring.opsgenieApiKey="apikey" --set alerting.pagerdutyToken="token" > "$RENDERED_FILE"
+helm template observability-operator "$PROJECT_ROOT/helm/observability-operator" --namespace alertmanager --set monitoring.opsgenieApiKey="apikey" --set alerting.teams[0].name="testteam" --set alerting.teams[0].pagerdutyToken="dummytoken" > "$RENDERED_FILE"
 
 echo "✓ Helm chart rendered successfully"
 echo "Output file: $RENDERED_FILE"
