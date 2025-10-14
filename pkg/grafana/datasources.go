@@ -12,11 +12,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 // ConfigureDatasources ensures the datasources for the given organization are up to date.
 // It creates, updates, or deletes datasources as necessary to match the desired state.
-func (s *Service) ConfigureDatasource(ctx context.Context, organization Organization) ([]Datasource, error) {
+func (s *Service) ConfigureDatasource(ctx context.Context, organization *organization.Organization) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
 	// Generate the desired datasources for the organization
@@ -24,7 +25,7 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 
 	// Configure Grafana client to use the correct organization
 	currentOrgID := s.grafanaClient.OrgID()
-	s.grafanaClient.WithOrgID(organization.ID)
+	s.grafanaClient.WithOrgID(organization.ID())
 	defer s.grafanaClient.WithOrgID(currentOrgID)
 
 	// Fetch the currently configured datasources in Grafana
@@ -89,9 +90,9 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization Organiza
 // generateDatasources generates the list of datasources for a given organization.
 // It configures the datasources to use the appropriate multi-tenant headers based on the organization's tenant IDs.
 // It returns the list of desired datasources.
-func (s *Service) generateDatasources(organization Organization) (datasources []Datasource) {
+func (s *Service) generateDatasources(organization *organization.Organization) (datasources []Datasource) {
 	// Multi-tenant header value is a pipe-separated list of tenant IDs
-	multiTenantIDsHeaderValue := strings.Join(organization.TenantIDs, "|")
+	multiTenantIDsHeaderValue := strings.Join(organization.TenantIDs(), "|")
 
 	// Add Loki datasource
 	lokiDatasource := DatasourceLoki().Merge(Datasource{
@@ -163,14 +164,14 @@ func (s *Service) generateDatasources(organization Organization) (datasources []
 		}))
 	}
 
-	if organization.Name == SharedOrg.Name {
+	if organization.Name() == SharedOrg.Name() {
 		// Add Mimir Cardinality datasources to the "Shared Org"
 		datasources = append(datasources, DatasourceMimirCardinality().Merge(Datasource{
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
 			},
 			SecureJSONData: map[string]string{
-				"httpHeaderValue1": strings.Join(organization.TenantIDs, "|"),
+				"httpHeaderValue1": strings.Join(organization.TenantIDs(), "|"),
 			},
 		}))
 	}
