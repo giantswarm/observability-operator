@@ -26,7 +26,7 @@ mimir.rules.kubernetes "{{ . }}" {
     }
   }
   {{- else }}
-  address = "http://mimir-ruler.mimir.svc:8080/"
+  address = "http://mimir-ruler.mimir.svc:80/"
   {{- end }}
   mimir_namespace_prefix = "{{ $.ClusterID }}"
   tenant_id = "{{ . }}"

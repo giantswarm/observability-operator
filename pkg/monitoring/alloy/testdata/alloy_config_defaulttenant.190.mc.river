@@ -9,7 +9,7 @@ remote.kubernetes.secret "credentials" {
 }
 // load rules for tenant giantswarm
 mimir.rules.kubernetes "giantswarm" {
-  address = "http://mimir-ruler.mimir.svc:8080/"
+  address = "http://mimir-ruler.mimir.svc:80/"
   mimir_namespace_prefix = "dummy-cluster"
   tenant_id = "giantswarm"
   rule_selector {

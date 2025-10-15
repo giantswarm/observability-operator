@@ -9,7 +9,7 @@ remote.kubernetes.secret "credentials" {
 }
 // load rules for tenant tenant1
 mimir.rules.kubernetes "tenant1" {
-  address = "http://mimir-ruler.mimir.svc:8080/"
+  address = "http://mimir-ruler.mimir.svc:80/"
   mimir_namespace_prefix = "dummy-cluster"
   tenant_id = "tenant1"
   rule_selector {
@@ -25,7 +25,7 @@ mimir.rules.kubernetes "tenant1" {
 }
 // load rules for tenant tenant2
 mimir.rules.kubernetes "tenant2" {
-  address = "http://mimir-ruler.mimir.svc:8080/"
+  address = "http://mimir-ruler.mimir.svc:80/"
   mimir_namespace_prefix = "dummy-cluster"
   tenant_id = "tenant2"
   rule_selector {
