@@ -25,6 +25,25 @@ func GenerateGenericSecret(secretName string, secretNamespace string,
 	return secret
 }
 
+func GenerateGenericSecretWithMultipleKeys(secretName string, secretNamespace string,
+	data map[string]string) *corev1.Secret {
+	secretData := make(map[string][]byte)
+	for key, value := range data {
+		secretData[key] = []byte(value)
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: secretNamespace,
+		},
+		Data: secretData,
+		Type: "Opaque",
+	}
+
+	return secret
+}
+
 func DeleteSecret(secretName string, secretNamespace string,
 	ctx context.Context, providedClient client.Client) error {
 	current := &corev1.Secret{
