@@ -342,23 +342,23 @@ receivers:
 
 - name: team_phoenix_github
   webhook_configs:
-  - url: "http://alertmanager-to-github.giantswarm.svc:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/phoenix"
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/phoenix"
 
 - name: team_shield_github
   webhook_configs:
-  - url: "http://alertmanager-to-github.giantswarm.svc:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/shield"
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/shield"
 
 - name: team_rocket_github
   webhook_configs:
-  - url: "http://alertmanager-to-github.giantswarm.svc:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/rocket"
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/rocket"
 
 - name: team_honeybadger_github
   webhook_configs:
-  - url: "http://alertmanager-to-github.giantswarm.svc:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/honeybadger"
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/honeybadger"
 
 - name: team_tenet_github
   webhook_configs:
-  - url: "http://alertmanager-to-github.giantswarm.svc:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/tenet"
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/tenet"
 
 {{- if .Values.monitoring.opsgenieApiKey }}
 - name: opsgenie_router
