@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add GitHub webhook receivers for team-based alert routing to create GitHub issues for alerts with severity "ticket"
+ 
 ## [0.45.1] - 2025-10-15
 
 ### Changed
