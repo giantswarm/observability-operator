@@ -10,13 +10,13 @@ templates:
   - url-template.tmpl
 
 time_intervals:
-  - name: business-hours
-    time_intervals:
-    - times:
-      - start_time: 08:00
-        end_time: 18:00
-      weekdays: ['monday:friday']
-      location: "Europe/Berlin"
+- name: business-hours
+  time_intervals:
+  - times:
+    - start_time: 08:00
+      end_time: 18:00
+    weekdays: ['monday:friday']
+    location: "Europe/Berlin"
 
 route:
   group_by: [alertname, cluster_id, installation, status, team]
