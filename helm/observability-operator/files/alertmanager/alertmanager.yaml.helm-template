@@ -124,7 +124,7 @@ route:
   {{- fail "team must contain a name" }}
   {{- end }}
 
-  {{- if .token }}
+  {{- if .pagerdutyToken }}
 
   {{- if eq $.Values.managementCluster.pipeline "stable" }}
   # PagerDuty pipeline=stable
@@ -369,11 +369,11 @@ receivers:
 {{- end }}
 
 {{- range $.Values.alerting.teams }}
-{{- if .token }}
+{{- if .pagerdutyToken }}
 - name: pagerduty-{{ .name }}
   pagerduty_configs:
   # TODO: Replace opsgenie templates used here with something else.
-  - routing_key: {{ .token }}
+  - routing_key: {{ .pagerdutyToken }}
     source: '{{`{{ template "opsgenie.default.source" . }}`}}'
     description: '{{`{{ template "opsgenie.default.message" . }}`}}'
     # There is currently no way to send all alerts labels to PagerDuty as details.
