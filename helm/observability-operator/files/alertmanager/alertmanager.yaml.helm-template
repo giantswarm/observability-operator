@@ -338,7 +338,7 @@ receivers:
 
 - name: team_atlas_github
   webhook_configs:
-  - url: "http://alertmanager-to-github.giantswarm.svc:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/atlas"
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/atlas"
 
 - name: team_phoenix_github
   webhook_configs:
