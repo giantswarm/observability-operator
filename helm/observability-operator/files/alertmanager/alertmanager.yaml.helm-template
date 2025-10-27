@@ -26,13 +26,28 @@ route:
   receiver: root
 
   routes:
+  {{- if .Values.alerting.healthcheckURL }}
+  # This is for pagerduty
   - receiver: heartbeat
     matchers:
     - alertname="Heartbeat"
+    # TODO: switch to false once opsgenie is gone
     continue: true
     group_wait: 30s
     group_interval: 30s
     repeat_interval: 15m
+  {{- end }}
+  
+  {{- if .Values.monitoring.opsgenieApiKey }}
+  # TODO: Remove once opsgenie is gone
+  - receiver: mimir-heartbeat
+    matchers:
+    - alertname="Heartbeat"
+    continue: false
+    group_wait: 30s
+    group_interval: 30s
+    repeat_interval: 15m
+  {{- end }}
 
   {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
   - receiver: blackhole
@@ -156,15 +171,6 @@ route:
     - all_pipelines="true"
     - team="{{ .team }}"
     continue: true
-
-  # PagerDuty can't handle heartbeats for now
-  #- receiver: pagerduty-{{ .name }}
-  #  matchers:
-  #  - alertname="Heartbeat"
-  #  continue: true
-  #  group_wait: 30s
-  #  group_interval: 30s
-  #  repeat_interval: 15m
   {{- end }}
 {{- end }}
 
@@ -213,8 +219,16 @@ route:
 receivers:
 - name: root
 
-{{- if .Values.monitoring.opsgenieApiKey }}
+{{- if .Values.alerting.healthcheckURL }}
+# We use healthchecks.io to trigger heartbeat on pagerduty
 - name: heartbeat
+  webhook_configs:
+  - send_resolved: false
+    url: {{ .Values.alerting.healthcheckURL }}
+{{- end }}
+
+{{- if .Values.monitoring.opsgenieApiKey }}
+- name: mimir-heartbeat
   webhook_configs:
   - send_resolved: false
     http_config:
