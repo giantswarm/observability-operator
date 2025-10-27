@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.0] - 2025-10-27
+
 ### Added
 
 - Add GitHub webhook receivers for team-based alert routing to create GitHub issues for alerts with severity "ticket"
@@ -710,7 +712,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.45.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.46.0...HEAD
+[0.46.0]: https://github.com/giantswarm/observability-operator/compare/v0.45.1...v0.46.0
 [0.45.1]: https://github.com/giantswarm/observability-operator/compare/v0.45.0...v0.45.1
 [0.45.0]: https://github.com/giantswarm/observability-operator/compare/v0.44.0...v0.45.0
 [0.44.0]: https://github.com/giantswarm/observability-operator/compare/v0.43.1...v0.44.0
