@@ -133,7 +133,7 @@ route:
     - severity="page"
     - pipeline="stable"
     - all_pipelines!="true"
-    - team="{{ .team }}"
+    - team="{{ .name }}"
     continue: true
   {{- end }}
 
@@ -144,7 +144,7 @@ route:
     - severity="page"
     - pipeline="stable-testing"
     - all_pipelines!="true"
-    - team="{{ .team }}"
+    - team="{{ .name }}"
     active_time_intervals:
     - business-hours
     continue: true
@@ -154,7 +154,7 @@ route:
   - receiver: pagerduty-{{ .name }}
     matchers:
     - all_pipelines="true"
-    - team="{{ .team }}"
+    - team="{{ .name }}"
     continue: true
 
   # PagerDuty can't handle heartbeats for now
