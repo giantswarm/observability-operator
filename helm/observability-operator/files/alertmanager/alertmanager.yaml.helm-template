@@ -67,6 +67,42 @@ route:
     - alertname=~"Falco.*"
     continue: false
 
+  - receiver: team_atlas_github
+    matchers:
+    - severity=~"ticket"
+    - team="atlas"
+    continue: true
+
+  - receiver: team_phoenix_github
+    matchers:
+    - severity=~"ticket"
+    - team="phoenix"
+    continue: true
+
+  - receiver: team_shield_github
+    matchers:
+    - severity=~"ticket"
+    - team="shield"
+    continue: true
+
+  - receiver: team_rocket_github
+    matchers:
+    - severity=~"ticket"
+    - team="rocket"
+    continue: true
+
+  - receiver: team_honeybadger_github
+    matchers:
+    - severity=~"ticket"
+    - team="honeybadger"
+    continue: true
+
+  - receiver: team_tenet_github
+    matchers:
+    - severity=~"ticket"
+    - team="tenet"
+    continue: true
+
   - receiver: team_tenet_slack
     repeat_interval: 14d
     matchers:
@@ -88,7 +124,7 @@ route:
   {{- fail "team must contain a name" }}
   {{- end }}
 
-  {{- if .token }}
+  {{- if .pagerdutyToken }}
 
   {{- if eq $.Values.managementCluster.pipeline "stable" }}
   # PagerDuty pipeline=stable
@@ -301,6 +337,30 @@ receivers:
     send_resolved: true
     actions: *slack-actions
 
+- name: team_atlas_github
+  webhook_configs:
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/atlas"
+
+- name: team_phoenix_github
+  webhook_configs:
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/phoenix"
+
+- name: team_shield_github
+  webhook_configs:
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/shield"
+
+- name: team_rocket_github
+  webhook_configs:
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/rocket"
+
+- name: team_honeybadger_github
+  webhook_configs:
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/honeybadger"
+
+- name: team_tenet_github
+  webhook_configs:
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/tenet"
+
 {{- if .Values.monitoring.opsgenieApiKey }}
 - name: opsgenie_router
   opsgenie_configs:
@@ -309,11 +369,11 @@ receivers:
 {{- end }}
 
 {{- range $.Values.alerting.teams }}
-{{- if .token }}
+{{- if .pagerdutyToken }}
 - name: pagerduty-{{ .name }}
   pagerduty_configs:
   # TODO: Replace opsgenie templates used here with something else.
-  - routing_key: {{ .token }}
+  - routing_key: {{ .pagerdutyToken }}
     source: '{{`{{ template "opsgenie.default.source" . }}`}}'
     description: '{{`{{ template "opsgenie.default.message" . }}`}}'
     # There is currently no way to send all alerts labels to PagerDuty as details.
