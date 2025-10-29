@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed queue configuration flags not being applied to Alloy remote write configuration
+
 ## [0.46.1] - 2025-10-28
 
 ### Fixed
