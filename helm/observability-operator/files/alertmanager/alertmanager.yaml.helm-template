@@ -26,7 +26,7 @@ route:
   receiver: root
 
   routes:
-  {{- if .Values.alerting.cronitorApiKey }}
+  {{- if .Values.alerting.cronitorHeartbeatPingKey }}
   # This is for pagerduty via Cronitor
   - receiver: heartbeat
     matchers:
@@ -218,12 +218,12 @@ route:
 receivers:
 - name: root
 
-{{- if .Values.alerting.cronitorApiKey }}
+{{- if .Values.alerting.cronitorHeartbeatPingKey }}
 # We use Cronitor to trigger heartbeat on pagerduty
 - name: heartbeat
   webhook_configs:
   - send_resolved: false
-    url: https://cronitor.link/p/{{ .Values.alerting.cronitorApiKey }}/mimir-{{ .Values.managementCluster.name }}
+    url: https://cronitor.link/p/{{ .Values.alerting.cronitorHeartbeatPingKey }}/mimir-{{ .Values.managementCluster.name }}
 {{- end }}
 
 {{- if .Values.monitoring.opsgenieApiKey }}

@@ -83,12 +83,17 @@ spec:
               name: {{ include "resource.default.name" . }}-credentials
               key: opsgenieApiKey
         {{- end }}
-        {{- if .Values.alerting.cronitorApiKey }}
-        - name: CRONITOR_API_KEY
+        {{- if and .Values.alerting.cronitorHeartbeatPingKey .Values.alerting.cronitorHeartbeatManagementKey }}
+        - name: CRONITOR_HEARTBEAT_PING_KEY
           valueFrom:
             secretKeyRef:
               name: {{ include "resource.default.name" . }}-credentials
-              key: cronitorApiKey
+              key: cronitorHeartbeatPingKey
+        - name: CRONITOR_HEARTBEAT_MANAGEMENT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "resource.default.name" . }}-credentials
+              key: cronitorHeartbeatManagementKey
         {{- end }}
         livenessProbe:
           httpGet:

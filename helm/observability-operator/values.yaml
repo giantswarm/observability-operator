@@ -17,7 +17,8 @@ alerting:
   alertmanagerURL: ""
   grafanaAddress: ""
   slackAPIToken: ""
-  cronitorApiKey: ""
+  cronitorHeartbeatPingKey: ""
+  cronitorHeartbeatManagementKey: ""
   # -- team-specific configs
   teams: []
   # Expected team contents:
