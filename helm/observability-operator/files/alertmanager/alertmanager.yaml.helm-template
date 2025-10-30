@@ -26,12 +26,11 @@ route:
   receiver: root
 
   routes:
-  {{- if .Values.alerting.healthcheckURL }}
-  # This is for pagerduty
+  {{- if .Values.alerting.cronitorApiKey }}
+  # This is for pagerduty via Cronitor
   - receiver: heartbeat
     matchers:
     - alertname="Heartbeat"
-    # TODO: switch to false once opsgenie is gone
     continue: true
     group_wait: 30s
     group_interval: 30s
@@ -43,7 +42,7 @@ route:
   - receiver: mimir-heartbeat
     matchers:
     - alertname="Heartbeat"
-    continue: false
+    continue: true
     group_wait: 30s
     group_interval: 30s
     repeat_interval: 15m
@@ -219,12 +218,12 @@ route:
 receivers:
 - name: root
 
-{{- if .Values.alerting.healthcheckURL }}
-# We use healthchecks.io to trigger heartbeat on pagerduty
+{{- if .Values.alerting.cronitorApiKey }}
+# We use Cronitor to trigger heartbeat on pagerduty
 - name: heartbeat
   webhook_configs:
   - send_resolved: false
-    url: {{ .Values.alerting.healthcheckURL }}
+    url: https://cronitor.link/p/{{ .Values.alerting.cronitorApiKey }}/mimir-{{ .Values.managementCluster.name }}
 {{- end }}
 
 {{- if .Values.monitoring.opsgenieApiKey }}

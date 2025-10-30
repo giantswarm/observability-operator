@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/pkg/alerting/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
@@ -25,7 +26,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
@@ -43,8 +43,8 @@ type ClusterMonitoringReconciler struct {
 	PrometheusAgentService prometheusagent.PrometheusAgentService
 	// AlloyService is the service which manages Alloy monitoring agent configuration.
 	AlloyService alloy.Service
-	// HeartbeatRepository is the repository for managing heartbeats.
-	HeartbeatRepository heartbeat.HeartbeatRepository
+	// HeartbeatRepositories is the list of repositories for managing heartbeats.
+	HeartbeatRepositories []heartbeat.HeartbeatRepository
 	// MimirService is the service for managing mimir configuration.
 	MimirService mimir.MimirService
 	// BundleConfigurationService is the service for configuring the observability bundle.
@@ -56,13 +56,30 @@ type ClusterMonitoringReconciler struct {
 func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) error {
 	managerClient := mgr.GetClient()
 
-	if cfg.Environment.OpsgenieApiKey == "" {
-		return fmt.Errorf("OpsgenieApiKey not set: %q", cfg.Environment.OpsgenieApiKey)
+	// Create list of heartbeat repositories
+	var heartbeatRepositories []heartbeat.HeartbeatRepository
+
+	// Create Opsgenie heartbeat repository if API key is provided
+	if cfg.Environment.OpsgenieApiKey != "" {
+		opsgenieRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(cfg.Environment.OpsgenieApiKey, cfg)
+		if err != nil {
+			return fmt.Errorf("unable to create opsgenie heartbeat repository: %w", err)
+		}
+		heartbeatRepositories = append(heartbeatRepositories, opsgenieRepository)
 	}
 
-	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(cfg.Environment.OpsgenieApiKey, cfg)
-	if err != nil {
-		return fmt.Errorf("unable to create heartbeat repository: %w", err)
+	// Create Cronitor heartbeat repository if API key is provided
+	if cfg.Environment.CronitorApiKey != "" {
+		cronitorRepository, err := heartbeat.NewCronitorHeartbeatRepository(cfg)
+		if err != nil {
+			return fmt.Errorf("unable to create cronitor heartbeat repository: %w", err)
+		}
+		heartbeatRepositories = append(heartbeatRepositories, cronitorRepository)
+	}
+
+	// Ensure at least one heartbeat repository is configured
+	if len(heartbeatRepositories) == 0 {
+		return fmt.Errorf("no heartbeat repositories configured: at least one of OpsgenieApiKey or CronitorApiKey must be set")
 	}
 
 	organizationRepository := organization.NewNamespaceRepository(managerClient)
@@ -89,7 +106,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
 		Config:                     cfg,
-		HeartbeatRepository:        heartbeatRepository,
+		HeartbeatRepositories:      heartbeatRepositories,
 		PrometheusAgentService:     prometheusAgentService,
 		AlloyService:               alloyService,
 		MimirService:               mimirService,
@@ -320,13 +337,15 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
 	if r.Config.Monitoring.Enabled {
-		err := r.HeartbeatRepository.CreateOrUpdate(ctx)
-		if err != nil {
-			logger.Error(err, "failed to create or update heartbeat")
-			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
+		for i, heartbeatRepo := range r.HeartbeatRepositories {
+			err := heartbeatRepo.CreateOrUpdate(ctx)
+			if err != nil {
+				logger.Error(err, "failed to create or update heartbeat", "repository_index", i)
+				return &ctrl.Result{RequeueAfter: 5 * time.Minute}
+			}
 		}
 
-		err = r.MimirService.ConfigureMimir(ctx)
+		err := r.MimirService.ConfigureMimir(ctx)
 		if err != nil {
 			logger.Error(err, "failed to configure mimir")
 			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
@@ -345,12 +364,14 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 // tearDown tears down the monitoring stack management cluster specific components like the hearbeat, mimir secrets and so on.
 func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
-	err := r.HeartbeatRepository.Delete(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to delete heartbeat: %w", err)
+	for i, heartbeatRepo := range r.HeartbeatRepositories {
+		err := heartbeatRepo.Delete(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete heartbeat (repository %d): %w", i, err)
+		}
 	}
 
-	err = r.MimirService.DeleteMimirSecrets(ctx)
+	err := r.MimirService.DeleteMimirSecrets(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to delete mimir ingress secret: %w", err)
 	}
