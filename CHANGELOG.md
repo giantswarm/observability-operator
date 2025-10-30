@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.46.2] - 2025-10-29
+
+### Fixed
+
+- Fixed queue configuration flags not being applied to Alloy remote write configuration
+
+## [0.46.1] - 2025-10-28
+
+### Fixed
+
+- Fixed pagerduty routing
+
 ## [0.46.0] - 2025-10-27
 
 ### Added
@@ -712,7 +724,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.46.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.46.2...HEAD
+[0.46.2]: https://github.com/giantswarm/observability-operator/compare/v0.46.1...v0.46.2
+[0.46.1]: https://github.com/giantswarm/observability-operator/compare/v0.46.0...v0.46.1
 [0.46.0]: https://github.com/giantswarm/observability-operator/compare/v0.45.1...v0.46.0
 [0.45.1]: https://github.com/giantswarm/observability-operator/compare/v0.45.0...v0.45.1
 [0.45.0]: https://github.com/giantswarm/observability-operator/compare/v0.44.0...v0.45.0
