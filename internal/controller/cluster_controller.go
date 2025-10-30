@@ -79,7 +79,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 
 	// Ensure at least one heartbeat repository is configured
 	if len(heartbeatRepositories) == 0 {
-		return fmt.Errorf("no heartbeat repositories configured: at least one of OpsgenieApiKey or both Cronitor keys (CronitorHeartbeatManagementKey and CronitorHeartbeatPingKey) must be set")
+		return fmt.Errorf("no heartbeat repositories configured: at least one of OpsgenieApiKey or both CronitorHeartbeatManagementKey and CronitorHeartbeatPingKey must be set")
 	}
 
 	organizationRepository := organization.NewNamespaceRepository(managerClient)

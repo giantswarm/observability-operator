@@ -90,9 +90,6 @@ func TestMakeMonitor(t *testing.T) {
 	if monitor.Schedule != "every 1 hour" {
 		t.Errorf("expected schedule %q, got %s", "every 1 hour", monitor.Schedule)
 	}
-	if len(monitor.Environments) != 1 || monitor.Environments[0] != "testing" {
-		t.Errorf("expected environments ['testing'], got %v", monitor.Environments)
-	}
 	if len(monitor.Tags) != 4 {
 		t.Errorf("expected 4 tags, got %d", len(monitor.Tags))
 	}
@@ -131,7 +128,7 @@ func TestCreateOrUpdate_CreateNew(t *testing.T) {
 				}, nil
 			}
 
-			// Third call: GET to ping monitor
+			// Third call: GET to ping monitor (for new monitor to associate with environment)
 			if req.Method == http.MethodGet && callCount == 3 {
 				if req.URL.Host != "cronitor.link" {
 					t.Errorf("expected ping to cronitor.link, got %s", req.URL.Host)
@@ -180,8 +177,7 @@ func TestCreateOrUpdate_UpdateExisting(t *testing.T) {
 		Name:         "mimir-test-cluster",
 		GraceSeconds: 900, // Different from desired 1800
 		Schedule:     "every 1 hour",
-		Tags:         []string{"team:atlas"},
-		Environments: []string{"testing"},
+		Tags:         []string{"team:atlas", "pipeline:testing"}, // Same pipeline, so no ping needed
 	}
 
 	callCount := 0
@@ -198,8 +194,20 @@ func TestCreateOrUpdate_UpdateExisting(t *testing.T) {
 				}, nil
 			}
 
-			// Second call: PUT to update monitor
+			// Second call: PUT to update monitor (environments are never sent - set via telemetry)
 			if req.Method == http.MethodPut && callCount == 2 {
+				// Verify that the PUT body doesn't include environments (never sent, telemetry sets them)
+				if req.Body != nil {
+					bodyBytes, _ := io.ReadAll(req.Body)
+					var putBody map[string]any
+					if err := json.Unmarshal(bodyBytes, &putBody); err == nil {
+						if _, hasEnvs := putBody["environments"]; hasEnvs {
+							t.Error("PUT request should not include environments - they are set via telemetry")
+						}
+					}
+					// Reset body for potential re-reading
+					req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+				}
 				return &http.Response{
 					StatusCode: http.StatusOK,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
@@ -236,6 +244,7 @@ func TestCreateOrUpdate_NoChangeNeeded(t *testing.T) {
 		},
 		Environment: config.EnvironmentConfig{
 			CronitorHeartbeatManagementKey: "test-management-key",
+			CronitorHeartbeatPingKey:       "test-ping-key",
 		},
 	}
 
@@ -285,6 +294,7 @@ func TestDelete(t *testing.T) {
 		},
 		Environment: config.EnvironmentConfig{
 			CronitorHeartbeatManagementKey: "test-management-key",
+			CronitorHeartbeatPingKey:       "test-ping-key",
 		},
 	}
 
@@ -334,6 +344,92 @@ func TestDelete(t *testing.T) {
 	})
 }
 
+func TestCreateOrUpdate_EnvironmentChange(t *testing.T) {
+	cfg := config.Config{
+		Cluster: config.ClusterConfig{
+			Name:     "test-cluster",
+			Pipeline: "production", // Changed from testing
+		},
+		Environment: config.EnvironmentConfig{
+			CronitorHeartbeatManagementKey: "test-management-key",
+			CronitorHeartbeatPingKey:       "test-ping-key",
+		},
+	}
+
+	existingMonitor := &CronitorMonitor{
+		Type:         "heartbeat",
+		Key:          "mimir-test-cluster",
+		Name:         "mimir-test-cluster",
+		GraceSeconds: 1800,
+		Schedule:     "every 1 hour",
+		Tags:         []string{"team:atlas", "installation:test-cluster", "pipeline:testing"}, // Old pipeline
+	}
+
+	callCount := 0
+	mockClient := &mockHTTPClient{
+		doFunc: func(req *http.Request) (*http.Response, error) {
+			callCount++
+
+			// First call: GET to check if monitor exists
+			if req.Method == http.MethodGet && callCount == 1 {
+				body, _ := json.Marshal(existingMonitor)
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader(body)),
+				}, nil
+			}
+
+			// Second call: PUT to update monitor (environments are never sent - set via telemetry)
+			if req.Method == http.MethodPut && callCount == 2 {
+				// Verify that the PUT body doesn't include environments (never sent, telemetry sets them)
+				if req.Body != nil {
+					bodyBytes, _ := io.ReadAll(req.Body)
+					var putBody map[string]any
+					if err := json.Unmarshal(bodyBytes, &putBody); err == nil {
+						if _, hasEnvs := putBody["environments"]; hasEnvs {
+							t.Error("PUT request should not include environments - they are set via telemetry")
+						}
+					}
+					// Reset body for potential re-reading
+					req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+				}
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader([]byte{})),
+				}, nil
+			}
+
+			// Third call: GET to ping monitor (pipeline changed, need to associate with new environment)
+			if req.Method == http.MethodGet && callCount == 3 {
+				if req.URL.Host != "cronitor.link" {
+					t.Errorf("expected ping to cronitor.link, got %s", req.URL.Host)
+				}
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader([]byte{})),
+				}, nil
+			}
+
+			t.Fatalf("unexpected call %d: %s %s", callCount, req.Method, req.URL)
+			return nil, nil
+		},
+	}
+
+	repo := &CronitorHeartbeatRepository{
+		Config:     cfg,
+		httpClient: mockClient,
+	}
+
+	err := repo.CreateOrUpdate(context.Background())
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if callCount != 3 {
+		t.Errorf("expected 3 HTTP calls (GET, PUT, PING), got %d", callCount)
+	}
+}
+
 func TestHasChanged(t *testing.T) {
 	repo := &CronitorHeartbeatRepository{}
 
@@ -349,14 +445,12 @@ func TestHasChanged(t *testing.T) {
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1", "tag2"},
-				Environments: []string{"production"},
 				Note:         "test note",
 			},
 			desired: &CronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1", "tag2"},
-				Environments: []string{"production"},
 				Note:         "test note",
 			},
 			expected: false,
@@ -367,13 +461,11 @@ func TestHasChanged(t *testing.T) {
 				GraceSeconds: 900,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
-				Environments: []string{"production"},
 			},
 			desired: &CronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
-				Environments: []string{"production"},
 			},
 			expected: true,
 		},
@@ -383,13 +475,11 @@ func TestHasChanged(t *testing.T) {
 				GraceSeconds: 1800,
 				Schedule:     "every 30 minutes",
 				Tags:         []string{"tag1"},
-				Environments: []string{"production"},
 			},
 			desired: &CronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
-				Environments: []string{"production"},
 			},
 			expected: true,
 		},
@@ -399,29 +489,11 @@ func TestHasChanged(t *testing.T) {
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
-				Environments: []string{"production"},
 			},
 			desired: &CronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1", "tag2"},
-				Environments: []string{"production"},
-			},
-			expected: true,
-		},
-		{
-			name: "environments changed",
-			existing: &CronitorMonitor{
-				GraceSeconds: 1800,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1"},
-				Environments: []string{"testing"},
-			},
-			desired: &CronitorMonitor{
-				GraceSeconds: 1800,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1"},
-				Environments: []string{"production"},
 			},
 			expected: true,
 		},
@@ -431,14 +503,12 @@ func TestHasChanged(t *testing.T) {
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
-				Environments: []string{"production"},
 				Note:         "old note",
 			},
 			desired: &CronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
-				Environments: []string{"production"},
 				Note:         "new note",
 			},
 			expected: true,

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -47,7 +48,6 @@ type CronitorMonitor struct {
 	Schedule         string   `json:"schedule"`
 	Notify           []string `json:"notify"`
 	Tags             []string `json:"tags"`
-	Environments     []string `json:"environments"`
 	Note             string   `json:"note,omitempty"`
 	FailureTolerance *int     `json:"failure_tolerance,omitempty"`
 	RealertInterval  string   `json:"realert_interval,omitempty"`
@@ -97,7 +97,6 @@ func (r *CronitorHeartbeatRepository) makeMonitor() *CronitorMonitor {
 		// TODO: Update to use the notification groups once configured in Cronitor
 		Notify:          []string{"default"},
 		Tags:            tags,
-		Environments:    []string{r.Config.Cluster.Pipeline},
 		Note:            "📗 Runbook: https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/heartbeat-expired/",
 		RealertInterval: "every 24 hours", // Re-alert every 24 hours if the issue persists
 	}
@@ -110,21 +109,23 @@ func (r *CronitorHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 
 	// Check if the monitor already exists (check without environment to find it in any env)
 	logger.Info("checking if heartbeat monitor exists")
-	existingMonitor, err := r.getMonitorAnyEnvironment(ctx, monitor.Key)
+	existingMonitor, err := r.getMonitor(ctx, monitor.Key)
 	if err != nil && !errors.Is(err, ErrMonitorNotFound) {
-		// Return any error that's not "not found" (network issues, auth failures, etc.)
 		return fmt.Errorf("failed to check if monitor exists: %w", err)
 	}
 
 	isNewMonitor := errors.Is(err, ErrMonitorNotFound)
 
+	var pipelineChanged bool
 	if !isNewMonitor {
-		// Monitor exists, check if it needs updating (including environment change)
+		// Monitor exists, check if it needs updating
 		if !r.hasChanged(existingMonitor, monitor) {
 			logger.Info("heartbeat monitor is up to date")
 			return nil
 		}
 		logger.Info("heartbeat monitor has changed, updating")
+		// Check if pipeline changed by comparing pipeline tags
+		pipelineChanged = r.pipelineChanged(existingMonitor)
 	} else {
 		logger.Info("heartbeat monitor does not exist, creating new monitor")
 	}
@@ -134,11 +135,14 @@ func (r *CronitorHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 		return err
 	}
 
-	// Only ping on initial creation to activate the monitor
-	if isNewMonitor {
-		logger.Info("sending initial ping to activate heartbeat monitor")
+	// Ping when creating new monitor or when pipeline changed to associate with correct environment
+	if isNewMonitor || pipelineChanged {
+		logger.Info("sending ping to associate monitor with environment",
+			"is_new", isNewMonitor,
+			"pipeline_changed", pipelineChanged,
+			"pipeline", r.Config.Cluster.Pipeline)
 		if err := r.pingMonitor(ctx, monitor.Key); err != nil {
-			logger.Error(err, "failed to send initial ping, monitor created but not activated")
+			logger.Error(err, "failed to ping monitor, monitor created but not associated with environment")
 			// Don't fail the whole operation if ping fails
 		}
 	}
@@ -150,11 +154,10 @@ func (r *CronitorHeartbeatRepository) Delete(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 
 	monitorKey := r.monitorKey()
-	environment := r.Config.Cluster.Pipeline
-
 	logger.Info("deleting heartbeat monitor")
 
-	url := fmt.Sprintf("%s/%s?env=%s", cronitorAPIBaseURL, monitorKey, environment)
+	// Delete from any environment - monitor will be removed across all environments
+	url := fmt.Sprintf("%s/%s", cronitorAPIBaseURL, monitorKey)
 	resp, err := r.doAuthenticatedRequest(ctx, http.MethodDelete, url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to delete monitor: %w", err)
@@ -174,9 +177,8 @@ func (r *CronitorHeartbeatRepository) Delete(ctx context.Context) error {
 	return nil
 }
 
-// getMonitorAnyEnvironment retrieves an existing monitor from Cronitor without environment filter.
-// This allows us to find monitors that may have been created in a different environment.
-func (r *CronitorHeartbeatRepository) getMonitorAnyEnvironment(ctx context.Context, key string) (*CronitorMonitor, error) {
+// getMonitor retrieves an existing monitor from Cronitor.
+func (r *CronitorHeartbeatRepository) getMonitor(ctx context.Context, key string) (*CronitorMonitor, error) {
 	url := fmt.Sprintf("%s/%s", cronitorAPIBaseURL, key)
 	resp, err := r.doAuthenticatedRequest(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -202,7 +204,8 @@ func (r *CronitorHeartbeatRepository) getMonitorAnyEnvironment(ctx context.Conte
 
 // putMonitor creates or updates a monitor in Cronitor using PUT.
 // PUT works for both creation and updates according to Cronitor API docs.
-// Environment is specified in the request body, not as a query parameter.
+// Note: Environments are never sent via API - they are automatically associated
+// when telemetry (pings) are sent to that environment.
 func (r *CronitorHeartbeatRepository) putMonitor(ctx context.Context, monitor *CronitorMonitor) error {
 	logger := log.FromContext(ctx)
 
@@ -226,9 +229,35 @@ func (r *CronitorHeartbeatRepository) putMonitor(ctx context.Context, monitor *C
 	return nil
 }
 
-// pingMonitor sends a ping to the Cronitor telemetry API to activate a heartbeat.
+// hasChanged compares the existing monitor with the desired configuration.
+func (r *CronitorHeartbeatRepository) hasChanged(existing, desired *CronitorMonitor) bool {
+	return existing.GraceSeconds != desired.GraceSeconds ||
+		existing.Schedule != desired.Schedule ||
+		existing.Note != desired.Note ||
+		existing.RealertInterval != desired.RealertInterval ||
+		!slices.Equal(existing.Tags, desired.Tags)
+}
+
+// pipelineChanged checks if the pipeline (environment) changed by comparing pipeline tags.
+func (r *CronitorHeartbeatRepository) pipelineChanged(existing *CronitorMonitor) bool {
+	desiredPipelineTag := fmt.Sprintf("pipeline:%s", r.Config.Cluster.Pipeline)
+	var existingPipelineTag string
+	for _, tag := range existing.Tags {
+		if strings.HasPrefix(tag, "pipeline:") {
+			existingPipelineTag = tag
+			break
+		}
+	}
+	// If no pipeline tag found in existing, treat as changed
+	if existingPipelineTag == "" {
+		return true
+	}
+	return existingPipelineTag != desiredPipelineTag
+}
+
+// pingMonitor sends a ping to the Cronitor telemetry API to associate the monitor with an environment.
 func (r *CronitorHeartbeatRepository) pingMonitor(ctx context.Context, monitorKey string) error {
-	url := fmt.Sprintf("%s/%s/%s", cronitorPingURL, r.Config.Environment.CronitorHeartbeatPingKey, monitorKey)
+	url := fmt.Sprintf("%s/%s/%s?env=%s", cronitorPingURL, r.Config.Environment.CronitorHeartbeatPingKey, monitorKey, r.Config.Cluster.Pipeline)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create ping request: %w", err)
@@ -247,18 +276,10 @@ func (r *CronitorHeartbeatRepository) pingMonitor(ctx context.Context, monitorKe
 	return nil
 }
 
-// hasChanged compares the existing monitor with the desired configuration.
-func (r *CronitorHeartbeatRepository) hasChanged(existing, desired *CronitorMonitor) bool {
-	return existing.GraceSeconds != desired.GraceSeconds ||
-		existing.Schedule != desired.Schedule ||
-		existing.Note != desired.Note ||
-		existing.RealertInterval != desired.RealertInterval ||
-		!slices.Equal(existing.Tags, desired.Tags) ||
-		!slices.Equal(existing.Environments, desired.Environments)
-}
-
 // doAuthenticatedRequest creates and executes an HTTP request with authentication.
 func (r *CronitorHeartbeatRepository) doAuthenticatedRequest(ctx context.Context, method, url string, body []byte) (*http.Response, error) {
+	logger := log.FromContext(ctx)
+
 	var reqBody io.Reader
 	if body != nil {
 		reqBody = bytes.NewBuffer(body)
@@ -274,7 +295,16 @@ func (r *CronitorHeartbeatRepository) doAuthenticatedRequest(ctx context.Context
 	req.Header.Set("Accept", "application/json")
 	req.SetBasicAuth(r.Config.Environment.CronitorHeartbeatManagementKey, "")
 
-	return r.httpClient.Do(req)
+	resp, err := r.httpClient.Do(req)
+	if err != nil {
+		logger.Error(err, "cronitor API request failed",
+			"method", req.Method,
+			"url", req.URL.String(),
+		)
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 // handleErrorResponse reads the response body and returns a formatted error.

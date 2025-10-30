@@ -223,7 +223,7 @@ receivers:
 - name: heartbeat
   webhook_configs:
   - send_resolved: false
-    url: https://cronitor.link/p/{{ .Values.alerting.cronitorHeartbeatPingKey }}/mimir-{{ .Values.managementCluster.name }}
+    url: https://cronitor.link/p/{{ .Values.alerting.cronitorHeartbeatPingKey }}/mimir-{{ .Values.managementCluster.name }}?env={{ .Values.managementCluster.pipeline}}
 {{- end }}
 
 {{- if .Values.monitoring.opsgenieApiKey }}
