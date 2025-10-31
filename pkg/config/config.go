@@ -24,7 +24,9 @@ type Config struct {
 
 // EnvironmentConfig represents environment-specific configuration.
 type EnvironmentConfig struct {
-	OpsgenieApiKey string `env:"OPSGENIE_API_KEY,required=true"`
+	OpsgenieApiKey                 string `env:"OPSGENIE_API_KEY"`
+	CronitorHeartbeatManagementKey string `env:"CRONITOR_HEARTBEAT_MANAGEMENT_KEY"`
+	CronitorHeartbeatPingKey       string `env:"CRONITOR_HEARTBEAT_PING_KEY"`
 }
 
 // Validate validates the entire configuration.

@@ -10,13 +10,13 @@ templates:
   - url-template.tmpl
 
 time_intervals:
-  - name: business-hours
-    time_intervals:
-    - times:
-      - start_time: 08:00
-        end_time: 18:00
-      weekdays: ['monday:friday']
-      location: "Europe/Berlin"
+- name: business-hours
+  time_intervals:
+  - times:
+    - start_time: 08:00
+      end_time: 18:00
+    weekdays: ['monday:friday']
+    location: "Europe/Berlin"
 
 route:
   group_by: [alertname, cluster_id, installation, status, team]
@@ -26,6 +26,8 @@ route:
   receiver: root
 
   routes:
+  {{- if .Values.alerting.cronitorHeartbeatPingKey }}
+  # This is for pagerduty via Cronitor
   - receiver: heartbeat
     matchers:
     - alertname="Heartbeat"
@@ -33,6 +35,18 @@ route:
     group_wait: 30s
     group_interval: 30s
     repeat_interval: 15m
+  {{- end }}
+  
+  {{- if .Values.monitoring.opsgenieApiKey }}
+  # TODO: Remove once opsgenie is gone
+  - receiver: mimir-heartbeat
+    matchers:
+    - alertname="Heartbeat"
+    continue: true
+    group_wait: 30s
+    group_interval: 30s
+    repeat_interval: 15m
+  {{- end }}
 
   {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
   - receiver: blackhole
@@ -156,15 +170,6 @@ route:
     - all_pipelines="true"
     - team="{{ .name }}"
     continue: true
-
-  # PagerDuty can't handle heartbeats for now
-  #- receiver: pagerduty-{{ .name }}
-  #  matchers:
-  #  - alertname="Heartbeat"
-  #  continue: true
-  #  group_wait: 30s
-  #  group_interval: 30s
-  #  repeat_interval: 15m
   {{- end }}
 {{- end }}
 
@@ -213,8 +218,16 @@ route:
 receivers:
 - name: root
 
-{{- if .Values.monitoring.opsgenieApiKey }}
+{{- if .Values.alerting.cronitorHeartbeatPingKey }}
+# We use Cronitor to trigger heartbeat on pagerduty
 - name: heartbeat
+  webhook_configs:
+  - send_resolved: false
+    url: https://cronitor.link/p/{{ .Values.alerting.cronitorHeartbeatPingKey }}/mimir-{{ .Values.managementCluster.name }}?env={{ .Values.managementCluster.pipeline}}
+{{- end }}
+
+{{- if .Values.monitoring.opsgenieApiKey }}
+- name: mimir-heartbeat
   webhook_configs:
   - send_resolved: false
     http_config:
