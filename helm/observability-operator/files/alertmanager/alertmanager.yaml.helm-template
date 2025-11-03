@@ -28,7 +28,7 @@ route:
   routes:
   {{- if .Values.alerting.cronitorHeartbeatPingKey }}
   # This is for pagerduty via Cronitor
-  - receiver: heartbeat
+  - receiver: cronitor-heartbeat
     matchers:
     - alertname="Heartbeat"
     continue: true
@@ -39,7 +39,7 @@ route:
   
   {{- if .Values.monitoring.opsgenieApiKey }}
   # TODO: Remove once opsgenie is gone
-  - receiver: mimir-heartbeat
+  - receiver: heartbeat
     matchers:
     - alertname="Heartbeat"
     continue: true
@@ -220,14 +220,14 @@ receivers:
 
 {{- if .Values.alerting.cronitorHeartbeatPingKey }}
 # We use Cronitor to trigger heartbeat on pagerduty
-- name: heartbeat
+- name: cronitor-heartbeat
   webhook_configs:
   - send_resolved: false
-    url: https://cronitor.link/p/{{ .Values.alerting.cronitorHeartbeatPingKey }}/mimir-{{ .Values.managementCluster.name }}?env={{ .Values.managementCluster.pipeline}}
+    url: https://cronitor.link/p/{{ .Values.alerting.cronitorHeartbeatPingKey }}/mimir-{{ .Values.managementCluster.name }}?env={{ .Values.managementCluster.pipeline }}
 {{- end }}
 
 {{- if .Values.monitoring.opsgenieApiKey }}
-- name: mimir-heartbeat
+- name: heartbeat
   webhook_configs:
   - send_resolved: false
     http_config:
