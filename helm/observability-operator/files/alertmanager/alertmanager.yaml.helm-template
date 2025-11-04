@@ -26,6 +26,19 @@ route:
   receiver: root
 
   routes:
+  {{- if .Values.alerting.cronitorHeartbeatPingKey }}
+  # This is for pagerduty via Cronitor
+  - receiver: cronitor-heartbeat
+    matchers:
+    - alertname="Heartbeat"
+    continue: true
+    group_wait: 30s
+    group_interval: 30s
+    repeat_interval: 15m
+  {{- end }}
+  
+  {{- if .Values.monitoring.opsgenieApiKey }}
+  # TODO: Remove once opsgenie is gone
   - receiver: heartbeat
     matchers:
     - alertname="Heartbeat"
@@ -33,6 +46,7 @@ route:
     group_wait: 30s
     group_interval: 30s
     repeat_interval: 15m
+  {{- end }}
 
   {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
   - receiver: blackhole
@@ -103,13 +117,6 @@ route:
     - team="tenet"
     continue: true
 
-  - receiver: team_tenet_slack
-    repeat_interval: 14d
-    matchers:
-    - severity=~"notify"
-    - team=~"tenet|tinkerers"
-    continue: false
-
 {{- if .Values.monitoring.opsgenieApiKey }}
   # Team Ops Opsgenie
   - receiver: opsgenie_router
@@ -156,15 +163,6 @@ route:
     - all_pipelines="true"
     - team="{{ .name }}"
     continue: true
-
-  # PagerDuty can't handle heartbeats for now
-  #- receiver: pagerduty-{{ .name }}
-  #  matchers:
-  #  - alertname="Heartbeat"
-  #  continue: true
-  #  group_wait: 30s
-  #  group_interval: 30s
-  #  repeat_interval: 15m
   {{- end }}
 {{- end }}
 
@@ -210,8 +208,24 @@ route:
     - team="honeybadger"
     continue: false
 
+  # Team Tenet Slack
+  - receiver: team_tenet_slack
+    repeat_interval: 14d
+    matchers:
+    - severity=~"notify"
+    - team=~"tenet|tinkerers"
+    continue: false
+
 receivers:
 - name: root
+
+{{- if .Values.alerting.cronitorHeartbeatPingKey }}
+# We use Cronitor to trigger heartbeat on pagerduty
+- name: cronitor-heartbeat
+  webhook_configs:
+  - send_resolved: false
+    url: https://cronitor.link/p/{{ .Values.alerting.cronitorHeartbeatPingKey }}/mimir-{{ .Values.managementCluster.name }}?env={{ .Values.managementCluster.pipeline }}
+{{- end }}
 
 {{- if .Values.monitoring.opsgenieApiKey }}
 - name: heartbeat
