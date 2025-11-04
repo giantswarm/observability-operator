@@ -117,13 +117,6 @@ route:
     - team="tenet"
     continue: true
 
-  - receiver: team_tenet_slack
-    repeat_interval: 14d
-    matchers:
-    - severity=~"notify"
-    - team=~"tenet|tinkerers"
-    continue: false
-
 {{- if .Values.monitoring.opsgenieApiKey }}
   # Team Ops Opsgenie
   - receiver: opsgenie_router
@@ -213,6 +206,14 @@ route:
     matchers:
     - severity=~"page|notify"
     - team="honeybadger"
+    continue: false
+
+  # Team Tenet Slack
+  - receiver: team_tenet_slack
+    repeat_interval: 14d
+    matchers:
+    - severity=~"notify"
+    - team=~"tenet|tinkerers"
     continue: false
 
 receivers:

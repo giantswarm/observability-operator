@@ -89,13 +89,12 @@ func (r *CronitorHeartbeatRepository) makeMonitor() *CronitorMonitor {
 
 	key := r.monitorKey()
 	return &CronitorMonitor{
-		Type:         "heartbeat",
-		Key:          key,
-		Name:         key,
-		GraceSeconds: 1800, // 30 minutes
-		Schedule:     "every 1 hour",
-		// TODO: Update to use the notification groups once configured in Cronitor
-		Notify:          []string{"default"},
+		Type:            "heartbeat",
+		Key:             key,
+		Name:            key,
+		GraceSeconds:    1800, // 30 minutes
+		Schedule:        "every 1 hour",
+		Notify:          []string{r.Config.Cluster.Pipeline},
 		Tags:            tags,
 		Note:            "📗 Runbook: https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/heartbeat-expired/",
 		RealertInterval: "every 24 hours", // Re-alert every 24 hours if the issue persists
