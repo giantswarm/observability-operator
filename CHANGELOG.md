@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Implement metrics for grafanaOrganizations monitoring:
+  - `observability_operator_grafana_organization_info`: Displays the list of organization and the current status in Grafana (active, pending, error)
+  - `observability_operator_grafana_organization_tenant_info`: List of the configured tenants per organization
+
 ## [0.46.2] - 2025-10-29
 
 ### Fixed
