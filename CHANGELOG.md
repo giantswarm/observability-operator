@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add Cronitor.io integration to replace Opsgenie Heartbeats.
 
+## [0.47.0] - 2025-11-04
+
+### Added
+
+- Implement metrics for grafanaOrganizations monitoring:
+  - `observability_operator_grafana_organization_info`: Displays the list of organization and the current status in Grafana (active, pending, error)
+  - `observability_operator_grafana_organization_tenant_info`: List of the configured tenants per organization
+
 ## [0.46.2] - 2025-10-29
 
 ### Fixed
@@ -728,7 +736,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.46.2...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.47.0...HEAD
+[0.47.0]: https://github.com/giantswarm/observability-operator/compare/v0.46.2...v0.47.0
 [0.46.2]: https://github.com/giantswarm/observability-operator/compare/v0.46.1...v0.46.2
 [0.46.1]: https://github.com/giantswarm/observability-operator/compare/v0.46.0...v0.46.1
 [0.46.0]: https://github.com/giantswarm/observability-operator/compare/v0.45.1...v0.46.0
