@@ -142,29 +142,6 @@ func parseFlags() (err error) {
 		"URL to query for cluster metrics")
 
 	// Queue configuration flags for Alloy remote write
-	parseMonitoringQueueConfigFlags()
-
-	// Tracing configuration flags
-	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
-		"Enable distributed tracing support in Grafana.")
-
-	// Logging configuration flags
-	flag.BoolVar(&cfg.Logging.Enabled, "logging-enabled", false,
-		"Enable logging support in Grafana.")
-
-	// Zap logging options
-	opts := zap.Options{
-		Development: false,
-	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
-
-	return nil
-}
-
-// parseMonitoringQueueConfigFlags parses the queue configuration flags and applies them directly to the config.
-func parseMonitoringQueueConfigFlags() {
-	// Use temporary variables to capture flag values
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string
 	var queueCapacity, queueMaxSamplesPerSend, queueMaxShards, queueMinShards int
 	var queueRetryOnHttp429 bool
@@ -188,6 +165,22 @@ func parseMonitoringQueueConfigFlags() {
 	flag.StringVar(&queueSampleAgeLimit, "monitoring-queue-config-sample-age-limit", "",
 		"Maximum age of samples to send (e.g., '30m'). If empty, Alloy default is used.")
 
+	// Tracing configuration flags
+	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
+		"Enable distributed tracing support in Grafana.")
+
+	// Logging configuration flags
+	flag.BoolVar(&cfg.Logging.Enabled, "logging-enabled", false,
+		"Enable logging support in Grafana.")
+
+	// Zap logging options
+	opts := zap.Options{
+		Development: false,
+	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
+
+	// Apply queue configuration flags after parsing
 	if queueBatchSendDeadline != "" {
 		cfg.Monitoring.QueueConfig.BatchSendDeadline = &queueBatchSendDeadline
 	}
@@ -209,10 +202,14 @@ func parseMonitoringQueueConfigFlags() {
 	if queueMinShards > 0 {
 		cfg.Monitoring.QueueConfig.MinShards = &queueMinShards
 	}
-	cfg.Monitoring.QueueConfig.RetryOnHttp429 = &queueRetryOnHttp429
+	if queueRetryOnHttp429 {
+		cfg.Monitoring.QueueConfig.RetryOnHttp429 = &queueRetryOnHttp429
+	}
 	if queueSampleAgeLimit != "" {
 		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
 	}
+
+	return nil
 }
 
 // setupApplication sets up the application after configuration is complete.

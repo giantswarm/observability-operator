@@ -120,14 +120,11 @@ prometheus.operator.scrapeconfigs "giantswarm" {
 // remote write pipeline configuration for tenant giantswarm
 prometheus.remote_write "giantswarm" {
   endpoint {
-    url            = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
     name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
     enable_http2   = false
     remote_timeout = "60s"
-    basic_auth {
-      username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-      password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
-    }
+    url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
+
     headers = {
       "X-Scope-OrgID" = "giantswarm",
     }

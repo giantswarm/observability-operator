@@ -75,14 +75,15 @@ prometheus.operator.podmonitors "tenant1" {
 // remote write pipeline configuration for tenant tenant1
 prometheus.remote_write "tenant1" {
   endpoint {
-    url            = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
     name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
     enable_http2   = false
     remote_timeout = "60s"
+    url = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
     basic_auth {
       username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
       password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
     }
+
     headers = {
       "X-Scope-OrgID" = "tenant1",
     }
