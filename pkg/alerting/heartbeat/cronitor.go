@@ -59,6 +59,7 @@ func NewCronitorHeartbeatRepository(cfg config.Config, httpClient HTTPClient) (H
 		httpClient = &http.Client{
 			Timeout: 30 * time.Second,
 			Transport: &http.Transport{
+				Proxy:                 http.ProxyFromEnvironment,
 				TLSHandshakeTimeout:   10 * time.Second,
 				ResponseHeaderTimeout: 10 * time.Second,
 				ExpectContinueTimeout: 1 * time.Second,
@@ -93,7 +94,7 @@ func (r *CronitorHeartbeatRepository) makeMonitor() *CronitorMonitor {
 		Key:             key,
 		Name:            key,
 		GraceSeconds:    1800, // 30 minutes
-		Schedule:        "every 1 hour",
+		Schedule:        "every 30 minutes",
 		Notify:          []string{r.Config.Cluster.Pipeline},
 		Tags:            tags,
 		Note:            "📗 Runbook: https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/heartbeat-expired/",

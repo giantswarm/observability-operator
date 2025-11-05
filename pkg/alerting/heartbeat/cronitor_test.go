@@ -87,8 +87,8 @@ func TestMakeMonitor(t *testing.T) {
 	if monitor.GraceSeconds != 1800 {
 		t.Errorf("expected grace_seconds %d, got %d", 1800, monitor.GraceSeconds)
 	}
-	if monitor.Schedule != "every 1 hour" {
-		t.Errorf("expected schedule %q, got %s", "every 1 hour", monitor.Schedule)
+	if monitor.Schedule != "every 30 minutes" {
+		t.Errorf("expected schedule %q, got %s", "every 30 minutes", monitor.Schedule)
 	}
 	if len(monitor.Tags) != 4 {
 		t.Errorf("expected 4 tags, got %d", len(monitor.Tags))
