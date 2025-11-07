@@ -1,0 +1,11 @@
+managementCluster:
+  name: mc-name
+  pipeline: stable
+
+monitoring:
+  opsgenieApiKey: opsgenie-api-key
+
+alerting:
+  teams:
+    - name: foo
+      pagerdutyToken: foo-pagerduty-token
