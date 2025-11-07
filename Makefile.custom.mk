@@ -52,9 +52,9 @@ $(BIN_DIR):
 
 $(AMTOOL_BIN): | $(BIN_DIR) ## Install amtool binary
 	git clone -q --filter=blob:none --no-checkout https://github.com/grafana/prometheus-alertmanager.git $(TESTS_WORKDIR)/prometheus-alertmanager
-	cd $(TESTS_WORKDIR)/prometheus-alertmanager && \
-	grep "github.com/prometheus/alertmanager =>" ../../go.mod | sed -n 's/.*-\([a-f0-9]\{12\}\)$$/\1/p' | xargs git checkout -q && \
-	make common-build PROMU_BINARIES=amtool
+	grep "github.com/prometheus/alertmanager =>" go.mod | sed -n 's/.*-\([a-f0-9]\{12\}\)$$/\1/p' | xargs \
+		git -C $(TESTS_WORKDIR)/prometheus-alertmanager checkout -q
+	make -C $(TESTS_WORKDIR)/prometheus-alertmanager common-build PROMU_BINARIES=amtool
 	mv $(TESTS_WORKDIR)/prometheus-alertmanager/amtool $@
 
 $(BATS_BIN): ## Install BATS testing framework
