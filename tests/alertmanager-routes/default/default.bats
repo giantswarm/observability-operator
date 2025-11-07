@@ -6,5 +6,5 @@ load ../../alertmanager-routes-helper.bash
 
 @test "default receiver is root" {
   run amtool foo=bar
-  assert_output root
+  assert_line root
 }

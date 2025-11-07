@@ -6,10 +6,10 @@ load ../../alertmanager-routes-helper.bash
 
 @test "heartbeats are delivered to OpsGenie" {
   run amtool alertname="Heartbeat"
-  assert_output --partial heartbeat
+  assert_line --partial heartbeat
 }
 
 @test "heartbeats are delivered to Cronitor" {
   run amtool alertname="Heartbeat"
-  assert_output --partial cronitor-heartbeat
+  assert_line --partial cronitor-heartbeat
 }
