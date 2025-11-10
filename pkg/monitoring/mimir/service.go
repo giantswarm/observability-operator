@@ -7,7 +7,6 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/common/secret"
 	"github.com/giantswarm/observability-operator/pkg/config"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
 const (
@@ -31,7 +29,7 @@ type MimirService struct {
 }
 
 // ConfigureMimir configures the ingress and its authentication (basic auth)
-// to allow prometheus agents to send their data to Mimir
+// to allow alloys to send their data to Mimir
 func (ms *MimirService) ConfigureMimir(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	logger.Info("configuring mimir ingress")
@@ -67,20 +65,6 @@ func (ms *MimirService) CreateApiKey(ctx context.Context, logger logr.Logger) er
 		err := secret.DeleteSecret(ingressAuthSecretName, mimirNamespace, ctx, ms.Client)
 		if err != nil {
 			return fmt.Errorf("failed to delete secret %s/%s: %w", mimirNamespace, ingressAuthSecretName, err)
-		}
-
-		clusterList := &clusterv1.ClusterList{}
-		err = ms.Client.List(ctx, clusterList)
-		if err != nil {
-			return fmt.Errorf("failed to list clusters: %w", err)
-		}
-
-		for _, cluster := range clusterList.Items {
-			secretName := prometheusagent.GetPrometheusAgentRemoteWriteSecretName(&cluster) // #nosec G601
-			err = secret.DeleteSecret(secretName, cluster.Namespace, ctx, ms.Client)
-			if err != nil {
-				return fmt.Errorf("failed to delete secret %s/%s: %w", cluster.Namespace, secretName, err)
-			}
 		}
 
 		// Once all secrets are deleted,the mimirApiKey one may be created.

@@ -27,12 +27,8 @@ const (
 	AlloyMonitoringAgentAppName      = "alloy-metrics"
 	AlloyMonitoringAgentAppNamespace = "kube-system"
 
-	// Values accepted by the monitoring-agent flag
-	MonitoringAgentPrometheus = "prometheus-agent"
-	MonitoringAgentAlloy      = "alloy"
 	// Applications name in the observability-bundle
-	MonitoringPrometheusAgentAppName = "prometheusAgent"
-	MonitoringAlloyAppName           = "alloyMetrics"
+	MonitoringAlloyAppName = "alloyMetrics"
 
 	PriorityClassName = "giantswarm-critical"
 
@@ -94,12 +90,12 @@ func readMimirAuthPasswordFromSecret(secret corev1.Secret) (string, error) {
 
 func GetClusterShardingStrategy(cluster metav1.Object) (s *sharding.Strategy, err error) {
 	var scaleUpSeriesCount, scaleDownPercentage float64
-	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-up-series-count"]; ok {
+	if value, ok := cluster.GetAnnotations()["observability.giantswarm.io/monitoring-agent-scale-up-series-count"]; ok {
 		if scaleUpSeriesCount, err = strconv.ParseFloat(value, 64); err != nil {
 			return nil, fmt.Errorf("failed to parse scale-up series count: %w", err)
 		}
 	}
-	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-down-percentage"]; ok {
+	if value, ok := cluster.GetAnnotations()["observability.giantswarm.io/monitoring-agent-scale-down-percentage"]; ok {
 		if scaleDownPercentage, err = strconv.ParseFloat(value, 64); err != nil {
 			return nil, fmt.Errorf("failed to parse scale-down percentage: %w", err)
 		}

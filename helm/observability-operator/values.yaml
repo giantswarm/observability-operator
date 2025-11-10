@@ -26,10 +26,8 @@ alerting:
   #    pagerdutyToken: token-for-teamA
 
 monitoring:
-  agent: alloy
   enabled: false
   opsgenieApiKey: ""
-  prometheusVersion: ""
   sharding:
     scaleUpSeriesCount: 1000000
     scaleDownPercentage: 0.20

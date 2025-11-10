@@ -18,6 +18,6 @@ monitoring:
 2. Those values can also be set per cluster using the following cluster annotations:
 
 ```yaml
-monitoring.giantswarm.io/prometheus-agent-scale-up-series-count: 1000000
-monitoring.giantswarm.io/prometheus-agent-scale-down-percentage: 0.20
+observability.giantswarm.io/monitoring-agent-scale-up-series-count: 1000000
+observability.giantswarm.io/monitoring-agent-scale-down-percentage: 0.20
 ```

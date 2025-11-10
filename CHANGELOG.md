@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add Alertmanager routes unit tests
 
+### Removed
+
+- Remove prometheus-agent support as we now fully run alloys.
+
 ## [0.48.1] - 2025-11-05
 
 ### Fixed
