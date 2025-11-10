@@ -62,16 +62,10 @@
         "monitoring": {
             "type": "object",
             "properties": {
-                "agent": {
-                    "type": "string"
-                },
                 "enabled": {
                     "type": "boolean"
                 },
                 "opsgenieApiKey": {
-                    "type": "string"
-                },
-                "prometheusVersion": {
                     "type": "string"
                 },
                 "sharding": {

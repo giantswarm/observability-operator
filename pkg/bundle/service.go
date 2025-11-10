@@ -43,35 +43,20 @@ func getConfigMapObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 }
 
 // Configure configures the observability-bundle application.
-// the observabilitybundle application to enable logging agents.
-func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clusterv1.Cluster, monitoringAgent string) error {
+// the observabilitybundle application to enable monitoring agents.
+func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx).WithValues("appName", observabilityBundleAppName)
 	logger.Info("configuring application")
 
 	bundleConfiguration := bundleConfiguration{
-		Apps: map[string]app{},
-	}
-	isMonitored := s.config.Monitoring.IsMonitored(cluster)
-	switch monitoringAgent {
-	case commonmonitoring.MonitoringAgentPrometheus:
-		bundleConfiguration.Apps[commonmonitoring.MonitoringPrometheusAgentAppName] = app{
-			Enabled: isMonitored,
-		}
-		bundleConfiguration.Apps[commonmonitoring.MonitoringAlloyAppName] = app{
-			Enabled: false,
-		}
-	case commonmonitoring.MonitoringAgentAlloy:
-		bundleConfiguration.Apps[commonmonitoring.MonitoringPrometheusAgentAppName] = app{
-			Enabled: false,
-		}
-		bundleConfiguration.Apps[commonmonitoring.MonitoringAlloyAppName] = app{
-			AppName: commonmonitoring.AlloyMonitoringAgentAppName,
-			Enabled: isMonitored,
-		}
-	default:
-		return fmt.Errorf("unsupported monitoring agent %q", monitoringAgent)
-	}
+		Apps: map[string]app{
+			commonmonitoring.MonitoringAlloyAppName: {
+				AppName: commonmonitoring.AlloyMonitoringAgentAppName,
 
+				Enabled: s.config.Monitoring.IsMonitored(cluster),
+			},
+		},
+	}
 	logger.Info("create or update configmap")
 	err := s.createOrUpdateObservabilityBundleConfigMap(ctx, cluster, bundleConfiguration)
 	if err != nil {
