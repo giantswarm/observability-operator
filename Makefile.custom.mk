@@ -112,6 +112,7 @@ tests-alertmanager-routes: $(subst /,-, $(shell find tests/alertmanager-routes -
 .PHONY: tests-alertmanager-routes-clean
 tests-alertmanager-routes-clean:
 	-rm -rf $(TESTS_WORKDIR)/chart-manifest-* tests/alertmanager-routes/*/alertmanager-config
+<<<<<<< HEAD
 
 ###############################################################################
 # Alertmanager Integration Tests
@@ -151,6 +152,8 @@ test-alertmanager-integrations: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertman
 test-alertmanager-integration-clean: ## Teardown integration test environment
 	@rm -rf $(ALERTMANAGER_INTEGRATION_SETUP) $(MIMIR_CHART_OUTPUT)  tests/alertmanager-routes/*/integration_test_requests*.log
 	@kind delete cluster --name $(KIND_CLUSTER_NAME) || true
+=======
+>>>>>>> origin/main
 
 ###############################################################################
 # Linting and Validation
@@ -168,4 +171,8 @@ validate-alertmanager-config: ## Validate Alertmanager config.
 run-local: ## Run the application in local mode.
 	./hack/bin/run-local.sh
 
+<<<<<<< HEAD
 clean: tests-alertmanager-routes-clean alertmanager-integration-clean bin-dir-clean ## Clean up generated test files
+=======
+clean: tests-alertmanager-routes-clean bin-dir-clean ## Clean up generated test files
+>>>>>>> origin/main
