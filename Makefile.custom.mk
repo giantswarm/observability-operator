@@ -168,4 +168,4 @@ validate-alertmanager-config: ## Validate Alertmanager config.
 run-local: ## Run the application in local mode.
 	./hack/bin/run-local.sh
 
-clean: tests-alertmanager-routes-clean alertmanager-integration-clean bin-dir-clean ## Clean up generated test files
+clean: tests-alertmanager-routes-clean test-alertmanager-integration-clean bin-dir-clean ## Clean up generated test files
