@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load ../../alertmanager-routes-helper.bash
+load ../helper.bash
 
 # Smoke test assessing validity of the test framework and default routing behavior
 

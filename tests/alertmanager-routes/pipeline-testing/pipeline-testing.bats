@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load ../../alertmanager-routes-helper.bash
+load ../helper.bash
 
 # Paging alerts on testing pipeline
 
