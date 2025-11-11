@@ -14,9 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/giantswarm/observability-operator/pkg/alertmanager"
-	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/go-logr/logr"
 	clientruntime "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
@@ -28,6 +25,10 @@ import (
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/giantswarm/observability-operator/pkg/alertmanager"
+	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
 )
 
 var (
