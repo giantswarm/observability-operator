@@ -84,7 +84,7 @@ $(BATS_BIN): ## Install BATS testing framework
 
 $(YQ_BIN): | $(BIN_DIR) ## Install yq binary
 	@echo "==> Installing yq binary"
-	wget -q https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 -O $@
+	wget -q --show-progress https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 -O $@
 	chmod +x $@
 
 .PHONY: bin-dir-clean
@@ -111,7 +111,7 @@ tests-alertmanager-routes: $(subst /,-, $(shell find tests/alertmanager-routes -
 
 .PHONY: tests-alertmanager-routes-clean
 tests-alertmanager-routes-clean:
-	-rm -rf $(TESTS_WORKDIR)/chart-manifest-* tests/alertmanager-routes/*/alertmanager-config
+	-rm -rf $(TESTS_WORKDIR)/chart-manifest-* tests/alertmanager-routes/*/alertmanager-config tests-workdir/prometheus-alertmanager
 
 ###############################################################################
 # Alertmanager Integration Tests
