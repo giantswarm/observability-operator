@@ -1,12 +1,16 @@
 # Paths
 CHART_NAME = observability-operator
 CHART_DIR = helm/$(CHART_NAME)
-ALERTMANAGER_SECRET_PATH = $(CHART_NAME)/templates/alertmanager/secret.yaml
-# Put the config file inside the test source directory for easier debugging
-ALERTMANAGER_TEST_CONFIG_FILE = tests/alertmanager-routes/$*/alertmanager-config.yaml
-TESTS_WORKDIR = tests-workdir
-CHART_TEST_OUTPUT_DIR = $(TESTS_WORKDIR)/chart-manifest-$*
+ALERTMANAGER_CHART_SECRET_PATH = $(CHART_NAME)/templates/alertmanager/secret.yaml
+# Test directory layout
+# Alertmanager config is stored inside the test source directory for easier debugging
+ALERTMANAGER_TEST_DIR = tests/alertmanager-routes/$*
+ALERTMANAGER_TEST_CONFIG_DIR = alertmanager-config
+ALERTMANAGER_TEST_CONFIG_FILE = alertmanager.yaml
 CHART_TEST_VALUES_FILE = tests/alertmanager-routes/$*/chart-values.yaml
+# Test workdir layout
+CHART_TEST_OUTPUT_DIR = $(TESTS_WORKDIR)/chart-manifest-$*
+TESTS_WORKDIR = tests-workdir
 
 # Binaries
 BIN_DIR = $(TESTS_WORKDIR)/bin
