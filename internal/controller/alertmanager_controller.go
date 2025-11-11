@@ -116,7 +116,7 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 	}
 
 	// TODO: Do we want to support deletion of alerting configs?
-	err = r.alertmanagerService.Configure(ctx, secret, tenant)
+	err = r.alertmanagerService.ConfigureFromSecret(ctx, secret, tenant)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to configure alertmanager: %w", err)
 	}
