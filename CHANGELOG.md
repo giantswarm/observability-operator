@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add Alertmanager routes unit tests
+- Add Alertmanager routes integration tests
+  test scenarios: heartbeat alerts, pipeline stable and testing alerts, Slack notifications, and ticket creation.
 
 ### Removed
 
