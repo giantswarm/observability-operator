@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.49.0] - 2025-11-12
+
 ### Added
 
 - Add Alertmanager routes unit tests
@@ -757,7 +759,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.48.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.49.0...HEAD
+[0.49.0]: https://github.com/giantswarm/observability-operator/compare/v0.48.1...v0.49.0
 [0.48.1]: https://github.com/giantswarm/observability-operator/compare/v0.48.0...v0.48.1
 [0.48.0]: https://github.com/giantswarm/observability-operator/compare/v0.47.0...v0.48.0
 [0.47.0]: https://github.com/giantswarm/observability-operator/compare/v0.46.2...v0.47.0
