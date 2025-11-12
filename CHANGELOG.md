@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add Alertmanager routes unit tests
 
+### Changed
+
+- Refactor webhook test suite architecture to use shared testutil package and individual test suites per API version
+
 ### Removed
 
 - Remove prometheus-agent support as we now fully run alloys.
