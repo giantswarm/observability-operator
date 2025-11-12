@@ -1,6 +1,6 @@
 # Introduction
 
-The Observability Operator is in charge of configuring the Prometheus Agent instances running in workload clusters like remote write configuration, [sharding](sharding.md), [queue configuration](queue-config.md) and so on.
+The Observability Operator is in charge of configuring the Alloy metrics instances running in workload clusters like remote write configuration, [sharding](sharding.md), [queue configuration](queue-config.md) and so on.
 
 ## Configuration Topics
 

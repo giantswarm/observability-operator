@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/blang/semver/v4"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -20,18 +19,12 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/alerting/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
-)
-
-var (
-	observabilityBundleVersionSupportAlloyMetrics = semver.MustParse("1.6.2")
 )
 
 // ClusterMonitoringReconciler reconciles a Cluster object
@@ -39,8 +32,6 @@ type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
 	Client client.Client
 	Config config.Config
-	// PrometheusAgentService is the service for managing PrometheusAgent resources.
-	PrometheusAgentService prometheusagent.PrometheusAgentService
 	// AlloyService is the service which manages Alloy monitoring agent configuration.
 	AlloyService alloy.Service
 	// HeartbeatRepositories is the list of repositories for managing heartbeats.
@@ -84,13 +75,6 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 
 	organizationRepository := organization.NewNamespaceRepository(managerClient)
 
-	prometheusAgentService := prometheusagent.PrometheusAgentService{
-		Client:                 managerClient,
-		OrganizationRepository: organizationRepository,
-		PasswordManager:        password.SimpleManager{},
-		Config:                 cfg,
-	}
-
 	alloyService := alloy.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
@@ -107,7 +91,6 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		Client:                     managerClient,
 		Config:                     cfg,
 		HeartbeatRepositories:      heartbeatRepositories,
-		PrometheusAgentService:     prometheusAgentService,
 		AlloyService:               alloyService,
 		MimirService:               mimirService,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
@@ -223,20 +206,8 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 	}
 
-	// Enforce prometheus-agent as monitoring agent when observability-bundle version < 1.6.0
-	monitoringAgent := r.Config.Monitoring.MonitoringAgent
-	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
-	if err != nil {
-		logger.Error(err, "failed to configure get observability-bundle version")
-		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-	}
-	if observabilityBundleVersion.LT(observabilityBundleVersionSupportAlloyMetrics) && monitoringAgent != commonmonitoring.MonitoringAgentPrometheus {
-		logger.Info("Monitoring agent is not supported by observability bundle, using prometheus-agent instead.", "observability-bundle-version", observabilityBundleVersion, "monitoring-agent", monitoringAgent)
-		monitoringAgent = commonmonitoring.MonitoringAgentPrometheus
-	}
-
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
-	err = r.BundleConfigurationService.Configure(ctx, cluster, monitoringAgent)
+	err = r.BundleConfigurationService.Configure(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to configure the observability-bundle")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -244,32 +215,20 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// Cluster specific configuration
 	if r.Config.Monitoring.IsMonitored(cluster) {
-		switch monitoringAgent {
-		case commonmonitoring.MonitoringAgentPrometheus:
-			// Create or update PrometheusAgent remote write configuration.
-			err = r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
-			if err != nil {
-				logger.Error(err, "failed to create or update prometheus agent remote write config")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-			}
-		case commonmonitoring.MonitoringAgentAlloy:
-			// Create or update Alloy monitoring configuration.
-			err = r.AlloyService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
-			if err != nil {
-				logger.Error(err, "failed to create or update alloy monitoring config")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-			}
-		default:
-			return ctrl.Result{}, fmt.Errorf("unsupported monitoring agent %q", monitoringAgent)
-		}
-	} else {
-		// clean up any existing prometheus agent configuration
-		err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
+
+		observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
 		if err != nil {
-			logger.Error(err, "failed to delete prometheus agent remote write config")
+			logger.Error(err, "failed to configure get observability-bundle version")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 
+		// Create or update Alloy monitoring configuration.
+		err = r.AlloyService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		if err != nil {
+			logger.Error(err, "failed to create or update alloy monitoring config")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+	} else {
 		// clean up any existing alloy monitoring configuration
 		err = r.AlloyService.ReconcileDelete(ctx, cluster)
 		if err != nil {
@@ -296,12 +255,6 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// Cluster specific configuration
 		if r.Config.Monitoring.IsMonitored(cluster) {
-			// Delete PrometheusAgent remote write configuration.
-			err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
-			if err != nil {
-				logger.Error(err, "failed to delete prometheus agent remote write config")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-			}
 			// Delete Alloy monitoring configuration.
 			err = r.AlloyService.ReconcileDelete(ctx, cluster)
 			if err != nil {

@@ -15,14 +15,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/pkg/bundle"
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
 )
 
 var _ = Describe("Cluster Controller", func() {
@@ -89,28 +87,9 @@ var _ = Describe("Cluster Controller", func() {
 
 			bundleService := bundle.NewBundleConfigurationService(k8sClient, config.Config{
 				Monitoring: config.MonitoringConfig{
-					Enabled:         true,
-					MonitoringAgent: commonmonitoring.MonitoringAgentPrometheus,
+					Enabled: true,
 				},
 			})
-
-			prometheusAgentService := prometheusagent.PrometheusAgentService{
-				Client:                 k8sClient,
-				OrganizationRepository: organizationRepository,
-				PasswordManager:        password.SimpleManager{},
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						Name:     "management-cluster",
-						Pipeline: "testing",
-						Region:   "eu-west-1",
-						Customer: "giantswarm",
-					},
-					Monitoring: config.MonitoringConfig{
-						Enabled:         true,
-						MonitoringAgent: commonmonitoring.MonitoringAgentPrometheus,
-					},
-				},
-			}
 
 			alloyService := alloy.Service{
 				Client:                 k8sClient,
@@ -123,8 +102,7 @@ var _ = Describe("Cluster Controller", func() {
 						Customer: "giantswarm",
 					},
 					Monitoring: config.MonitoringConfig{
-						Enabled:         true,
-						MonitoringAgent: commonmonitoring.MonitoringAgentAlloy,
+						Enabled: true,
 					},
 				},
 			}
@@ -152,12 +130,10 @@ var _ = Describe("Cluster Controller", func() {
 						Customer: "giantswarm",
 					},
 					Monitoring: config.MonitoringConfig{
-						Enabled:         true,
-						MonitoringAgent: commonmonitoring.MonitoringAgentPrometheus,
+						Enabled: true,
 					},
 				},
 				BundleConfigurationService: bundleService,
-				PrometheusAgentService:     prometheusAgentService,
 				AlloyService:               alloyService,
 				MimirService:               mimirService,
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
