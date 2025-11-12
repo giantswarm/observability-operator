@@ -173,7 +173,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		orgStatus = metrics.OrgStatusActive
 	}
 
-  // Convert to domain object
+	// Convert to domain object
 	organization := r.organizationMapper.FromGrafanaOrganization(grafanaOrganization)
   
 	// Create or update the grafana organization
