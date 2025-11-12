@@ -293,7 +293,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 		return nil
 	}
 
-  // Store orgID before deletion for metric cleanup
+	// Store orgID before deletion for metric cleanup
 	orgID := fmt.Sprintf("%d", grafanaOrganization.Status.OrgID)
   
 	// Convert to domain object
