@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"reflect"
-	"sort"
 
 	"github.com/opsgenie/opsgenie-go-sdk-v2/client"
 	"github.com/opsgenie/opsgenie-go-sdk-v2/heartbeat"
-	"github.com/opsgenie/opsgenie-go-sdk-v2/og"
 	"github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -38,80 +35,8 @@ func NewOpsgenieHeartbeatRepository(apiKey string, cfg config.Config) (Heartbeat
 	return &OpsgenieHeartbeatRepository{client, cfg}, nil
 }
 
-// makeHeartbeat creates a new heartbeat for the management cluster.
-func (r OpsgenieHeartbeatRepository) makeHeartbeat() *heartbeat.Heartbeat {
-	tags := []string{
-		"team: atlas",
-		fmt.Sprintf("installation: %s", r.Config.Cluster.Name),
-		"managed-by: observability-operator",
-		fmt.Sprintf("pipeline: %s", r.Config.Cluster.Pipeline),
-	}
-	// Tags need to be sorted alphabetically to avoid unnecessary heartbeat updates
-	sort.Strings(tags)
-
-	return &heartbeat.Heartbeat{
-		Name:         r.Config.Cluster.Name,
-		Description:  "📗 Runbook: https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/heartbeat-expired/",
-		Interval:     60,
-		IntervalUnit: string(heartbeat.Minutes),
-		Enabled:      true,
-		Expired:      false,
-		OwnerTeam: og.OwnerTeam{
-			Name: "alerts_router_team",
-		},
-		AlertTags:     tags,
-		AlertPriority: "P3",
-		AlertMessage:  fmt.Sprintf("Heartbeat [%s] is expired.", r.Config.Cluster.Name),
-	}
-}
-
 func (r *OpsgenieHeartbeatRepository) CreateOrUpdate(ctx context.Context) error {
-	logger := log.FromContext(ctx)
-
-	hb := r.makeHeartbeat()
-
-	// By default, we consider the heartbeat exists
-	var heartbeatExists = true
-	logger.Info("checking if heartbeat is already configured")
-	getResult, err := r.Get(ctx, hb.Name)
-	if err != nil {
-		apiErr, ok := err.(*client.ApiError)
-		// If the error is not a 404, we return it
-		if !ok || apiErr.StatusCode != http.StatusNotFound {
-			return fmt.Errorf("failed to get heartbeat: %w", err)
-		}
-		// If the heartbeat does not exist, we set the heartbeatExists to false
-		heartbeatExists = false
-	}
-
-	if heartbeatExists {
-		// If the heartbeat does not need to be updated, we leave early
-		if !hasChanged(getResult.Heartbeat, *hb) {
-			logger.Info("heartbeat is up to date")
-			return nil
-		}
-
-		// We need to delete and recreate it because the update is a PATCH (so existing alert tags are kept)
-		// This caused issue when installation pipeline was switched from testing to stable.
-		logger.Info("heartbeat has changed and needs to be reconfigured")
-
-		logger.Info("deleting heartbeat")
-		_, err := r.Client.Delete(ctx, hb.Name)
-		if err != nil {
-			return fmt.Errorf("failed to delete heartbeat: %w", err)
-		}
-
-		logger.Info("deleted heartbeat")
-	}
-
-	logger.Info("creating heartbeat")
-	err = r.createHeartbeat(ctx, hb)
-	if err != nil {
-		return fmt.Errorf("failed to create heartbeat: %w", err)
-	}
-	logger.Info("created heartbeat")
-
-	return nil
+	return r.Delete(ctx)
 }
 
 func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
@@ -143,44 +68,4 @@ func (r *OpsgenieHeartbeatRepository) Delete(ctx context.Context) error {
 	}
 	logger.Info("deleted heartbeat")
 	return nil
-}
-
-// createHeartbeat creates a new heartbeat in Opsgenie.
-func (r *OpsgenieHeartbeatRepository) createHeartbeat(ctx context.Context, h *heartbeat.Heartbeat) error {
-	req := &heartbeat.AddRequest{
-		Name:          h.Name,
-		Description:   h.Description,
-		Interval:      h.Interval,
-		IntervalUnit:  heartbeat.Unit(h.IntervalUnit),
-		Enabled:       &h.Enabled,
-		OwnerTeam:     h.OwnerTeam,
-		AlertMessage:  h.AlertMessage,
-		AlertTag:      h.AlertTags,
-		AlertPriority: h.AlertPriority,
-	}
-	_, err := r.Add(ctx, req)
-	if err != nil {
-		return fmt.Errorf("failed to add heartbeat: %w", err)
-	}
-
-	// We ping the heartbeat to active it and make sure it pages.
-	_, err = r.Ping(ctx, h.Name)
-	if err != nil {
-		return fmt.Errorf("failed to ping heartbeat: %w", err)
-	}
-
-	return nil
-}
-
-// hasChanged returns true if the current heartbeat is different from the desired heartbeat.
-func hasChanged(current, desired heartbeat.Heartbeat) bool {
-	// Ignore those fields for comparison by setting them to the same value.
-	current.Enabled = true
-	desired.Enabled = true
-	current.Expired = true
-	desired.Expired = true
-	// We get the ID back from opsgenie so we update it in the heartbeat
-	desired.OwnerTeam.Id = current.OwnerTeam.Id
-
-	return !reflect.DeepEqual(current, desired)
 }
