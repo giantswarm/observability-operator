@@ -32,7 +32,6 @@ import (
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/controller"
 	webhookcorev1 "github.com/giantswarm/observability-operator/internal/webhook/v1"
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	//+kubebuilder:scaffold:imports
@@ -125,16 +124,12 @@ func parseFlags() (err error) {
 		"The name of the secret containing the Alertmanager configuration.")
 	flag.StringVar(&cfg.Monitoring.AlertmanagerURL, "alertmanager-url", "",
 		"The URL of the Alertmanager API.")
-	flag.StringVar(&cfg.Monitoring.MonitoringAgent, "monitoring-agent", commonmonitoring.MonitoringAgentAlloy,
-		fmt.Sprintf("select monitoring agent to use (%s or %s)", commonmonitoring.MonitoringAgentPrometheus, commonmonitoring.MonitoringAgentAlloy))
 	flag.BoolVar(&cfg.Monitoring.Enabled, "monitoring-enabled", false,
 		"Enable monitoring at the management cluster level.")
 	flag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
 		"Configures the number of time series needed to add an extra prometheus agent shard.")
 	flag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
 		"Configures the percentage of removed series to scale down the number of prometheus agent shards.")
-	flag.StringVar(&cfg.Monitoring.PrometheusVersion, "prometheus-version", "",
-		"The version of Prometheus Agents to deploy.")
 	flag.DurationVar(&cfg.Monitoring.WALTruncateFrequency, "monitoring-wal-truncate-frequency", 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
 	flag.StringVar(&cfg.Monitoring.MetricsQueryURL, "monitoring-metrics-query-url", "http://mimir-gateway.mimir.svc/prometheus",

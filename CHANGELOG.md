@@ -7,9 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add Alertmanager routes unit tests
+
 ### Changed
 
 - Refactored Grafana package to use domain organization objects and moved status updates to controller layer.
+
+### Removed
+
+- Remove prometheus-agent support as we now fully run alloys.
+
+## [0.48.1] - 2025-11-05
+
+### Fixed
+
+- Fix cronitor.io integration in proxy environments.
+
+## [0.48.0] - 2025-11-04
+
+### Added
+
+- Add Cronitor.io integration to replace Opsgenie Heartbeats.
 
 ## [0.47.0] - 2025-11-04
 
@@ -736,7 +756,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.47.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.48.1...HEAD
+[0.48.1]: https://github.com/giantswarm/observability-operator/compare/v0.48.0...v0.48.1
+[0.48.0]: https://github.com/giantswarm/observability-operator/compare/v0.47.0...v0.48.0
 [0.47.0]: https://github.com/giantswarm/observability-operator/compare/v0.46.2...v0.47.0
 [0.46.2]: https://github.com/giantswarm/observability-operator/compare/v0.46.1...v0.46.2
 [0.46.1]: https://github.com/giantswarm/observability-operator/compare/v0.46.0...v0.46.1

@@ -35,7 +35,7 @@ clean_wc() {
   rm grizzly-e2e-wc.yaml
 }
 
-# Helper function - checks the existence of the cm and secret for either alloy or prometheus-agent
+# Helper function - checks the existence of the cm and secret for alloy
 check_configs() {
   echo "Checking if the corresponding $1-$2 has been created"
   local config
@@ -77,26 +77,18 @@ main() {
   kubectl wait -n org-giantswarm --for=condition=Ready cluster/ollyoptest --timeout=10m
   kubectl wait -n org-giantswarm --for=jsonpath='{.status.release.status}'=deployed app/ollyoptest-observability-bundle --timeout=20m
 
-  # Giving extra time to either Alloy or the prometheus-agent app to be created
+  # Giving extra time for the Alloy app to be created
   sleep 60
 
-  echo "Checking if the metrics agent is up and running on the WC"
+  echo "Checking if the monitoring agent is up and running on the WC"
 
   # Logging into the WC to get the context into the kubeconfig
   tsh kube login $1-ollyoptest
   tsh kube login $1
 
-  agent=$(kubectl get apps -n org-giantswarm | grep ollyoptest-prometheus-agent)
   alloy=$(kubectl get apps -n org-giantswarm | grep ollyoptest-alloy-metrics)
 
-  if [[ ! -z "$agent" ]]; then
-    local podStatus=$(kubectl get pods -n kube-system --context teleport.giantswarm.io-$1-ollyoptest prometheus-prometheus-agent-0 -o yaml | yq .status.phase)
-    
-    [[ "$podStatus" != "Running" ]] && echo "prometheus-agent app deployed but pod isn't in a running state" || echo "prometheus-agent app is deployed and pod is running"
-    
-    check_configs "remote-write" "config"
-    check_configs "remote-write" "secret"
-  elif [[ ! -z "$alloy" ]]; then
+  if [[ ! -z "$alloy" ]]; then
     local podStatus=$(kubectl get pods -n kube-system --context teleport.giantswarm.io-$1-ollyoptest alloy-metrics-0 -o yaml | yq .status.phase)
 
     [[ "$podStatus" != "Running" ]] && echo "alloy app deployed but pod isn't in a running state" || echo "alloy app is deployed and pods are running"
@@ -104,7 +96,7 @@ main() {
     check_configs "monitoring" "config"
     check_configs "monitoring" "secret"
   else
-    echo "No metrics agent app found. Cleaning the WC"
+    echo "No monitoring agent app found. Cleaning the WC"
     clean_wc
     exit 1
   fi

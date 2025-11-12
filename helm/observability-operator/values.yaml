@@ -17,17 +17,17 @@ alerting:
   alertmanagerURL: ""
   grafanaAddress: ""
   slackAPIToken: ""
+  cronitorHeartbeatPingKey: ""
+  cronitorHeartbeatManagementKey: ""
   # -- team-specific configs
-  teams: {}
+  teams: []
   # Expected team contents:
   #  - name: teamA
   #    pagerdutyToken: token-for-teamA
 
 monitoring:
-  agent: alloy
   enabled: false
   opsgenieApiKey: ""
-  prometheusVersion: ""
   sharding:
     scaleUpSeriesCount: 1000000
     scaleDownPercentage: 0.20

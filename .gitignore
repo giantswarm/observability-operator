@@ -26,3 +26,5 @@ Dockerfile.cross
 *~
 
 /observability-operator*
+/tests-workdir
+/tests/alertmanager-routes/*/alertmanager-config.yaml

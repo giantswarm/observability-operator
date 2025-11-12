@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/blang/semver/v4"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -18,20 +17,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/pkg/alerting/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheusagent"
-)
-
-var (
-	observabilityBundleVersionSupportAlloyMetrics = semver.MustParse("1.6.2")
 )
 
 // ClusterMonitoringReconciler reconciles a Cluster object
@@ -39,12 +32,10 @@ type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
 	Client client.Client
 	Config config.Config
-	// PrometheusAgentService is the service for managing PrometheusAgent resources.
-	PrometheusAgentService prometheusagent.PrometheusAgentService
 	// AlloyService is the service which manages Alloy monitoring agent configuration.
 	AlloyService alloy.Service
-	// HeartbeatRepository is the repository for managing heartbeats.
-	HeartbeatRepository heartbeat.HeartbeatRepository
+	// HeartbeatRepositories is the list of repositories for managing heartbeats.
+	HeartbeatRepositories []heartbeat.HeartbeatRepository
 	// MimirService is the service for managing mimir configuration.
 	MimirService mimir.MimirService
 	// BundleConfigurationService is the service for configuring the observability bundle.
@@ -56,23 +47,33 @@ type ClusterMonitoringReconciler struct {
 func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) error {
 	managerClient := mgr.GetClient()
 
-	if cfg.Environment.OpsgenieApiKey == "" {
-		return fmt.Errorf("OpsgenieApiKey not set: %q", cfg.Environment.OpsgenieApiKey)
+	// Create list of heartbeat repositories
+	var heartbeatRepositories []heartbeat.HeartbeatRepository
+
+	// Create Opsgenie heartbeat repository if API key is provided
+	if cfg.Environment.OpsgenieApiKey != "" {
+		opsgenieRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(cfg.Environment.OpsgenieApiKey, cfg)
+		if err != nil {
+			return fmt.Errorf("unable to create opsgenie heartbeat repository: %w", err)
+		}
+		heartbeatRepositories = append(heartbeatRepositories, opsgenieRepository)
 	}
 
-	heartbeatRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(cfg.Environment.OpsgenieApiKey, cfg)
-	if err != nil {
-		return fmt.Errorf("unable to create heartbeat repository: %w", err)
+	// Create Cronitor heartbeat repository if both keys are provided
+	if cfg.Environment.CronitorHeartbeatManagementKey != "" && cfg.Environment.CronitorHeartbeatPingKey != "" {
+		cronitorRepository, err := heartbeat.NewCronitorHeartbeatRepository(cfg, nil)
+		if err != nil {
+			return fmt.Errorf("unable to create cronitor heartbeat repository: %w", err)
+		}
+		heartbeatRepositories = append(heartbeatRepositories, cronitorRepository)
+	}
+
+	// Ensure at least one heartbeat repository is configured
+	if len(heartbeatRepositories) == 0 {
+		return fmt.Errorf("no heartbeat repositories configured: at least one of OpsgenieApiKey or both CronitorHeartbeatManagementKey and CronitorHeartbeatPingKey must be set")
 	}
 
 	organizationRepository := organization.NewNamespaceRepository(managerClient)
-
-	prometheusAgentService := prometheusagent.PrometheusAgentService{
-		Client:                 managerClient,
-		OrganizationRepository: organizationRepository,
-		PasswordManager:        password.SimpleManager{},
-		Config:                 cfg,
-	}
 
 	alloyService := alloy.Service{
 		Client:                 managerClient,
@@ -89,8 +90,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
 		Config:                     cfg,
-		HeartbeatRepository:        heartbeatRepository,
-		PrometheusAgentService:     prometheusAgentService,
+		HeartbeatRepositories:      heartbeatRepositories,
 		AlloyService:               alloyService,
 		MimirService:               mimirService,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
@@ -206,20 +206,8 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 	}
 
-	// Enforce prometheus-agent as monitoring agent when observability-bundle version < 1.6.0
-	monitoringAgent := r.Config.Monitoring.MonitoringAgent
-	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
-	if err != nil {
-		logger.Error(err, "failed to configure get observability-bundle version")
-		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-	}
-	if observabilityBundleVersion.LT(observabilityBundleVersionSupportAlloyMetrics) && monitoringAgent != commonmonitoring.MonitoringAgentPrometheus {
-		logger.Info("Monitoring agent is not supported by observability bundle, using prometheus-agent instead.", "observability-bundle-version", observabilityBundleVersion, "monitoring-agent", monitoringAgent)
-		monitoringAgent = commonmonitoring.MonitoringAgentPrometheus
-	}
-
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
-	err = r.BundleConfigurationService.Configure(ctx, cluster, monitoringAgent)
+	err = r.BundleConfigurationService.Configure(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to configure the observability-bundle")
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -227,32 +215,20 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// Cluster specific configuration
 	if r.Config.Monitoring.IsMonitored(cluster) {
-		switch monitoringAgent {
-		case commonmonitoring.MonitoringAgentPrometheus:
-			// Create or update PrometheusAgent remote write configuration.
-			err = r.PrometheusAgentService.ReconcileRemoteWriteConfiguration(ctx, cluster)
-			if err != nil {
-				logger.Error(err, "failed to create or update prometheus agent remote write config")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-			}
-		case commonmonitoring.MonitoringAgentAlloy:
-			// Create or update Alloy monitoring configuration.
-			err = r.AlloyService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
-			if err != nil {
-				logger.Error(err, "failed to create or update alloy monitoring config")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-			}
-		default:
-			return ctrl.Result{}, fmt.Errorf("unsupported monitoring agent %q", monitoringAgent)
-		}
-	} else {
-		// clean up any existing prometheus agent configuration
-		err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
+
+		observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
 		if err != nil {
-			logger.Error(err, "failed to delete prometheus agent remote write config")
+			logger.Error(err, "failed to configure get observability-bundle version")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 
+		// Create or update Alloy monitoring configuration.
+		err = r.AlloyService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		if err != nil {
+			logger.Error(err, "failed to create or update alloy monitoring config")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+	} else {
 		// clean up any existing alloy monitoring configuration
 		err = r.AlloyService.ReconcileDelete(ctx, cluster)
 		if err != nil {
@@ -279,12 +255,6 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// Cluster specific configuration
 		if r.Config.Monitoring.IsMonitored(cluster) {
-			// Delete PrometheusAgent remote write configuration.
-			err := r.PrometheusAgentService.DeleteRemoteWriteConfiguration(ctx, cluster)
-			if err != nil {
-				logger.Error(err, "failed to delete prometheus agent remote write config")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-			}
 			// Delete Alloy monitoring configuration.
 			err = r.AlloyService.ReconcileDelete(ctx, cluster)
 			if err != nil {
@@ -320,13 +290,15 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
 	if r.Config.Monitoring.Enabled {
-		err := r.HeartbeatRepository.CreateOrUpdate(ctx)
-		if err != nil {
-			logger.Error(err, "failed to create or update heartbeat")
-			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
+		for i, heartbeatRepo := range r.HeartbeatRepositories {
+			err := heartbeatRepo.CreateOrUpdate(ctx)
+			if err != nil {
+				logger.Error(err, "failed to create or update heartbeat", "repository_index", i)
+				return &ctrl.Result{RequeueAfter: 5 * time.Minute}
+			}
 		}
 
-		err = r.MimirService.ConfigureMimir(ctx)
+		err := r.MimirService.ConfigureMimir(ctx)
 		if err != nil {
 			logger.Error(err, "failed to configure mimir")
 			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
@@ -345,12 +317,14 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 // tearDown tears down the monitoring stack management cluster specific components like the hearbeat, mimir secrets and so on.
 func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
-	err := r.HeartbeatRepository.Delete(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to delete heartbeat: %w", err)
+	for i, heartbeatRepo := range r.HeartbeatRepositories {
+		err := heartbeatRepo.Delete(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete heartbeat (repository %d): %w", i, err)
+		}
 	}
 
-	err = r.MimirService.DeleteMimirSecrets(ctx)
+	err := r.MimirService.DeleteMimirSecrets(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to delete mimir ingress secret: %w", err)
 	}
