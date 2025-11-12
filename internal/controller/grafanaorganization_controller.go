@@ -175,7 +175,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	// Convert to domain object
 	organization := r.organizationMapper.FromGrafanaOrganization(grafanaOrganization)
-  
+
 	// Create or update the grafana organization
 	updatedID, err := grafanaService.ConfigureOrganization(ctx, organization)
 	if err != nil {
@@ -295,7 +295,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 
 	// Store orgID before deletion for metric cleanup
 	orgID := fmt.Sprintf("%d", grafanaOrganization.Status.OrgID)
-  
+
 	// Convert to domain object
 	organization := r.organizationMapper.FromGrafanaOrganization(grafanaOrganization)
 
