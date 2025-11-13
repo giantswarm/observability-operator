@@ -2,9 +2,6 @@ managementCluster:
   name: mc-name
   pipeline: stable-testing
 
-monitoring:
-  opsgenieApiKey: opsgenie-api-key
-
 alerting:
   teams:
     - name: foo

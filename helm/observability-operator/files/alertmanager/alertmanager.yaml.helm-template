@@ -70,14 +70,6 @@ route:
     - alertname=~"Falco.*"
     continue: false
 
-{{- if .Values.monitoring.opsgenieApiKey }}
-  # Team Ops Opsgenie
-  - receiver: opsgenie_router
-    matchers:
-    - severity="page"
-    continue: true
-{{- end }}
-
 {{- range $.Values.alerting.teams }}
 
   {{- if not .name }}
@@ -297,26 +289,19 @@ receivers:
     send_resolved: true
     actions: *slack-actions
 
-{{- if .Values.monitoring.opsgenieApiKey }}
-- name: opsgenie_router
-  opsgenie_configs:
-  - api_key: {{ .Values.monitoring.opsgenieApiKey }}
-    tags: '{{`{{ (index .Alerts 0).Labels.alertname }},{{ (index .Alerts 0).Labels.cluster_type }},{{ (index .Alerts 0).Labels.severity }},{{ (index .Alerts 0).Labels.team }},{{ (index .Alerts 0).Labels.area }},{{ (index .Alerts 0).Labels.service_priority }},{{ (index .Alerts 0).Labels.provider }},{{ (index .Alerts 0).Labels.installation }},{{ (index .Alerts 0).Labels.pipeline }},{{ (index .Alerts 0).Labels.customer }}`}}'
-{{- end }}
-
 {{- range $.Values.alerting.teams }}
 
 {{- if .pagerdutyToken }}
 - name: pagerduty-{{ .name }}
   pagerduty_configs:
-  # TODO: Replace opsgenie templates used here with something else.
+  # TODO: Replace pagerduty templates used here with something else.
   - routing_key: {{ .pagerdutyToken }}
-    source: '{{`{{ template "opsgenie.default.source" . }}`}}'
-    description: '{{`{{ template "opsgenie.default.message" . }}`}}'
+    source: '{{`{{ template "pagerduty.default.source" . }}`}}'
+    description: '{{`{{ template "pagerduty.default.message" . }}`}}'
     # There is currently no way to send all alerts labels to PagerDuty as details.
     # See https://github.com/prometheus/alertmanager/issues/3218
     details: {
-      _description: '{{`{{ template "opsgenie.default.description" . }}`}}',
+      _description: '{{`{{ template "pagerduty.default.description" . }}`}}',
       alertname: '{{`{{ .CommonLabels.alertname }}`}}',
       all_pipelines: '{{`{{ .CommonLabels.all_pipelines }}`}}',
       area: '{{`{{ .CommonLabels.area }}`}}',

@@ -50,15 +50,6 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	// Create list of heartbeat repositories
 	var heartbeatRepositories []heartbeat.HeartbeatRepository
 
-	// Create Opsgenie heartbeat repository if API key is provided
-	if cfg.Environment.OpsgenieApiKey != "" {
-		opsgenieRepository, err := heartbeat.NewOpsgenieHeartbeatRepository(cfg.Environment.OpsgenieApiKey, cfg)
-		if err != nil {
-			return fmt.Errorf("unable to create opsgenie heartbeat repository: %w", err)
-		}
-		heartbeatRepositories = append(heartbeatRepositories, opsgenieRepository)
-	}
-
 	// Create Cronitor heartbeat repository if both keys are provided
 	if cfg.Environment.CronitorHeartbeatManagementKey != "" && cfg.Environment.CronitorHeartbeatPingKey != "" {
 		cronitorRepository, err := heartbeat.NewCronitorHeartbeatRepository(cfg, nil)
@@ -70,7 +61,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 
 	// Ensure at least one heartbeat repository is configured
 	if len(heartbeatRepositories) == 0 {
-		return fmt.Errorf("no heartbeat repositories configured: at least one of OpsgenieApiKey or both CronitorHeartbeatManagementKey and CronitorHeartbeatPingKey must be set")
+		return fmt.Errorf("no heartbeat repositories configured: both CronitorHeartbeatManagementKey and CronitorHeartbeatPingKey must be set")
 	}
 
 	organizationRepository := organization.NewNamespaceRepository(managerClient)
