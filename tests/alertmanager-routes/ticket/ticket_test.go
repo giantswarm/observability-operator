@@ -29,7 +29,7 @@ func TestTeamsTicketRouting(t *testing.T) {
 			Expectations: []helper.Expectation{
 				{
 					URL:       "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/atlas",
-					BodyParts: []string{`{"receiver":"team_atlas_github","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketAtlasAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"atlas"}`},
+					BodyParts: []string{`{"receiver":"github_atlas","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketAtlasAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"atlas"}`},
 				},
 			},
 		},
@@ -50,7 +50,7 @@ func TestTeamsTicketRouting(t *testing.T) {
 			Expectations: []helper.Expectation{
 				{
 					URL:       "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/phoenix",
-					BodyParts: []string{`{"receiver":"team_phoenix_github","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketPhoenixAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"phoenix"}`},
+					BodyParts: []string{`{"receiver":"github_phoenix","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketPhoenixAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"phoenix"}`},
 				},
 			},
 		},
@@ -71,7 +71,7 @@ func TestTeamsTicketRouting(t *testing.T) {
 			Expectations: []helper.Expectation{
 				{
 					URL:       "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/shield",
-					BodyParts: []string{`{"receiver":"team_shield_github","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketShieldAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"shield"}`},
+					BodyParts: []string{`{"receiver":"github_shield","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketShieldAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"shield"}`},
 				},
 			},
 		},
@@ -92,7 +92,7 @@ func TestTeamsTicketRouting(t *testing.T) {
 			Expectations: []helper.Expectation{
 				{
 					URL:       "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/rocket",
-					BodyParts: []string{`{"receiver":"team_rocket_github","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketRocketAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"rocket"}`},
+					BodyParts: []string{`{"receiver":"github_rocket","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketRocketAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"rocket"}`},
 				},
 			},
 		},
@@ -113,7 +113,7 @@ func TestTeamsTicketRouting(t *testing.T) {
 			Expectations: []helper.Expectation{
 				{
 					URL:       "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/honeybadger",
-					BodyParts: []string{`{"receiver":"team_honeybadger_github","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketHoneybadgerAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"honeybadger"}`},
+					BodyParts: []string{`{"receiver":"github_honeybadger","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketHoneybadgerAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"honeybadger"}`},
 				},
 			},
 		},
@@ -134,7 +134,7 @@ func TestTeamsTicketRouting(t *testing.T) {
 			Expectations: []helper.Expectation{
 				{
 					URL:       "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/tenet",
-					BodyParts: []string{`{"receiver":"team_tenet_github","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketTeamAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"tenet"}`},
+					BodyParts: []string{`{"receiver":"github_tenet","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"TestTicketTeamAlert","cluster_id":"test-cluster","installation":"test-installation","pipeline":"stable","provider":"aws","severity":"ticket","status":"firing","team":"tenet"}`},
 				},
 			},
 		},
