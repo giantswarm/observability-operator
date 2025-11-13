@@ -28,17 +28,6 @@ route:
   routes:
   {{- if .Values.alerting.cronitorHeartbeatPingKey }}
   # This is for pagerduty via Cronitor
-  - receiver: cronitor-heartbeat
-    matchers:
-    - alertname="Heartbeat"
-    continue: true
-    group_wait: 30s
-    group_interval: 30s
-    repeat_interval: 15m
-  {{- end }}
-  
-  {{- if .Values.monitoring.opsgenieApiKey }}
-  # TODO: Remove once opsgenie is gone
   - receiver: heartbeat
     matchers:
     - alertname="Heartbeat"
@@ -80,42 +69,6 @@ route:
     matchers:
     - alertname=~"Falco.*"
     continue: false
-
-  - receiver: team_atlas_github
-    matchers:
-    - severity=~"ticket"
-    - team="atlas"
-    continue: true
-
-  - receiver: team_phoenix_github
-    matchers:
-    - severity=~"ticket"
-    - team="phoenix"
-    continue: true
-
-  - receiver: team_shield_github
-    matchers:
-    - severity=~"ticket"
-    - team="shield"
-    continue: true
-
-  - receiver: team_rocket_github
-    matchers:
-    - severity=~"ticket"
-    - team="rocket"
-    continue: true
-
-  - receiver: team_honeybadger_github
-    matchers:
-    - severity=~"ticket"
-    - team="honeybadger"
-    continue: true
-
-  - receiver: team_tenet_github
-    matchers:
-    - severity=~"ticket"
-    - team="tenet"
-    continue: true
 
 {{- if .Values.monitoring.opsgenieApiKey }}
   # Team Ops Opsgenie
@@ -164,6 +117,13 @@ route:
     - team="{{ .name }}"
     continue: true
   {{- end }}
+
+  # Github route
+  - receiver: github_{{ .name }}
+    matchers:
+    - severity=~"ticket"
+    - team={{ .name | quote }}
+    continue: true
 {{- end }}
 
   # Team Atlas Slack
@@ -221,24 +181,10 @@ receivers:
 
 {{- if .Values.alerting.cronitorHeartbeatPingKey }}
 # We use Cronitor to trigger heartbeat on pagerduty
-- name: cronitor-heartbeat
-  webhook_configs:
-  - send_resolved: false
-    url: https://cronitor.link/p/{{ .Values.alerting.cronitorHeartbeatPingKey }}/mimir-{{ .Values.managementCluster.name }}?env={{ .Values.managementCluster.pipeline }}
-{{- end }}
-
-{{- if .Values.monitoring.opsgenieApiKey }}
 - name: heartbeat
   webhook_configs:
   - send_resolved: false
-    http_config:
-      authorization:
-        type: GenieKey
-        credentials: {{ .Values.monitoring.opsgenieApiKey }}
-      follow_redirects: true
-      enable_http2: true
-      proxy_from_environment: true
-    url: https://api.opsgenie.com/v2/heartbeats/{{ .Values.managementCluster.name }}/ping
+    url: https://cronitor.link/p/{{ .Values.alerting.cronitorHeartbeatPingKey }}/mimir-{{ .Values.managementCluster.name }}?env={{ .Values.managementCluster.pipeline }}
 {{- end }}
 
 {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
@@ -351,30 +297,6 @@ receivers:
     send_resolved: true
     actions: *slack-actions
 
-- name: team_atlas_github
-  webhook_configs:
-  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/atlas"
-
-- name: team_phoenix_github
-  webhook_configs:
-  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/phoenix"
-
-- name: team_shield_github
-  webhook_configs:
-  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/shield"
-
-- name: team_rocket_github
-  webhook_configs:
-  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/rocket"
-
-- name: team_honeybadger_github
-  webhook_configs:
-  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/honeybadger"
-
-- name: team_tenet_github
-  webhook_configs:
-  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/tenet"
-
 {{- if .Values.monitoring.opsgenieApiKey }}
 - name: opsgenie_router
   opsgenie_configs:
@@ -383,6 +305,7 @@ receivers:
 {{- end }}
 
 {{- range $.Values.alerting.teams }}
+
 {{- if .pagerdutyToken }}
 - name: pagerduty-{{ .name }}
   pagerduty_configs:
@@ -411,6 +334,11 @@ receivers:
       resolved: null
     }
 {{- end }}
+
+- name: github_{{ .name }}
+  webhook_configs:
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/{{ .name }}"
+
 {{- end }}
 
 inhibit_rules:

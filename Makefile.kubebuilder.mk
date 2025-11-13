@@ -17,16 +17,16 @@
 # ==================================================================================
 
 # Core tool versions (aligned with kubebuilder defaults and auto-detection)
-CONTROLLER_TOOLS_VERSION ?= v0.18.0
-KUSTOMIZE_VERSION ?= v5.6.0
+CONTROLLER_TOOLS_VERSION ?= v0.19.0
+KUSTOMIZE_VERSION ?= v5.7.1
 # Auto-detect ENVTEST version from controller-runtime dependency
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime 2>/dev/null | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 # Auto-detect Kubernetes version from k8s.io/api dependency  
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api 2>/dev/null | awk -F'[v.]' '{printf "1.%d", $$3}')
 
 # Code quality and development tool versions
-GOLANGCI_LINT_VERSION ?= v2.1.6
-GINKGO_VERSION ?= v2.23.4
+GOLANGCI_LINT_VERSION ?= v2.4.0
+GINKGO_VERSION ?= v2.26.0
 
 # Directories
 API_DIR := $(shell [ -d api ] && echo api || echo pkg/apis)
