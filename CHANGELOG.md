@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Refactored Grafana package to use domain organization objects and moved status updates to controller layer.
 - Refactor webhook test suite architecture to use shared testutil package and individual test suites per API version
 
 ### Removed
