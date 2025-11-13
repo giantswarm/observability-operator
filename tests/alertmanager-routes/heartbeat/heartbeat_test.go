@@ -12,7 +12,7 @@ import (
 // TestHeartbeat is a simple test that sends a single alert to Alertmanager
 func TestHeartbeat(t *testing.T) {
 	testCases := []helper.TestCase{
-		// Heartbeat alert SHOULD go to Cronitor and OpsGenie
+		// Heartbeat alert SHOULD go to Cronitor
 		{
 			Alert: helper.Alert{
 				Name: "Heartbeat",

@@ -9,10 +9,10 @@ import (
 	helper "github.com/giantswarm/observability-operator/tests/alertmanager-routes"
 )
 
-// TestPipelineStableTestingRouting tests multiple routing scenarios including OpsGenie, PagerDuty, and blackhole routes
+// TestPipelineStableTestingRouting tests multiple routing scenarios including PagerDuty, and blackhole routes
 func TestPipelineStableTestingRouting(t *testing.T) {
 	testCases := []helper.TestCase{
-		// Page alert - should go to both OpsGenie and PagerDuty
+		// Page alert - should go to PagerDuty
 		{
 			Alert: helper.Alert{
 				Name: "TestStableTestingPageAlert",
@@ -27,11 +27,6 @@ func TestPipelineStableTestingRouting(t *testing.T) {
 				},
 			},
 			Expectations: []helper.Expectation{
-				// OpsGenie expectation for paging alert
-				{
-					URL:       "https://api.opsgenie.com/v2/alerts",
-					BodyParts: []string{`"message":"test-installation-test-cluster - TestStableTestingPageAlert"`},
-				},
 				// PagerDuty expectation for pipeline=stable-testing
 				// TODO: cannot test this due to time_intervals
 				//{
@@ -80,11 +75,6 @@ func TestPipelineStableTestingRouting(t *testing.T) {
 			},
 			Expectations: []helper.Expectation{
 				{
-					URL:       "https://api.opsgenie.com/v2/alerts",
-					BodyParts: []string{`TestStableTestingWCAlert`},
-					Negate:    true,
-				},
-				{
 					URL:       "https://events.eu.pagerduty.com/v2/enqueue",
 					BodyParts: []string{`TestStableTestingWCAlert`},
 					Negate:    true,
@@ -106,11 +96,6 @@ func TestPipelineStableTestingRouting(t *testing.T) {
 				},
 			},
 			Expectations: []helper.Expectation{
-				{
-					URL:       "https://api.opsgenie.com/v2/alerts",
-					BodyParts: []string{`TestStableTestingTestClusterAlert`},
-					Negate:    true,
-				},
 				{
 					URL:       "https://events.eu.pagerduty.com/v2/enqueue",
 					BodyParts: []string{`TestStableTestingTestClusterAlert`},
@@ -134,11 +119,6 @@ func TestPipelineStableTestingRouting(t *testing.T) {
 			},
 			Expectations: []helper.Expectation{
 				{
-					URL:       "https://api.opsgenie.com/v2/alerts",
-					BodyParts: []string{`ClusterUnhealthyPhase`},
-					Negate:    true,
-				},
-				{
 					URL:       "https://events.eu.pagerduty.com/v2/enqueue",
 					BodyParts: []string{`ClusterUnhealthyPhase`},
 					Negate:    true,
@@ -160,11 +140,6 @@ func TestPipelineStableTestingRouting(t *testing.T) {
 				},
 			},
 			Expectations: []helper.Expectation{
-				{
-					URL:       "https://api.opsgenie.com/v2/alerts",
-					BodyParts: []string{`WorkloadClusterApp`},
-					Negate:    true,
-				},
 				{
 					URL:       "https://events.eu.pagerduty.com/v2/enqueue",
 					BodyParts: []string{`WorkloadClusterApp`},
@@ -188,11 +163,6 @@ func TestPipelineStableTestingRouting(t *testing.T) {
 				},
 			},
 			Expectations: []helper.Expectation{
-				{
-					URL:       "https://api.opsgenie.com/v2/alerts",
-					BodyParts: []string{`ManagementClusterAppFailed`},
-					Negate:    true,
-				},
 				{
 					URL:       "https://events.eu.pagerduty.com/v2/enqueue",
 					BodyParts: []string{`ManagementClusterAppFailed`},

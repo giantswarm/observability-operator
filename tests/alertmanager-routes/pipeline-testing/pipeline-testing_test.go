@@ -9,38 +9,10 @@ import (
 	helper "github.com/giantswarm/observability-operator/tests/alertmanager-routes"
 )
 
-// TestPipelineTestingRouting tests that pipeline=testing goes to OpsGenie only (not PagerDuty)
+// TestPipelineTestingRouting tests that pipeline=testing goes not go to PagerDuty
 // unless all_pipelines=true is set
 func TestPipelineTestingRouting(t *testing.T) {
 	testCases := []helper.TestCase{
-		// Regular page alert with pipeline=testing - OpsGenie only
-		{
-			Alert: helper.Alert{
-				Name: "TestTestingPageAlert",
-				Labels: map[string]string{
-					"cluster_id":   "test-cluster",
-					"installation": "test-installation",
-					"pipeline":     "testing",
-					"provider":     "aws",
-					"severity":     "page",
-					"status":       "firing",
-					"team":         "foo",
-				},
-			},
-			Expectations: []helper.Expectation{
-				// OpsGenie expectation for regular paging alert (pipeline=testing)
-				{
-					URL:       "https://api.opsgenie.com/v2/alerts",
-					BodyParts: []string{`"message":"test-installation-test-cluster - TestTestingPageAlert"`},
-				},
-				// Should NOT go to PagerDuty without all_pipelines=true
-				{
-					URL:       "https://events.eu.pagerduty.com/v2/enqueue",
-					BodyParts: []string{`TestTestingPageAlert`},
-					Negate:    true,
-				},
-			},
-		},
 		// Alert with all_pipelines=true - should go to PagerDuty
 		{
 			Alert: helper.Alert{

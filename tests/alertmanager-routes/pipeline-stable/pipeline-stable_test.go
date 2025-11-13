@@ -10,10 +10,10 @@ import (
 )
 
 // TestPipelineStable tests multiple routing scenarios for "pipeline" related routes
-// This combines OpsGenie, PagerDuty, and Slack routing tests
+// This combines PagerDuty, and Slack routing tests
 func TestPipelineStable(t *testing.T) {
 	testCases := []helper.TestCase{
-		// Page alert - SHOULD go to both OpsGenie and PagerDuty
+		// Page alert - SHOULD go to PagerDuty
 		{
 			Alert: helper.Alert{
 				Name: "TestStablePageAlert",
@@ -28,11 +28,6 @@ func TestPipelineStable(t *testing.T) {
 				},
 			},
 			Expectations: []helper.Expectation{
-				// OpsGenie expectation for paging alert
-				{
-					URL:       "https://api.opsgenie.com/v2/alerts",
-					BodyParts: []string{`"message":"test-installation-test-cluster - TestStablePageAlert"`},
-				},
 				// PagerDuty expectation for pipeline=stable
 				{
 					URL:       "https://events.eu.pagerduty.com/v2/enqueue",
@@ -116,12 +111,6 @@ func TestPipelineStable(t *testing.T) {
 				{
 					URL:       "https://slack.com/api/chat.postMessage",
 					BodyParts: []string{`{"channel":"#alert-atlas","username":"Alertmanager","attachments":[{"title":"FIRING[1] TestStableNotifyAtlasAlert - Team atlas"`},
-				},
-				// Notify alerts SHOULD NOT be delivered to OpsGenie
-				{
-					URL:       "https://api.opsgenie.com/v2/alerts",
-					BodyParts: []string{`TestStableNotifyAtlasAlert`},
-					Negate:    true,
 				},
 				// Notify alerts SHOULD NOT be delivered to PagerDuty
 				{
