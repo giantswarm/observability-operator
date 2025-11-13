@@ -1,6 +1,6 @@
 # Alertmanager Routes Integration Tests
 
-Go integration tests that verify Alertmanager routing configurations by sending test alerts and checking that they reach the right receivers (Slack, OpsGenie, webhooks, etc.).
+Go integration tests that verify Alertmanager routing configurations by sending test alerts and checking that they reach the right receivers (Slack, webhooks, etc.).
 
 ## Table of Contents
 
@@ -170,7 +170,7 @@ These tests work by:
 3. Sending test alerts
 4. Verifying the expected notifications were sent
 
-No actual external services (Slack, OpsGenie, etc.) are needed - everything is intercepted by the test server.
+No actual external services (PagerDuty, Slack, etc.) are needed - everything is intercepted by the test server.
 
 ```
 ┌─────────────┐

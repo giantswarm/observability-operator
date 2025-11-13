@@ -33,7 +33,7 @@ endif
 
 # Integration test configuration
 KIND_CLUSTER_NAME = alertmanager-integration
-INTEGRATION_TEST_FLAGS = -count=1 -v -p 1 -test.timeout 30m -args \
+INTEGRATION_TEST_FLAGS = -count=1 -v -p 1 -test.timeout 30m -tags=integration -args \
 												 -alertmanager-config-dir $(ALERTMANAGER_TEST_CONFIG_DIR)
 MIMIR_CHART = oci://giantswarmpublic.azurecr.io/control-plane-catalog/mimir
 MIMIR_CHART_VERSION = 0.21.0
@@ -84,7 +84,7 @@ $(BATS_BIN): ## Install BATS testing framework
 
 $(YQ_BIN): | $(BIN_DIR) ## Install yq binary
 	@echo "==> Installing yq binary"
-	wget -q https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 -O $@
+	wget -q --show-progress https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 -O $@
 	chmod +x $@
 
 .PHONY: bin-dir-clean
@@ -111,7 +111,46 @@ tests-alertmanager-routes: $(subst /,-, $(shell find tests/alertmanager-routes -
 
 .PHONY: tests-alertmanager-routes-clean
 tests-alertmanager-routes-clean:
-	-rm -rf $(TESTS_WORKDIR)/chart-manifest-* tests/alertmanager-routes/*/alertmanager-config
+	-rm -rf $(TESTS_WORKDIR)/chart-manifest-* tests/alertmanager-routes/*/alertmanager-config tests-workdir/prometheus-alertmanager
+
+###############################################################################
+# Alertmanager Integration Tests
+###############################################################################
+
+.PHONY: tests-alertmanager-integration-setup
+tests-alertmanager-integration-setup: $(ALERTMANAGER_INTEGRATION_SETUP)
+
+$(ALERTMANAGER_INTEGRATION_SETUP): ## Install Mimir Alertmanager in a Kind cluster
+	@kind get clusters -q | grep -q "^$(KIND_CLUSTER_NAME)$$" && \
+		kind delete cluster --name $(KIND_CLUSTER_NAME) || true
+	kind create cluster --wait 120s --config tests/alertmanager-integration/kind-cluster.yaml --name $(KIND_CLUSTER_NAME)
+	@echo
+	@echo "==> Preparing Mimir Alertmanager manifest"
+	@rm -rf $(MIMIR_CHART_OUTPUT)
+	@mkdir -p $(MIMIR_CHART_OUTPUT)
+	helm template mimir $(MIMIR_CHART) --version $(MIMIR_CHART_VERSION) --values tests/alertmanager-integration/mimir-values.yaml --output-dir $(MIMIR_CHART_OUTPUT)
+	patch -d $(MIMIR_CHART_OUTPUT) -p0 < tests/alertmanager-integration/mimir-alertmanager-svc.patch
+	rm -rf "$(MIMIR_CHART_OUTPUT)/mimir/charts/mimir/templates/smoke-test"
+	@echo
+	@echo "==> Deploying Mimir Alertmanager"
+	kubectl apply -Rf $(MIMIR_CHART_OUTPUT)/mimir/charts/mimir
+	@echo
+	@echo "==> Waiting for Mimir Alertmanager to be ready..."
+	$(KUBECTL) $(KUBECTL_ARGS) wait --for=condition=ready pod -lapp.kubernetes.io/component=alertmanager,app.kubernetes.io/instance=mimir --timeout=120s
+	@echo
+	touch $@
+
+tests-alertmanager-integration-%: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertmanager-routes-%-alertmanager-config ## Run Alertmanager integration test
+	go test ./tests/alertmanager-routes/$* $(INTEGRATION_TEST_FLAGS)
+
+.PHONY: tests-alertmanager-integrations
+tests-alertmanager-integrations: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertmanager-routes ## Run all Alertmanager integration tests
+	go test ./tests/alertmanager-routes/... $(INTEGRATION_TEST_FLAGS)
+
+.PHONY: tests-alertmanager-integration-clean
+tests-alertmanager-integration-clean: ## Teardown integration test environment
+	@rm -rf $(ALERTMANAGER_INTEGRATION_SETUP) $(MIMIR_CHART_OUTPUT)  tests/alertmanager-routes/*/integration_test_requests*.log
+	@kind delete cluster --name $(KIND_CLUSTER_NAME) || true
 
 ###############################################################################
 # Alertmanager Integration Tests
@@ -168,4 +207,4 @@ validate-alertmanager-config: ## Validate Alertmanager config.
 run-local: ## Run the application in local mode.
 	./hack/bin/run-local.sh
 
-clean: tests-alertmanager-routes-clean alertmanager-integration-clean bin-dir-clean ## Clean up generated test files
+clean: tests-alertmanager-routes-clean tests-alertmanager-integration-clean bin-dir-clean ## Clean up generated test files
