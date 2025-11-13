@@ -7,6 +7,8 @@ import (
 
 	"github.com/grafana/grafana-openapi-client-go/models"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 const (
@@ -21,7 +23,7 @@ const (
 // ConfigureSSOSettings configures Grafana SSO settings with organization mappings.
 // It retrieves the current SSO provider settings, updates the org_mapping field
 // with the provided organizations, and applies the changes to Grafana.
-func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Organization) error {
+func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []*organization.Organization) error {
 	logger := log.FromContext(ctx).WithValues("provider", ssoProvider, "organizations_count", len(organizations))
 
 	if len(organizations) == 0 {
@@ -71,29 +73,29 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []Orga
 
 // generateGrafanaOrgsMapping generates Grafana organization mappings from the provided organizations.
 // Each organization's users are mapped to Grafana roles (Admin, Editor, Viewer) based on their attributes.
-func generateGrafanaOrgsMapping(organizations []Organization) (string, error) {
+func generateGrafanaOrgsMapping(organizations []*organization.Organization) (string, error) {
 	var orgMappings []string
 	for _, organization := range organizations {
-		if organization.Name == "" {
+		if organization.Name() == "" {
 			return "", fmt.Errorf("organization name cannot be empty")
 		}
 
 		// Process admins
-		for _, adminOrgAttribute := range organization.Admins {
+		for _, adminOrgAttribute := range organization.Admins() {
 			if adminOrgAttribute == "" {
-				return "", fmt.Errorf("admin attribute cannot be empty for organization %s", organization.Name)
+				return "", fmt.Errorf("admin attribute cannot be empty for organization %s", organization.Name())
 			}
-			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, adminOrgAttribute, grafanaAdminRole))
+			orgMappings = append(orgMappings, buildOrgMapping(organization.Name(), adminOrgAttribute, grafanaAdminRole))
 		}
 
 		// Process editors
-		for _, editorOrgAttribute := range organization.Editors {
-			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, editorOrgAttribute, grafanaEditorRole))
+		for _, editorOrgAttribute := range organization.Editors() {
+			orgMappings = append(orgMappings, buildOrgMapping(organization.Name(), editorOrgAttribute, grafanaEditorRole))
 		}
 
 		// Process viewers
-		for _, viewerOrgAttribute := range organization.Viewers {
-			orgMappings = append(orgMappings, buildOrgMapping(organization.Name, viewerOrgAttribute, grafanaViewerRole))
+		for _, viewerOrgAttribute := range organization.Viewers() {
+			orgMappings = append(orgMappings, buildOrgMapping(organization.Name(), viewerOrgAttribute, grafanaViewerRole))
 		}
 	}
 
