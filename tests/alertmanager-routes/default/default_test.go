@@ -21,7 +21,7 @@ func TestDefault(t *testing.T) {
 					"cluster_id":   "test-cluster",
 					"installation": "test-installation",
 					"pipeline":     "stable",
-					"provider":     "aws",
+					"provider":     "capa",
 					"severity":     "page",
 					"team":         "test-team",
 					"status":       "firing",
