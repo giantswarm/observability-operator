@@ -65,9 +65,6 @@
                 "enabled": {
                     "type": "boolean"
                 },
-                "opsgenieApiKey": {
-                    "type": "string"
-                },
                 "sharding": {
                     "type": "object",
                     "properties": {

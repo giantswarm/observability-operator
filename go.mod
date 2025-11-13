@@ -15,12 +15,10 @@ require (
 	github.com/grafana/grafana-openapi-client-go v0.0.0-20250925215610-d92957c70d5c
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
-	github.com/opsgenie/opsgenie-go-sdk-v2 v1.2.23
 	github.com/prometheus/alertmanager v0.29.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.2
 	github.com/sanity-io/litter v1.5.8
-	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
 	k8s.io/api v0.33.4
 	k8s.io/apiextensions-apiserver v0.33.4
@@ -84,8 +82,6 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20250820193118-f64d9cf942d6 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect

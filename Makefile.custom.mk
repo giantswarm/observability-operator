@@ -153,6 +153,45 @@ tests-alertmanager-integration-clean: ## Teardown integration test environment
 	@kind delete cluster --name $(KIND_CLUSTER_NAME) || true
 
 ###############################################################################
+# Alertmanager Integration Tests
+###############################################################################
+
+.PHONY: test-alertmanager-integration-setup
+test-alertmanager-integration-setup: $(ALERTMANAGER_INTEGRATION_SETUP)
+
+$(ALERTMANAGER_INTEGRATION_SETUP): ## Install Mimir Alertmanager in a Kind cluster
+	@kind get clusters -q | grep -q "^$(KIND_CLUSTER_NAME)$$" && \
+		kind delete cluster --name $(KIND_CLUSTER_NAME) || true
+	kind create cluster --wait 120s --config tests/alertmanager-integration/kind-cluster.yaml --name $(KIND_CLUSTER_NAME)
+	@echo
+	@echo "==> Preparing Mimir Alertmanager manifest"
+	@rm -rf $(MIMIR_CHART_OUTPUT)
+	@mkdir -p $(MIMIR_CHART_OUTPUT)
+	helm template mimir $(MIMIR_CHART) --version $(MIMIR_CHART_VERSION) --values tests/alertmanager-integration/mimir-values.yaml --output-dir $(MIMIR_CHART_OUTPUT)
+	patch -d $(MIMIR_CHART_OUTPUT) -p0 < tests/alertmanager-integration/mimir-alertmanager-svc.patch
+	rm -rf "$(MIMIR_CHART_OUTPUT)/mimir/charts/mimir/templates/smoke-test"
+	@echo
+	@echo "==> Deploying Mimir Alertmanager"
+	kubectl apply -Rf $(MIMIR_CHART_OUTPUT)/mimir/charts/mimir
+	@echo
+	@echo "==> Waiting for Mimir Alertmanager to be ready..."
+	$(KUBECTL) $(KUBECTL_ARGS) wait --for=condition=ready pod -lapp.kubernetes.io/component=alertmanager,app.kubernetes.io/instance=mimir --timeout=120s
+	@echo
+	touch $@
+
+test-alertmanager-integration-%: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertmanager-routes-%-alertmanager-config ## Run Alertmanager integration test
+	go test ./tests/alertmanager-routes/$* $(INTEGRATION_TEST_FLAGS)
+
+.PHONY: test-alertmanager-integrations
+test-alertmanager-integrations: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertmanager-routes ## Run all Alertmanager integration tests
+	go test ./tests/alertmanager-routes/... $(INTEGRATION_TEST_FLAGS)
+
+.PHONY: test-alertmanager-integration-clean
+test-alertmanager-integration-clean: ## Teardown integration test environment
+	@rm -rf $(ALERTMANAGER_INTEGRATION_SETUP) $(MIMIR_CHART_OUTPUT)  tests/alertmanager-routes/*/integration_test_requests*.log
+	@kind delete cluster --name $(KIND_CLUSTER_NAME) || true
+
+###############################################################################
 # Linting and Validation
 ###############################################################################
 

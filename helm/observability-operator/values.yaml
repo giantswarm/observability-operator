@@ -27,7 +27,6 @@ alerting:
 
 monitoring:
   enabled: false
-  opsgenieApiKey: ""
   sharding:
     scaleUpSeriesCount: 1000000
     scaleDownPercentage: 0.20

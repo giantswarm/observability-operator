@@ -2,8 +2,5 @@ managementCluster:
   name: mc-name
   pipeline: mc-pipeline
 
-monitoring:
-  opsgenieApiKey: opsgenie-api-key
-
 alerting:
   cronitorHeartbeatPingKey: "cronitor-ping-key"
