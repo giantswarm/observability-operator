@@ -117,8 +117,8 @@ tests-alertmanager-routes-clean:
 # Alertmanager Integration Tests
 ###############################################################################
 
-.PHONY: test-alertmanager-integration-setup
-test-alertmanager-integration-setup: $(ALERTMANAGER_INTEGRATION_SETUP)
+.PHONY: tests-alertmanager-integration-setup
+tests-alertmanager-integration-setup: $(ALERTMANAGER_INTEGRATION_SETUP)
 
 $(ALERTMANAGER_INTEGRATION_SETUP): ## Install Mimir Alertmanager in a Kind cluster
 	@kind get clusters -q | grep -q "^$(KIND_CLUSTER_NAME)$$" && \
@@ -140,15 +140,15 @@ $(ALERTMANAGER_INTEGRATION_SETUP): ## Install Mimir Alertmanager in a Kind clust
 	@echo
 	touch $@
 
-test-alertmanager-integration-%: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertmanager-routes-%-alertmanager-config ## Run Alertmanager integration test
+tests-alertmanager-integration-%: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertmanager-routes-%-alertmanager-config ## Run Alertmanager integration test
 	go test ./tests/alertmanager-routes/$* $(INTEGRATION_TEST_FLAGS)
 
-.PHONY: test-alertmanager-integrations
-test-alertmanager-integrations: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertmanager-routes ## Run all Alertmanager integration tests
+.PHONY: tests-alertmanager-integrations
+tests-alertmanager-integrations: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertmanager-routes ## Run all Alertmanager integration tests
 	go test ./tests/alertmanager-routes/... $(INTEGRATION_TEST_FLAGS)
 
-.PHONY: test-alertmanager-integration-clean
-test-alertmanager-integration-clean: ## Teardown integration test environment
+.PHONY: tests-alertmanager-integration-clean
+tests-alertmanager-integration-clean: ## Teardown integration test environment
 	@rm -rf $(ALERTMANAGER_INTEGRATION_SETUP) $(MIMIR_CHART_OUTPUT)  tests/alertmanager-routes/*/integration_test_requests*.log
 	@kind delete cluster --name $(KIND_CLUSTER_NAME) || true
 
@@ -168,4 +168,4 @@ validate-alertmanager-config: ## Validate Alertmanager config.
 run-local: ## Run the application in local mode.
 	./hack/bin/run-local.sh
 
-clean: tests-alertmanager-routes-clean test-alertmanager-integration-clean bin-dir-clean ## Clean up generated test files
+clean: tests-alertmanager-routes-clean tests-alertmanager-integration-clean bin-dir-clean ## Clean up generated test files
