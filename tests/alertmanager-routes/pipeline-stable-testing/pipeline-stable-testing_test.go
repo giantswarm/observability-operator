@@ -13,28 +13,27 @@ import (
 func TestPipelineStableTestingRouting(t *testing.T) {
 	testCases := []helper.TestCase{
 		// Page alert - should go to PagerDuty
-		{
-			Alert: helper.Alert{
-				Name: "TestStableTestingPageAlert",
-				Labels: map[string]string{
-					"cluster_id":   "test-cluster",
-					"installation": "test-installation",
-					"pipeline":     "stable-testing",
-					"provider":     "aws",
-					"severity":     "page",
-					"status":       "firing",
-					"team":         "foo",
-				},
-			},
-			Expectations: []helper.Expectation{
-				// PagerDuty expectation for pipeline=stable-testing
-				// TODO: cannot test this due to time_intervals
-				//{
-				//	URL:       "https://events.eu.pagerduty.com/v2/enqueue",
-				//	BodyParts: []string{`"routing_key":"foo-pagerduty-token"`, `"alertname":"TestStableTestingPageAlert"`},
-				//},
-			},
-		},
+		// TODO: cannot test this due to time_intervals
+		//{
+		//	Alert: helper.Alert{
+		//		Name: "TestStableTestingPageAlert",
+		//		Labels: map[string]string{
+		//			"cluster_id":   "test-cluster",
+		//			"installation": "test-installation",
+		//			"pipeline":     "stable-testing",
+		//			"provider":     "aws",
+		//			"severity":     "page",
+		//			"status":       "firing",
+		//			"team":         "foo",
+		//		},
+		//	},
+		//	Expectations: []helper.Expectation{
+		//		{
+		//			URL:       "https://events.eu.pagerduty.com/v2/enqueue",
+		//			BodyParts: []string{`"routing_key":"foo-pagerduty-token"`, `"alertname":"TestStableTestingPageAlert"`},
+		//		},
+		//	},
+		//},
 		// Page alert with all_pipelines=true - should go to PagerDuty
 		{
 			Alert: helper.Alert{
