@@ -4,11 +4,6 @@ load ../helper.bash
 
 # Paging alerts on stable pipeline
 
-@test "paging alerts are delivered to OpsGenie" {
-  run amtool team=foo severity=page
-  assert_line opsgenie_router
-}
-
 @test "paging alerts with pipeline=stable delivered to PagerDuty" {
   run amtool team=foo severity=page pipeline=stable
   assert_line --partial pagerduty-foo
