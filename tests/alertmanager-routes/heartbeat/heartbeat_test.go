@@ -27,11 +27,6 @@ func TestHeartbeat(t *testing.T) {
 				// Cronitor Heartbeat
 				{
 					URL:       "https://cronitor.link/p/cronitor-ping-key/mimir-mc-name?env=mc-pipeline",
-					BodyParts: []string{`{"receiver":"cronitor-heartbeat","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"Heartbeat","cluster_id":"foo","installation":"bar","status":"firing","team":"baz"}`},
-				},
-				// OpsGenie Heartbeat
-				{
-					URL:       "https://api.opsgenie.com/v2/heartbeats/mc-name/ping",
 					BodyParts: []string{`{"receiver":"heartbeat","status":"firing","alerts":[{"status":"firing","labels":{"alertname":"Heartbeat","cluster_id":"foo","installation":"bar","status":"firing","team":"baz"}`},
 				},
 			},
