@@ -114,7 +114,10 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 			return fmt.Errorf("failed to generate htpasswd: %w", err)
 		}
 
-		secret := secret.GenerateGenericSecret(ingressAuthSecretName, mimirNamespace, "auth", htpasswd)
+		secret := secret.GenerateGenericSecretWithMultipleKeys(ingressAuthSecretName, mimirNamespace, map[string]string{
+			"auth":      htpasswd,
+			".htpasswd": htpasswd,
+		})
 
 		err = ms.Client.Create(ctx, secret)
 		if err != nil {
