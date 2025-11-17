@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	ingressAuthSecretName = "mimir-gateway-ingress-auth" // #nosec G101
-	mimirApiKey           = "mimir-basic-auth"           // #nosec G101
-	mimirNamespace        = "mimir"
+	ingressAuthSecretName   = "mimir-gateway-ingress-auth"   // #nosec G101
+	httprouteAuthSecretName = "mimir-gateway-httproute-auth" // #nosec G101
+	mimirApiKey             = "mimir-basic-auth"             // #nosec G101
+	mimirNamespace          = "mimir"
 )
 
 type MimirService struct {
@@ -42,6 +43,11 @@ func (ms *MimirService) ConfigureMimir(ctx context.Context) error {
 	err = ms.CreateIngressAuthenticationSecret(ctx, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create mimir ingress secret: %w", err)
+	}
+
+	err = ms.CreateHTTPRouteAuthenticationSecret(ctx, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create mimir httproute secret: %w", err)
 	}
 
 	logger.Info("configured mimir ingress")
@@ -104,9 +110,9 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 	if apierrors.IsNotFound(err) {
 		logger.Info("building ingress secret")
 
-		password, err := commonmonitoring.GetMimirIngressPassword(ctx, ms.Client)
+		password, err := commonmonitoring.GetMimirAuthPassword(ctx, ms.Client)
 		if err != nil {
-			return fmt.Errorf("failed to get mimir ingress password: %w", err)
+			return fmt.Errorf("failed to get mimir auth password: %w", err)
 		}
 
 		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(ms.Cluster.Name, password)
@@ -131,10 +137,53 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 	return nil
 }
 
+func (ms *MimirService) CreateHTTPRouteAuthenticationSecret(ctx context.Context, logger logr.Logger) error {
+	objectKey := client.ObjectKey{
+		Name:      httprouteAuthSecretName,
+		Namespace: mimirNamespace,
+	}
+
+	current := &corev1.Secret{}
+	err := ms.Client.Get(ctx, objectKey, current)
+	if apierrors.IsNotFound(err) {
+		logger.Info("building httproute secret")
+
+		password, err := commonmonitoring.GetMimirAuthPassword(ctx, ms.Client)
+		if err != nil {
+			return fmt.Errorf("failed to get mimir auth password: %w", err)
+		}
+
+		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(ms.Cluster.Name, password)
+		if err != nil {
+			return fmt.Errorf("failed to generate htpasswd: %w", err)
+		}
+
+		secret := secret.GenerateGenericSecret(httprouteAuthSecretName, mimirNamespace, ".htpasswd", htpasswd)
+
+		err = ms.Client.Create(ctx, secret)
+		if err != nil {
+			return fmt.Errorf("failed to create secret %s/%s: %w", mimirNamespace, httprouteAuthSecretName, err)
+		}
+
+		logger.Info("HTTPRoute secret successfully created")
+
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to get secret %s/%s: %w", mimirNamespace, httprouteAuthSecretName, err)
+	}
+
+	return nil
+}
+
 func (ms *MimirService) DeleteMimirSecrets(ctx context.Context) error {
 	err := secret.DeleteSecret(ingressAuthSecretName, mimirNamespace, ctx, ms.Client)
 	if err != nil {
 		return fmt.Errorf("failed to delete secret %s/%s: %w", mimirNamespace, ingressAuthSecretName, err)
+	}
+
+	err = secret.DeleteSecret(httprouteAuthSecretName, mimirNamespace, ctx, ms.Client)
+	if err != nil {
+		return fmt.Errorf("failed to delete secret %s/%s: %w", mimirNamespace, httprouteAuthSecretName, err)
 	}
 
 	err = secret.DeleteSecret(mimirApiKey, mimirNamespace, ctx, ms.Client)

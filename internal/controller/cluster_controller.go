@@ -317,7 +317,7 @@ func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
 
 	err := r.MimirService.DeleteMimirSecrets(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to delete mimir ingress secret: %w", err)
+		return fmt.Errorf("failed to delete mimir secrets: %w", err)
 	}
 
 	return nil

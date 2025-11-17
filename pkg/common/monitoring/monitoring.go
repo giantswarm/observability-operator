@@ -55,7 +55,7 @@ func GetServicePriority(cluster *clusterv1.Cluster) string {
 	return defaultServicePriority
 }
 
-func GetMimirIngressPassword(ctx context.Context, k8sClient client.Client) (string, error) {
+func GetMimirAuthPassword(ctx context.Context, k8sClient client.Client) (string, error) {
 	secret := &corev1.Secret{}
 
 	err := k8sClient.Get(ctx, client.ObjectKey{
