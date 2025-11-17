@@ -104,9 +104,9 @@ func (ms *MimirService) CreateIngressAuthenticationSecret(ctx context.Context, l
 	if apierrors.IsNotFound(err) {
 		logger.Info("building ingress secret")
 
-		password, err := commonmonitoring.GetMimirIngressPassword(ctx, ms.Client)
+		password, err := commonmonitoring.GetMimirAuthPassword(ctx, ms.Client)
 		if err != nil {
-			return fmt.Errorf("failed to get mimir ingress password: %w", err)
+			return fmt.Errorf("failed to get mimir auth password: %w", err)
 		}
 
 		htpasswd, err := ms.PasswordManager.GenerateHtpasswd(ms.Cluster.Name, password)
