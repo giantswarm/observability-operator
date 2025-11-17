@@ -10,13 +10,25 @@ repo: github.com/giantswarm/observability-operator
 resources:
 - api:
     crdVersion: v1
-  controller: true
+  controller: false
   domain: giantswarm.io
   group: observability
   kind: GrafanaOrganization
   path: github.com/giantswarm/observability-operator/api/v1alpha1
   version: v1alpha1
   webhooks:
+    validation: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+  controller: true
+  domain: giantswarm.io
+  group: observability
+  kind: GrafanaOrganization
+  path: github.com/giantswarm/observability-operator/api/v1alpha2
+  version: v1alpha2
+  webhooks:
+    conversion: true
     validation: true
     webhookVersion: v1
 - controller: true

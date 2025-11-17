@@ -30,9 +30,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	observabilityv1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/internal/controller"
 	webhookcorev1 "github.com/giantswarm/observability-operator/internal/webhook/v1"
 	webhookcorev1alpha1 "github.com/giantswarm/observability-operator/internal/webhook/v1alpha1"
+	webhookcorev1alpha2 "github.com/giantswarm/observability-operator/internal/webhook/v1alpha2"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	//+kubebuilder:scaffold:imports
@@ -50,6 +52,7 @@ func init() {
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(appv1.AddToScheme(scheme))
 	utilruntime.Must(observabilityv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(observabilityv1alpha2.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -322,7 +325,10 @@ func setupApplication() error {
 			return fmt.Errorf("unable to create webhook (DashboardConfigMap): %w", err)
 		}
 		if err = webhookcorev1alpha1.SetupGrafanaOrganizationWebhookWithManager(mgr); err != nil {
-			return fmt.Errorf("unable to create webhook (GrafanaOrganization): %w", err)
+			return fmt.Errorf("unable to create webhook (GrafanaOrganization v1alpha1): %w", err)
+		}
+		if err = webhookcorev1alpha2.SetupGrafanaOrganizationWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("unable to create webhook (GrafanaOrganization v1alpha2): %w", err)
 		}
 	}
 	//+kubebuilder:scaffold:builder

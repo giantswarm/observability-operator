@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -163,7 +164,7 @@ var _ = Describe("GrafanaOrganization Validation", func() {
 
 				grafanaOrg := &observabilityv1alpha1.GrafanaOrganization{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-org-valid-" + strings.ReplaceAll(tc.name, "_", "-") + "-" + string(rune(i+97)), // Use lowercase letters starting from 'a'
+						Name: fmt.Sprintf("test-org-valid-%s-%d", strings.ReplaceAll(tc.name, "_", "-"), i),
 					},
 					Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
 						DisplayName: "Test Organization",

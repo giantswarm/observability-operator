@@ -123,6 +123,7 @@ generate-crds: $(CONTROLLER_GEN) | $(CRD_DIR) ## Generate Custom Resource Defini
 	@$(CONTROLLER_GEN) crd:allowDangerousTypes=true \
 		paths="./$(API_DIR)/..." \
 		output:crd:artifacts:config="$(CRD_DIR)"
+	@./hack/add-conversion-webhook.sh
 	@$(call log_info,"CRD generation completed")
 
 .PHONY: generate-rbac  

@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -28,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/internal/webhook/validation"
 )
 
 // grafanaorganizationlog is for logging in this package.
@@ -97,26 +97,13 @@ func (v *GrafanaOrganizationValidator) ValidateDelete(ctx context.Context, obj r
 // This webhook only adds: forbidden values and duplicates validation.
 // See: https://grafana.com/docs/mimir/latest/configure/about-tenant-ids/
 func (v *GrafanaOrganizationValidator) validateTenantIDs(tenantIDs []observabilityv1alpha1.TenantID) error {
-	// List of forbidden tenant ID values that pass the CRD pattern but are not allowed by Mimir
-	forbiddenValues := []string{"__mimir_cluster"}
-
-	// Track seen tenant IDs to detect duplicates (CRD can't enforce uniqueness in arrays)
-	seen := make(map[string]bool)
-
-	for _, tenantID := range tenantIDs {
-		tenantStr := string(tenantID)
-
-		// Check for duplicates (CRD cannot enforce this)
-		if seen[tenantStr] {
-			return fmt.Errorf("duplicate tenant ID %q found", tenantStr)
-		}
-		seen[tenantStr] = true
-
-		// Check forbidden values (CRD cannot enforce specific value exclusions)
-		if slices.Contains(forbiddenValues, tenantStr) {
-			return fmt.Errorf("tenant ID %q is not allowed. Forbidden values: %v", tenantStr, forbiddenValues)
-		}
+	// Convert TenantID slice to string slice for validation
+	tenantNames := make([]string, len(tenantIDs))
+	for i, tenantID := range tenantIDs {
+		tenantNames[i] = string(tenantID)
 	}
 
-	return nil
+	// Use shared validation logic
+	validator := validation.NewTenantValidator()
+	return validator.ValidateTenantNames(tenantNames)
 }

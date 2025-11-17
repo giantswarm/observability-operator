@@ -5,7 +5,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/api/v1alpha2"
 )
 
 func TestNewOrganizationMapper(t *testing.T) {
@@ -20,27 +20,30 @@ func TestFromGrafanaOrganization(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		grafanaOrg      *v1alpha1.GrafanaOrganization
+		grafanaOrg      *v1alpha2.GrafanaOrganization
 		expectedOrgID   int64
 		expectedName    string
 		expectedTenants int
 	}{
 		{
-			name: "regular organization",
-			grafanaOrg: &v1alpha1.GrafanaOrganization{
+			name: "regular organization with tenant configs",
+			grafanaOrg: &v1alpha2.GrafanaOrganization{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-org",
 				},
-				Spec: v1alpha1.GrafanaOrganizationSpec{
+				Spec: v1alpha2.GrafanaOrganizationSpec{
 					DisplayName: "Test Organization",
-					Tenants:     []v1alpha1.TenantID{"tenant1", "tenant2"},
-					RBAC: &v1alpha1.RBAC{
+					Tenants: []v1alpha2.TenantConfig{
+						{Name: "tenant1", Types: []v1alpha2.TenantType{v1alpha2.TenantTypeData}},
+						{Name: "tenant2", Types: []v1alpha2.TenantType{v1alpha2.TenantTypeData, v1alpha2.TenantTypeAlerting}},
+					},
+					RBAC: &v1alpha2.RBAC{
 						Admins:  []string{"admin1"},
 						Editors: []string{"editor1"},
 						Viewers: []string{"viewer1"},
 					},
 				},
-				Status: v1alpha1.GrafanaOrganizationStatus{
+				Status: v1alpha2.GrafanaOrganizationStatus{
 					OrgID: 42,
 				},
 			},
@@ -66,10 +69,10 @@ func TestFromGrafanaOrganization(t *testing.T) {
 				t.Errorf("Expected %d tenants, got %d", tt.expectedTenants, len(domainOrg.TenantIDs()))
 			}
 
-			// Verify tenant conversion
+			// Verify tenant conversion (should extract tenant names from TenantConfig)
 			for i, tenant := range tt.grafanaOrg.Spec.Tenants {
-				if domainOrg.TenantIDs()[i] != string(tenant) {
-					t.Errorf("Expected tenant %s, got %s", string(tenant), domainOrg.TenantIDs()[i])
+				if domainOrg.TenantIDs()[i] != string(tenant.Name) {
+					t.Errorf("Expected tenant %s, got %s", string(tenant.Name), domainOrg.TenantIDs()[i])
 				}
 			}
 
