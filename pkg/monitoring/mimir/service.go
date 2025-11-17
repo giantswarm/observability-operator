@@ -146,7 +146,7 @@ func (ms *MimirService) CreateHTTPRouteAuthenticationSecret(ctx context.Context,
 	current := &corev1.Secret{}
 	err := ms.Client.Get(ctx, objectKey, current)
 	if apierrors.IsNotFound(err) {
-		logger.Info("building ingress secret")
+		logger.Info("building httproute secret")
 
 		password, err := commonmonitoring.GetMimirAuthPassword(ctx, ms.Client)
 		if err != nil {
@@ -181,7 +181,7 @@ func (ms *MimirService) DeleteMimirSecrets(ctx context.Context) error {
 		return fmt.Errorf("failed to delete secret %s/%s: %w", mimirNamespace, ingressAuthSecretName, err)
 	}
 
-	err := secret.DeleteSecret(httprouteAuthSecretName, mimirNamespace, ctx, ms.Client)
+	err = secret.DeleteSecret(httprouteAuthSecretName, mimirNamespace, ctx, ms.Client)
 	if err != nil {
 		return fmt.Errorf("failed to delete secret %s/%s: %w", mimirNamespace, httprouteAuthSecretName, err)
 	}
