@@ -85,12 +85,8 @@ func (v *GrafanaOrganizationValidator) validateTenantConfigs(tenantConfigs []obs
 		return err
 	}
 
-	// Additional v1alpha2 specific validation: validate tenant types are not empty
-	for _, tenantConfig := range tenantConfigs {
-		if len(tenantConfig.Types) == 0 {
-			return fmt.Errorf("tenant %q must have at least one type specified", string(tenantConfig.Name))
-		}
-	}
+	// Note: Empty types are allowed - they default to ["data"] via kubebuilder default annotation
+	// No additional v1alpha2 specific validation needed beyond tenant name validation
 
 	return nil
 }

@@ -170,8 +170,8 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 			Expect(err.Error()).To(ContainSubstring("duplicate tenant ID"))
 		})
 
-		It("Should reject tenant configs with empty types (Webhook validation)", func() {
-			By("Testing tenant config with empty types array")
+		It("Should allow tenant configs with empty types (defaults to data)", func() {
+			By("Testing tenant config with empty types array - should default to data")
 			grafanaOrg := &observabilityv1alpha2.GrafanaOrganization{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-org-empty-types",
@@ -181,7 +181,7 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 					Tenants: []observabilityv1alpha2.TenantConfig{
 						{
 							Name:  "valid_tenant",
-							Types: []observabilityv1alpha2.TenantType{}, // Empty types!
+							Types: []observabilityv1alpha2.TenantType{}, // Empty types should default to ["data"]
 						},
 					},
 					RBAC: &observabilityv1alpha2.RBAC{
@@ -191,8 +191,10 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 			}
 
 			err := k8sClient.Create(ctx, grafanaOrg)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("must have at least one type specified"))
+			Expect(err).NotTo(HaveOccurred(), "Empty types should be allowed and default to 'data'")
+			
+			// Clean up
+			_ = k8sClient.Delete(ctx, grafanaOrg)
 		})
 
 		It("Should allow valid tenant configurations", func() {
