@@ -25,8 +25,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	observabilityv1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/internal/webhook/testutil"
+	webhookv1alpha1 "github.com/giantswarm/observability-operator/internal/webhook/v1alpha1"
 )
 
 // k8sClient is the package-level client that will be set by the test suite
@@ -48,10 +50,14 @@ var _ = BeforeSuite(func() {
 		SchemeSetupFuncs: []testutil.SchemeSetupFunc{
 			// Add core v1 scheme (for Secrets, ConfigMaps)
 			corev1.AddToScheme,
+			// Add observability v1alpha1 scheme (for GrafanaOrganization compatibility)
+			observabilityv1alpha1.AddToScheme,
 			// Add observability v1alpha2 scheme (for GrafanaOrganization)
 			observabilityv1alpha2.AddToScheme,
 		},
 		WebhookSetupFuncs: []testutil.WebhookSetupFunc{
+			// Register v1alpha1 webhooks (required for webhook routing to work)
+			webhookv1alpha1.SetupGrafanaOrganizationWebhookWithManager,
 			// Register v1alpha2 webhooks
 			SetupGrafanaOrganizationWebhookWithManager,
 		},

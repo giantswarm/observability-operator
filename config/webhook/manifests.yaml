@@ -12,7 +12,7 @@ webhooks:
       namespace: system
       path: /validate-dashboard-configmap
   failurePolicy: Fail
-  name: vdashboardconfigmap.kb.io
+  name: dashboardconfigmap.observability.giantswarm.io
   rules:
   - apiGroups:
     - ""
@@ -52,7 +52,7 @@ webhooks:
       namespace: system
       path: /validate-v1alpha1-grafana-organization
   failurePolicy: Fail
-  name: vgrafanaorganization.kb.io
+  name: grafanaorganizationv1alpha1.observability.giantswarm.io
   rules:
   - apiGroups:
     - observability.giantswarm.io
@@ -72,7 +72,7 @@ webhooks:
       namespace: system
       path: /validate-v1alpha2-grafana-organization
   failurePolicy: Fail
-  name: vgrafanaorganizationv1alpha2.kb.io
+  name: grafanaorganizationv1alpha2.observability.giantswarm.io
   rules:
   - apiGroups:
     - observability.giantswarm.io

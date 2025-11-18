@@ -49,7 +49,7 @@ func SetupGrafanaOrganizationWebhookWithManager(mgr ctrl.Manager) error {
 
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
-// +kubebuilder:webhook:path=/validate-v1alpha1-grafana-organization,mutating=false,failurePolicy=fail,sideEffects=None,groups=observability.giantswarm.io,resources=grafanaorganizations,verbs=create;update,versions=v1alpha1,name=vgrafanaorganization.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-v1alpha1-grafana-organization,mutating=false,failurePolicy=fail,sideEffects=None,groups=observability.giantswarm.io,resources=grafanaorganizations,verbs=create;update,versions=v1alpha1,name=grafanaorganizationv1alpha1.observability.giantswarm.io,admissionReviewVersions=v1
 
 // GrafanaOrganizationValidator struct is responsible for validating the GrafanaOrganization resource
 // when it is created, updated, or deleted.

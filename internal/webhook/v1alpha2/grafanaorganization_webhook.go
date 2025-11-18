@@ -31,7 +31,7 @@ func SetupGrafanaOrganizationWebhookWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-// +kubebuilder:webhook:path=/validate-v1alpha2-grafana-organization,mutating=false,failurePolicy=fail,sideEffects=None,groups=observability.giantswarm.io,resources=grafanaorganizations,verbs=create;update,versions=v1alpha2,name=vgrafanaorganizationv1alpha2.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-v1alpha2-grafana-organization,mutating=false,failurePolicy=fail,sideEffects=None,groups=observability.giantswarm.io,resources=grafanaorganizations,verbs=create;update,versions=v1alpha2,name=grafanaorganizationv1alpha2.observability.giantswarm.io,admissionReviewVersions=v1
 
 // GrafanaOrganizationValidator struct is responsible for validating the GrafanaOrganization resource
 // when it is created, updated, or deleted.
@@ -84,9 +84,6 @@ func (v *GrafanaOrganizationValidator) validateTenantConfigs(tenantConfigs []obs
 	if err := validator.ValidateTenantNames(tenantNames); err != nil {
 		return err
 	}
-
-	// Note: Empty types are allowed - they default to ["data"] via kubebuilder default annotation
-	// No additional v1alpha2 specific validation needed beyond tenant name validation
 
 	return nil
 }
