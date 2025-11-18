@@ -1,10 +1,10 @@
 package v1alpha1
 
 import (
-	"github.com/giantswarm/observability-operator/api/v1alpha2"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
-)
 
+	"github.com/giantswarm/observability-operator/api/v1alpha2"
+)
 
 // ConvertTo converts this GrafanaOrganization to the Hub version (v1alpha2)
 func (src *GrafanaOrganization) ConvertTo(dstRaw conversion.Hub) error {
