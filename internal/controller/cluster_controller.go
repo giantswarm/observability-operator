@@ -213,6 +213,13 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 
+		// Ensure cluster has a password in the centralized mimir auth secret
+		err = r.MimirService.AddClusterPassword(ctx, cluster.Name)
+		if err != nil {
+			logger.Error(err, "failed to add cluster password to mimir auth secret")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+
 		// Create or update Alloy monitoring configuration.
 		err = r.AlloyService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
@@ -220,7 +227,14 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 	} else {
-		// clean up any existing alloy monitoring configuration
+		// Remove cluster password from mimir auth secret when monitoring disabled
+		err = r.MimirService.RemoveClusterPassword(ctx, cluster.Name)
+		if err != nil {
+			logger.Error(err, "failed to remove cluster password from mimir auth secret")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+
+		// Clean up any existing alloy monitoring configuration
 		err = r.AlloyService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy monitoring config")
@@ -252,8 +266,14 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 				logger.Error(err, "failed to delete alloy monitoring config")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
-		}
 
+			// Remove cluster password from mimir auth secret on cluster deletion
+			err = r.MimirService.RemoveClusterPassword(ctx, cluster.Name)
+			if err != nil {
+				logger.Error(err, "failed to remove cluster password from mimir auth secret")
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			}
+		}
 		// TODO add deletion of rules in the Mimir ruler on cluster deletion
 
 		// Management cluster specific configuration
@@ -288,13 +308,6 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 				return &ctrl.Result{RequeueAfter: 5 * time.Minute}
 			}
 		}
-
-		err := r.MimirService.ConfigureMimir(ctx)
-		if err != nil {
-			logger.Error(err, "failed to configure mimir")
-			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
-		}
-
 	} else {
 		err := r.tearDown(ctx)
 		if err != nil {
