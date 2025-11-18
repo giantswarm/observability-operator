@@ -42,10 +42,10 @@ func TestConversion_V1Alpha1_To_V1Alpha2(t *testing.T) {
 
 	// Verify tenant conversion - should have both types by default
 	require.Len(t, v1alpha2Org.Spec.Tenants, 2)
-	
+
 	assert.Equal(t, v1alpha2.TenantID("tenant1"), v1alpha2Org.Spec.Tenants[0].Name)
 	assert.Equal(t, []v1alpha2.TenantType{v1alpha2.TenantTypeData, v1alpha2.TenantTypeAlerting}, v1alpha2Org.Spec.Tenants[0].Types)
-	
+
 	assert.Equal(t, v1alpha2.TenantID("tenant2"), v1alpha2Org.Spec.Tenants[1].Name)
 	assert.Equal(t, []v1alpha2.TenantType{v1alpha2.TenantTypeData, v1alpha2.TenantTypeAlerting}, v1alpha2Org.Spec.Tenants[1].Types)
 }

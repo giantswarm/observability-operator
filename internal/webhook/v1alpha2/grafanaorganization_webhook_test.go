@@ -192,7 +192,7 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 
 			err := k8sClient.Create(ctx, grafanaOrg)
 			Expect(err).NotTo(HaveOccurred(), "Empty types should be allowed and default to 'data'")
-			
+
 			// Clean up
 			_ = k8sClient.Delete(ctx, grafanaOrg)
 		})
