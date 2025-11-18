@@ -219,6 +219,13 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 
+		// Ensure cluster has a password in the centralized mimir auth secret
+		err = r.MimirService.AddClusterPassword(ctx, cluster.Name)
+		if err != nil {
+			logger.Error(err, "failed to add cluster password to mimir auth secret")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+
 		// Create or update Alloy monitoring configuration.
 		err = r.AlloyService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
