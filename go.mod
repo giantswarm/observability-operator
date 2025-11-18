@@ -12,12 +12,12 @@ require (
 	github.com/go-logr/logr v1.4.3
 	github.com/go-openapi/runtime v0.29.2
 	github.com/goccy/go-yaml v1.18.0
-	github.com/grafana/grafana-openapi-client-go v0.0.0-20250925215610-d92957c70d5c
+	github.com/grafana/grafana-openapi-client-go v0.0.0-20251118002049-9bc70ad4530f
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/prometheus/alertmanager v0.29.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/common v0.67.2
+	github.com/prometheus/common v0.67.3
 	github.com/sanity-io/litter v1.5.8
 	github.com/stretchr/testify v1.11.1
 	k8s.io/api v0.33.4
@@ -42,6 +42,7 @@ require (
 	github.com/go-openapi/swag/typeutils v0.25.1 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.29.0 // indirect

@@ -37,9 +37,9 @@ func init() {
 
 func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string][]byte, error) {
 	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, a.Cluster.BaseDomain)
-	password, err := commonmonitoring.GetMimirIngressPassword(ctx, a.Client)
+	password, err := commonmonitoring.GetMimirAuthPassword(ctx, a.Client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get mimir ingress password: %w", err)
+		return nil, fmt.Errorf("failed to get mimir auth password: %w", err)
 	}
 
 	mimirRulerUrl := fmt.Sprintf(commonmonitoring.MimirBaseURLFormat, a.Cluster.BaseDomain)
