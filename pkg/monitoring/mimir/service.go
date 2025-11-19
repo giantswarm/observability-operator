@@ -195,6 +195,11 @@ func (ms *MimirService) RemoveClusterPassword(ctx context.Context, clusterName s
 	})
 
 	if err != nil {
+		// If the namespace or secret doesn't exist, that's fine - cluster is being deleted anyway
+		if client.IgnoreNotFound(err) == nil {
+			logger.Info("Auth secret or namespace not found during cluster deletion - this is expected", "cluster", clusterName)
+			return nil
+		}
 		return fmt.Errorf("failed to update auth secret: %w", err)
 	}
 
@@ -204,6 +209,11 @@ func (ms *MimirService) RemoveClusterPassword(ctx context.Context, clusterName s
 	if passwordRemoved {
 		err = ms.regenerateAuthSecrets(ctx, logger)
 		if err != nil {
+			// Also ignore not found errors when regenerating - if mimir namespace is gone, that's expected
+			if client.IgnoreNotFound(err) == nil {
+				logger.Info("Mimir namespace not found during htpasswd regeneration - this is expected during deletion", "cluster", clusterName)
+				return nil
+			}
 			return fmt.Errorf("failed to regenerate htpasswd secrets: %w", err)
 		}
 	}
