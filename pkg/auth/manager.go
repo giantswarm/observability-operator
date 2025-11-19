@@ -216,7 +216,7 @@ func (am *authManager) RemoveClusterPassword(ctx context.Context, clusterName st
 // GetClusterPassword retrieves the password for a specific cluster
 func (am *authManager) GetClusterPassword(ctx context.Context, clusterName string) (string, error) {
 	authSecret := am.getAuthSecret()
-	
+
 	err := am.client.Get(ctx, types.NamespacedName{
 		Name:      am.config.AuthSecretName,
 		Namespace: am.config.AuthSecretNamespace,

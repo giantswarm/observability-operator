@@ -358,7 +358,6 @@ func TestAuthManager(t *testing.T) {
 			assert.Contains(t, content, "cluster-2:$2a$10$encryptedpassword-2")
 		})
 	})
-
 	t.Run("GetClusterPassword", func(t *testing.T) {
 		t.Run("should return existing cluster password", func(t *testing.T) {
 			existingSecret := &corev1.Secret{
