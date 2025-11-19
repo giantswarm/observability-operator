@@ -13,6 +13,7 @@ import (
 
 	"github.com/blang/semver/v4"
 
+	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
@@ -27,6 +28,7 @@ type Service struct {
 	client.Client
 	organization.OrganizationRepository
 	config.Config
+	auth.AuthManager
 }
 
 func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
