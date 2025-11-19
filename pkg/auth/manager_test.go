@@ -375,7 +375,7 @@ func TestAuthManager(t *testing.T) {
 			manager := &authManager{
 				client:            client,
 				passwordGenerator: newMockPasswordGenerator(),
-				config:           config,
+				config:            config,
 			}
 
 			ctx := context.Background()
@@ -399,7 +399,7 @@ func TestAuthManager(t *testing.T) {
 			manager := &authManager{
 				client:            client,
 				passwordGenerator: newMockPasswordGenerator(),
-				config:           config,
+				config:            config,
 			}
 
 			ctx := context.Background()
@@ -413,7 +413,7 @@ func TestAuthManager(t *testing.T) {
 			manager := &authManager{
 				client:            client,
 				passwordGenerator: newMockPasswordGenerator(),
-				config:           config,
+				config:            config,
 			}
 
 			ctx := context.Background()
