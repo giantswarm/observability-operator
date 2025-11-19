@@ -20,7 +20,6 @@ func TestPasswordGenerator(t *testing.T) {
 			// Hex encoding doubles the length
 			assert.Equal(t, 64, len(password))
 		})
-
 		t.Run("should generate different passwords", func(t *testing.T) {
 			password1, err := generator.GeneratePassword(16)
 			require.NoError(t, err)
