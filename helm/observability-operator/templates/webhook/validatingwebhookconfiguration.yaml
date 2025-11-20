@@ -75,7 +75,7 @@ webhooks:
       path: /validate-v1alpha1-grafana-organization
       port: 443
   failurePolicy: Fail
-  name: grafanaorganization.observability.giantswarm.io
+  name: grafanaorganizationv1alpha1.observability.giantswarm.io
   rules:
     - apiGroups:
         - observability.giantswarm.io
@@ -86,6 +86,26 @@ webhooks:
         - UPDATE
       resources:
         - grafanaorganizations
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-v1alpha2-grafana-organization
+  failurePolicy: Fail
+  name: grafanaorganizationv1alpha2.observability.giantswarm.io
+  rules:
+  - apiGroups:
+    - observability.giantswarm.io
+    apiVersions:
+    - v1alpha2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - grafanaorganizations
   sideEffects: None
 {{- end }}
 {{- end }}

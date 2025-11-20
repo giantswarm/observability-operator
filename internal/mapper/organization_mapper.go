@@ -1,7 +1,7 @@
 package mapper
 
 import (
-	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
@@ -13,11 +13,11 @@ func NewOrganizationMapper() *OrganizationMapper {
 	return &OrganizationMapper{}
 }
 
-// FromGrafanaOrganization converts a v1alpha1.GrafanaOrganization to a domain organization
-func (m *OrganizationMapper) FromGrafanaOrganization(grafanaOrganization *v1alpha1.GrafanaOrganization) *organization.Organization {
+// FromGrafanaOrganization converts a v1alpha2.GrafanaOrganization to a domain organization
+func (m *OrganizationMapper) FromGrafanaOrganization(grafanaOrganization *v1alpha2.GrafanaOrganization) *organization.Organization {
 	tenantIDs := make([]string, len(grafanaOrganization.Spec.Tenants))
 	for i, tenant := range grafanaOrganization.Spec.Tenants {
-		tenantIDs[i] = string(tenant)
+		tenantIDs[i] = string(tenant.Name)
 	}
 
 	return organization.New(
