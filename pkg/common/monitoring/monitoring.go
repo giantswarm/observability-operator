@@ -9,7 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
@@ -55,7 +54,8 @@ func GetServicePriority(cluster *clusterv1.Cluster) string {
 	return defaultServicePriority
 }
 
-func GetMimirAuthPassword(ctx context.Context, k8sClient client.Client) (string, error) {
+// GetMimirAuthPasswordForCluster gets the password for a specific cluster
+func GetMimirAuthPasswordForCluster(ctx context.Context, k8sClient client.Client, clusterName string) (string, error) {
 	secret := &corev1.Secret{}
 
 	err := k8sClient.Get(ctx, client.ObjectKey{
@@ -66,26 +66,36 @@ func GetMimirAuthPassword(ctx context.Context, k8sClient client.Client) (string,
 		return "", fmt.Errorf("failed to get mimir secret: %w", err)
 	}
 
-	mimirPassword, err := readMimirAuthPasswordFromSecret(*secret)
-	if err != nil {
-		return "", fmt.Errorf("failed to read mimir auth password from secret: %w", err)
+	// Try cluster-specific password first
+	if passwordBytes, exists := secret.Data[clusterName]; exists {
+		return string(passwordBytes), nil
 	}
 
-	return mimirPassword, nil
+	return "", fmt.Errorf("no passwords found in secret")
 }
 
-func readMimirAuthPasswordFromSecret(secret corev1.Secret) (string, error) {
-	if credentials, ok := secret.Data["credentials"]; !ok {
-		return "", fmt.Errorf("credentials key not found in secret")
-	} else {
-		var secretData string
+// GetAllClusterPasswords returns all cluster passwords from the secret
+func GetAllClusterPasswords(ctx context.Context, k8sClient client.Client) (map[string]string, error) {
+	secret := &corev1.Secret{}
 
-		err := yaml.Unmarshal(credentials, &secretData)
-		if err != nil {
-			return "", fmt.Errorf("failed to unmarshal credentials from secret: %w", err)
-		}
-		return secretData, nil
+	err := k8sClient.Get(ctx, client.ObjectKey{
+		Name:      mimirApiKey,
+		Namespace: mimirNamespace,
+	}, secret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get mimir secret: %w", err)
 	}
+
+	clusterPasswords := make(map[string]string)
+
+	// Read all cluster passwords (skip old "credentials" key)
+	for clusterName, passwordBytes := range secret.Data {
+		if clusterName != "credentials" {
+			clusterPasswords[clusterName] = string(passwordBytes)
+		}
+	}
+
+	return clusterPasswords, nil
 }
 
 func GetClusterShardingStrategy(cluster metav1.Object) (s *sharding.Strategy, err error) {
