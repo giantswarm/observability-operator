@@ -206,17 +206,16 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// Cluster specific configuration
 	if r.Config.Monitoring.IsMonitored(cluster) {
-
-		observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to configure get observability-bundle version")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-		}
-
 		// Ensure cluster has a password in the centralized mimir auth secret
 		err = r.MimirService.AddClusterPassword(ctx, cluster.Name)
 		if err != nil {
 			logger.Error(err, "failed to add cluster password to mimir auth secret")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+
+		observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
+		if err != nil {
+			logger.Error(err, "failed to configure get observability-bundle version")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 
