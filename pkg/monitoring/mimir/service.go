@@ -174,7 +174,6 @@ func (ms *MimirService) AddClusterPassword(ctx context.Context, clusterName stri
 func (ms *MimirService) RemoveClusterPassword(ctx context.Context, clusterName string) error {
 	logger := log.FromContext(ctx)
 	authSecret := ms.getAuthSecret()
-	passwordRemoved := false
 
 	result, err := ctrl.CreateOrUpdate(ctx, ms.Client, authSecret, func() error {
 		// Remove cluster password
