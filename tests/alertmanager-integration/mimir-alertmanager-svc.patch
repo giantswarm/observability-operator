@@ -1,0 +1,16 @@
+--- mimir/charts/mimir/templates/alertmanager/alertmanager-svc.yaml	2025-11-07 18:39:25.404823039 +0100
++++ mimir/charts/mimir/templates/alertmanager/alertmanager-svc-patched.yaml	2025-11-07 18:38:34.378089084 +0100
+@@ -23,8 +23,13 @@ spec:
+     - port: 8080
+       protocol: TCP
+       name: http-metrics
+       targetPort: http-metrics
++    - port: 7070
++      nodePort: 30080
++      protocol: TCP
++      name: node-port
++      targetPort: http-metrics
+     - port: 9095
+       protocol: TCP
+       name: grpc
+       targetPort: grpc

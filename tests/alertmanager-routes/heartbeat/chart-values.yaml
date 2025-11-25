@@ -1,0 +1,6 @@
+managementCluster:
+  name: mc-name
+  pipeline: mc-pipeline
+
+alerting:
+  cronitorHeartbeatPingKey: "cronitor-ping-key"

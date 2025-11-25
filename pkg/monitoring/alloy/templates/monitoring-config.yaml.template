@@ -49,17 +49,19 @@ alloy:
     configMap:
       create: true
       content: |-
-{{ .AlloyConfig | indent 8 }}
+        {{ .AlloyConfig | nindent 8 }}
     {{- if .IsSupportingVPA }}
     # We decided to configure the alloy-metrics resources as such after some investigation done https://github.com/giantswarm/giantswarm/issues/32655#issuecomment-2729636063
     resources:
       limits:
         cpu: 100m
-        memory: 1024Mi
+        memory: 768Mi
       requests:
         cpu: 25m
         memory: 512Mi
     {{- end }}
+    ## Needed to to be able to support ScrapeConfig CRs
+    stabilityLevel: experimental
   controller:
     type: statefulset
     replicas: {{ .Replicas }}
@@ -87,6 +89,10 @@ alloy:
               - alloy
           topologyKey: kubernetes.io/hostname
         weight: 50
+  {{- if .AlloyImageTag }}
+  image:
+    tag: {{ .AlloyImageTag }}
+  {{- end }}
 {{- if .IsSupportingVPA }}
 # We decided to configure the alloy-metrics vertical pod autoscaler as such after some investigation done https://github.com/giantswarm/giantswarm/issues/32655#issuecomment-2729636063
 verticalPodAutoscaler:
@@ -100,6 +106,7 @@ verticalPodAutoscaler:
       controlledValues: "RequestsAndLimits"
       maxAllowed: 
         cpu: 500m
+        memory: 10Gi
       minAllowed:
         cpu: 25m
         memory: 512Mi

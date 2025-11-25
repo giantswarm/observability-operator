@@ -1,19 +1,23 @@
 package grafana
 
 import (
-	grafanaAPI "github.com/grafana/grafana-openapi-client-go/client"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/giantswarm/observability-operator/pkg/config"
+	grafanaClient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
 
 type Service struct {
-	client     client.Client
-	grafanaAPI *grafanaAPI.GrafanaHTTPAPI
+	client        client.Client
+	grafanaClient grafanaClient.GrafanaClient
+	cfg           config.Config
 }
 
-func NewService(runtimeClient client.Client, grafanaAPI *grafanaAPI.GrafanaHTTPAPI) *Service {
+func NewService(k8sClient client.Client, grafanaClient grafanaClient.GrafanaClient, cfg config.Config) *Service {
 	s := &Service{
-		client:     runtimeClient,
-		grafanaAPI: grafanaAPI,
+		client:        k8sClient,
+		grafanaClient: grafanaClient,
+		cfg:           cfg,
 	}
 
 	return s

@@ -24,9 +24,9 @@
 {{- end }}
 {{ end }}
 
-{{ define "opsgenie.default.message" }}{{ .GroupLabels.installation }}{{ if not (eq .GroupLabels.cluster_id .GroupLabels.installation) }}-{{ .GroupLabels.cluster_id }}{{ end }} - {{ index (index .Alerts.Firing 0).Labels `alertname`}}{{ end }}
-{{ define "opsgenie.default.source" }}{{ template "__alertmanager" . }}{{ end }}
-{{ define "opsgenie.default.description" -}}
+{{ define "pagerduty.default.message" }}{{ .GroupLabels.installation }}{{ if not (eq .GroupLabels.cluster_id .GroupLabels.installation) }}-{{ .GroupLabels.cluster_id }}{{ end }} - {{ .GroupLabels.alertname }}{{ end }}
+{{ define "pagerduty.default.source" }}{{ template "__alertmanager" . }}{{ end }}
+{{ define "pagerduty.default.description" -}}
 {{ if (index .Alerts 0).Annotations.runbook_url -}}
 📗 Runbook: {{ template "__runbook_url" . }}
 {{ else -}}

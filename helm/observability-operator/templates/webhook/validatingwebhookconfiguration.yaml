@@ -1,3 +1,4 @@
+{{- if .Values.webhook.enabled }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
@@ -7,6 +8,7 @@ metadata:
     {{- include "labels.common" . | nindent 4 }}
   name: {{ include "resource.default.name" . }}-validating-webhook
 webhooks:
+{{- if .Values.webhook.validatingWebhooks.alertmanagerConfig.enabled }}
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -35,3 +37,55 @@ webhooks:
       resources:
         - secrets
   sideEffects: None
+{{- end }}
+{{- if .Values.webhook.validatingWebhooks.dashboardConfigMap.enabled }}
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "resource.default.name" . }}-webhook
+      namespace: {{ .Release.Namespace }}
+      path: /validate-dashboard-configmap
+      port: 443
+  failurePolicy: Fail
+  name: dashboardconfigmap.observability.giantswarm.io
+  # Limit the validation only to dashboard ConfigMaps
+  objectSelector:
+    matchLabels:
+      app.giantswarm.io/kind: dashboard
+  rules:
+    - apiGroups:
+        - ""
+      apiVersions:
+        - v1
+      operations:
+        - CREATE
+        - UPDATE
+      resources:
+        - configmaps
+  sideEffects: None
+{{- end }}
+{{- if .Values.webhook.validatingWebhooks.grafanaOrganization.enabled }}
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "resource.default.name" . }}-webhook
+      namespace: {{ .Release.Namespace }}
+      path: /validate-v1alpha1-grafana-organization
+      port: 443
+  failurePolicy: Fail
+  name: grafanaorganization.observability.giantswarm.io
+  rules:
+    - apiGroups:
+        - observability.giantswarm.io
+      apiVersions:
+        - v1alpha1
+      operations:
+        - CREATE
+        - UPDATE
+      resources:
+        - grafanaorganizations
+  sideEffects: None
+{{- end }}
+{{- end }}

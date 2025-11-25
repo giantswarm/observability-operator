@@ -37,40 +37,48 @@ import (
 )
 
 // log is for logging in this package.
-var log = logf.Log.WithName("alertmanager-config-secrets-resource")
+var log = logf.Log.WithName("alertmanagerconfig-secret-resource")
 
 // SetupAlertmanagerConfigSecretWebhookWithManager registers the webhook for Secret in the manager.
-func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) (err error) {
-	return ctrl.NewWebhookManagedBy(mgr).
+func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) error {
+	err := ctrl.NewWebhookManagedBy(mgr).
 		For(&corev1.Secret{}).
-		WithValidator(&AlertmanagerConfigSecretCustomValidator{
-			client: mgr.GetClient(),
-		}).
+		WithValidator(&AlertmanagerConfigSecretValidator{client: mgr.GetClient()}).
 		WithCustomPath("/validate-alertmanager-config").
 		Complete()
+	if err != nil {
+		return fmt.Errorf("failed to build alertmanager webhook manager: %w", err)
+	}
+
+	return nil
 }
 
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
 // +kubebuilder:webhook:path=/validate-alertmanager-config,mutating=false,failurePolicy=fail,sideEffects=None,groups="",resources=secrets,verbs=create;update,versions=v1,name=vsecret-v1.kb.io,admissionReviewVersions=v1
 
-// SecretCustomValidator struct is responsible for validating the Secret resource
+// AlertmanagerConfigSecretValidator struct is responsible for validating the Secret resource
 // when it is created, updated, or deleted.
 //
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
-
-type AlertmanagerConfigSecretCustomValidator struct {
+// +kubebuilder:object:generate=false
+type AlertmanagerConfigSecretValidator struct {
 	client client.Client
 }
 
-var _ webhook.CustomValidator = &AlertmanagerConfigSecretCustomValidator{}
+var _ webhook.CustomValidator = &AlertmanagerConfigSecretValidator{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type Secret.
-func (v *AlertmanagerConfigSecretCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (v *AlertmanagerConfigSecretValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	secret, ok := obj.(*corev1.Secret)
 	if !ok {
 		return nil, fmt.Errorf("expected a Secret object but got %T", obj)
+	}
+
+	// Only validate secrets that are specifically marked as alertmanager-config
+	if !v.isAlertmanagerConfigSecret(secret) {
+		return nil, nil
 	}
 
 	log.Info("Validation for Secret upon creation", "name", secret.GetName())
@@ -82,10 +90,15 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateCreate(ctx context.Con
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Secret.
-func (v *AlertmanagerConfigSecretCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (v *AlertmanagerConfigSecretValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	secret, ok := newObj.(*corev1.Secret)
 	if !ok {
 		return nil, fmt.Errorf("expected a Secret object for the newObj but got %T", newObj)
+	}
+
+	// Only validate secrets that are specifically marked as alertmanager-config
+	if !v.isAlertmanagerConfigSecret(secret) {
+		return nil, nil
 	}
 
 	log.Info("Validation for Secret upon update", "name", secret.GetName())
@@ -97,12 +110,12 @@ func (v *AlertmanagerConfigSecretCustomValidator) ValidateUpdate(ctx context.Con
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type Secret.
-func (v *AlertmanagerConfigSecretCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (v *AlertmanagerConfigSecretValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	// We have nothing to validate on deletion
 	return nil, nil
 }
 
-func (v *AlertmanagerConfigSecretCustomValidator) validateTenant(ctx context.Context, secret *corev1.Secret) error {
+func (v *AlertmanagerConfigSecretValidator) validateTenant(ctx context.Context, secret *corev1.Secret) error {
 	// Check that the secret has the correct labels.
 	tenant, ok := secret.Labels[tenancy.TenantSelectorLabel]
 	if !ok {
@@ -145,10 +158,27 @@ func (v *AlertmanagerConfigSecretCustomValidator) validateTenant(ctx context.Con
 	return nil
 }
 
+// isAlertmanagerConfigSecret checks if the secret is specifically marked as an alertmanager config secret
+func (v *AlertmanagerConfigSecretValidator) isAlertmanagerConfigSecret(secret *corev1.Secret) bool {
+	if secret.Labels == nil {
+		return false
+	}
+
+	// Check for the specific label that identifies this as an alertmanager config secret
+	kind, hasKindLabel := secret.Labels[predicates.AlertmanagerConfigSelectorLabelName]
+	if !hasKindLabel || kind != predicates.AlertmanagerConfigSelectorLabelValue {
+		return false
+	}
+
+	// Also check if it has a tenant label (required for alertmanager config secrets)
+	_, hasTenantLabel := secret.Labels[tenancy.TenantSelectorLabel]
+	return hasTenantLabel
+}
+
 func validateAlertmanagerConfig(ctx context.Context, secret *corev1.Secret) error {
 	_, err := alertmanager.ExtractAlertmanagerConfig(ctx, secret)
 	if err != nil {
-		return err
+		return fmt.Errorf("alertmanager configuration validation failed: %w. Note: If you're using a newer Alertmanager feature, it might not be supported yet by the Grafana fork (grafana/prometheus-alertmanager) used by Mimir", err)
 	}
 	log.Info("alertmanager config validation successful")
 	return nil

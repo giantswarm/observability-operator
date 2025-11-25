@@ -11,6 +11,285 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add team labels to metrics coming from ServiceMonitors and PodMonitors
 
+### Changed
+
+- Create a new secret for HTTPRoute basic auth for Mimir.
+
+## [0.50.0] - 2025-11-13
+
+### Removed
+
+- Remove OpsGenie management.
+
+## [0.49.0] - 2025-11-12
+
+### Added
+
+- Add Alertmanager routes unit tests
+- Add Alertmanager routes integration tests
+  test scenarios: heartbeat alerts, pipeline stable and testing alerts, Slack notifications, and ticket creation.
+
+### Changed
+
+- Refactored Grafana package to use domain organization objects and moved status updates to controller layer.
+- Refactor webhook test suite architecture to use shared testutil package and individual test suites per API version
+
+### Removed
+
+- Remove prometheus-agent support as we now fully run alloys.
+- Remove all opsgenie heartbeats.
+
+## [0.48.1] - 2025-11-05
+
+### Fixed
+
+- Fix cronitor.io integration in proxy environments.
+
+## [0.48.0] - 2025-11-04
+
+### Added
+
+- Add Cronitor.io integration to replace Opsgenie Heartbeats.
+
+## [0.47.0] - 2025-11-04
+
+### Added
+
+- Implement metrics for grafanaOrganizations monitoring:
+  - `observability_operator_grafana_organization_info`: Displays the list of organization and the current status in Grafana (active, pending, error)
+  - `observability_operator_grafana_organization_tenant_info`: List of the configured tenants per organization
+
+## [0.46.2] - 2025-10-29
+
+### Fixed
+
+- Fixed queue configuration flags not being applied to Alloy remote write configuration
+
+## [0.46.1] - 2025-10-28
+
+### Fixed
+
+- Fixed pagerduty routing
+
+## [0.46.0] - 2025-10-27
+
+### Added
+
+- Add GitHub webhook receivers for team-based alert routing to create GitHub issues for alerts with severity "ticket"
+ 
+### Fixed
+
+- Fixed pagerdutyToken config
+
+## [0.45.1] - 2025-10-15
+
+### Changed
+
+- Update internal service port for MC alloy instances.
+
+## [0.45.0] - 2025-10-15
+
+### Changed
+
+- Send MC metrics via internal service instead of ingress.
+
+## [0.44.0] - 2025-10-14
+
+### Changed
+
+- Alertmanager / PagerDuty: only send alerts that have to page
+- Alertmanager / PagerDuty: team routing with 1 token per team
+
+## [0.43.1] - 2025-10-07
+
+### Fixed
+
+- Fix `ScrapeConfig` support to only be available for observability-bundles 2.2.0 (v32+).
+
+## [0.43.0] - 2025-10-06
+
+### Added
+
+- Add support for PrometheusOperator `ScrapeConfig` CRDs. This requires --stability.level=experimental
+- Add logging-enabled flag towards the logging-operator -> observability-operator merger.
+
+## [0.42.0] - 2025-09-17
+
+### Added
+
+- Add Tempo datasource support for distributed tracing
+  - Conditional creation based on `--tracing-enabled` flag and Helm values support via `tracing.enabled` configuration (defaults to `false`)
+  - Full integration with service maps, traces-to-logs, and traces-to-metrics correlations
+  - Connects to `http://tempo-query-frontend.tempo.svc:3200` service
+  - Comprehensive test coverage for both enabled and disabled scenarios
+- Update Loki datasource for logs-to-traces support
+
+### Changed
+
+- Added a `generateDatasources` to generate all datasource needed for an organization
+- Major refactoring of the `ConfigureDefaultDatasources` method into `ConfigureDatasource`
+- Remove explicit logic to delete `gs-mimir-old` datasource (now covered)
+- Optimize GrafanaOrganization status update to only be performed when necessary
+
+## [0.41.0] - 2025-09-01
+
+### Added
+
+- Add configurable `queue_config` fields for Alloy remote write. All Alloy `queue_config` fields (`batch_send_deadline`, `capacity`, `max_backoff`, `max_samples_per_send`, `max_shards`, `min_backoff`, `min_shards`, `retry_on_http_429`, `sample_age_limit`) are now configurable via helm values and command line flags. When not configured, Alloy defaults are used.
+
+### Fixed
+
+- Fix an issue where organizations were not being deleted in Grafana when the corresponding GrafanaOrganization CR was deleted.
+- Fix an issue where SSO settings contained configuration for organizations that no longer existed.
+
+## [0.40.0] - 2025-08-27
+
+### Added
+
+- Send all_pipelines alert label to PagerDuty
+
+## [0.39.0] - 2025-08-27
+
+### Added
+
+- Add Alertmanager PagerDuty heartbeat route
+
+### Changed
+
+- Update PagerDuty notification template, to include relevant information about the alert.
+- Upgrade `github.com/grafana/prometheus-alertmanager` dependency after the new mimir release.
+
+### Fixed
+
+- Fixed index out of range error in Alertmanager notification template
+
+## [0.38.0] - 2025-08-25
+
+### Added
+
+- `Mimir Cardinality` datasource for Grafana `Shared Org`
+- Add Alertmanager PagerDuty router
+
+## [0.37.0] - 2025-08-13
+
+### Changed
+
+- Update `UpsertOrganization` in /pkg/grafana/grafana.go file so that it can update GrafanaOrganization CRs with a matching Grafana Org's ID given that both share the same name.
+
+## [0.36.0] - 2025-07-18
+
+### Removed
+
+- CRDs are managed via MCB so we need to clean them up from the operator.
+
+## [0.35.0] - 2025-07-10
+
+### Changed
+
+- Alloy-metrics RAM reservations / limits tuning.
+
+## [0.34.0] - 2025-07-02
+
+### Added
+
+- **Dashboard domain validation**: Added `pkg/domain/dashboard/` package with Dashboard type and validation rules (UID format, organization presence, content structure)
+- **Dashboard mapper**: Added `internal/mapper/` package for converting ConfigMaps to domain objects
+
+### Changed
+
+- **Dashboard processing**: Refactored controller and Grafana service to use domain objects and mapper pattern for better separation of concerns
+- **Dashboard ConfigMap validation webhook**:
+  - Added Kubernetes validating webhook to validate dashboard ConfigMaps with `app.giantswarm.io/kind=dashboard` label.
+  - Includes comprehensive test coverage, Helm chart integration with `webhook.validatingWebhooks.dashboardConfigMap.enabled` configuration, and kubebuilder scaffolding.
+  - Webhook is validating dashboard JSON structure and required fields.
+- **Dashboard domain validation**: Added `pkg/domain/dashboard/` package with Dashboard type and validation rules (UID format, organization presence, content structure)
+- **Dashboard mapper**: Added `internal/mapper/` package for converting ConfigMaps to domain objects
+
+### Changed
+
+- **Dashboard processing**: Refactored controller and Grafana service to use domain objects and mapper pattern for better separation of concerns
+- **Dashboard ConfigMap validation webhook**:
+  - Added Kubernetes validating webhook to validate dashboard ConfigMaps with `app.giantswarm.io/kind=dashboard` label.
+  - Includes comprehensive test coverage, Helm chart integration with `webhook.validatingWebhooks.dashboardConfigMap.enabled` configuration, and kubebuilder scaffolding.
+  - Webhook is validating dashboard JSON structure and required fields.
+- **Dashboard domain validation**: Added `pkg/domain/dashboard/` package with Dashboard type and validation rules (UID format, organization presence, content structure)
+- **Dashboard mapper**: Added `internal/mapper/` package for converting ConfigMaps to domain objects
+
+### Changed
+
+- **Dashboard processing**: Refactored controller and Grafana service to use domain objects and mapper pattern for better separation of concerns
+- **Dashboard ConfigMap validation webhook**:
+  - Added Kubernetes validating webhook to validate dashboard ConfigMaps with `app.giantswarm.io/kind=dashboard` label.
+  - Includes comprehensive test coverage, Helm chart integration with `webhook.validatingWebhooks.dashboardConfigMap.enabled` configuration, and kubebuilder scaffolding.
+  - Webhook is ready for business logic implementation to validate dashboard JSON structure and required fields.
+- New `cancel_if_cluster_broken` alertmanager inhibition.
+
+## [0.33.1] - 2025-06-19
+
+### Fixed
+
+- Fixed TenantID validation for Alloy compatibility - was causing alloy to crash with some tenant names. Now follows alloy component naming requirements (https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/syntax/#identifiers), which is more restrictive than previously-used mimir requirements.
+
+## [0.33.0] - 2025-06-16
+
+### Added
+
+- Alertmanager inhibition rule `cancel_if_metrics_broken`
+- **Alertmanager version synchronization and dependency management**: Added comprehensive automated tooling to ensure Alertmanager fork version stays in sync with Mimir releases (https://github.com/giantswarm/giantswarm/issues/33621):
+  - New script `hack/bin/check-alertmanager-version.sh` that compares the local Alertmanager version with the version used in the latest stable Mimir release
+  - GitHub Actions workflow `.github/workflows/check-alertmanager-version.yml` that runs the check on `go.mod` changes and can be triggered manually
+  - Updated Renovate configuration to automatically track Mimir releases and ignore release candidates, alpha, and beta versions
+  - Added comprehensive comments to `renovate.json5` explaining the Alertmanager version tracking logic
+  - Updated `go.mod` comments to reference Renovate automation instead of manual version checking
+
+### Changed
+
+- Comprehensive Helm chart support for webhook configuration:
+  - Made all webhook resources conditional (ValidatingWebhookConfiguration, Service, Certificate)
+  - Added granular enable/disable controls for individual webhooks (``webhook.validatingWebhooks.alertmanagerConfig.enabled`)
+  - Added `ENABLE_WEBHOOKS` environment variable configuration
+- Replace the `prometheus/alertmanager` package with Grafana's Mimir fork (`grafana/prometheus-alertmanager`) to ensure configuration compatibility between our validating webhook and Mimir's Alertmanager. This change addresses a compatibility issue where the webhook validation logic used the upstream Prometheus Alertmanager config parser, while Mimir uses a fork with additional/modified configuration options. The replacement ensures 100% compatibility and eliminates the risk of configuration drift between validation and runtime. Uses version `v0.25.1-0.20250305143719-fa9fa7096626` corresponding to Mimir 2.16.0.
+- Improved Alertmanager configuration validation script (`hack/bin/validate-alertmanager-config.sh`):
+  - Automatically extracts the exact commit hash from `go.mod` replacement directive to ensure perfect consistency with webhook validation
+  - Replaced binary building with `go run` for faster execution and simpler maintenance
+  - Enhanced logging throughout the script for better debugging and monitoring
+  - Now uses the exact same Grafana fork commit as the operator's webhook validation logic
+- Enhanced AlertmanagerConfigSecret webhook with improved scope filtering and error handling
+- Enhanced TenantID validation in GrafanaOrganization CRD to support full Grafana Mimir specification:
+  - Expanded pattern from `^[a-z]*$` to `^[a-zA-Z0-9!._*'()-]+$` to allow alphanumeric characters and special characters (`!`, `-`, `_`, `.`, `*`, `'`, `(`, `)`)
+  - Increased maximum length from 63 to 150 characters
+  - Added validating webhook to enforce forbidden values (`.`, `..`, `__mimir_cluster`) and prevent duplicate tenants
+
+### Fixed
+
+- Fixed alertmanager configuration key consistency across codebase (standardized on `alertmanager.yaml` instead of mixed `alertmanager.yml`/`alertmanager.yaml`)
+- Fixed error message formatting in `ExtractAlertmanagerConfig` function
+
+### Removed
+
+- Remove unnecessary Grafana SSO configuration override for `role_attribute_path` and `org_attribute_path`. Any override should happen in shared-configs instead.
+
+## [0.32.1] - 2025-06-03
+
+### Fixed
+
+- Fix Alloy image templating when the alloy app is running the latest version.
+
+## [0.32.0] - 2025-06-02
+
+### Changed
+
+- Updated Alloy configuration (`pkg/monitoring/alloy/configmap.go` and `pkg/monitoring/alloy/templates/monitoring-config.yaml.template`):
+    - Conditionally set `alloy.alloy.image.tag` in `monitoring-config.yaml.template`. The operator now explicitly sets the tag to `1.8.3` if the deployed `alloy-metrics` app version is older than `0.10.0`. For `alloy-metrics` app versions `0.10.0` or newer, the image tag will rely on the Alloy Helm chart's defaults or user-provided values, facilitating easier Alloy image updates via the chart.
+    - Adjusted indentation for `AlloyConfig` in `monitoring-config.yaml.template` from `indent 8` to `nindent 8`.
+- Improve Mimir Datasource configuration (https://github.com/giantswarm/giantswarm/issues/33470)
+  - Enable medium level caching (caching of `/api/v1/label/${name}/values`, `/api/v1/series`, `/api/v1/labels` and `/api/v1/metadata` for 10 minutes)
+  - Enable incremental querying (only query new data when refreshing dashboards)
+
+### Removed
+
+- Remove old mimir datasource on all installations.
+
 ## [0.31.0] - 2025-05-15
 
 ### Changed
@@ -497,7 +776,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.31.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.50.0...HEAD
+[0.50.0]: https://github.com/giantswarm/observability-operator/compare/v0.49.0...v0.50.0
+[0.49.0]: https://github.com/giantswarm/observability-operator/compare/v0.48.1...v0.49.0
+[0.48.1]: https://github.com/giantswarm/observability-operator/compare/v0.48.0...v0.48.1
+[0.48.0]: https://github.com/giantswarm/observability-operator/compare/v0.47.0...v0.48.0
+[0.47.0]: https://github.com/giantswarm/observability-operator/compare/v0.46.2...v0.47.0
+[0.46.2]: https://github.com/giantswarm/observability-operator/compare/v0.46.1...v0.46.2
+[0.46.1]: https://github.com/giantswarm/observability-operator/compare/v0.46.0...v0.46.1
+[0.46.0]: https://github.com/giantswarm/observability-operator/compare/v0.45.1...v0.46.0
+[0.45.1]: https://github.com/giantswarm/observability-operator/compare/v0.45.0...v0.45.1
+[0.45.0]: https://github.com/giantswarm/observability-operator/compare/v0.44.0...v0.45.0
+[0.44.0]: https://github.com/giantswarm/observability-operator/compare/v0.43.1...v0.44.0
+[0.43.1]: https://github.com/giantswarm/observability-operator/compare/v0.43.0...v0.43.1
+[0.43.0]: https://github.com/giantswarm/observability-operator/compare/v0.42.0...v0.43.0
+[0.42.0]: https://github.com/giantswarm/observability-operator/compare/v0.41.0...v0.42.0
+[0.41.0]: https://github.com/giantswarm/observability-operator/compare/v0.40.0...v0.41.0
+[0.40.0]: https://github.com/giantswarm/observability-operator/compare/v0.39.0...v0.40.0
+[0.39.0]: https://github.com/giantswarm/observability-operator/compare/v0.38.0...v0.39.0
+[0.38.0]: https://github.com/giantswarm/observability-operator/compare/v0.37.0...v0.38.0
+[0.37.0]: https://github.com/giantswarm/observability-operator/compare/v0.36.0...v0.37.0
+[0.36.0]: https://github.com/giantswarm/observability-operator/compare/v0.35.0...v0.36.0
+[0.35.0]: https://github.com/giantswarm/observability-operator/compare/v0.34.0...v0.35.0
+[0.34.0]: https://github.com/giantswarm/observability-operator/compare/v0.33.1...v0.34.0
+[0.33.1]: https://github.com/giantswarm/observability-operator/compare/v0.33.0...v0.33.1
+[0.33.0]: https://github.com/giantswarm/observability-operator/compare/v0.32.1...v0.33.0
+[0.32.1]: https://github.com/giantswarm/observability-operator/compare/v0.32.0...v0.32.1
+[0.32.0]: https://github.com/giantswarm/observability-operator/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/giantswarm/observability-operator/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/giantswarm/observability-operator/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/giantswarm/observability-operator/compare/v0.28.0...v0.29.0

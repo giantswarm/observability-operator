@@ -1,0 +1,8 @@
+alerting:
+  teams:
+  - name: atlas
+  - name: phoenix
+  - name: shield
+  - name: rocket
+  - name: honeybadger
+  - name: tenet
