@@ -48,8 +48,8 @@ func New(cfg pkgconfig.Config) Service {
 	return service
 }
 
-// extractAlertmanagerConfig extracts the raw config bytes.
-func extractAlertmanagerConfig(secret *v1.Secret) ([]byte, error) {
+// ExtractAlertmanagerConfig extracts the raw config bytes.
+func ExtractAlertmanagerConfig(secret *v1.Secret) ([]byte, error) {
 	// Check that the secret contains an Alertmanager configuration file.
 	alertmanagerConfig, found := secret.Data[AlertmanagerConfigKey]
 	if !found {
@@ -67,13 +67,13 @@ func (s Service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, ten
 	}
 
 	// Extract alertmanager configuration from secret
-	alertmanagerConfig, err := extractAlertmanagerConfig(secret)
+	alertmanagerConfig, err := ExtractAlertmanagerConfig(secret)
 	if err != nil {
 		return fmt.Errorf("failed to extract alertmanager config: %w", err)
 	}
 
 	// Parse and validate the configuration
-	amConfig, err := config.Load(string(alertmanagerConfig))
+	amConfig, err := ParseAlertmanagerConfig(alertmanagerConfig)
 	if err != nil {
 		return fmt.Errorf("failed to load alertmanager configuration: %w", err)
 	}
@@ -93,6 +93,14 @@ func (s Service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, ten
 
 	logger.Info("configured alertmanager")
 	return nil
+}
+
+func ParseAlertmanagerConfig(alertmanagerConfig []byte) (*config.Config, error) {
+	amConfig, err := config.Load(string(alertmanagerConfig))
+	if err != nil {
+		return nil, err
+	}
+	return amConfig, nil
 }
 
 func extractTemplates(secret *v1.Secret) map[string]string {
