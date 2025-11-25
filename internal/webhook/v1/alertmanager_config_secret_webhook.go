@@ -86,7 +86,7 @@ func (v *AlertmanagerConfigSecretValidator) ValidateCreate(ctx context.Context, 
 	if err := v.validateTenant(ctx, secret); err != nil {
 		return nil, err
 	}
-	return nil, validateAlertmanagerConfig(ctx, secret)
+	return nil, validateAlertmanagerConfig(secret)
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Secret.
@@ -106,7 +106,7 @@ func (v *AlertmanagerConfigSecretValidator) ValidateUpdate(ctx context.Context, 
 	if err := v.validateTenant(ctx, secret); err != nil {
 		return nil, err
 	}
-	return nil, validateAlertmanagerConfig(ctx, secret)
+	return nil, validateAlertmanagerConfig(secret)
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type Secret.
@@ -175,11 +175,17 @@ func (v *AlertmanagerConfigSecretValidator) isAlertmanagerConfigSecret(secret *c
 	return hasTenantLabel
 }
 
-func validateAlertmanagerConfig(ctx context.Context, secret *corev1.Secret) error {
-	_, err := alertmanager.ExtractAlertmanagerConfig(ctx, secret)
+func validateAlertmanagerConfig(secret *corev1.Secret) error {
+	content, err := alertmanager.ExtractAlertmanagerConfig(secret)
 	if err != nil {
 		return fmt.Errorf("alertmanager configuration validation failed: %w. Note: If you're using a newer Alertmanager feature, it might not be supported yet by the Grafana fork (grafana/prometheus-alertmanager) used by Mimir", err)
 	}
+
+	_, err = alertmanager.ParseAlertmanagerConfig(content)
+	if err != nil {
+		return fmt.Errorf("alertmanager configuration validation failed: %w. Note: If you're using a newer Alertmanager feature, it might not be supported yet by the Grafana fork (grafana/prometheus-alertmanager) used by Mimir", err)
+	}
+
 	log.Info("alertmanager config validation successful")
 	return nil
 }
