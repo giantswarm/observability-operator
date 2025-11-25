@@ -16,6 +16,7 @@ import (
 
 	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/metrics"
 )
 
 const (
@@ -47,17 +48,12 @@ func New(cfg pkgconfig.Config) Service {
 	return service
 }
 
-func ExtractAlertmanagerConfig(ctx context.Context, secret *v1.Secret) ([]byte, error) {
+// extractAlertmanagerConfig extracts the raw config bytes.
+func extractAlertmanagerConfig(secret *v1.Secret) ([]byte, error) {
 	// Check that the secret contains an Alertmanager configuration file.
 	alertmanagerConfig, found := secret.Data[AlertmanagerConfigKey]
 	if !found {
 		return nil, fmt.Errorf("missing %s in alertmanager secret", AlertmanagerConfigKey)
-	}
-	// Validate Alertmanager configuration
-	// The returned config is not used, as transforming it via String() would produce an invalid configuration with all secrets replaced with <redacted>.
-	_, err := config.Load(string(alertmanagerConfig))
-	if err != nil {
-		return nil, fmt.Errorf("failed to load alertmanager configuration: %w", err)
 	}
 	return alertmanagerConfig, nil
 }
@@ -70,13 +66,36 @@ func (s Service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, ten
 		return fmt.Errorf("alertmanager secret is nil")
 	}
 
-	// Retrieve and Validate alertmanager configuration from secret
-	alertmanagerConfig, err := ExtractAlertmanagerConfig(ctx, secret)
+	// Extract alertmanager configuration from secret
+	alertmanagerConfig, err := extractAlertmanagerConfig(secret)
 	if err != nil {
 		return fmt.Errorf("failed to extract alertmanager config: %w", err)
 	}
 
+	// Parse and validate the configuration
+	amConfig, err := config.Load(string(alertmanagerConfig))
+	if err != nil {
+		return fmt.Errorf("failed to load alertmanager configuration: %w", err)
+	}
+
+	// Count routes and update metrics
+	routeCount := countRoutes(amConfig.Route)
+	metrics.AlertmanagerRoutes.WithLabelValues(tenantID).Set(float64(routeCount))
+	logger.WithValues("tenant", tenantID, "routes", routeCount).Info("Updated Alertmanager routes metric")
+
 	// Retrieve all alertmanager templates from secret
+	templates := extractTemplates(secret)
+
+	err = s.Configure(ctx, alertmanagerConfig, templates, tenantID)
+	if err != nil {
+		return fmt.Errorf("failed to configure alertmanager: %w", err)
+	}
+
+	logger.Info("configured alertmanager")
+	return nil
+}
+
+func extractTemplates(secret *v1.Secret) map[string]string {
 	templates := make(map[string]string)
 	// TODO Validate templates (and add it in the validating webhook)
 	for key, value := range secret.Data {
@@ -87,14 +106,7 @@ func (s Service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, ten
 			templates[baseKey] = string(value)
 		}
 	}
-
-	err = s.Configure(ctx, alertmanagerConfig, templates, tenantID)
-	if err != nil {
-		return fmt.Errorf("failed to configure alertmanager: %w", err)
-	}
-
-	logger.Info("configured alertmanager")
-	return nil
+	return templates
 }
 
 // Configure sends the configuration and templates to Mimir Alertmanager's API
@@ -148,4 +160,22 @@ func (s Service) Configure(ctx context.Context, alertmanagerConfigContent []byte
 	}
 
 	return nil
+}
+
+// countRoutes recursively counts the number of routes in an Alertmanager configuration.
+// It counts the root route plus all sub-routes in the route tree.
+func countRoutes(route *config.Route) int {
+	if route == nil {
+		return 0
+	}
+
+	// Count the current route
+	count := 1
+
+	// Recursively count sub-routes
+	for _, subRoute := range route.Routes {
+		count += countRoutes(subRoute)
+	}
+
+	return count
 }
