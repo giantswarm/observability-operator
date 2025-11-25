@@ -73,8 +73,8 @@ func (s Service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, ten
 	}
 
 	// Parse and validate the configuration
-	// The returned config is used only for metrics and not sent to alertmanager 
-	// as transforming it via String() would produce an invalid configuration 
+	// The returned config is used only for metrics and not sent to alertmanager
+	// as transforming it via String() would produce an invalid configuration
 	// with all secrets replaced with <redacted>.
 	amConfig, err := ParseAlertmanagerConfig(alertmanagerConfig)
 	if err != nil {
