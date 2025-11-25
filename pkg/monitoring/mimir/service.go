@@ -52,12 +52,6 @@ func (ms *MimirService) generateHtpasswdContent(ctx context.Context) (string, er
 	// Generate htpasswd entries for all clusters
 	var htpasswdLines []string
 	for clusterName, password := range clusterPasswords {
-		// Skip credentials entry if it exists
-		// TODO remove this when we fully migrate to flat secret structure
-		if clusterName == "credentials" {
-			continue
-		}
-
 		htpasswdEntry, err := ms.PasswordManager.GenerateHtpasswd(clusterName, password)
 		if err != nil {
 			return "", fmt.Errorf("failed to generate htpasswd for cluster %s: %w", clusterName, err)
@@ -183,21 +177,14 @@ func (ms *MimirService) RemoveClusterPassword(ctx context.Context, clusterName s
 	passwordRemoved := false
 
 	result, err := ctrl.CreateOrUpdate(ctx, ms.Client, authSecret, func() error {
-		// If Data doesn't exist or cluster password doesn't exist, nothing to do
-		if authSecret.Data == nil || authSecret.Data[clusterName] == nil {
-			return nil
-		}
-
 		// Remove cluster password
 		delete(authSecret.Data, clusterName)
-		passwordRemoved = true
 		return nil
 	})
 
 	if err != nil {
 		// If the namespace or secret doesn't exist, that's fine - cluster is being deleted anyway
 		if client.IgnoreNotFound(err) == nil {
-			logger.Info("Auth secret or namespace not found during cluster deletion - this is expected", "cluster", clusterName)
 			return nil
 		}
 		return fmt.Errorf("failed to update auth secret: %w", err)
@@ -205,17 +192,13 @@ func (ms *MimirService) RemoveClusterPassword(ctx context.Context, clusterName s
 
 	logger.Info("Auth secret processed for removal", "result", result, "cluster", clusterName)
 
-	// Only regenerate htpasswd secrets if we actually removed a password
-	if passwordRemoved {
-		err = ms.regenerateAuthSecrets(ctx, logger)
-		if err != nil {
-			// Also ignore not found errors when regenerating - if mimir namespace is gone, that's expected
-			if client.IgnoreNotFound(err) == nil {
-				logger.Info("Mimir namespace not found during htpasswd regeneration - this is expected during deletion", "cluster", clusterName)
-				return nil
-			}
-			return fmt.Errorf("failed to regenerate htpasswd secrets: %w", err)
+	err = ms.regenerateAuthSecrets(ctx, logger)
+	if err != nil {
+		// Also ignore not found errors when regenerating - if mimir namespace is gone, that's expected
+		if client.IgnoreNotFound(err) == nil {
+			return nil
 		}
+		return fmt.Errorf("failed to regenerate htpasswd secrets: %w", err)
 	}
 
 	return nil
