@@ -7,10 +7,8 @@ import (
 	"fmt"
 	"text/template"
 
-	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
@@ -34,12 +32,7 @@ var (
 	alloyMonitoringConfig         string
 	alloyMonitoringConfigTemplate *template.Template
 
-	versionSupportingVPA                = semver.MustParse("1.7.0")
-	versionSupportingExtraQueryMatchers = semver.MustParse("1.9.0")
-	versionSupportingScrapeConfigs      = semver.MustParse("2.2.0")
-
-	alloyMetricsRuleLoadingFixedAppVersion            = semver.MustParse("0.10.0")
-	alloyMetricsRuleLoadingFixedContainerImageVersion = semver.MustParse("1.8.3")
+	versionSupportingScrapeConfigs = semver.MustParse("2.2.0")
 )
 
 func init() {
@@ -89,26 +82,10 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		AlloyConfig       string
 		PriorityClassName string
 		Replicas          int
-		// AlloyImageTag is the tag of the Alloy controller image.
-		AlloyImageTag *string
-		// IsSupportingVPA indicates whether the Alloy controller supports VPA.
-		IsSupportingVPA bool
 	}{
 		AlloyConfig:       alloyConfig,
 		PriorityClassName: commonmonitoring.PriorityClassName,
 		Replicas:          shards,
-		// Observability bundle in older versions do not support VPA
-		IsSupportingVPA: observabilityBundleVersion.GE(versionSupportingVPA),
-	}
-
-	alloyMetricsAppVersion, err := a.getAlloyMetricsAppVersion(ctx, cluster)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get alloy metrics app version: %w", err)
-	}
-
-	if alloyMetricsAppVersion.LT(alloyMetricsRuleLoadingFixedAppVersion) {
-		version := fmt.Sprintf("v%s", alloyMetricsRuleLoadingFixedContainerImageVersion.String())
-		data.AlloyImageTag = &version
 	}
 
 	var values bytes.Buffer
@@ -168,7 +145,6 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		ExternalLabels map[string]string
 
-		IsSupportingExtraQueryMatchers bool
 		IsSupportingScrapeConfigs      bool
 	}{
 		AlloySecretName:      commonmonitoring.AlloyMonitoringAgentAppName,
@@ -211,9 +187,8 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 			"service_priority": commonmonitoring.GetServicePriority(cluster),
 		},
 
-		IsWorkloadCluster:              a.Cluster.IsWorkloadCluster(cluster),
-		IsSupportingExtraQueryMatchers: observabilityBundleVersion.GE(versionSupportingExtraQueryMatchers),
-		IsSupportingScrapeConfigs:      observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
+		IsWorkloadCluster:         a.Cluster.IsWorkloadCluster(cluster),
+		IsSupportingScrapeConfigs: observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
 	}
 
 	err = alloyConfigTemplate.Execute(&values, data)
@@ -234,23 +209,4 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 	}
 
 	return configmap
-}
-
-func (a *Service) getAlloyMetricsAppVersion(ctx context.Context, cluster *clusterv1.Cluster) (version semver.Version, err error) {
-	// Get observability bundle app metadata.
-	appMeta := types.NamespacedName{
-		Name:      fmt.Sprintf("%s-%s", cluster.GetName(), commonmonitoring.AlloyMonitoringAgentAppName),
-		Namespace: cluster.GetNamespace(),
-	}
-	// Retrieve the app.
-	var currentApp appv1.App
-	err = a.Client.Get(ctx, appMeta, &currentApp)
-	if err != nil {
-		return version, fmt.Errorf("failed to get alloy metrics app: %w", err)
-	}
-	v, err := semver.Parse(currentApp.Spec.Version)
-	if err != nil {
-		return version, fmt.Errorf("failed to parse alloy metrics app version: %w", err)
-	}
-	return v, nil
 }
