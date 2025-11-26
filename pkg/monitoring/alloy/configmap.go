@@ -145,7 +145,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		ExternalLabels map[string]string
 
-		IsSupportingScrapeConfigs      bool
+		IsSupportingScrapeConfigs bool
 	}{
 		AlloySecretName:      commonmonitoring.AlloyMonitoringAgentAppName,
 		AlloySecretNamespace: commonmonitoring.AlloyMonitoringAgentAppNamespace,
