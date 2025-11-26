@@ -21,6 +21,12 @@ var (
 		Name: "observability_operator_grafana_organization_info",
 		Help: "Information about GrafanaOrganization resources",
 	}, []string{"name", "display_name", "org_id", "status"}) // status: active, pending, error
+
+	// Alertmanager metrics
+	AlertmanagerRoutes = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "observability_operator_alertmanager_routes",
+		Help: "Number of routes configured in Alertmanager per tenant",
+	}, []string{"tenant"})
 )
 
 const (
@@ -34,5 +40,6 @@ func init() {
 		MimirQueryErrors,
 		GrafanaOrganizationTenantInfo,
 		GrafanaOrganizationInfo,
+		AlertmanagerRoutes,
 	)
 }

@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
- Add v1alpha2 API with conversion webhooks and enhanced multi-tenant configuration support for GrafanaOrganization CRD with more granular data access types.
+- Add v1alpha2 API with conversion webhooks and enhanced multi-tenant configuration support for GrafanaOrganization CRD with more granular data access types.
+- Add new `observability_operator_alertmanager_routes` to count the number of routes per tenant.
 
 ### Changed
 
 - Create a new secret for HTTPRoute basic auth for Mimir.
+- Refactor Mimir authentication to use per-cluster passwords with centralized secret management.
 
 ## [0.50.0] - 2025-11-13
 

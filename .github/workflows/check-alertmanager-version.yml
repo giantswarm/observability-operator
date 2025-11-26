@@ -7,12 +7,12 @@ jobs:
     name: Check Alertmanager Version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Run alertmanager version sync check
         run: ./hack/bin/check-alertmanager-version.sh
   test-alertmanager-routes:
     name: Test Alertmanager routes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: make tests-alertmanager-routes
