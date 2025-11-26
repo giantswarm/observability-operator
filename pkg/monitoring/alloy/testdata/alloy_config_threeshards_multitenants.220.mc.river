@@ -9,19 +9,8 @@ remote.kubernetes.secret "credentials" {
 }
 // load rules for tenant tenant1
 mimir.rules.kubernetes "tenant1" {
-  address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
-  basic_auth {
-    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
-  }
-  extra_query_matchers {
-    matcher {
-        name       = "cluster_id"
-        match_type = "="
-        value      = "test-cluster"
-    }
-  }
-  mimir_namespace_prefix = "test-cluster"
+  address = "http://mimir-ruler.mimir.svc:8080/"
+  mimir_namespace_prefix = "dummy-cluster"
   tenant_id = "tenant1"
   rule_selector {
       match_labels = {
@@ -36,19 +25,8 @@ mimir.rules.kubernetes "tenant1" {
 }
 // load rules for tenant tenant2
 mimir.rules.kubernetes "tenant2" {
-  address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
-  basic_auth {
-    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
-  }
-  extra_query_matchers {
-    matcher {
-        name       = "cluster_id"
-        match_type = "="
-        value      = "test-cluster"
-    }
-  }
-  mimir_namespace_prefix = "test-cluster"
+  address = "http://mimir-ruler.mimir.svc:8080/"
+  mimir_namespace_prefix = "dummy-cluster"
   tenant_id = "tenant2"
   rule_selector {
       match_labels = {
@@ -78,7 +56,7 @@ prometheus.operator.servicemonitors "tenant1" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
@@ -95,7 +73,7 @@ prometheus.operator.podmonitors "tenant1" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 prometheus.operator.scrapeconfigs "tenant1" {
@@ -111,7 +89,7 @@ prometheus.operator.scrapeconfigs "tenant1" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
@@ -121,11 +99,7 @@ prometheus.remote_write "tenant1" {
     name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
     enable_http2   = false
     remote_timeout = "60s"
-    url = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
-    basic_auth {
-      username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-      password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
-    }
+    url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
 
     headers = {
       "X-Scope-OrgID" = "tenant1",
@@ -144,8 +118,8 @@ prometheus.remote_write "tenant1" {
     truncate_frequency = "1m0s"
   }
   external_labels = {
-    "cluster_id" = "test-cluster",
-    "cluster_type" = "workload_cluster",
+    "cluster_id" = "dummy-cluster",
+    "cluster_type" = "management_cluster",
     "customer" = "dummy-customer",
     "installation" = "dummy-cluster",
     "organization" = "dummy-org",
@@ -172,7 +146,7 @@ prometheus.operator.servicemonitors "tenant2" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
@@ -189,7 +163,7 @@ prometheus.operator.podmonitors "tenant2" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 prometheus.operator.scrapeconfigs "tenant2" {
@@ -205,7 +179,7 @@ prometheus.operator.scrapeconfigs "tenant2" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
@@ -215,11 +189,7 @@ prometheus.remote_write "tenant2" {
     name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
     enable_http2   = false
     remote_timeout = "60s"
-    url = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
-    basic_auth {
-      username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-      password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
-    }
+    url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
 
     headers = {
       "X-Scope-OrgID" = "tenant2",
@@ -238,8 +208,8 @@ prometheus.remote_write "tenant2" {
     truncate_frequency = "1m0s"
   }
   external_labels = {
-    "cluster_id" = "test-cluster",
-    "cluster_type" = "workload_cluster",
+    "cluster_id" = "dummy-cluster",
+    "cluster_type" = "management_cluster",
     "customer" = "dummy-customer",
     "installation" = "dummy-cluster",
     "organization" = "dummy-org",

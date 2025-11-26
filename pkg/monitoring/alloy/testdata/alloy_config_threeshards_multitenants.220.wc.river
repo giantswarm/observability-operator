@@ -78,7 +78,7 @@ prometheus.operator.servicemonitors "tenant1" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
@@ -95,7 +95,7 @@ prometheus.operator.podmonitors "tenant1" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 prometheus.operator.scrapeconfigs "tenant1" {
@@ -111,7 +111,7 @@ prometheus.operator.scrapeconfigs "tenant1" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
@@ -172,7 +172,7 @@ prometheus.operator.servicemonitors "tenant2" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
@@ -189,7 +189,7 @@ prometheus.operator.podmonitors "tenant2" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 prometheus.operator.scrapeconfigs "tenant2" {
@@ -205,7 +205,7 @@ prometheus.operator.scrapeconfigs "tenant2" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 

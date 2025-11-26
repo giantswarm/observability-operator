@@ -60,22 +60,6 @@ prometheus.operator.podmonitors "tenant1" {
     enabled = false
   }
 }
-prometheus.operator.scrapeconfigs "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver]
-  selector {
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant1"]
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = false
-  }
-}
 
 // remote write pipeline configuration for tenant tenant1
 prometheus.remote_write "tenant1" {

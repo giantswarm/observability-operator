@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Create a new secret for HTTPRoute basic auth for Mimir.
 - Refactor Mimir authentication to use per-cluster passwords with centralized secret management.
+- Disable alloy-metrics clustering when running only 1 shard.
 
 ### Removed
 

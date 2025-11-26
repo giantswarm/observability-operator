@@ -9,8 +9,19 @@ remote.kubernetes.secret "credentials" {
 }
 // load rules for tenant tenant1
 mimir.rules.kubernetes "tenant1" {
-  address = "http://mimir-ruler.mimir.svc:8080/"
-  mimir_namespace_prefix = "dummy-cluster"
+  address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
+  basic_auth {
+    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+  }
+  extra_query_matchers {
+    matcher {
+        name       = "cluster_id"
+        match_type = "="
+        value      = "single-tenant-cluster"
+    }
+  }
+  mimir_namespace_prefix = "single-tenant-cluster"
   tenant_id = "tenant1"
   rule_selector {
       match_labels = {
@@ -60,22 +71,6 @@ prometheus.operator.podmonitors "tenant1" {
     enabled = false
   }
 }
-prometheus.operator.scrapeconfigs "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver]
-  selector {
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["tenant1"]
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = false
-  }
-}
 
 // remote write pipeline configuration for tenant tenant1
 prometheus.remote_write "tenant1" {
@@ -83,7 +78,11 @@ prometheus.remote_write "tenant1" {
     name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
     enable_http2   = false
     remote_timeout = "60s"
-    url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
+    url = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
+    basic_auth {
+      username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+      password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+    }
 
     headers = {
       "X-Scope-OrgID" = "tenant1",
@@ -102,8 +101,8 @@ prometheus.remote_write "tenant1" {
     truncate_frequency = "1m0s"
   }
   external_labels = {
-    "cluster_id" = "dummy-cluster",
-    "cluster_type" = "management_cluster",
+    "cluster_id" = "single-tenant-cluster",
+    "cluster_type" = "workload_cluster",
     "customer" = "dummy-customer",
     "installation" = "dummy-cluster",
     "organization" = "dummy-org",

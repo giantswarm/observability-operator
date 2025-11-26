@@ -42,7 +42,7 @@ prometheus.operator.servicemonitors "giantswarm_legacy" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
@@ -62,7 +62,7 @@ prometheus.operator.podmonitors "giantswarm_legacy" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
@@ -80,7 +80,7 @@ prometheus.operator.servicemonitors "giantswarm" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
@@ -97,7 +97,7 @@ prometheus.operator.podmonitors "giantswarm" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 prometheus.operator.scrapeconfigs "giantswarm" {
@@ -113,7 +113,7 @@ prometheus.operator.scrapeconfigs "giantswarm" {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 

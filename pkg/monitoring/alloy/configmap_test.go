@@ -37,10 +37,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 		tenants                    []string
 		goldenPath                 string
 		observabilityBundleVersion semver.Version
+		shards                     int
 	}{
 		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
-			name: "TwoTenantsInWC_v200",
+			name: "OneShardTwoTenantsInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
@@ -53,11 +54,12 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.190.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.200.wc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     1,
 		},
 		{
-			name: "TwoTenantsInMC_v200",
+			name: "OneShardTwoTenantsInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -70,11 +72,12 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.190.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.200.mc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     1,
 		},
 		{
-			name: "SingleTenantInWC_v190",
+			name: "OneShardSingleTenantInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "single-tenant-cluster",
@@ -87,11 +90,12 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.190.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.200.wc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     1,
 		},
 		{
-			name: "SingleTenantInMC_v190",
+			name: "OneShardSingleTenantInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -104,11 +108,12 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.190.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.200.mc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     1,
 		},
 		{
-			name: "DefaultTenantInWC_v190",
+			name: "OneShardDefaultTenantInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "default-tenant-cluster",
@@ -121,11 +126,12 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.190.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.wc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     1,
 		},
 		{
-			name: "DefaultTenantInMC_v190",
+			name: "OneShardDefaultTenantInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -138,13 +144,124 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.190.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.mc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     1,
+		},
+
+		// Version 2.0.0+ tests with 3 shards (with extra query matchers, without scrape configs)
+		{
+			name: "ThreeShardsTwoTenantsInWC_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_multitenants.200.wc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     3,
+		},
+		{
+			name: "ThreeShardsTwoTenantsInMC_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_multitenants.200.mc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     3,
+		},
+		{
+			name: "ThreeShardsSingleTenantInWC_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "single-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_singletenant.200.wc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     3,
+		},
+		{
+			name: "ThreeShardsSingleTenantInMC_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_singletenant.200.mc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     3,
+		},
+		{
+			name: "ThreeShardsDefaultTenantInWC_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_defaulttenant.200.wc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     3,
+		},
+		{
+			name: "ThreeShardsDefaultTenantInMC_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_defaulttenant.200.mc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			shards:                     3,
 		},
 
 		// Version 2.2.0+ tests (with extra query matchers and scrape configs)
 		{
-			name: "TwoTenantsInWC_v220",
+			name: "OneShardTwoTenantsInWC_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
@@ -159,9 +276,10 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			tenants:                    []string{"tenant1", "tenant2"},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.220.wc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     1,
 		},
 		{
-			name: "TwoTenantsInMC_v220",
+			name: "OneShardTwoTenantsInMC_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -176,9 +294,10 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			tenants:                    []string{"tenant1", "tenant2"},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.220.mc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     1,
 		},
 		{
-			name: "SingleTenantInWC_v220",
+			name: "OneShardSingleTenantInWC_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "single-tenant-cluster",
@@ -193,9 +312,10 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			tenants:                    []string{"tenant1"},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.220.wc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     1,
 		},
 		{
-			name: "SingleTenantInMC_v220",
+			name: "OneShardSingleTenantInMC_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -210,9 +330,10 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			tenants:                    []string{"tenant1"},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.220.mc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     1,
 		},
 		{
-			name: "DefaultTenantInWC_v220",
+			name: "OneShardDefaultTenantInWC_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "default-tenant-cluster",
@@ -227,9 +348,10 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.wc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     1,
 		},
 		{
-			name: "DefaultTenantInMC_v220",
+			name: "OneShardDefaultTenantInMC_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -244,6 +366,117 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.mc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     1,
+		},
+
+		// Version 2.2.0+ tests with 3 shards (with extra query matchers and scrape configs)
+		{
+			name: "ThreeShardsTwoTenantsInWC_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_multitenants.220.wc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     3,
+		},
+		{
+			name: "ThreeShardsTwoTenantsInMC_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_multitenants.220.mc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     3,
+		},
+		{
+			name: "ThreeShardsSingleTenantInWC_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "single-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_singletenant.220.wc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     3,
+		},
+		{
+			name: "ThreeShardsSingleTenantInMC_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_singletenant.220.mc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     3,
+		},
+		{
+			name: "ThreeShardsDefaultTenantInWC_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_defaulttenant.220.wc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     3,
+		},
+		{
+			name: "ThreeShardsDefaultTenantInMC_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_threeshards_defaulttenant.220.mc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			shards:                     3,
 		},
 	}
 
@@ -273,7 +506,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			}
 
-			got, err := service.generateAlloyConfig(ctx, tt.cluster, tt.tenants, tt.observabilityBundleVersion)
+			got, err := service.generateAlloyConfig(ctx, tt.cluster, tt.tenants, tt.observabilityBundleVersion, tt.shards)
 			if err != nil {
 				t.Fatalf("generateAlloyConfig failed: %v", err)
 			}

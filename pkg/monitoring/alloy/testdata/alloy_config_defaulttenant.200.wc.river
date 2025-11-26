@@ -9,8 +9,19 @@ remote.kubernetes.secret "credentials" {
 }
 // load rules for tenant giantswarm
 mimir.rules.kubernetes "giantswarm" {
-  address = "http://mimir-ruler.mimir.svc:8080/"
-  mimir_namespace_prefix = "dummy-cluster"
+  address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
+  basic_auth {
+    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+  }
+  extra_query_matchers {
+    matcher {
+        name       = "cluster_id"
+        match_type = "="
+        value      = "default-tenant-cluster"
+    }
+  }
+  mimir_namespace_prefix = "default-tenant-cluster"
   tenant_id = "giantswarm"
   rule_selector {
       match_labels = {
@@ -100,22 +111,6 @@ prometheus.operator.podmonitors "giantswarm" {
     enabled = false
   }
 }
-prometheus.operator.scrapeconfigs "giantswarm" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
-  selector {
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "In"
-      values   = ["giantswarm"]
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = false
-  }
-}
 
 // remote write pipeline configuration for tenant giantswarm
 prometheus.remote_write "giantswarm" {
@@ -123,7 +118,11 @@ prometheus.remote_write "giantswarm" {
     name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
     enable_http2   = false
     remote_timeout = "60s"
-    url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
+    url = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
+    basic_auth {
+      username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+      password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+    }
 
     headers = {
       "X-Scope-OrgID" = "giantswarm",
@@ -142,8 +141,8 @@ prometheus.remote_write "giantswarm" {
     truncate_frequency = "1m0s"
   }
   external_labels = {
-    "cluster_id" = "dummy-cluster",
-    "cluster_type" = "management_cluster",
+    "cluster_id" = "default-tenant-cluster",
+    "cluster_type" = "workload_cluster",
     "customer" = "dummy-customer",
     "installation" = "dummy-cluster",
     "organization" = "dummy-org",

@@ -7,14 +7,14 @@ remote.kubernetes.secret "credentials" {
   name      = "alloy-metrics"
   namespace = "kube-system"
 }
-// load rules for tenant giantswarm
-mimir.rules.kubernetes "giantswarm" {
+// load rules for tenant tenant1
+mimir.rules.kubernetes "tenant1" {
   address = "http://mimir-ruler.mimir.svc:8080/"
   mimir_namespace_prefix = "dummy-cluster"
-  tenant_id = "giantswarm"
+  tenant_id = "tenant1"
   rule_selector {
       match_labels = {
-        "observability.giantswarm.io/tenant" = "giantswarm",
+        "observability.giantswarm.io/tenant" = "tenant1",
       }
       match_expression {
         key = "application.giantswarm.io/prometheus-rule-kind"
@@ -25,100 +25,60 @@ mimir.rules.kubernetes "giantswarm" {
 }
 
 // we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
-// remote write pipeline configuration for tenant giantswarm
-prometheus.operator.servicemonitors "giantswarm_legacy" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
-  selector {
-    match_expression {
-      key      = "application.giantswarm.io/team"
-      operator = "Exists"
-    }
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "DoesNotExist"
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = false
-  }
-}
+// remote write pipeline configuration for tenant tenant1
 
-prometheus.operator.podmonitors "giantswarm_legacy" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
-  selector {
-    match_expression {
-      key      = "application.giantswarm.io/team"
-      operator = "Exists"
-    }
-    match_expression {
-      key      = "observability.giantswarm.io/tenant"
-      operator = "DoesNotExist"
-    }
-  }
-  scrape {
-    default_scrape_interval = "60s"
-  }
-  clustering {
-    enabled = false
-  }
-}
-
-
-prometheus.operator.servicemonitors "giantswarm" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
+prometheus.operator.servicemonitors "tenant1" {
+  forward_to = [prometheus.remote_write.tenant1.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
       operator = "In"
-      values   = ["giantswarm"]
+      values   = ["tenant1"]
     }
   }
   scrape {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
-prometheus.operator.podmonitors "giantswarm" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
+prometheus.operator.podmonitors "tenant1" {
+  forward_to = [prometheus.remote_write.tenant1.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
       operator = "In"
-      values   = ["giantswarm"]
+      values   = ["tenant1"]
     }
   }
   scrape {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
-prometheus.operator.scrapeconfigs "giantswarm" {
-  forward_to = [prometheus.remote_write.giantswarm.receiver]
+prometheus.operator.scrapeconfigs "tenant1" {
+  forward_to = [prometheus.remote_write.tenant1.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
       operator = "In"
-      values   = ["giantswarm"]
+      values   = ["tenant1"]
     }
   }
   scrape {
     default_scrape_interval = "60s"
   }
   clustering {
-    enabled = false
+    enabled = true
   }
 }
 
-// remote write pipeline configuration for tenant giantswarm
-prometheus.remote_write "giantswarm" {
+// remote write pipeline configuration for tenant tenant1
+prometheus.remote_write "tenant1" {
   endpoint {
     name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
     enable_http2   = false
@@ -126,7 +86,7 @@ prometheus.remote_write "giantswarm" {
     url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
 
     headers = {
-      "X-Scope-OrgID" = "giantswarm",
+      "X-Scope-OrgID" = "tenant1",
     }
     tls_config {
       insecure_skip_verify = false

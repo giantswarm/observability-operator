@@ -73,7 +73,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	shardingStrategy := a.Monitoring.DefaultShardingStrategy.Merge(clusterShardingStrategy)
 	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
-	alloyConfig, err := a.generateAlloyConfig(ctx, cluster, tenants, observabilityBundleVersion)
+	alloyConfig, err := a.generateAlloyConfig(ctx, cluster, tenants, observabilityBundleVersion, shards)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate alloy config: %w", err)
 	}
@@ -100,7 +100,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	return configMapData, nil
 }
 
-func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version) (string, error) {
+func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version, shards int) (string, error) {
 	var values bytes.Buffer
 
 	organization, err := a.Read(ctx, cluster)
@@ -128,6 +128,8 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		ClusterID         string
 		IsWorkloadCluster bool
 
+		Replicas int
+
 		Tenants         []string
 		DefaultTenantID string
 
@@ -145,7 +147,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		ExternalLabels map[string]string
 
-		IsSupportingScrapeConfigs      bool
+		IsSupportingScrapeConfigs bool
 	}{
 		AlloySecretName:      commonmonitoring.AlloyMonitoringAgentAppName,
 		AlloySecretNamespace: commonmonitoring.AlloyMonitoringAgentAppNamespace,
@@ -159,6 +161,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		MimirRemoteWriteTLSInsecureSkipVerify: a.Cluster.InsecureCA,
 
 		ClusterID: cluster.Name,
+		Replicas:  shards,
 
 		Tenants:         tenants,
 		DefaultTenantID: commonmonitoring.DefaultWriteTenant,
