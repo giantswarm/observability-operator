@@ -53,7 +53,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.190.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.200.wc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
@@ -70,11 +70,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.190.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.200.mc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "SingleTenantInWC_v190",
+			name: "SingleTenantInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "single-tenant-cluster",
@@ -87,11 +87,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.190.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.200.wc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "SingleTenantInMC_v190",
+			name: "SingleTenantInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -104,11 +104,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.190.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.200.mc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "DefaultTenantInWC_v190",
+			name: "DefaultTenantInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "default-tenant-cluster",
@@ -121,11 +121,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.190.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.wc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "DefaultTenantInMC_v190",
+			name: "DefaultTenantInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -138,7 +138,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.190.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.mc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 
