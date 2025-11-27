@@ -14,6 +14,7 @@ import (
 
 	"github.com/Netflix/go-env"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
+	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,6 +51,7 @@ func init() {
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(appv1.AddToScheme(scheme))
 	utilruntime.Must(observabilityv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(promopv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
