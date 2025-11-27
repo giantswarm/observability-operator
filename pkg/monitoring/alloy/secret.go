@@ -51,7 +51,7 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		{Name: mimirRulerAPIURLKey, Value: mimirRulerUrl},
 		{Name: mimirRemoteWriteAPIURLKey, Value: remoteWriteUrl},
 		{Name: mimirRemoteWriteAPINameKey, Value: commonmonitoring.RemoteWriteName},
-		{Name: mimirRemoteWriteAPIUsernameKey, Value: a.Cluster.Name},
+		{Name: mimirRemoteWriteAPIUsernameKey, Value: cluster.Name},
 		{Name: mimirRemoteWriteAPIPasswordKey, Value: password},
 	}
 
