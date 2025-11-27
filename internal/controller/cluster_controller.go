@@ -25,6 +25,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/prometheustarget"
 )
 
 // ClusterMonitoringReconciler reconciles a Cluster object
@@ -41,7 +42,8 @@ type ClusterMonitoringReconciler struct {
 	// BundleConfigurationService is the service for configuring the observability bundle.
 	BundleConfigurationService *bundle.BundleConfigurationService
 	// FinalizerHelper is the helper for managing finalizers.
-	finalizerHelper FinalizerHelper
+	finalizerHelper         FinalizerHelper
+	prometheustargetService *prometheustarget.Service
 }
 
 func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) error {
@@ -86,6 +88,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		MimirService:               mimirService,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
+		prometheustargetService:    prometheustarget.New(managerClient),
 	}
 
 	return r.SetupWithManager(mgr)
@@ -137,6 +140,9 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	// Update metrics for ServiceMonitor and PodMonitor
+	go r.prometheustargetService.UpdateMetrics(ctx)
+
 	// Fetch the Cluster instance.
 	cluster := &clusterv1.Cluster{}
 	if err := r.Client.Get(ctx, req.NamespacedName, cluster); err != nil {
