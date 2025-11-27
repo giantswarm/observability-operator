@@ -25,7 +25,6 @@ networkPolicy:
           protocol: UDP
         - port: "53"
           protocol: TCP
-    {{- if gt .Replicas 1 }}
     - toEndpoints:
       - matchLabels:
           app.kubernetes.io/instance: alloy-metrics
@@ -34,9 +33,7 @@ networkPolicy:
       - ports:
         - port: "12345"
           protocol: TCP
-    {{- end }}
     ingress:
-    {{- if gt .Replicas 1 }}
     - fromEndpoints:
       - matchLabels:
           app.kubernetes.io/instance: alloy-metrics
@@ -45,13 +42,10 @@ networkPolicy:
       - ports:
         - port: "12345"
           protocol: TCP
-    {{- end }}
 alloy:
   alloy:
-    {{- if gt .Replicas 1 }}
     clustering:
       enabled: {{gt .Replicas 1 }}
-    {{- end }}
     configMap:
       create: true
       content: |-
