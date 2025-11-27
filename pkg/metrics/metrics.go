@@ -6,17 +6,19 @@ import (
 )
 
 var (
+	// MimirQueryErrors is a counter for tracking the number of errors while trying to query Mimir.
 	MimirQueryErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "observability_operator_mimir_head_series_query_errors_total",
 		Help: "Total number of reconciliations error",
 	}, nil)
 
-	// GrafanaOrganization metrics
+	// GrafanaOrganizationTenantInfo is a gauge for tracking tenant resources per organization.
 	GrafanaOrganizationTenantInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_grafana_organization_tenants",
 		Help: "Information about tenant resources per organization",
 	}, []string{"name", "org_id"})
 
+	// GrafanaOrganizationInfo is a gauge for tracking information about GrafanaOrganization resources.
 	GrafanaOrganizationInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_grafana_organization_info",
 		Help: "Information about GrafanaOrganization resources",
@@ -27,6 +29,12 @@ var (
 		Name: "observability_operator_alertmanager_routes",
 		Help: "Number of routes configured in Alertmanager per tenant",
 	}, []string{"tenant"})
+
+	// ObservabilityPrometheusTargetInfo is a gauge for tracking information about Alloy Prometheus targets.
+	ObservabilityPrometheusTargetInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "observability_operator_prometheus_target_info",
+		Help: "Information about Alloy Prometheus targets",
+	}, []string{"app", "scrape_job"})
 )
 
 const (
@@ -41,5 +49,6 @@ func init() {
 		GrafanaOrganizationTenantInfo,
 		GrafanaOrganizationInfo,
 		AlertmanagerRoutes,
+		ObservabilityPrometheusTargetInfo,
 	)
 }
