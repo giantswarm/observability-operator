@@ -3,10 +3,20 @@ global:
   http_config:
     proxy_from_environment: true
   slack_api_url: "https://slack.com/api/chat.postMessage"
+  pagerduty_url: "https://events.eu.pagerduty.com/v2/enqueue"
 
 templates:
   - notification-template.tmpl
   - url-template.tmpl
+
+time_intervals:
+  - name: business-hours
+    time_intervals:
+    - times:
+      - start_time: 08:00
+        end_time: 18:00
+      weekdays: ['monday:friday']
+      location: "Europe/Berlin"
 
 route:
   group_by: [alertname, cluster_id, installation, status, team]
@@ -16,6 +26,8 @@ route:
   receiver: root
 
   routes:
+  {{- if .Values.alerting.cronitorHeartbeatPingKey }}
+  # This is for pagerduty via Cronitor
   - receiver: heartbeat
     matchers:
     - alertname="Heartbeat"
@@ -23,6 +35,7 @@ route:
     group_wait: 30s
     group_interval: 30s
     repeat_interval: 15m
+  {{- end }}
 
   {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
   - receiver: blackhole
@@ -35,7 +48,7 @@ route:
     continue: false
   - receiver: blackhole
     matchers:
-    - alertname=~"ClusterUnhealthyPhase|PrometheusMetaOperatorReconcileErrors|WorkloadClusterApp.*"
+    - alertname=~"ClusterUnhealthyPhase|WorkloadClusterApp.*"
     continue: false
   - receiver: blackhole
     matchers:
@@ -57,18 +70,53 @@ route:
     - alertname=~"Falco.*"
     continue: false
 
-  - receiver: team_tenet_slack
-    repeat_interval: 14d
-    matchers:
-    - severity=~"notify"
-    - team=~"tenet|tinkerers"
-    continue: false
+{{- range $.Values.alerting.teams }}
 
-  # Team Ops Opsgenie
-  - receiver: opsgenie_router
+  {{- if not .name }}
+  {{- fail "team must contain a name" }}
+  {{- end }}
+
+  {{- if .pagerdutyToken }}
+
+  {{- if eq $.Values.managementCluster.pipeline "stable" }}
+  # PagerDuty pipeline=stable
+  - receiver: pagerduty-{{ .name }}
     matchers:
     - severity="page"
+    - pipeline="stable"
+    - all_pipelines!="true"
+    - team="{{ .name }}"
     continue: true
+  {{- end }}
+
+  {{- if eq $.Values.managementCluster.pipeline "stable-testing" }}
+  # PagerDuty pipeline=stable-testing
+  - receiver: pagerduty-{{ .name }}
+    matchers:
+    - severity="page"
+    - pipeline="stable-testing"
+    - all_pipelines!="true"
+    - team="{{ .name }}"
+    active_time_intervals:
+    - business-hours
+    continue: true
+  {{- end }}
+
+  # PagerDuty all-pipelines
+  - receiver: pagerduty-{{ .name }}
+    matchers:
+    - all_pipelines="true"
+    - team="{{ .name }}"
+    continue: true
+  {{- end }}
+
+  # Github route
+  - receiver: github_{{ .name }}
+    matchers:
+    - severity=~"ticket"
+    - team={{ .name | quote }}
+    continue: true
+{{- end }}
 
   # Team Atlas Slack
   - receiver: team_atlas_slack
@@ -112,20 +160,24 @@ route:
     - team="honeybadger"
     continue: false
 
+  # Team Tenet Slack
+  - receiver: team_tenet_slack
+    repeat_interval: 14d
+    matchers:
+    - severity=~"notify"
+    - team=~"tenet|tinkerers"
+    continue: false
+
 receivers:
 - name: root
 
+{{- if .Values.alerting.cronitorHeartbeatPingKey }}
+# We use Cronitor to trigger heartbeat on pagerduty
 - name: heartbeat
   webhook_configs:
   - send_resolved: false
-    http_config:
-      authorization:
-        type: GenieKey
-        credentials: {{ .Values.monitoring.opsgenieApiKey }}
-      follow_redirects: true
-      enable_http2: true
-      proxy_from_environment: true
-    url: https://api.opsgenie.com/v2/heartbeats/{{ .Values.managementCluster.name }}/ping
+    url: https://cronitor.link/p/{{ .Values.alerting.cronitorHeartbeatPingKey }}/mimir-{{ .Values.managementCluster.name }}?env={{ .Values.managementCluster.pipeline }}
+{{- end }}
 
 {{- if eq .Values.managementCluster.pipeline "stable-testing" }}
 - name: blackhole
@@ -237,10 +289,42 @@ receivers:
     send_resolved: true
     actions: *slack-actions
 
-- name: opsgenie_router
-  opsgenie_configs:
-  - api_key: {{ .Values.monitoring.opsgenieApiKey }}
-    tags: '{{`{{ (index .Alerts 0).Labels.alertname }},{{ (index .Alerts 0).Labels.cluster_type }},{{ (index .Alerts 0).Labels.severity }},{{ (index .Alerts 0).Labels.team }},{{ (index .Alerts 0).Labels.area }},{{ (index .Alerts 0).Labels.service_priority }},{{ (index .Alerts 0).Labels.provider }},{{ (index .Alerts 0).Labels.installation }},{{ (index .Alerts 0).Labels.pipeline }},{{ (index .Alerts 0).Labels.customer }}`}}'
+{{- range $.Values.alerting.teams }}
+
+{{- if .pagerdutyToken }}
+- name: pagerduty-{{ .name }}
+  pagerduty_configs:
+  # TODO: Replace pagerduty templates used here with something else.
+  - routing_key: {{ .pagerdutyToken }}
+    source: '{{`{{ template "pagerduty.default.source" . }}`}}'
+    description: '{{`{{ template "pagerduty.default.message" . }}`}}'
+    # There is currently no way to send all alerts labels to PagerDuty as details.
+    # See https://github.com/prometheus/alertmanager/issues/3218
+    details: {
+      _description: '{{`{{ template "pagerduty.default.description" . }}`}}',
+      alertname: '{{`{{ .CommonLabels.alertname }}`}}',
+      all_pipelines: '{{`{{ .CommonLabels.all_pipelines }}`}}',
+      area: '{{`{{ .CommonLabels.area }}`}}',
+      cluster_type: '{{`{{ .CommonLabels.cluster_type }}`}}',
+      customer: '{{`{{ .CommonLabels.customer }}`}}',
+      installation: '{{`{{ .CommonLabels.installation }}`}}',
+      pipeline: '{{`{{ .CommonLabels.pipeline }}`}}',
+      provider: '{{`{{ .CommonLabels.provider }}`}}',
+      service_priority: '{{`{{ .CommonLabels.service_priority }}`}}',
+      severity: '{{`{{ .CommonLabels.severity }}`}}',
+      team: '{{`{{ .CommonLabels.team }}`}}',
+      # This is to avoid the big text chunk about firing and resolved alerts.
+      # We already have firing alerts informations templated in our description.
+      firing: null,
+      resolved: null
+    }
+{{- end }}
+
+- name: github_{{ .name }}
+  webhook_configs:
+  - url: "http://localhost:8081/v1/webhook?owner=giantswarm&repo=giantswarm&labels=team/{{ .name }}"
+
+{{- end }}
 
 inhibit_rules:
 - source_matchers:
@@ -288,6 +372,19 @@ inhibit_rules:
   target_matchers:
     - cancel_if_monitoring_agent_down=true
   equal: [cluster_id]
+
+# When a cluster looks broken
+- source_matchers:
+    - inhibit_cluster_broken=true
+  target_matchers:
+    - cancel_if_cluster_broken=true
+  equal: [cluster_id]
+
+# When metrics are unreliable (mimir broken)
+- source_matchers:
+    - inhibit_metrics_broken=true
+  target_matchers:
+    - cancel_if_metrics_broken=true
 
 # Source: https://github.com/giantswarm/prometheus-rules/blob/main/helm/prometheus-rules/templates/kaas/tenet/alerting-rules/inhibit.nodes.rules.yml
 - source_matchers:

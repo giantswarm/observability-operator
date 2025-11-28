@@ -12,7 +12,6 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
@@ -37,13 +36,13 @@ func init() {
 }
 
 func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string][]byte, error) {
-	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, a.BaseDomain)
-	password, err := commonmonitoring.GetMimirIngressPassword(ctx, a.Client)
+	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, a.Cluster.BaseDomain)
+	password, err := commonmonitoring.GetMimirAuthPasswordForCluster(ctx, a.Client, cluster.Name)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("failed to get mimir auth password for cluster %s: %w", cluster.Name, err)
 	}
 
-	mimirRulerUrl := fmt.Sprintf(commonmonitoring.MimirBaseURLFormat, a.BaseDomain)
+	mimirRulerUrl := fmt.Sprintf(commonmonitoring.MimirBaseURLFormat, a.Cluster.BaseDomain)
 
 	data := []struct {
 		Name  string
@@ -52,14 +51,14 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		{Name: mimirRulerAPIURLKey, Value: mimirRulerUrl},
 		{Name: mimirRemoteWriteAPIURLKey, Value: remoteWriteUrl},
 		{Name: mimirRemoteWriteAPINameKey, Value: commonmonitoring.RemoteWriteName},
-		{Name: mimirRemoteWriteAPIUsernameKey, Value: a.Name},
+		{Name: mimirRemoteWriteAPIUsernameKey, Value: a.Cluster.Name},
 		{Name: mimirRemoteWriteAPIPasswordKey, Value: password},
 	}
 
 	var values bytes.Buffer
 	err = alloyMonitoringSecretTemplate.Execute(&values, data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to template alloy monitoring secret: %w", err)
 	}
 
 	secretData := make(map[string][]byte)

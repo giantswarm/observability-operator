@@ -1,0 +1,44 @@
+mimir:
+  alertmanager:
+    enabled: true
+    # NodePort is required to reach Alertmanager in the Kind cluster from the host
+    service:
+      type: NodePort
+    # Using explicit "no-receiver" route to detect configuration propagation
+    fallbackConfig: |
+      route:
+          receiver: no-receiver
+      receivers:
+          - name: no-receiver
+    statefulSet:
+      enabled: false
+    zoneAwareReplication:
+      enabled: false
+  compactor:
+    enabled: false
+  distributor:
+    enabled: false
+  gateway:
+    enabledNonEnterprise: false
+  ingester:
+    enabled: false
+  memcached:
+    enabled: false
+  memcachedExporter:
+    enabled: false
+  overrides_exporter:
+    enabled: false
+  querier:
+    enabled: false
+  query_frontend:
+    enabled: false
+  query_scheduler:
+    enabled: false
+  ruler:
+    enabled: false
+  store_gateway:
+    enabled: false
+  minio:
+    enabled: true
+  mimir:
+    enabled: false

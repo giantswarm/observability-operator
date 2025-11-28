@@ -32,7 +32,7 @@ func (s Strategy) Merge(newStrategy *Strategy) Strategy {
 	return strategy
 }
 
-// We want to start with 1 prometheus-agent for each 1M time series with a scale down 20% threshold.
+// We want to start with 1 alloy metrics for each 1M time series with a scale down 20% threshold.
 func (s Strategy) ComputeShards(currentShardCount int, timeSeries float64) int {
 	shardScaleDownThreshold := s.ScaleDownPercentage * s.ScaleUpSeriesCount
 	desiredShardCount := int(math.Ceil(timeSeries / s.ScaleUpSeriesCount))

@@ -3,6 +3,7 @@ package alloy
 import (
 	"context"
 	_ "embed"
+	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
@@ -11,12 +12,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/blang/semver/v4"
-	"github.com/pkg/errors"
 
-	"github.com/giantswarm/observability-operator/pkg/common"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 const (
@@ -27,8 +26,7 @@ const (
 type Service struct {
 	client.Client
 	organization.OrganizationRepository
-	common.ManagementCluster
-	MonitoringConfig monitoring.Config
+	config.Config
 }
 
 func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
@@ -39,39 +37,35 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	var tenants []string
 	tenants, err := tenancy.ListTenants(ctx, a.Client)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to list tenants: %w", err)
 	}
 
 	configmap := ConfigMap(cluster)
 	_, err = controllerutil.CreateOrUpdate(ctx, a.Client, configmap, func() error {
 		data, err := a.GenerateAlloyMonitoringConfigMapData(ctx, configmap, cluster, tenants, observabilityBundleVersion)
 		if err != nil {
-			logger.Error(err, "alloy-service - failed to generate alloy monitoring configmap")
-			return errors.WithStack(err)
+			return fmt.Errorf("failed to generate alloy monitoring configmap: %w", err)
 		}
 		configmap.Data = data
 
 		return nil
 	})
 	if err != nil {
-		logger.Error(err, "alloy-service - failed to create or update alloy monitoring configmap")
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to create or update alloy monitoring configmap: %w", err)
 	}
 
 	secret := Secret(cluster)
 	_, err = controllerutil.CreateOrUpdate(ctx, a.Client, secret, func() error {
 		data, err := a.GenerateAlloyMonitoringSecretData(ctx, cluster)
 		if err != nil {
-			logger.Error(err, "alloy-service - failed to generate alloy monitoring secret")
-			return errors.WithStack(err)
+			return fmt.Errorf("failed to generate alloy monitoring secret: %w", err)
 		}
 		secret.Data = data
 
 		return nil
 	})
 	if err != nil {
-		logger.Error(err, "alloy-service - failed to create or update alloy monitoring secret")
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to create or update alloy monitoring secret: %w", err)
 	}
 
 	logger.Info("alloy-service - ensured alloy is configured")
@@ -86,13 +80,13 @@ func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluste
 	configmap := ConfigMap(cluster)
 	err := a.Delete(ctx, configmap)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to delete alloy monitoring configmap: %w", err)
 	}
 
 	secret := Secret(cluster)
 	err = a.Delete(ctx, secret)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to delete alloy monitoring secret: %w", err)
 	}
 
 	logger.Info("alloy-service - ensured alloy is removed")

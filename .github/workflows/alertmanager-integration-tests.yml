@@ -1,0 +1,13 @@
+name: Alertmanager integration tests
+
+on:
+  pull_request:
+    paths:
+      - helm/observability-operator/files/alertmanager/**
+jobs:
+  test-alertmanager-integrations:
+    name: Test Alertmanager integrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: make tests-alertmanager-integrations

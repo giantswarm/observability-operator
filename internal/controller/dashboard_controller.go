@@ -2,9 +2,9 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,11 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/internal/mapper"
+	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
-
-	"github.com/giantswarm/observability-operator/internal/predicates"
 )
 
 // DashboardReconciler reconciles a Dashboard object
@@ -31,8 +31,11 @@ type DashboardReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	grafanaURL      *url.URL
-	finalizerHelper FinalizerHelper
+	grafanaURL       *url.URL
+	finalizerHelper  FinalizerHelper
+	dashboardMapper  *mapper.DashboardMapper
+	grafanaClientGen grafanaclient.GrafanaClientGenerator
+	cfg              config.Config
 }
 
 const (
@@ -42,25 +45,22 @@ const (
 	DashboardSelectorLabelValue = "dashboard"
 )
 
-func SetupDashboardReconciler(mgr manager.Manager, conf config.Config) error {
+func SetupDashboardReconciler(mgr manager.Manager, cfg config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &DashboardReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 
-		grafanaURL:      conf.GrafanaURL,
-		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
+		grafanaURL:       cfg.Grafana.URL,
+		finalizerHelper:  NewFinalizerHelper(mgr.GetClient(), DashboardFinalizer),
+		dashboardMapper:  mapper.New(),
+		grafanaClientGen: grafanaClientGen,
+		cfg:              cfg,
 	}
 
-	err := r.SetupWithManager(mgr)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.SetupWithManager(mgr)
 }
 
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core,resources=configmaps/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=core,resources=configmaps/finalizers,verbs=update
 
 // Reconcile is part of the main Kubernetes reconciliation loop which aims to
@@ -77,15 +77,19 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	dashboard := &v1.ConfigMap{}
 	err := r.Get(ctx, req.NamespacedName, dashboard)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		if client.IgnoreNotFound(err) != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to get dashboard configmap: %w", err)
+		}
+
+		return ctrl.Result{}, nil
 	}
 
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
+	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
-	grafanaService := grafana.NewService(r.Client, grafanaAPI)
+	grafanaService := grafana.NewService(r.Client, grafanaAPI, r.cfg)
 
 	// Handle deleted grafana dashboards
 	if !dashboard.DeletionTimestamp.IsZero() {
@@ -103,13 +107,12 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			MatchLabels: map[string]string{
 				DashboardSelectorLabelName: DashboardSelectorLabelValue,
 			},
-			// TODO add match expressions to filter by the tenant label instead of the organization annotation
 		})
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to create label selector predicate: %w", err)
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	err = ctrl.NewControllerManagedBy(mgr).
 		Named("dashboard").
 		For(&v1.ConfigMap{}, builder.WithPredicates(labelSelectorPredicate)).
 		// Watch for grafana pod's status changes
@@ -140,23 +143,48 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
+	if err != nil {
+		return fmt.Errorf("failed to build controller: %w", err)
+	}
+
+	return nil
 }
 
-// reconcileCreate creates the dashboard.
 // reconcileCreate ensures the Grafana dashboard described in configmap is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
 func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error { // nolint:unparam
+	logger := log.FromContext(ctx)
+
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
-	if err != nil || finalizerAdded {
-		return errors.WithStack(err)
+	if err != nil {
+		return fmt.Errorf("failed to ensure finalizer is added: %w", err)
+	}
+	if finalizerAdded {
+		return nil
 	}
 
-	// Configure the dashboard in Grafana
-	err = grafanaService.ConfigureDashboard(ctx, dashboard)
-	if err != nil {
-		return errors.WithStack(err)
+	// Convert ConfigMap to domain objects using mapper
+	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
+	// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
+	for _, dash := range dashboards {
+		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
+			logger.Error(nil, "Dashboard validation failed during reconciliation - webhook may have been bypassed",
+				"dashboard", dash.UID(), "organization", dash.Organization(), "errors", validationErrors,
+				"configmap", dashboard.Name, "namespace", dashboard.Namespace)
+			return fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors)
+		}
+	}
+
+	// Process each dashboard
+	for _, dashboard := range dashboards {
+		logger.Info("Configuring dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
+		err = grafanaService.ConfigureDashboard(ctx, dashboard)
+		if err != nil {
+			return fmt.Errorf("failed to configure dashboard: %w", err)
+		}
+		logger.Info("Configured dashboard in Grafana", "uid", dashboard.UID(), "organization", dashboard.Organization())
 	}
 
 	return nil
@@ -164,21 +192,35 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 // reconcileDelete deletes the grafana dashboard.
 func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error {
+	logger := log.FromContext(ctx)
 	// We do not need to delete anything if there is no finalizer on the grafana dashboard
 	if !controllerutil.ContainsFinalizer(dashboard, DashboardFinalizer) {
 		return nil
 	}
 
-	// Unconfigure the dashboard in Grafana
-	err := grafanaService.DeleteDashboard(ctx, dashboard)
-	if err != nil {
-		return errors.WithStack(err)
+	// Convert ConfigMap to domain objects using mapper
+	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
+	// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
+	for _, dash := range dashboards {
+		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
+			logger.Error(nil, "Dashboard validation failed during reconciliation - webhook may have been bypassed",
+				"dashboard", dash.UID(), "organization", dash.Organization(), "errors", validationErrors,
+				"configmap", dashboard.Name, "namespace", dashboard.Namespace)
+			return fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors)
+		}
+	}
+
+	for _, dashboard := range dashboards {
+		err := grafanaService.DeleteDashboard(ctx, dashboard)
+		if err != nil {
+			return fmt.Errorf("failed to delete dashboard: %w", err)
+		}
 	}
 
 	// Finalizer handling needs to come last.
-	err = r.finalizerHelper.EnsureRemoved(ctx, dashboard)
+	err := r.finalizerHelper.EnsureRemoved(ctx, dashboard)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return nil

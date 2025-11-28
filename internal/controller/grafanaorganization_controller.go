@@ -3,10 +3,10 @@ package controller
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"net/url"
 	"slices"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,34 +20,39 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/internal/mapper"
 	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
+	"github.com/giantswarm/observability-operator/pkg/metrics"
 )
 
 // GrafanaOrganizationReconciler reconciles a GrafanaOrganization object
 type GrafanaOrganizationReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	grafanaURL      *url.URL
-	finalizerHelper FinalizerHelper
+	Scheme *runtime.Scheme
+
+	grafanaURL         *url.URL
+	finalizerHelper    FinalizerHelper
+	grafanaClientGen   grafanaclient.GrafanaClientGenerator
+	cfg                config.Config
+	organizationMapper *mapper.OrganizationMapper
 }
 
-func SetupGrafanaOrganizationReconciler(mgr manager.Manager, conf config.Config) error {
+func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &GrafanaOrganizationReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		grafanaURL:      conf.GrafanaURL,
-		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), v1alpha1.GrafanaOrganizationFinalizer),
+		Client:             mgr.GetClient(),
+		Scheme:             mgr.GetScheme(),
+		grafanaURL:         cfg.Grafana.URL,
+		finalizerHelper:    NewFinalizerHelper(mgr.GetClient(), v1alpha1.GrafanaOrganizationFinalizer),
+		grafanaClientGen:   grafanaClientGen,
+		cfg:                cfg,
+		organizationMapper: mapper.NewOrganizationMapper(),
 	}
 
-	err := r.SetupWithManager(mgr)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.SetupWithManager(mgr)
 }
 
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations,verbs=get;list;watch;create;update;patch;delete
@@ -68,15 +73,19 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 	grafanaOrganization := &v1alpha1.GrafanaOrganization{}
 	err := r.Get(ctx, req.NamespacedName, grafanaOrganization)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		if client.IgnoreNotFound(err) != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to get GrafanaOrganization: %w", err)
+		}
+
+		return ctrl.Result{}, nil
 	}
 
-	grafanaAPI, err := grafanaclient.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
+	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
-	grafanaService := grafana.NewService(r.Client, grafanaAPI)
+	grafanaService := grafana.NewService(r.Client, grafanaAPI, r.cfg)
 
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
@@ -89,7 +98,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	err := ctrl.NewControllerManagedBy(mgr).
 		Named("grafanaorganization").
 		For(&v1alpha1.GrafanaOrganization{}).
 		// Watch for grafana pod's status changes
@@ -134,10 +143,14 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
+	if err != nil {
+		return fmt.Errorf("failed to build controller: %w", err)
+	}
+
+	return nil
 }
 
-// reconcileCreate creates the grafanaOrganization.
-// reconcileCreate ensures the Grafana organization described in grafanaOrganization CR is created in Grafana.
+// reconcileCreate ensures the Grafana organization described in GrafanaOrganization CR is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the CR
 // - Updating the CR status field
@@ -145,16 +158,31 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha1.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, grafanaOrganization)
-	if err != nil || finalizerAdded {
-		return ctrl.Result{}, errors.WithStack(err)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to ensure finalizer is added: %w", err)
+	}
+	if finalizerAdded {
+		return ctrl.Result{}, nil
 	}
 
 	logger := log.FromContext(ctx)
 
-	updatedID, err := grafanaService.ConfigureOrganization(ctx, grafanaOrganization)
+	// Determine initial status based on current state
+	orgStatus := metrics.OrgStatusPending
+	if grafanaOrganization.Status.OrgID > 0 {
+		orgStatus = metrics.OrgStatusActive
+	}
+
+	// Convert to domain object
+	organization := r.organizationMapper.FromGrafanaOrganization(grafanaOrganization)
+
+	// Create or update the grafana organization
+	updatedID, err := grafanaService.ConfigureOrganization(ctx, organization)
 	if err != nil {
-		logger.Error(err, "failed to upsert grafanaOrganization")
-		return ctrl.Result{}, errors.WithStack(err)
+		// Set error status and update metric before returning
+		orgStatus = metrics.OrgStatusError
+		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
+		return ctrl.Result{}, fmt.Errorf("failed to upsert grafanaOrganization: %w", err)
 	}
 
 	// Update CR status if anything was changed
@@ -164,53 +192,151 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 		err = r.Client.Status().Update(ctx, grafanaOrganization)
 		if err != nil {
-			logger.Error(err, "failed to update grafanaOrganization status")
-			return ctrl.Result{}, errors.WithStack(err)
+			orgStatus = metrics.OrgStatusError
+			updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
+			return ctrl.Result{}, fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 		}
+		orgStatus = metrics.OrgStatusActive
 		logger.Info("updated orgID in the grafanaOrganization status")
 	}
 
-	err = grafanaService.SetupOrganization(ctx, grafanaOrganization)
+	// Configure the organization's datasources and handle status updates
+	datasources, err := grafanaService.ConfigureDatasources(ctx, organization)
 	if err != nil {
-		logger.Error(err, "failed to setup grafanaOrganization")
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to configure datasources: %w", err)
 	}
+
+	// Build the list of configured datasources for the status
+	var configuredDatasources = make([]v1alpha1.DataSource, len(datasources))
+	for i, datasource := range datasources {
+		configuredDatasources[i] = v1alpha1.DataSource{
+			ID:   datasource.ID,
+			Name: datasource.Name,
+		}
+	}
+
+	// Sort the datasources by ID to ensure consistent ordering
+	slices.SortStableFunc(configuredDatasources, func(a, b v1alpha1.DataSource) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+
+	// Update the status if the datasources have changed
+	if !slices.Equal(grafanaOrganization.Status.DataSources, configuredDatasources) {
+		logger.Info("updating datasources in the GrafanaOrganization status")
+		grafanaOrganization.Status.DataSources = configuredDatasources
+		if err := r.Client.Status().Update(ctx, grafanaOrganization); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update GrafanaOrganization status: %w", err)
+		}
+		logger.Info("updated datasources in the GrafanaOrganization status")
+	}
+
+	err = r.configureGrafanaSSOSettings(ctx, grafanaService)
+	if err != nil {
+		orgStatus = metrics.OrgStatusError
+		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
+		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)
+	}
+
+	// Set info metrics
+	for _, tenant := range grafanaOrganization.Spec.Tenants {
+		// for each tenant in the organization, set a metric with tenant name and org id
+		metrics.GrafanaOrganizationTenantInfo.WithLabelValues(
+			string(tenant),
+			fmt.Sprintf("%d", grafanaOrganization.Status.OrgID),
+		).Set(1)
+	}
+
+	updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
 
 	return ctrl.Result{}, nil
 }
 
+// listActiveGrafanaOrganizations retrieves all GrafanaOrganization CRs and converts them to domain objects
+func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx context.Context) ([]*organization.Organization, error) {
+	organizationList := &v1alpha1.GrafanaOrganizationList{}
+	err := r.Client.List(ctx, organizationList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list grafana organizations: %w", err)
+	}
+
+	organizations := make([]*organization.Organization, 0, len(organizationList.Items))
+	for _, org := range organizationList.Items {
+		if !org.GetDeletionTimestamp().IsZero() {
+			// Skip organizations that are being deleted
+			// see https://github.com/giantswarm/observability-operator/pull/525
+			continue
+		}
+		organizations = append(organizations, r.organizationMapper.FromGrafanaOrganization(&org))
+	}
+
+	return organizations, nil
+}
+
+// configureGrafanaSSOSettings configures Grafana SSO settings based on all active GrafanaOrganizations
+func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
+	allOrganizations, err := r.listActiveGrafanaOrganizations(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get all organizations for SSO configuration: %w", err)
+	}
+
+	err = grafanaService.ConfigureSSOSettings(ctx, allOrganizations)
+	if err != nil {
+		return fmt.Errorf("failed to configure SSO: %w", err)
+	}
+	return nil
+}
+
 // reconcileDelete deletes the grafana organization.
 func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha1.GrafanaOrganization) error {
-	logger := log.FromContext(ctx)
-
 	// We do not need to delete anything if there is no finalizer on the grafana organization
 	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha1.GrafanaOrganizationFinalizer) {
 		return nil
 	}
 
-	err := grafanaService.DeleteOrganization(ctx, grafanaOrganization)
+	// Store orgID before deletion for metric cleanup
+	orgID := fmt.Sprintf("%d", grafanaOrganization.Status.OrgID)
+
+	// Convert to domain object
+	organization := r.organizationMapper.FromGrafanaOrganization(grafanaOrganization)
+
+	err := grafanaService.DeleteOrganization(ctx, organization)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to delete grafana organization: %w", err)
 	}
 
 	grafanaOrganization.Status.OrgID = 0
 	err = r.Client.Status().Update(ctx, grafanaOrganization)
 	if err != nil {
-		logger.Error(err, "failed to update grafanaOrganization status")
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 	}
 
-	// Configure Grafana RBAC
-	err = grafanaService.ConfigureGrafanaSSO(ctx)
+	err = r.configureGrafanaSSOSettings(ctx, grafanaService)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
+
+	// Clean up metrics - delete metric series for this organization
+	for _, tenant := range grafanaOrganization.Spec.Tenants {
+		metrics.GrafanaOrganizationTenantInfo.DeleteLabelValues(string(tenant), orgID)
+	}
+	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, metrics.OrgStatusActive)
+	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, metrics.OrgStatusPending)
+	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, metrics.OrgStatusError)
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, grafanaOrganization)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return nil
+}
+
+func updateGrafanaOrganizationInfoMetric(organizationName string, displayName string, orgID int64, status string) {
+	metrics.GrafanaOrganizationInfo.WithLabelValues(
+		organizationName,
+		displayName,
+		fmt.Sprintf("%d", orgID),
+		status,
+	).Set(1)
 }

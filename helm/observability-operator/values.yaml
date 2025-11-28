@@ -17,18 +17,41 @@ alerting:
   alertmanagerURL: ""
   grafanaAddress: ""
   slackAPIToken: ""
+  cronitorHeartbeatPingKey: ""
+  cronitorHeartbeatManagementKey: ""
+  # -- team-specific configs
+  teams: []
+  # Expected team contents:
+  #  - name: teamA
+  #    pagerdutyToken: token-for-teamA
 
 monitoring:
-  agent: alloy
   enabled: false
-  opsgenieApiKey: ""
-  prometheusVersion: ""
   sharding:
     scaleUpSeriesCount: 1000000
     scaleDownPercentage: 0.20
   wal:
     # -- Configures the WAL truncation frequency
     truncateFrequency: 15m
+  queueConfig:
+    # -- Queue configuration for remote write. If not set, Alloy defaults will be used
+    # batchSendDeadline: "5s"
+    capacity: 30000
+    # maxBackoff: "5s"
+    maxSamplesPerSend: 150000
+    maxShards: 10
+    # minBackoff: "30ms"
+    # minShards: 1
+    # retryOnHttp429: true
+    sampleAgeLimit: "30m"
+
+tracing:
+  # -- Enable or disable distributed tracing support
+  enabled: false
+
+logging:
+  # -- Enable or disable logging support
+  enabled: false
 
 operator:
   # -- Configures the resources for the operator deployment
@@ -55,3 +78,18 @@ operator:
     runAsUser: 65534
     seccompProfile:
       type: RuntimeDefault
+
+webhook:
+  # -- Enable or disable webhook validation
+  enabled: true
+  # -- Configure individual webhooks
+  validatingWebhooks:
+    # -- Enable AlertManager config secret validation webhook
+    alertmanagerConfig:
+      enabled: true
+    # -- Enable dashboard ConfigMap validation webhook
+    dashboardConfigMap:
+      enabled: true
+    # -- Enable GrafanaOrganization validation webhook
+    grafanaOrganization:
+      enabled: true

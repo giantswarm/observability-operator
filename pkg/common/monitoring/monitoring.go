@@ -2,14 +2,13 @@ package monitoring
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
@@ -27,12 +26,8 @@ const (
 	AlloyMonitoringAgentAppName      = "alloy-metrics"
 	AlloyMonitoringAgentAppNamespace = "kube-system"
 
-	// Values accepted by the monitoring-agent flag
-	MonitoringAgentPrometheus = "prometheus-agent"
-	MonitoringAgentAlloy      = "alloy"
 	// Applications name in the observability-bundle
-	MonitoringPrometheusAgentAppName = "prometheusAgent"
-	MonitoringAlloyAppName           = "alloyMetrics"
+	MonitoringAlloyAppName = "alloyMetrics"
 
 	PriorityClassName = "giantswarm-critical"
 
@@ -59,7 +54,8 @@ func GetServicePriority(cluster *clusterv1.Cluster) string {
 	return defaultServicePriority
 }
 
-func GetMimirIngressPassword(ctx context.Context, k8sClient client.Client) (string, error) {
+// GetMimirAuthPasswordForCluster gets the password for a specific cluster
+func GetMimirAuthPasswordForCluster(ctx context.Context, k8sClient client.Client, clusterName string) (string, error) {
 	secret := &corev1.Secret{}
 
 	err := k8sClient.Get(ctx, client.ObjectKey{
@@ -67,46 +63,58 @@ func GetMimirIngressPassword(ctx context.Context, k8sClient client.Client) (stri
 		Namespace: mimirNamespace,
 	}, secret)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get mimir secret: %w", err)
 	}
 
-	mimirPassword, err := readMimirAuthPasswordFromSecret(*secret)
+	// Try cluster-specific password first
+	if passwordBytes, exists := secret.Data[clusterName]; exists {
+		return string(passwordBytes), nil
+	}
+
+	return "", fmt.Errorf("no passwords found in secret")
+}
+
+// GetAllClusterPasswords returns all cluster passwords from the secret
+func GetAllClusterPasswords(ctx context.Context, k8sClient client.Client) (map[string]string, error) {
+	secret := &corev1.Secret{}
+
+	err := k8sClient.Get(ctx, client.ObjectKey{
+		Name:      mimirApiKey,
+		Namespace: mimirNamespace,
+	}, secret)
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("failed to get mimir secret: %w", err)
 	}
 
-	return mimirPassword, nil
-}
+	clusterPasswords := make(map[string]string)
 
-func readMimirAuthPasswordFromSecret(secret corev1.Secret) (string, error) {
-	if credentials, ok := secret.Data["credentials"]; !ok {
-		return "", errors.New("credentials key not found in secret")
-	} else {
-		var secretData string
-
-		err := yaml.Unmarshal(credentials, &secretData)
-		if err != nil {
-			return "", errors.WithStack(err)
+	// Read all cluster passwords (skip old "credentials" key)
+	for clusterName, passwordBytes := range secret.Data {
+		if clusterName != "credentials" {
+			clusterPasswords[clusterName] = string(passwordBytes)
 		}
-		return secretData, nil
 	}
+
+	return clusterPasswords, nil
 }
 
-func GetClusterShardingStrategy(cluster metav1.Object) (*sharding.Strategy, error) {
-	var err error
+func GetClusterShardingStrategy(cluster metav1.Object) (s *sharding.Strategy, err error) {
 	var scaleUpSeriesCount, scaleDownPercentage float64
-	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-up-series-count"]; ok {
+	if value, ok := cluster.GetAnnotations()["observability.giantswarm.io/monitoring-agent-scale-up-series-count"]; ok {
 		if scaleUpSeriesCount, err = strconv.ParseFloat(value, 64); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse scale-up series count: %w", err)
 		}
 	}
-	if value, ok := cluster.GetAnnotations()["monitoring.giantswarm.io/prometheus-agent-scale-down-percentage"]; ok {
+	if value, ok := cluster.GetAnnotations()["observability.giantswarm.io/monitoring-agent-scale-down-percentage"]; ok {
 		if scaleDownPercentage, err = strconv.ParseFloat(value, 64); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse scale-down percentage: %w", err)
 		}
 	}
-	return &sharding.Strategy{
+
+	s = &sharding.Strategy{
 		ScaleUpSeriesCount:  scaleUpSeriesCount,
 		ScaleDownPercentage: scaleDownPercentage,
-	}, nil
+	}
+
+	return s, nil
 }

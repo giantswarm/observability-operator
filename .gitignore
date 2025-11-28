@@ -26,3 +26,7 @@ Dockerfile.cross
 *~
 
 /observability-operator*
+/tests-workdir
+/tests/alertmanager-routes/*/alertmanager-config
+/tests/alertmanager-routes/*/integration_test_requests*.log
+/tests/alertmanager-integration/.setup

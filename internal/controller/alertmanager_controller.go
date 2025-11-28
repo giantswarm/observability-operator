@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	v1 "k8s.io/api/core/v1"
@@ -12,8 +13,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/pkg/errors"
 
 	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/alertmanager"
@@ -31,45 +30,53 @@ type AlertmanagerReconciler struct {
 }
 
 // SetupAlertmanagerReconciler adds a controller into mgr that reconciles the Alertmanager secret.
-func SetupAlertmanagerReconciler(mgr ctrl.Manager, conf config.Config) error {
+func SetupAlertmanagerReconciler(mgr ctrl.Manager, cfg config.Config) error {
 	r := &AlertmanagerReconciler{
 		client:              mgr.GetClient(),
-		alertmanagerService: alertmanager.New(conf),
+		alertmanagerService: alertmanager.New(cfg),
 	}
 
 	alertmanagerConfigSecretsPredicate, err := predicates.NewAlertmanagerConfigSecretsPredicate()
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("failed to create Alertmanager config secrets predicate: %w", err)
 	}
 	podPredicate := predicates.NewAlertmanagerPodPredicate()
 
 	// Requeue the Alertmanager secret when the Mimir Alertmanager pod changes
-	p := podEventHandler(conf)
+	p := podEventHandler(cfg)
 
 	// Setup the controller
-	return ctrl.NewControllerManagedBy(mgr).
+	err = ctrl.NewControllerManagedBy(mgr).
 		Named("alertmanager").
 		// Reconcile only the Alertmanager secret
 		For(&v1.Secret{}, builder.WithPredicates(alertmanagerConfigSecretsPredicate)).
 		// Watch only the Mimir Alertmanager pod
 		Watches(&v1.Pod{}, p, builder.WithPredicates(podPredicate)).
 		Complete(r)
+	if err != nil {
+		return fmt.Errorf("failed to build controller: %w", err)
+	}
+
+	return nil
 }
 
 // podEventHandler returns an event handler that enqueues requests for the Alertmanager secret only.
 // For now there is only one Alertmanager secret to be reconciled.
-func podEventHandler(conf config.Config) handler.EventHandler {
+func podEventHandler(cfg config.Config) handler.EventHandler {
 	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
 		return []reconcile.Request{
 			{
 				NamespacedName: types.NamespacedName{
-					Name:      conf.Monitoring.AlertmanagerSecretName,
-					Namespace: conf.OperatorNamespace,
+					Name:      cfg.Monitoring.AlertmanagerSecretName,
+					Namespace: cfg.Operator.OperatorNamespace,
 				},
 			},
 		}
 	})
 }
+
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=secrets/finalizers,verbs=update
 
 // Reconcile main logic
 func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Request) (ctrl.Result, error) {
@@ -80,7 +87,7 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 	// Retrieve the secret being reconciled
 	secret := &v1.Secret{}
 	if err := r.client.Get(ctx, req.NamespacedName, secret); err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to get Alertmanager secret: %w", err)
 	}
 
 	if !secret.DeletionTimestamp.IsZero() {
@@ -99,7 +106,7 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 	var tenants []string
 	tenants, err := tenancy.ListTenants(ctx, r.client)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to list tenants: %w", err)
 	}
 
 	if !slices.Contains(tenants, tenant) {
@@ -109,9 +116,9 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 	}
 
 	// TODO: Do we want to support deletion of alerting configs?
-	err = r.alertmanagerService.Configure(ctx, secret, tenant)
+	err = r.alertmanagerService.ConfigureFromSecret(ctx, secret, tenant)
 	if err != nil {
-		return ctrl.Result{}, errors.WithStack(err)
+		return ctrl.Result{}, fmt.Errorf("failed to configure alertmanager: %w", err)
 	}
 
 	logger.Info("Finished reconciling")

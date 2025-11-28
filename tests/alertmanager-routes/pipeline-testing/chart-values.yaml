@@ -1,0 +1,8 @@
+managementCluster:
+  name: mc-name
+  pipeline: testing
+
+alerting:
+  teams:
+    - name: foo
+      pagerdutyToken: foo-pagerduty-token

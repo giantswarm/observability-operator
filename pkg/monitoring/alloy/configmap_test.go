@@ -12,17 +12,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
-	"github.com/giantswarm/observability-operator/pkg/common"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 var managementClusterName = "dummy-cluster"
 
-// dummyOrgRepo implements a minimal OrganizationRepository.
-type dummyOrgRepo struct{}
+// MockOrganizationRepository implements a minimal OrganizationRepository with call tracking.
+type MockOrganizationRepository struct {
+	CallCount   int
+	LastCluster *clusterv1.Cluster
+}
 
-func (d *dummyOrgRepo) Read(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
+func (m *MockOrganizationRepository) Read(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
+	m.CallCount++
+	m.LastCluster = cluster
 	return "dummy-org", nil
 }
 
@@ -34,8 +38,9 @@ func TestGenerateAlloyConfig(t *testing.T) {
 		goldenPath                 string
 		observabilityBundleVersion semver.Version
 	}{
+		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
-			name: "TwoTenantsInWC",
+			name: "TwoTenantsInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
@@ -48,11 +53,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.wc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.200.wc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "TwoTenantsInMC",
+			name: "TwoTenantsInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -65,11 +70,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.mc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.200.mc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "SingleTenantInWC",
+			name: "SingleTenantInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "single-tenant-cluster",
@@ -82,11 +87,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.wc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.200.wc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "SingleTenantInMC",
+			name: "SingleTenantInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -99,11 +104,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.mc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.200.mc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "DefaultTenantRendersLegacyConfigInWC",
+			name: "DefaultTenantInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "default-tenant-cluster",
@@ -116,11 +121,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.wc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.wc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "DefaultTenantRendersLegacyConfigInMC",
+			name: "DefaultTenantInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -133,16 +138,16 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.mc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.mc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 
-		// Test case for the old bundle version to make sure we do not render extra query matchers in versions < 1.9.0
+		// Version 2.2.0+ tests (with extra query matchers and scrape configs)
 		{
-			name: "TwoTenantsWithOldBundleVersionInMC",
+			name: "TwoTenantsInWC_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      managementClusterName,
+					Name:      "test-cluster",
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
@@ -152,11 +157,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.170.mc.river"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"),
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.220.wc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
 		{
-			name: "TwoTenantsWithNewBundleVersionInMC",
+			name: "TwoTenantsInMC_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -169,27 +174,102 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.190.mc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.220.mc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+		},
+		{
+			name: "SingleTenantInWC_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "single-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.220.wc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+		},
+		{
+			name: "SingleTenantInMC_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.220.mc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+		},
+		{
+			name: "DefaultTenantInWC_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.wc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+		},
+		{
+			name: "DefaultTenantInMC_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.mc.river"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			// Create a dummy Service with minimal dependencies.
 			service := &Service{
-				OrganizationRepository: &dummyOrgRepo{},
-				ManagementCluster: common.ManagementCluster{
-					InsecureCA: false,
-					Customer:   "dummy-customer",
-					Name:       "dummy-cluster",
-					Pipeline:   "dummy-pipeline",
-					Region:     "dummy-region",
-				},
-				MonitoringConfig: monitoring.Config{
-					WALTruncateFrequency: time.Minute,
+				OrganizationRepository: &MockOrganizationRepository{},
+				Config: config.Config{
+					Cluster: config.ClusterConfig{
+						InsecureCA: false,
+						Customer:   "dummy-customer",
+						Name:       "dummy-cluster",
+						Pipeline:   "dummy-pipeline",
+						Region:     "dummy-region",
+					},
+					Monitoring: config.MonitoringConfig{
+						WALTruncateFrequency: time.Minute,
+						QueueConfig: config.QueueConfig{
+							Capacity:          &[]int{30000}[0],
+							MaxShards:         &[]int{10}[0],
+							MaxSamplesPerSend: &[]int{150000}[0],
+							SampleAgeLimit:    &[]string{"30m"}[0],
+						},
+					},
 				},
 			}
 

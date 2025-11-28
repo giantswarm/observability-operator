@@ -1,0 +1,216 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+remote.kubernetes.secret "credentials" {
+  name      = "alloy-metrics"
+  namespace = "kube-system"
+}
+// load rules for tenant giantswarm
+mimir.rules.kubernetes "giantswarm" {
+  address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
+  basic_auth {
+    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+  }
+  extra_query_matchers {
+    matcher {
+        name       = "cluster_id"
+        match_type = "="
+        value      = "default-tenant-cluster"
+    }
+  }
+  mimir_namespace_prefix = "default-tenant-cluster"
+  tenant_id = "giantswarm"
+  rule_selector {
+      match_labels = {
+        "observability.giantswarm.io/tenant" = "giantswarm",
+      }
+      match_expression {
+        key = "application.giantswarm.io/prometheus-rule-kind"
+        operator = "NotIn"
+        values = ["loki"]
+      }
+  }
+}
+
+// we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
+// remote write pipeline configuration for tenant giantswarm
+prometheus.operator.servicemonitors "giantswarm_legacy" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  selector {
+    match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "DoesNotExist"
+    }
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_pod_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_endpoints_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_service_label_application_giantswarm_io_team"]
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.operator.podmonitors "giantswarm_legacy" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  selector {
+    match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "DoesNotExist"
+    }
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_pod_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_endpoints_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_service_label_application_giantswarm_io_team"]
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+
+prometheus.operator.servicemonitors "giantswarm" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["giantswarm"]
+    }
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_pod_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_endpoints_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_service_label_application_giantswarm_io_team"]
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.operator.podmonitors "giantswarm" {
+  forward_to = [prometheus.remote_write.giantswarm.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["giantswarm"]
+    }
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_pod_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_endpoints_label_application_giantswarm_io_team"]
+  }
+  rule {
+    action = "replace"
+    target_label = "team"
+    source_labels = ["__meta_kubernetes_service_label_application_giantswarm_io_team"]
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+// remote write pipeline configuration for tenant giantswarm
+prometheus.remote_write "giantswarm" {
+  endpoint {
+    name           = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
+    enable_http2   = false
+    remote_timeout = "60s"
+    url = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
+    basic_auth {
+      username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+      password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+    }
+
+    headers = {
+      "X-Scope-OrgID" = "giantswarm",
+    }
+    tls_config {
+      insecure_skip_verify = false
+    }
+    queue_config {
+      capacity             = 30000
+      max_samples_per_send = 150000
+      max_shards           = 10
+      sample_age_limit     = "30m"
+    }
+  }
+  wal {
+    truncate_frequency = "1m0s"
+  }
+  external_labels = {
+    "cluster_id" = "default-tenant-cluster",
+    "cluster_type" = "workload_cluster",
+    "customer" = "dummy-customer",
+    "installation" = "dummy-cluster",
+    "organization" = "dummy-org",
+    "pipeline" = "dummy-pipeline",
+    "provider" = "capz",
+    "region" = "dummy-region",
+    "service_priority" = "highest",
+  }
+}
+
+

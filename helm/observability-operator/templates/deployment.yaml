@@ -35,21 +35,55 @@ spec:
         - --alertmanager-secret-name={{ include "alertmanager-secret.name" . }}
         - --alertmanager-url={{ $.Values.alerting.alertmanagerURL }}
         - --monitoring-enabled={{ $.Values.monitoring.enabled }}
-        - --monitoring-agent={{ $.Values.monitoring.agent }}
         - --monitoring-sharding-scale-up-series-count={{ $.Values.monitoring.sharding.scaleUpSeriesCount }}
         - --monitoring-sharding-scale-down-percentage={{ $.Values.monitoring.sharding.scaleDownPercentage }}
         - --monitoring-wal-truncate-frequency={{ $.Values.monitoring.wal.truncateFrequency }}
-        - --operator-namespace={{ include "resource.default.namespace" . }}
-        {{- if .Values.monitoring.prometheusVersion }}
-        - --prometheus-version={{ $.Values.monitoring.prometheusVersion }}
+        {{- if .Values.monitoring.queueConfig.batchSendDeadline }}
+        - --monitoring-queue-config-batch-send-deadline={{ $.Values.monitoring.queueConfig.batchSendDeadline }}
         {{- end }}
+        {{- if .Values.monitoring.queueConfig.capacity }}
+        - --monitoring-queue-config-capacity={{ $.Values.monitoring.queueConfig.capacity }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.maxBackoff }}
+        - --monitoring-queue-config-max-backoff={{ $.Values.monitoring.queueConfig.maxBackoff }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.maxSamplesPerSend }}
+        - --monitoring-queue-config-max-samples-per-send={{ $.Values.monitoring.queueConfig.maxSamplesPerSend }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.maxShards }}
+        - --monitoring-queue-config-max-shards={{ $.Values.monitoring.queueConfig.maxShards }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.minBackoff }}
+        - --monitoring-queue-config-min-backoff={{ $.Values.monitoring.queueConfig.minBackoff }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.minShards }}
+        - --monitoring-queue-config-min-shards={{ $.Values.monitoring.queueConfig.minShards }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.retryOnHttp429 }}
+        - --monitoring-queue-config-retry-on-http-429={{ $.Values.monitoring.queueConfig.retryOnHttp429 }}
+        {{- end }}
+        {{- if .Values.monitoring.queueConfig.sampleAgeLimit }}
+        - --monitoring-queue-config-sample-age-limit={{ $.Values.monitoring.queueConfig.sampleAgeLimit }}
+        {{- end }}
+        - --operator-namespace={{ include "resource.default.namespace" . }}
+        - --tracing-enabled={{ $.Values.tracing.enabled }}
+        - --logging-enabled={{ $.Values.logging.enabled }}
         - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         env:
-        - name: OPSGENIE_API_KEY
+        - name: ENABLE_WEBHOOKS
+          value: {{ .Values.webhook.enabled | quote }}
+        {{- if and .Values.alerting.cronitorHeartbeatManagementKey .Values.alerting.cronitorHeartbeatPingKey }}
+        - name: CRONITOR_HEARTBEAT_MANAGEMENT_KEY
           valueFrom:
             secretKeyRef:
               name: {{ include "resource.default.name" . }}-credentials
-              key: opsgenieApiKey
+              key: cronitorHeartbeatManagementKey
+        - name: CRONITOR_HEARTBEAT_PING_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "resource.default.name" . }}-credentials
+              key: cronitorHeartbeatPingKey
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -67,20 +101,24 @@ spec:
         - containerPort: 8081
           name: http-healthz
           protocol: TCP
+        {{- if .Values.webhook.enabled }}
         - containerPort: 9443
           name: webhook-server
           protocol: TCP
-        resources: {{ toYaml .Values.operator.resources | nindent 10 }}
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: webhook-certs
           readOnly: true
+        {{- end }}
+        resources: {{ toYaml .Values.operator.resources | nindent 10 }}
       serviceAccountName: {{ include "resource.default.name" . }}
       securityContext:
         {{- with .Values.operator.podSecurityContext }}
           {{- . | toYaml | nindent 8 }}
         {{- end }}
+      {{- if .Values.webhook.enabled }}
       volumes:
       - name: webhook-certs
         secret:
           secretName: {{ include "resource.default.name" . }}-webhook-server-cert
+      {{- end }}
