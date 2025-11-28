@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add team labels to metrics coming from ServiceMonitors and PodMonitors
+- Add the value from `app.kubernetes.io/instance` labels to metrics coming from ServiceMonitors and PodMonitors
 
 ### Changed
 
