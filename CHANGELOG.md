@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add new `observability_operator_alertmanager_routes` to count the number of routes per tenant.
+- Add team labels to metrics coming from ServiceMonitors and PodMonitors
 
 ### Changed
 
