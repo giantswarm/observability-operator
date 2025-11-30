@@ -15,7 +15,14 @@ func (src *GrafanaOrganization) ConvertTo(dstRaw conversion.Hub) error {
 
 	// Convert spec
 	dst.Spec.DisplayName = src.Spec.DisplayName
-	dst.Spec.RBAC = (*v1alpha2.RBAC)(src.Spec.RBAC)
+	// Convert RBAC explicitly to avoid type casting brittleness
+	if src.Spec.RBAC != nil {
+		dst.Spec.RBAC = &v1alpha2.RBAC{
+			Admins:  src.Spec.RBAC.Admins,
+			Editors: src.Spec.RBAC.Editors,
+			Viewers: src.Spec.RBAC.Viewers,
+		}
+	}
 
 	// Convert tenants from []TenantID to []TenantConfig
 	dst.Spec.Tenants = make([]v1alpha2.TenantConfig, len(src.Spec.Tenants))
@@ -49,7 +56,14 @@ func (dst *GrafanaOrganization) ConvertFrom(srcRaw conversion.Hub) error {
 
 	// Convert spec
 	dst.Spec.DisplayName = src.Spec.DisplayName
-	dst.Spec.RBAC = (*RBAC)(src.Spec.RBAC)
+	// Convert RBAC explicitly to avoid type casting brittleness
+	if src.Spec.RBAC != nil {
+		dst.Spec.RBAC = &RBAC{
+			Admins:  src.Spec.RBAC.Admins,
+			Editors: src.Spec.RBAC.Editors,
+			Viewers: src.Spec.RBAC.Viewers,
+		}
+	}
 
 	// Convert tenants from []TenantConfig to []TenantID
 	// Note: This loses type information, but maintains compatibility
