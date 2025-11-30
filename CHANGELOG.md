@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Create a new secret for HTTPRoute basic auth for Mimir.
 - Refactor Mimir authentication to use per-cluster passwords with centralized secret management.
 
+### Removed
+
+- Remove legacy alloy configurations
+
 ## [0.50.0] - 2025-11-13
 
 ### Removed
