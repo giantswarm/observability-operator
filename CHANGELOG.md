@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move password generation into auth package for complete self-containment.
 - Consolidate cluster password retrieval into auth package, removing duplicate functionality from monitoring package.
 
+### Removed
+
+- Remove legacy alloy configurations
+
 ## [0.50.0] - 2025-11-13
 
 ### Removed
