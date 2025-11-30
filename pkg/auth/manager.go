@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -12,6 +14,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+// ClusterAuthData represents the authentication data for a single cluster
+type ClusterAuthData struct {
+	Password string `json:"password"`
+	Htpasswd string `json:"htpasswd"`
+}
 
 // AuthManager manages authentication secrets for observability services
 type AuthManager interface {
@@ -49,40 +57,43 @@ func (am *authManager) getAuthSecret() *corev1.Secret {
 	}
 }
 
-// getAllClusterPasswords gets all cluster passwords from the auth secret
-func (am *authManager) getAllClusterPasswords(ctx context.Context) (map[string]string, error) {
+// generateHtpasswdContent creates htpasswd content from entries in auth secret
+func (am *authManager) generateHtpasswdContent(ctx context.Context) (string, error) {
 	authSecret := am.getAuthSecret()
 	err := am.client.Get(ctx, client.ObjectKeyFromObject(authSecret), authSecret)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get auth secret: %w", err)
+		return "", fmt.Errorf("failed to get auth secret: %w", err)
 	}
 
-	clusterPasswords := make(map[string]string)
-	for clusterName, passwordBytes := range authSecret.Data {
-		// Skip credentials entry if it exists (legacy compatibility)
+	// Collect cluster names
+	var clusterNames []string
+	for clusterName := range authSecret.Data {
+		// TODO: Remove once the credentials key has been removed from all installations in a subsequent release
+		// This was the old format before per-cluster passwords were introduced
 		if clusterName == "credentials" {
 			continue
 		}
-		clusterPasswords[clusterName] = string(passwordBytes)
+		clusterNames = append(clusterNames, clusterName)
 	}
 
-	return clusterPasswords, nil
-}
+	// Sort cluster names for deterministic output
+	sort.Strings(clusterNames)
 
-// generateHtpasswdContent creates htpasswd content from all cluster passwords
-func (am *authManager) generateHtpasswdContent(ctx context.Context) (string, error) {
-	clusterPasswords, err := am.getAllClusterPasswords(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to get cluster passwords: %w", err)
-	}
-
+	// Build htpasswd content from entries
 	var htpasswdLines []string
-	for clusterName, password := range clusterPasswords {
-		htpasswdEntry, err := am.passwordGenerator.GenerateHtpasswd(clusterName, password)
-		if err != nil {
-			return "", fmt.Errorf("failed to generate htpasswd for cluster %s: %w", clusterName, err)
+	for _, clusterName := range clusterNames {
+		if clusterAuthBytes, exists := authSecret.Data[clusterName]; exists {
+			var clusterAuthData ClusterAuthData
+			if err := json.Unmarshal(clusterAuthBytes, &clusterAuthData); err != nil {
+				return "", fmt.Errorf("failed to unmarshal cluster data for %s: %w", clusterName, err)
+			}
+
+			// Use cached htpasswd from JSON structure
+			if clusterAuthData.Htpasswd == "" {
+				return "", fmt.Errorf("missing htpasswd entry for cluster %s", clusterName)
+			}
+			htpasswdLines = append(htpasswdLines, clusterAuthData.Htpasswd)
 		}
-		htpasswdLines = append(htpasswdLines, htpasswdEntry)
 	}
 
 	return strings.Join(htpasswdLines, "\n"), nil
@@ -126,7 +137,6 @@ func (am *authManager) createOrUpdateHtpasswdSecret(ctx context.Context, secretN
 func (am *authManager) AddClusterPassword(ctx context.Context, clusterName string) error {
 	logger := log.FromContext(ctx)
 	authSecret := am.getAuthSecret()
-	passwordGenerated := false
 
 	result, err := ctrl.CreateOrUpdate(ctx, am.client, authSecret, func() error {
 		// Initialize Data map if it doesn't exist
@@ -145,9 +155,23 @@ func (am *authManager) AddClusterPassword(ctx context.Context, clusterName strin
 			return fmt.Errorf("failed to generate password for cluster %s: %w", clusterName, err)
 		}
 
-		// Add to secret
-		authSecret.Data[clusterName] = []byte(password)
-		passwordGenerated = true
+		// Generate htpasswd entry
+		htpasswdEntry, err := am.passwordGenerator.GenerateHtpasswd(clusterName, password)
+		if err != nil {
+			return fmt.Errorf("failed to generate htpasswd for cluster %s: %w", clusterName, err)
+		}
+
+		// Store both password and htpasswd in JSON format
+		clusterData := ClusterAuthData{
+			Password: password,
+			Htpasswd: htpasswdEntry,
+		}
+		clusterDataBytes, err := json.Marshal(clusterData)
+		if err != nil {
+			return fmt.Errorf("failed to marshal cluster data for %s: %w", clusterName, err)
+		}
+		authSecret.Data[clusterName] = clusterDataBytes
+
 		return nil
 	})
 
@@ -157,12 +181,11 @@ func (am *authManager) AddClusterPassword(ctx context.Context, clusterName strin
 
 	logger.Info("Auth secret processed", "result", result, "cluster", clusterName)
 
-	// Only regenerate htpasswd secrets if we actually added a new password
-	if passwordGenerated {
-		err = am.regenerateHtpasswdSecrets(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to regenerate htpasswd secrets: %w", err)
-		}
+	// Always ensure htpasswd secrets are up to date
+	// This handles cases where auth secret was updated but htpasswd generation failed previously
+	err = am.regenerateHtpasswdSecrets(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to ensure htpasswd secrets are consistent: %w", err)
 	}
 
 	return nil
@@ -172,17 +195,19 @@ func (am *authManager) AddClusterPassword(ctx context.Context, clusterName strin
 func (am *authManager) RemoveClusterPassword(ctx context.Context, clusterName string) error {
 	logger := log.FromContext(ctx)
 	authSecret := am.getAuthSecret()
-	passwordRemoved := false
 
 	result, err := ctrl.CreateOrUpdate(ctx, am.client, authSecret, func() error {
-		// If Data doesn't exist or cluster password doesn't exist, nothing to do
-		if authSecret.Data == nil || authSecret.Data[clusterName] == nil {
+		// If Data doesn't exist, nothing to do
+		if authSecret.Data == nil {
+			return nil
+		}
+		// Check if cluster password exists using comma-ok idiom
+		if _, exists := authSecret.Data[clusterName]; !exists {
 			return nil
 		}
 
-		// Remove cluster password
+		// Remove cluster entry
 		delete(authSecret.Data, clusterName)
-		passwordRemoved = true
 		return nil
 	})
 
@@ -197,17 +222,15 @@ func (am *authManager) RemoveClusterPassword(ctx context.Context, clusterName st
 
 	logger.Info("Auth secret processed for removal", "result", result, "cluster", clusterName)
 
-	// Only regenerate htpasswd secrets if we actually removed a password
-	if passwordRemoved {
-		err = am.regenerateHtpasswdSecrets(ctx)
-		if err != nil {
-			// Also ignore not found errors when regenerating - if mimir namespace is gone, that's expected
-			if client.IgnoreNotFound(err) == nil {
-				logger.Info("Mimir namespace not found during htpasswd regeneration - this is expected during deletion", "cluster", clusterName)
-				return nil
-			}
-			return fmt.Errorf("failed to regenerate htpasswd secrets: %w", err)
+	// Always ensure htpasswd secrets are consistent
+	err = am.regenerateHtpasswdSecrets(ctx)
+	if err != nil {
+		// Also ignore not found errors when regenerating - if mimir namespace is gone, that's expected
+		if client.IgnoreNotFound(err) == nil {
+			logger.Info("Mimir namespace not found during htpasswd regeneration - this is expected during deletion", "cluster", clusterName)
+			return nil
 		}
+		return fmt.Errorf("failed to ensure htpasswd secrets are consistent: %w", err)
 	}
 
 	return nil
@@ -225,15 +248,21 @@ func (am *authManager) GetClusterPassword(ctx context.Context, clusterName strin
 		return "", fmt.Errorf("failed to get auth secret: %w", err)
 	}
 
-	// Check if cluster password exists
-	if passwordBytes, exists := authSecret.Data[clusterName]; exists {
-		return string(passwordBytes), nil
+	// Check if cluster data exists
+	if clusterAuthBytes, exists := authSecret.Data[clusterName]; exists {
+		var clusterAuthData ClusterAuthData
+		if err := json.Unmarshal(clusterAuthBytes, &clusterAuthData); err != nil {
+			return "", fmt.Errorf("failed to unmarshal cluster data for %s: %w", clusterName, err)
+		}
+		return clusterAuthData.Password, nil
 	}
 
 	return "", fmt.Errorf("password not found for cluster %s", clusterName)
 }
 
-// regenerateHtpasswdSecrets updates both ingress and httproute secrets
+// regenerateHtpasswdSecrets ensures both ingress and httproute secrets are up to date
+// This method always checks and updates the secrets regardless of whether changes were made
+// to fix potential consistency issues from previous failed operations
 func (am *authManager) regenerateHtpasswdSecrets(ctx context.Context) error {
 	err := am.createOrUpdateHtpasswdSecret(ctx, am.config.IngressSecretName, IngressDataKey)
 	if err != nil {

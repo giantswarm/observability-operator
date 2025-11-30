@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -78,19 +79,31 @@ func TestAuthManager(t *testing.T) {
 			}, authSecret)
 			require.NoError(t, err)
 
-			// Verify cluster password was added
+			// Verify cluster password was added in JSON format
 			assert.Contains(t, authSecret.Data, "test-cluster")
-			assert.Equal(t, "generated-password-32-chars-long", string(authSecret.Data["test-cluster"]))
+
+			// Parse and verify JSON structure
+			var clusterData ClusterAuthData
+			err = json.Unmarshal(authSecret.Data["test-cluster"], &clusterData)
+			require.NoError(t, err)
+			assert.Equal(t, "generated-password-32-chars-long", clusterData.Password)
+			assert.Equal(t, "test-cluster:$2a$10$encryptedgenerated-password-32-chars-long", clusterData.Htpasswd)
 		})
 
 		t.Run("should not overwrite existing cluster password", func(t *testing.T) {
+			existingData := ClusterAuthData{
+				Password: "existing-password",
+				Htpasswd: "test-cluster:$2a$10$encryptedexisting-password",
+			}
+			existingDataBytes, _ := json.Marshal(existingData)
+
 			existingSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      config.AuthSecretName,
 					Namespace: config.AuthSecretNamespace,
 				},
 				Data: map[string][]byte{
-					"test-cluster": []byte("existing-password"),
+					"test-cluster": existingDataBytes,
 				},
 			}
 
@@ -113,7 +126,11 @@ func TestAuthManager(t *testing.T) {
 			}, authSecret)
 			require.NoError(t, err)
 
-			assert.Equal(t, "existing-password", string(authSecret.Data["test-cluster"]))
+			// Verify password wasn't changed - parse JSON format
+			var clusterData ClusterAuthData
+			err = json.Unmarshal(authSecret.Data["test-cluster"], &clusterData)
+			require.NoError(t, err)
+			assert.Equal(t, "existing-password", clusterData.Password)
 		})
 
 		t.Run("should add multiple cluster passwords", func(t *testing.T) {
@@ -149,14 +166,26 @@ func TestAuthManager(t *testing.T) {
 
 	t.Run("RemoveClusterPassword", func(t *testing.T) {
 		t.Run("should remove existing cluster password", func(t *testing.T) {
+			cluster1Data := ClusterAuthData{
+				Password: "password-1",
+				Htpasswd: "cluster-1:$2a$10$encryptedpassword-1",
+			}
+			cluster1Bytes, _ := json.Marshal(cluster1Data)
+
+			cluster2Data := ClusterAuthData{
+				Password: "password-2",
+				Htpasswd: "cluster-2:$2a$10$encryptedpassword-2",
+			}
+			cluster2Bytes, _ := json.Marshal(cluster2Data)
+
 			existingSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      config.AuthSecretName,
 					Namespace: config.AuthSecretNamespace,
 				},
 				Data: map[string][]byte{
-					"cluster-1": []byte("password-1"),
-					"cluster-2": []byte("password-2"),
+					"cluster-1": cluster1Bytes,
+					"cluster-2": cluster2Bytes,
 				},
 			}
 
@@ -184,13 +213,19 @@ func TestAuthManager(t *testing.T) {
 		})
 
 		t.Run("should handle non-existent cluster password gracefully", func(t *testing.T) {
+			cluster1Data := ClusterAuthData{
+				Password: "password-1",
+				Htpasswd: "cluster-1:$2a$10$encryptedpassword-1",
+			}
+			cluster1Bytes, _ := json.Marshal(cluster1Data)
+
 			existingSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      config.AuthSecretName,
 					Namespace: config.AuthSecretNamespace,
 				},
 				Data: map[string][]byte{
-					"cluster-1": []byte("password-1"),
+					"cluster-1": cluster1Bytes,
 				},
 			}
 
@@ -273,72 +308,29 @@ func TestAuthManager(t *testing.T) {
 		})
 	})
 
-	t.Run("getAllClusterPasswords", func(t *testing.T) {
-		t.Run("should return all cluster passwords", func(t *testing.T) {
-			existingSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      config.AuthSecretName,
-					Namespace: config.AuthSecretNamespace,
-				},
-				Data: map[string][]byte{
-					"cluster-1":   []byte("password-1"),
-					"cluster-2":   []byte("password-2"),
-					"credentials": []byte("legacy-password"), // should be filtered out
-				},
-			}
-
-			client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingSecret).Build()
-			manager := &authManager{
-				client:            client,
-				passwordGenerator: newMockPasswordGenerator(),
-				config:            config,
-			}
-
-			ctx := context.Background()
-			passwords, err := manager.getAllClusterPasswords(ctx)
-			require.NoError(t, err)
-
-			expected := map[string]string{
-				"cluster-1": "password-1",
-				"cluster-2": "password-2",
-			}
-			assert.Equal(t, expected, passwords)
-		})
-
-		t.Run("should handle empty secret", func(t *testing.T) {
-			existingSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      config.AuthSecretName,
-					Namespace: config.AuthSecretNamespace,
-				},
-				Data: map[string][]byte{},
-			}
-
-			client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingSecret).Build()
-			manager := &authManager{
-				client:            client,
-				passwordGenerator: newMockPasswordGenerator(),
-				config:            config,
-			}
-
-			ctx := context.Background()
-			passwords, err := manager.getAllClusterPasswords(ctx)
-			require.NoError(t, err)
-
-			assert.Empty(t, passwords)
-		})
-	})
-
 	t.Run("generateHtpasswdContent", func(t *testing.T) {
-		t.Run("should generate htpasswd content for all clusters", func(t *testing.T) {
+		t.Run("should generate htpasswd content for all clusters in deterministic order with caching", func(t *testing.T) {
+			// Create test data in JSON format (deliberately out of order to test sorting)
+			cluster2Data := ClusterAuthData{
+				Password: "password-2",
+				Htpasswd: "cluster-2:$2a$10$encryptedpassword-2",
+			}
+			cluster2Bytes, _ := json.Marshal(cluster2Data)
+
+			cluster1Data := ClusterAuthData{
+				Password: "password-1",
+				Htpasswd: "cluster-1:$2a$10$encryptedpassword-1",
+			}
+			cluster1Bytes, _ := json.Marshal(cluster1Data)
+
 			existingSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      config.AuthSecretName,
 					Namespace: config.AuthSecretNamespace,
 				},
 				Data: map[string][]byte{
-					"cluster-1": []byte("password-1"),
-					"cluster-2": []byte("password-2"),
+					"cluster-2": cluster2Bytes, // Note: deliberately out of order
+					"cluster-1": cluster1Bytes,
 				},
 			}
 
@@ -353,21 +345,76 @@ func TestAuthManager(t *testing.T) {
 			content, err := manager.generateHtpasswdContent(ctx)
 			require.NoError(t, err)
 
-			// Should contain htpasswd entries for both clusters
-			assert.Contains(t, content, "cluster-1:$2a$10$encryptedpassword-1")
-			assert.Contains(t, content, "cluster-2:$2a$10$encryptedpassword-2")
+			// Should contain htpasswd entries for both clusters in sorted order
+			expectedContent := "cluster-1:$2a$10$encryptedpassword-1\ncluster-2:$2a$10$encryptedpassword-2"
+			assert.Equal(t, expectedContent, content)
+
+			// With JSON format, htpasswd entries are embedded in the cluster data
 		})
-	})
-	t.Run("GetClusterPassword", func(t *testing.T) {
-		t.Run("should return existing cluster password", func(t *testing.T) {
+
+		t.Run("should use cached htpasswd entries when available", func(t *testing.T) {
+			// Secret with JSON format containing cached htpasswd entries
+			cluster1Data := ClusterAuthData{
+				Password: "password-1",
+				Htpasswd: "cluster-1:cached-hash",
+			}
+			cluster1Bytes, _ := json.Marshal(cluster1Data)
+
+			cluster2Data := ClusterAuthData{
+				Password: "password-2",
+				Htpasswd: "cluster-2:$2a$10$encryptedpassword-2",
+			}
+			cluster2Bytes, _ := json.Marshal(cluster2Data)
+
 			existingSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      config.AuthSecretName,
 					Namespace: config.AuthSecretNamespace,
 				},
 				Data: map[string][]byte{
-					"cluster-1": []byte("password-1"),
-					"cluster-2": []byte("password-2"),
+					"cluster-1": cluster1Bytes,
+					"cluster-2": cluster2Bytes,
+				},
+			}
+
+			client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingSecret).Build()
+			manager := &authManager{
+				client:            client,
+				passwordGenerator: newMockPasswordGenerator(),
+				config:            config,
+			}
+
+			ctx := context.Background()
+			content, err := manager.generateHtpasswdContent(ctx)
+			require.NoError(t, err)
+
+			// Should use cached entries for both clusters
+			expectedContent := "cluster-1:cached-hash\ncluster-2:$2a$10$encryptedpassword-2"
+			assert.Equal(t, expectedContent, content)
+		})
+	})
+	t.Run("GetClusterPassword", func(t *testing.T) {
+		t.Run("should return existing cluster password", func(t *testing.T) {
+			cluster1Data := ClusterAuthData{
+				Password: "password-1",
+				Htpasswd: "cluster-1:$2a$10$encryptedpassword-1",
+			}
+			cluster1Bytes, _ := json.Marshal(cluster1Data)
+
+			cluster2Data := ClusterAuthData{
+				Password: "password-2",
+				Htpasswd: "cluster-2:$2a$10$encryptedpassword-2",
+			}
+			cluster2Bytes, _ := json.Marshal(cluster2Data)
+
+			existingSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      config.AuthSecretName,
+					Namespace: config.AuthSecretNamespace,
+				},
+				Data: map[string][]byte{
+					"cluster-1": cluster1Bytes,
+					"cluster-2": cluster2Bytes,
 				},
 			}
 
@@ -385,13 +432,19 @@ func TestAuthManager(t *testing.T) {
 		})
 
 		t.Run("should return error for non-existent cluster", func(t *testing.T) {
+			cluster1Data := ClusterAuthData{
+				Password: "password-1",
+				Htpasswd: "cluster-1:$2a$10$encryptedpassword-1",
+			}
+			cluster1Bytes, _ := json.Marshal(cluster1Data)
+
 			existingSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      config.AuthSecretName,
 					Namespace: config.AuthSecretNamespace,
 				},
 				Data: map[string][]byte{
-					"cluster-1": []byte("password-1"),
+					"cluster-1": cluster1Bytes,
 				},
 			}
 
