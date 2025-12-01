@@ -38,6 +38,21 @@ prometheus.operator.servicemonitors "giantswarm_legacy" {
       operator = "DoesNotExist"
     }
   }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+  }
   scrape {
     default_scrape_interval = "60s"
   }
@@ -58,6 +73,21 @@ prometheus.operator.podmonitors "giantswarm_legacy" {
       operator = "DoesNotExist"
     }
   }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+  }
   scrape {
     default_scrape_interval = "60s"
   }
@@ -76,6 +106,21 @@ prometheus.operator.servicemonitors "giantswarm" {
       values   = ["giantswarm"]
     }
   }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+  }
   scrape {
     default_scrape_interval = "60s"
   }
@@ -92,6 +137,21 @@ prometheus.operator.podmonitors "giantswarm" {
       operator = "In"
       values   = ["giantswarm"]
     }
+  }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action = "replace"
+    target_label = "app"
+    source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
   }
   scrape {
     default_scrape_interval = "60s"
