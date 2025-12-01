@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor Mimir authentication to use per-cluster passwords with centralized secret management.
 - Use cluster name as user in Alloy secret to authenticate against Mimir.
 
+### Removed
+
+- Remove legacy alloy configurations
+
 ## [0.50.0] - 2025-11-13
 
 ### Removed

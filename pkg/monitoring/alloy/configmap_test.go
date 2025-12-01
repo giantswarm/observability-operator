@@ -38,9 +38,9 @@ func TestGenerateAlloyConfig(t *testing.T) {
 		goldenPath                 string
 		observabilityBundleVersion semver.Version
 	}{
-		// Version 1.9.0+ tests (with extra query matchers, without scrape configs)
+		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
-			name: "TwoTenantsInWC_v190",
+			name: "TwoTenantsInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
@@ -53,11 +53,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.190.wc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.200.wc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "TwoTenantsInMC_v190",
+			name: "TwoTenantsInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -70,11 +70,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.190.mc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.200.mc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "SingleTenantInWC_v190",
+			name: "SingleTenantInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "single-tenant-cluster",
@@ -87,11 +87,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.190.wc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.200.wc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "SingleTenantInMC_v190",
+			name: "SingleTenantInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -104,11 +104,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.190.mc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.200.mc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "DefaultTenantInWC_v190",
+			name: "DefaultTenantInWC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "default-tenant-cluster",
@@ -121,11 +121,11 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.190.wc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.wc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
-			name: "DefaultTenantInMC_v190",
+			name: "DefaultTenantInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -138,8 +138,8 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.190.mc.river"),
-			observabilityBundleVersion: versionSupportingExtraQueryMatchers,
+			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.mc.river"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 
 		// Version 2.2.0+ tests (with extra query matchers and scrape configs)
@@ -244,110 +244,6 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.mc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
-		},
-
-		// Version 1.7.0 tests (without extra query matchers and scrape configs)
-		{
-			name: "TwoTenantsInWC_v170",
-			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
-				},
-				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						Kind: "AWSCluster",
-					},
-				},
-			},
-			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.170.wc.river"),
-			observabilityBundleVersion: versionSupportingVPA,
-		},
-		{
-			name: "TwoTenantsInMC_v170",
-			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      managementClusterName,
-					Namespace: "default",
-				},
-				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						Kind: "AWSCluster",
-					},
-				},
-			},
-			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.170.mc.river"),
-			observabilityBundleVersion: versionSupportingVPA,
-		},
-		{
-			name: "SingleTenantInWC_v170",
-			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "single-tenant-cluster",
-					Namespace: "default",
-				},
-				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						Kind: "AzureCluster",
-					},
-				},
-			},
-			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.170.wc.river"),
-			observabilityBundleVersion: versionSupportingVPA,
-		},
-		{
-			name: "SingleTenantInMC_v170",
-			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      managementClusterName,
-					Namespace: "default",
-				},
-				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						Kind: "AzureCluster",
-					},
-				},
-			},
-			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.170.mc.river"),
-			observabilityBundleVersion: versionSupportingVPA,
-		},
-		{
-			name: "DefaultTenantInWC_v170",
-			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "default-tenant-cluster",
-					Namespace: "default",
-				},
-				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						Kind: "AzureCluster",
-					},
-				},
-			},
-			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.170.wc.river"),
-			observabilityBundleVersion: versionSupportingVPA,
-		},
-		{
-			name: "DefaultTenantInMC_v170",
-			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      managementClusterName,
-					Namespace: "default",
-				},
-				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						Kind: "AzureCluster",
-					},
-				},
-			},
-			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.170.mc.river"),
-			observabilityBundleVersion: versionSupportingVPA,
 		},
 	}
 
