@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Replace business hours inhibition with routing rules
+
 ### Fixed
 
 - Filter alerting tenants to exclude the `giantswarm` tenant from alerting operations unless the organization is named "Giant Swarm". This prevents organizations with the giantswarm tenant alongside their own tenants from accessing or modifying the Giant Swarm alerting configuration.
