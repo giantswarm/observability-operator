@@ -2,7 +2,7 @@ module github.com/giantswarm/observability-operator
 
 go 1.25
 
-toolchain go1.25.4
+toolchain go1.25.5
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
