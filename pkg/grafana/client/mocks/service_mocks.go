@@ -108,17 +108,7 @@ func (m *MockOrgsClient) GetOrgUsersWithParams(params *orgs.GetOrgUsersParams, o
 	return nil, nil
 }
 
-func (m *MockOrgsClient) GetOrgQuota(orgID int64, opts ...orgs.ClientOption) (*orgs.GetOrgQuotaOK, error) {
-	return nil, nil
-}
-
-func (m *MockOrgsClient) GetOrgQuotaWithParams(params *orgs.GetOrgQuotaParams, opts ...orgs.ClientOption) (*orgs.GetOrgQuotaOK, error) {
-	return nil, nil
-}
-
-func (m *MockOrgsClient) UpdateOrgQuota(params *orgs.UpdateOrgQuotaParams, opts ...orgs.ClientOption) (*orgs.UpdateOrgQuotaOK, error) {
-	return nil, nil
-}
+// Note: GetOrgQuota and UpdateOrgQuota methods have been removed from the Grafana OpenAPI client
 
 func (m *MockOrgsClient) SearchOrgs(params *orgs.SearchOrgsParams, opts ...orgs.ClientOption) (*orgs.SearchOrgsOK, error) {
 	return nil, nil
@@ -188,11 +178,97 @@ func (m *MockDashboardsClient) DeleteDashboardByUIDWithParams(params *dashboards
 }
 
 // For all other methods, use a generic approach that returns nil/error
-func (m *MockDashboardsClient) CalculateDashboardDiff(body *models.CalculateDashboardDiffParamsBody, opts ...dashboards.ClientOption) (*dashboards.CalculateDashboardDiffOK, error) {
+// Note: CalculateDashboardDiff methods have been removed from the Grafana OpenAPI client
+
+func (m *MockDashboardsClient) CreateDashboardSnapshot(body *models.CreateDashboardSnapshotCommand, opts ...dashboards.ClientOption) (*dashboards.CreateDashboardSnapshotOK, error) {
 	return nil, nil
 }
 
-func (m *MockDashboardsClient) CalculateDashboardDiffWithParams(params *dashboards.CalculateDashboardDiffParams, opts ...dashboards.ClientOption) (*dashboards.CalculateDashboardDiffOK, error) {
+func (m *MockDashboardsClient) CreateDashboardSnapshotWithParams(params *dashboards.CreateDashboardSnapshotParams, opts ...dashboards.ClientOption) (*dashboards.CreateDashboardSnapshotOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) CreatePublicDashboard(dashboardUID string, body *models.PublicDashboardDTO, opts ...dashboards.ClientOption) (*dashboards.CreatePublicDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) CreatePublicDashboardWithParams(params *dashboards.CreatePublicDashboardParams, opts ...dashboards.ClientOption) (*dashboards.CreatePublicDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) DeleteDashboardSnapshot(key string, opts ...dashboards.ClientOption) (*dashboards.DeleteDashboardSnapshotOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) DeleteDashboardSnapshotWithParams(params *dashboards.DeleteDashboardSnapshotParams, opts ...dashboards.ClientOption) (*dashboards.DeleteDashboardSnapshotOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) DeleteDashboardSnapshotByDeleteKey(deleteKey string, opts ...dashboards.ClientOption) (*dashboards.DeleteDashboardSnapshotByDeleteKeyOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) DeleteDashboardSnapshotByDeleteKeyWithParams(params *dashboards.DeleteDashboardSnapshotByDeleteKeyParams, opts ...dashboards.ClientOption) (*dashboards.DeleteDashboardSnapshotByDeleteKeyOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) DeletePublicDashboard(uid string, dashboardUID string, opts ...dashboards.ClientOption) (*dashboards.DeletePublicDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) DeletePublicDashboardWithParams(params *dashboards.DeletePublicDashboardParams, opts ...dashboards.ClientOption) (*dashboards.DeletePublicDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardPermissionsListByID(dashboardID int64, opts ...dashboards.ClientOption) (*dashboards.GetDashboardPermissionsListByIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardPermissionsListByIDWithParams(params *dashboards.GetDashboardPermissionsListByIDParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardPermissionsListByIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardPermissionsListByUID(uid string, opts ...dashboards.ClientOption) (*dashboards.GetDashboardPermissionsListByUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardPermissionsListByUIDWithParams(params *dashboards.GetDashboardPermissionsListByUIDParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardPermissionsListByUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardSnapshot(key string, opts ...dashboards.ClientOption) (*dashboards.GetDashboardSnapshotOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardSnapshotWithParams(params *dashboards.GetDashboardSnapshotParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardSnapshotOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardVersionByID(dashboardVersionID int64, dashboardID int64, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionByIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardVersionByIDWithParams(params *dashboards.GetDashboardVersionByIDParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionByIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardVersionByUID(uid string, dashboardVersionID int64, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionByUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardVersionByUIDWithParams(params *dashboards.GetDashboardVersionByUIDParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionByUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardVersionsByID(dashboardID int64, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionsByIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardVersionsByIDWithParams(params *dashboards.GetDashboardVersionsByIDParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionsByIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetDashboardVersionsByUID(params *dashboards.GetDashboardVersionsByUIDParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionsByUIDOK, error) {
 	return nil, nil
 }
 
@@ -216,11 +292,91 @@ func (m *MockDashboardsClient) GetDashboardTagsWithParams(params *dashboards.Get
 	return nil, nil
 }
 
+func (m *MockDashboardsClient) GetPublicAnnotations(accessToken string, opts ...dashboards.ClientOption) (*dashboards.GetPublicAnnotationsOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetPublicAnnotationsWithParams(params *dashboards.GetPublicAnnotationsParams, opts ...dashboards.ClientOption) (*dashboards.GetPublicAnnotationsOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetPublicDashboard(dashboardUID string, opts ...dashboards.ClientOption) (*dashboards.GetPublicDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) GetPublicDashboardWithParams(params *dashboards.GetPublicDashboardParams, opts ...dashboards.ClientOption) (*dashboards.GetPublicDashboardOK, error) {
+	return nil, nil
+}
+
 func (m *MockDashboardsClient) ImportDashboard(body *models.ImportDashboardRequest, opts ...dashboards.ClientOption) (*dashboards.ImportDashboardOK, error) {
 	return nil, nil
 }
 
 func (m *MockDashboardsClient) ImportDashboardWithParams(params *dashboards.ImportDashboardParams, opts ...dashboards.ClientOption) (*dashboards.ImportDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) InterpolateDashboard(opts ...dashboards.ClientOption) (*dashboards.InterpolateDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) InterpolateDashboardWithParams(params *dashboards.InterpolateDashboardParams, opts ...dashboards.ClientOption) (*dashboards.InterpolateDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) ListPublicDashboards(opts ...dashboards.ClientOption) (*dashboards.ListPublicDashboardsOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) ListPublicDashboardsWithParams(params *dashboards.ListPublicDashboardsParams, opts ...dashboards.ClientOption) (*dashboards.ListPublicDashboardsOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) QueryPublicDashboard(panelID int64, accessToken string, opts ...dashboards.ClientOption) (*dashboards.QueryPublicDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) QueryPublicDashboardWithParams(params *dashboards.QueryPublicDashboardParams, opts ...dashboards.ClientOption) (*dashboards.QueryPublicDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) RestoreDashboardVersionByUID(uid string, body *models.RestoreDashboardVersionCommand, opts ...dashboards.ClientOption) (*dashboards.RestoreDashboardVersionByUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) RestoreDashboardVersionByUIDWithParams(params *dashboards.RestoreDashboardVersionByUIDParams, opts ...dashboards.ClientOption) (*dashboards.RestoreDashboardVersionByUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) SearchDashboardSnapshots(params *dashboards.SearchDashboardSnapshotsParams, opts ...dashboards.ClientOption) (*dashboards.SearchDashboardSnapshotsOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) UpdateDashboardPermissionsByID(dashboardID int64, body *models.UpdateDashboardACLCommand, opts ...dashboards.ClientOption) (*dashboards.UpdateDashboardPermissionsByIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) UpdateDashboardPermissionsByIDWithParams(params *dashboards.UpdateDashboardPermissionsByIDParams, opts ...dashboards.ClientOption) (*dashboards.UpdateDashboardPermissionsByIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) UpdateDashboardPermissionsByUID(uid string, body *models.UpdateDashboardACLCommand, opts ...dashboards.ClientOption) (*dashboards.UpdateDashboardPermissionsByUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) UpdateDashboardPermissionsByUIDWithParams(params *dashboards.UpdateDashboardPermissionsByUIDParams, opts ...dashboards.ClientOption) (*dashboards.UpdateDashboardPermissionsByUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) UpdatePublicDashboard(params *dashboards.UpdatePublicDashboardParams, opts ...dashboards.ClientOption) (*dashboards.UpdatePublicDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) ViewPublicDashboard(accessToken string, opts ...dashboards.ClientOption) (*dashboards.ViewPublicDashboardOK, error) {
+	return nil, nil
+}
+
+func (m *MockDashboardsClient) ViewPublicDashboardWithParams(params *dashboards.ViewPublicDashboardParams, opts ...dashboards.ClientOption) (*dashboards.ViewPublicDashboardOK, error) {
 	return nil, nil
 }
 
