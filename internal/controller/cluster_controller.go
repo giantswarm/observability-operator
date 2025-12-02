@@ -18,13 +18,12 @@ import (
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/alerting/heartbeat"
+	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
-	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 )
 
 // ClusterMonitoringReconciler reconciles a Cluster object
@@ -36,8 +35,8 @@ type ClusterMonitoringReconciler struct {
 	AlloyService alloy.Service
 	// HeartbeatRepositories is the list of repositories for managing heartbeats.
 	HeartbeatRepositories []heartbeat.HeartbeatRepository
-	// MimirService is the service for managing mimir configuration.
-	MimirService mimir.MimirService
+	// MimirAuthManager manages mimir authentication secrets.
+	MimirAuthManager auth.AuthManager
 	// BundleConfigurationService is the service for configuring the observability bundle.
 	BundleConfigurationService *bundle.BundleConfigurationService
 	// FinalizerHelper is the helper for managing finalizers.
@@ -66,16 +65,22 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 
 	organizationRepository := organization.NewNamespaceRepository(managerClient)
 
+	mimirAuthManager := auth.NewAuthManager(
+		managerClient,
+		auth.NewConfig(
+			"mimir-basic-auth",
+			"mimir",
+			"mimir",
+			"mimir-gateway-ingress-auth",
+			"mimir-gateway-httproute-auth",
+		),
+	)
+
 	alloyService := alloy.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
 		Config:                 cfg,
-	}
-
-	mimirService := mimir.MimirService{
-		Client:          managerClient,
-		PasswordManager: password.SimpleManager{},
-		Config:          cfg,
+		AuthManager:            mimirAuthManager,
 	}
 
 	r := &ClusterMonitoringReconciler{
@@ -83,7 +88,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		Config:                     cfg,
 		HeartbeatRepositories:      heartbeatRepositories,
 		AlloyService:               alloyService,
-		MimirService:               mimirService,
+		MimirAuthManager:           mimirAuthManager,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
@@ -207,7 +212,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	// Cluster specific configuration
 	if r.Config.Monitoring.IsMonitored(cluster) {
 		// Ensure cluster has a password in the centralized mimir auth secret
-		err = r.MimirService.AddClusterPassword(ctx, cluster.Name)
+		err = r.MimirAuthManager.AddClusterPassword(ctx, cluster.Name)
 		if err != nil {
 			logger.Error(err, "failed to add cluster password to mimir auth secret")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -227,7 +232,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 	} else {
 		// Remove cluster password from mimir auth secret when monitoring disabled
-		err = r.MimirService.RemoveClusterPassword(ctx, cluster.Name)
+		err = r.MimirAuthManager.RemoveClusterPassword(ctx, cluster.Name)
 		if err != nil {
 			logger.Error(err, "failed to remove cluster password from mimir auth secret")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -267,7 +272,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			}
 
 			// Remove cluster password from mimir auth secret on cluster deletion
-			err = r.MimirService.RemoveClusterPassword(ctx, cluster.Name)
+			err = r.MimirAuthManager.RemoveClusterPassword(ctx, cluster.Name)
 			if err != nil {
 				logger.Error(err, "failed to remove cluster password from mimir auth secret")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -327,7 +332,7 @@ func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
 		}
 	}
 
-	err := r.MimirService.DeleteMimirSecrets(ctx)
+	err := r.MimirAuthManager.DeleteAllSecrets(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to delete mimir secrets: %w", err)
 	}
