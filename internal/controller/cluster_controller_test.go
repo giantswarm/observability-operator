@@ -14,13 +14,12 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
-	"github.com/giantswarm/observability-operator/pkg/common/password"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir"
 )
 
 var _ = Describe("Cluster Controller", func() {
@@ -91,6 +90,17 @@ var _ = Describe("Cluster Controller", func() {
 				},
 			})
 
+			mimirAuthManager := auth.NewAuthManager(
+				k8sClient,
+				auth.NewConfig(
+					"mimir-basic-auth",
+					"mimir",
+					"mimir",
+					"mimir-gateway-ingress-auth",
+					"mimir-gateway-httproute-auth",
+				),
+			)
+
 			alloyService := alloy.Service{
 				Client:                 k8sClient,
 				OrganizationRepository: organizationRepository,
@@ -105,19 +115,7 @@ var _ = Describe("Cluster Controller", func() {
 						Enabled: true,
 					},
 				},
-			}
-
-			mimirService := mimir.MimirService{
-				Client:          k8sClient,
-				PasswordManager: password.SimpleManager{},
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						Name:     "management-cluster",
-						Pipeline: "testing",
-						Region:   "eu-west-1",
-						Customer: "giantswarm",
-					},
-				},
+				AuthManager: mimirAuthManager,
 			}
 
 			reconciler = &ClusterMonitoringReconciler{
@@ -135,7 +133,7 @@ var _ = Describe("Cluster Controller", func() {
 				},
 				BundleConfigurationService: bundleService,
 				AlloyService:               alloyService,
-				MimirService:               mimirService,
+				MimirAuthManager:           mimirAuthManager,
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
 			}
 		})

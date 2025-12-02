@@ -1,0 +1,38 @@
+package auth
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+
+	"golang.org/x/crypto/bcrypt"
+)
+
+// PasswordGenerator generates passwords and htpasswd entries
+type PasswordGenerator interface {
+	GeneratePassword(length int) (string, error)
+	GenerateHtpasswd(username, password string) (string, error)
+}
+
+type simplePasswordGenerator struct{}
+
+// NewPasswordGenerator creates a new password generator
+func NewPasswordGenerator() PasswordGenerator {
+	return &simplePasswordGenerator{}
+}
+
+func (g *simplePasswordGenerator) GeneratePassword(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+func (g *simplePasswordGenerator) GenerateHtpasswd(username, password string) (string, error) {
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt password: %w", err)
+	}
+	return fmt.Sprintf("%s:%s", username, string(encryptedPassword)), nil
+}
