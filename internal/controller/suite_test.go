@@ -38,7 +38,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -185,8 +185,8 @@ func installClusterAPICRDs(k8sClient client.Client) error {
 	}
 
 	// Fetch the actual Cluster CRD from the official Cluster API repository
-	// Using v1.10.2 tag to match the version in go.mod
-	crdURL := "https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/v1.10.2/config/crd/bases/cluster.x-k8s.io_clusters.yaml"
+	// Using v1.11.3 tag to match the version in go.mod
+	crdURL := "https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/v1.11.3/config/crd/bases/cluster.x-k8s.io_clusters.yaml"
 
 	logf.Log.Info("Fetching Cluster API CRD", "url", crdURL)
 
