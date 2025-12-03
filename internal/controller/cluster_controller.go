@@ -68,11 +68,10 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	mimirAuthManager := auth.NewAuthManager(
 		managerClient,
 		auth.NewConfig(
-			"mimir-basic-auth",
-			"mimir",
-			"mimir",
-			"mimir-gateway-ingress-auth",
-			"mimir-gateway-httproute-auth",
+			auth.AuthTypeMetrics,           // authType
+			"mimir",                        // gatewaySecretsNamespace
+			"mimir-gateway-ingress-auth",   // ingressSecretName
+			"mimir-gateway-httproute-auth", // httprouteSecretName
 		),
 	)
 
@@ -211,10 +210,10 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// Cluster specific configuration
 	if r.Config.Monitoring.IsMonitored(cluster) {
-		// Ensure cluster has a password in the centralized mimir auth secret
-		err = r.MimirAuthManager.AddClusterPassword(ctx, cluster.Name)
+		// Ensure cluster has authentication configured for metrics
+		err = r.MimirAuthManager.EnsureClusterAuth(ctx, cluster)
 		if err != nil {
-			logger.Error(err, "failed to add cluster password to mimir auth secret")
+			logger.Error(err, "failed to ensure cluster auth for metrics")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 
@@ -231,10 +230,10 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 	} else {
-		// Remove cluster password from mimir auth secret when monitoring disabled
-		err = r.MimirAuthManager.RemoveClusterPassword(ctx, cluster.Name)
+		// Remove cluster auth when monitoring disabled
+		err = r.MimirAuthManager.DeleteClusterAuth(ctx, cluster)
 		if err != nil {
-			logger.Error(err, "failed to remove cluster password from mimir auth secret")
+			logger.Error(err, "failed to delete cluster auth for metrics")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 
@@ -271,10 +270,10 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 
-			// Remove cluster password from mimir auth secret on cluster deletion
-			err = r.MimirAuthManager.RemoveClusterPassword(ctx, cluster.Name)
+			// Remove cluster auth on cluster deletion
+			err = r.MimirAuthManager.DeleteClusterAuth(ctx, cluster)
 			if err != nil {
-				logger.Error(err, "failed to remove cluster password from mimir auth secret")
+				logger.Error(err, "failed to delete cluster auth for metrics")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		}
@@ -332,7 +331,7 @@ func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
 		}
 	}
 
-	err := r.MimirAuthManager.DeleteAllSecrets(ctx)
+	err := r.MimirAuthManager.DeleteGatewaySecrets(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to delete mimir secrets: %w", err)
 	}
