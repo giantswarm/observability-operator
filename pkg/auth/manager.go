@@ -202,9 +202,11 @@ func (am *authManager) EnsureClusterAuth(ctx context.Context, cluster *clusterv1
 			clusterSecret.Data = make(map[string][]byte)
 		}
 
-		// Check if password already exists
+		// Check if password and htpasswd already exists
 		if _, hasPassword := clusterSecret.Data["password"]; hasPassword {
-			return nil // Already configured
+			if _, hasHtpasswd := clusterSecret.Data["htpasswd"]; hasHtpasswd {
+				return nil // Already configured
+			}
 		}
 
 		// Generate new credentials
