@@ -58,6 +58,10 @@ prometheus.operator.servicemonitors "{{ . }}_legacy" {
       operator = "DoesNotExist"
     }
   }
+  // Add the target's app.kubernetes.io/instance value into the metrics's app label
+  // In the scope of servicemonitors the app.kubernetes.io/instance might be
+  // exposed by 3 different Kubernetes resources.
+  // The precedences order from highest to lowest is: Pod, Endpoint, Service.
   rule {
     action         =  "replace"
     regex          =  "(.+)"
@@ -96,6 +100,7 @@ prometheus.operator.podmonitors "{{ . }}_legacy" {
       operator = "DoesNotExist"
     }
   }
+  // Add the Pod app.kubernetes.io/instance value into the metrics's app label
   rule {
     action         =  "replace"
     regex          =  "(.+)"
@@ -120,6 +125,10 @@ prometheus.operator.servicemonitors "{{ . }}" {
       values   = ["{{ . }}"]
     }
   }
+  // Add the target's app.kubernetes.io/instance value into the metrics's app label
+  // In the scope of servicemonitors the app.kubernetes.io/instance might be
+  // exposed by 3 different Kubernetes resources.
+  // The precedences order from highest to lowest is: Pod, Endpoint, Service.
   rule {
     action         =  "replace"
     regex          =  "(.+)"
@@ -155,6 +164,7 @@ prometheus.operator.podmonitors "{{ . }}" {
       values   = ["{{ . }}"]
     }
   }
+  // Add the Pod app.kubernetes.io/instance value into the metrics's app label
   rule {
     action         =  "replace"
     regex          =  "(.+)"
