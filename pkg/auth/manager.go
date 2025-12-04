@@ -114,7 +114,6 @@ func (am *authManager) createOrUpdateGatewaySecret(ctx context.Context, secretNa
 	if err != nil {
 		// If namespace doesn't exist, ignore the error - this happens during deletion
 		if client.IgnoreNotFound(err) == nil {
-			logger.Info("Gateway secret namespace not found - this is expected during deletion", "secret", secretName, "namespace", am.config.GatewaySecrets.Namespace)
 			return nil
 		}
 		return fmt.Errorf("failed to create or update gateway secret %s: %w", secretName, err)
