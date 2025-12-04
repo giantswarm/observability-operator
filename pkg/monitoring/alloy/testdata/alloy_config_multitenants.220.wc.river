@@ -1,5 +1,5 @@
 logging {
-  level  = "info"
+  level  = "debug"
   format = "logfmt"
 }
 
@@ -75,19 +75,12 @@ prometheus.operator.servicemonitors "tenant1" {
     }
   }
   rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
-  }
-  rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
-  }
-  rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+    action         =  "replace"
+    regex          =  ";*([^;]+);?.*"
+    replacement    =  "$1"
+    separator      =  ";"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance", "__meta_kubernetes_endpoints_label_app_kubernetes_io_instance", "__meta_kubernetes_service_label_app_kubernetes_io_instance"]
   }
   scrape {
     default_scrape_interval = "60s"
@@ -107,19 +100,10 @@ prometheus.operator.podmonitors "tenant1" {
     }
   }
   rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
-  }
-  rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
-  }
-  rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
   }
   scrape {
     default_scrape_interval = "60s"
@@ -199,19 +183,12 @@ prometheus.operator.servicemonitors "tenant2" {
     }
   }
   rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
-  }
-  rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
-  }
-  rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+    action         =  "replace"
+    regex          =  ";*([^;]+);?.*"
+    replacement    =  "$1"
+    separator      =  ";"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance", "__meta_kubernetes_endpoints_label_app_kubernetes_io_instance", "__meta_kubernetes_service_label_app_kubernetes_io_instance"]
   }
   scrape {
     default_scrape_interval = "60s"
@@ -231,19 +208,10 @@ prometheus.operator.podmonitors "tenant2" {
     }
   }
   rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
-  }
-  rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
-  }
-  rule {
-    action = "replace"
-    target_label = "app"
-    source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
   }
   scrape {
     default_scrape_interval = "60s"
