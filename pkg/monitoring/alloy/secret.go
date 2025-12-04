@@ -9,7 +9,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
 	"github.com/Masterminds/sprig/v3"
 
@@ -37,7 +37,7 @@ func init() {
 
 func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string][]byte, error) {
 	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, a.Cluster.BaseDomain)
-	password, err := commonmonitoring.GetMimirAuthPasswordForCluster(ctx, a.Client, cluster.Name)
+	password, err := a.AuthManager.GetClusterPassword(ctx, cluster.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mimir auth password for cluster %s: %w", cluster.Name, err)
 	}
@@ -51,7 +51,7 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		{Name: mimirRulerAPIURLKey, Value: mimirRulerUrl},
 		{Name: mimirRemoteWriteAPIURLKey, Value: remoteWriteUrl},
 		{Name: mimirRemoteWriteAPINameKey, Value: commonmonitoring.RemoteWriteName},
-		{Name: mimirRemoteWriteAPIUsernameKey, Value: a.Cluster.Name},
+		{Name: mimirRemoteWriteAPIUsernameKey, Value: cluster.Name},
 		{Name: mimirRemoteWriteAPIPasswordKey, Value: password},
 	}
 

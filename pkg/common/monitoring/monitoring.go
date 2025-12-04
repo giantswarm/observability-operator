@@ -1,14 +1,11 @@
 package monitoring
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
@@ -16,8 +13,6 @@ import (
 const (
 	// DefaultServicePriority is the default service priority if not set.
 	defaultServicePriority = "highest"
-	mimirApiKey            = "mimir-basic-auth" // #nosec G101
-	mimirNamespace         = "mimir"
 	// ServicePriorityLabel is the label used to determine the priority of a service.
 	servicePriorityLabel = "giantswarm.io/service-priority"
 
@@ -52,50 +47,6 @@ func GetServicePriority(cluster *clusterv1.Cluster) string {
 		return servicePriority
 	}
 	return defaultServicePriority
-}
-
-// GetMimirAuthPasswordForCluster gets the password for a specific cluster
-func GetMimirAuthPasswordForCluster(ctx context.Context, k8sClient client.Client, clusterName string) (string, error) {
-	secret := &corev1.Secret{}
-
-	err := k8sClient.Get(ctx, client.ObjectKey{
-		Name:      mimirApiKey,
-		Namespace: mimirNamespace,
-	}, secret)
-	if err != nil {
-		return "", fmt.Errorf("failed to get mimir secret: %w", err)
-	}
-
-	// Try cluster-specific password first
-	if passwordBytes, exists := secret.Data[clusterName]; exists {
-		return string(passwordBytes), nil
-	}
-
-	return "", fmt.Errorf("no passwords found in secret")
-}
-
-// GetAllClusterPasswords returns all cluster passwords from the secret
-func GetAllClusterPasswords(ctx context.Context, k8sClient client.Client) (map[string]string, error) {
-	secret := &corev1.Secret{}
-
-	err := k8sClient.Get(ctx, client.ObjectKey{
-		Name:      mimirApiKey,
-		Namespace: mimirNamespace,
-	}, secret)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get mimir secret: %w", err)
-	}
-
-	clusterPasswords := make(map[string]string)
-
-	// Read all cluster passwords (skip old "credentials" key)
-	for clusterName, passwordBytes := range secret.Data {
-		if clusterName != "credentials" {
-			clusterPasswords[clusterName] = string(passwordBytes)
-		}
-	}
-
-	return clusterPasswords, nil
 }
 
 func GetClusterShardingStrategy(cluster metav1.Object) (s *sharding.Strategy, err error) {

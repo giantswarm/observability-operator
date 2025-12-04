@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Create a new secret for HTTPRoute basic auth for Mimir.
 - Refactor Mimir authentication to use per-cluster passwords with centralized secret management.
+- Extract authentication logic into reusable auth package, eliminating MimirService wrapper.
+- Move password generation into auth package for complete self-containment.
+- Consolidate cluster password retrieval into auth package, removing duplicate functionality from monitoring package.
+- Use cluster name as user in Alloy secret to authenticate against Mimir.
 - Set `app` label on metrics to the value of the ServiceMonitor/PodMonitor target resource `app.kubernetes.io/instance` label
 
 ### Removed
