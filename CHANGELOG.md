@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add team labels to metrics coming from ServiceMonitors and PodMonitors
 - Add new `observability_operator_alertmanager_routes` to count the number of routes per tenant.
 
 ### Changed
 
 - Create a new secret for HTTPRoute basic auth for Mimir.
 - Refactor Mimir authentication to use per-cluster passwords with centralized secret management.
+- Set `app` label on metrics to the value of the ServiceMonitor/PodMonitor target resource `app.kubernetes.io/instance` label
 
 ### Removed
 
