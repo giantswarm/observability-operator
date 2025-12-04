@@ -25,7 +25,6 @@ rules:
       - clusters
     verbs:
       - create
-      - delete
       - get
       - list
       - patch
