@@ -93,8 +93,7 @@ var _ = Describe("Cluster Controller", func() {
 			mimirAuthManager := auth.NewAuthManager(
 				k8sClient,
 				auth.NewConfig(
-					"mimir-basic-auth",
-					"mimir",
+					auth.AuthTypeMetrics,
 					"mimir",
 					"mimir-gateway-ingress-auth",
 					"mimir-gateway-httproute-auth",

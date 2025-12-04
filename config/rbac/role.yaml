@@ -25,7 +25,7 @@ rules:
   verbs:
   - update
 - apiGroups:
-  - cluster.giantswarm.io
+  - cluster.x-k8s.io
   resources:
   - clusters
   verbs:
@@ -37,13 +37,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cluster.giantswarm.io
+  - cluster.x-k8s.io
   resources:
   - clusters/finalizers
   verbs:
   - update
 - apiGroups:
-  - cluster.giantswarm.io
+  - cluster.x-k8s.io
   resources:
   - clusters/status
   verbs:
