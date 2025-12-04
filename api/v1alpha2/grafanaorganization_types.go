@@ -1,7 +1,11 @@
-package v1alpha1
+package v1alpha2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	GrafanaOrganizationFinalizer = "observability.giantswarm.io/grafanaorganization"
 )
 
 // GrafanaOrganizationSpec defines the desired state of GrafanaOrganization
@@ -16,10 +20,33 @@ type GrafanaOrganizationSpec struct {
 	RBAC *RBAC `json:"rbac"`
 
 	// Tenants is a list of tenants that are associated with the Grafana organization.
-	// +kubebuilder:example={"giantswarm"}
-	// +kube:validation:MinItems=1
-	Tenants []TenantID `json:"tenants"`
+	// +kubebuilder:example={{"name": "giantswarm", "types": ["data"]}}
+	// +kubebuilder:validation:MinItems=1
+	Tenants []TenantConfig `json:"tenants"`
 }
+
+// TenantConfig defines configuration for a specific tenant
+type TenantConfig struct {
+	// Name is the unique identifier for the tenant
+	Name TenantID `json:"name"`
+
+	// Types defines what kind of access this tenant has
+	// +kubebuilder:default={"data"}
+	// +optional
+	Types []TenantType `json:"types,omitempty"`
+}
+
+// TenantType represents the type of access a tenant has
+// +kubebuilder:validation:Enum=data;alerting
+type TenantType string
+
+const (
+	// TenantTypeData allows read access to metrics and logs
+	TenantTypeData TenantType = "data"
+
+	// TenantTypeAlerting allows managing rules and alerts
+	TenantTypeAlerting TenantType = "alerting"
+)
 
 // TenantID is a unique identifier for a tenant. Must follow both Grafana Mimir tenant ID restrictions
 // and Alloy component naming restrictions.
@@ -36,9 +63,9 @@ type TenantID string
 // RBAC defines the RoleBasedAccessControl configuration for the Grafana organization.
 // Each fields represents the mapping to a Grafana role:
 //
-//	Admin: full access to the Grafana organization
-//	Editor: edit resources in the Grafana organization
-//	Viewer: read only access to the Grafana organization
+// Admin: full access to the Grafana organization
+// Editor: edit resources in the Grafana organization
+// Viewer: read only access to the Grafana organization
 //
 // Each fields holds a list of string which represents values for a specific auth provider org attribute.
 // The org attribute is looked up using the `org_attribute_path` which is configured on your Grafana instance, see `https://<YOUR_GRAFANA_INSTANCE>/admin/settings`.
@@ -80,6 +107,7 @@ type DataSource struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:scope=Cluster
 //+kubebuilder:subresource:status
+//+kubebuilder:storageversion
 //+kubebuilder:printcolumn:JSONPath=".spec.displayName",name=DisplayName,type=string
 //+kubebuilder:printcolumn:JSONPath=".status.orgID",name=OrgID,type=integer
 

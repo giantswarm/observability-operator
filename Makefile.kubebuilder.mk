@@ -123,9 +123,11 @@ generate-crds: $(CONTROLLER_GEN) | $(CRD_DIR) ## Generate Custom Resource Defini
 	@$(CONTROLLER_GEN) crd:allowDangerousTypes=true \
 		paths="./$(API_DIR)/..." \
 		output:crd:artifacts:config="$(CRD_DIR)"
+	# Patch CRDs with configurations that controller-gen doesn't generate
+	@./hack/patch-crds.sh
 	@$(call log_info,"CRD generation completed")
 
-.PHONY: generate-rbac  
+.PHONY: generate-rbac
 generate-rbac: $(CONTROLLER_GEN) | $(RBAC_DIR) ## Generate RBAC manifests
 	$(call log_build,"Generating RBAC manifests")
 	@$(CONTROLLER_GEN) rbac:roleName=manager-role \

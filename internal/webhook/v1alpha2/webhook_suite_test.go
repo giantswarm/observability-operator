@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package v1alpha2
 
 import (
 	"testing"
@@ -29,7 +29,6 @@ import (
 	observabilityv1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/internal/webhook/testutil"
 	webhookv1alpha1 "github.com/giantswarm/observability-operator/internal/webhook/v1alpha1"
-	webhookv1alpha2 "github.com/giantswarm/observability-operator/internal/webhook/v1alpha2"
 )
 
 // k8sClient is the package-level client that will be set by the test suite
@@ -38,7 +37,7 @@ var testSuite *testutil.WebhookTestSuite
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "V1 Webhook Suite")
+	RunSpecs(t, "V1Alpha2 Webhook Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -47,23 +46,20 @@ var _ = BeforeSuite(func() {
 
 	// Set up the webhook test environment with all needed schemes and webhooks
 	config := testutil.WebhookSuiteConfig{
-		SuiteName: "V1 Webhook Suite",
+		SuiteName: "V1Alpha2 Webhook Suite",
 		SchemeSetupFuncs: []testutil.SchemeSetupFunc{
 			// Add core v1 scheme (for Secrets, ConfigMaps)
 			corev1.AddToScheme,
 			// Add observability v1alpha1 scheme (for GrafanaOrganization compatibility)
 			observabilityv1alpha1.AddToScheme,
-			// Add observability v1alpha2 scheme (for GrafanaOrganization storage version)
+			// Add observability v1alpha2 scheme (for GrafanaOrganization)
 			observabilityv1alpha2.AddToScheme,
 		},
 		WebhookSetupFuncs: []testutil.WebhookSetupFunc{
-			// Register v1 webhooks
-			SetupAlertmanagerConfigSecretWebhookWithManager,
-			SetupDashboardConfigMapWebhookWithManager,
-			// Register v1alpha1 webhooks (for direct v1alpha1 validation)
+			// Register v1alpha1 webhooks (required for webhook routing to work)
 			webhookv1alpha1.SetupGrafanaOrganizationWebhookWithManager,
-			// Register v1alpha2 webhooks (storage version, handles converted v1alpha1 objects)
-			webhookv1alpha2.SetupGrafanaOrganizationWebhookWithManager,
+			// Register v1alpha2 webhooks
+			SetupGrafanaOrganizationWebhookWithManager,
 		},
 	}
 
