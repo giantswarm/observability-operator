@@ -24,11 +24,26 @@ rules:
     resources:
       - clusters
     verbs:
-      - watch
+      - create
       - get
       - list
-      - update
       - patch
+      - update
+      - watch
+  - apiGroups:
+      - cluster.x-k8s.io
+    resources:
+      - clusters/finalizers
+    verbs:
+      - update
+  - apiGroups:
+    - cluster.x-k8s.io
+    resources:
+      - clusters/status
+    verbs:
+      - get
+      - patch
+      - update
   - apiGroups:
       - observability.giantswarm.io
     resources:

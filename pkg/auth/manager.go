@@ -2,34 +2,28 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// ClusterAuthData represents the authentication data for a single cluster
-type ClusterAuthData struct {
-	Password string `json:"password"`
-	Htpasswd string `json:"htpasswd"`
-}
-
 // AuthManager manages authentication secrets for observability services
 type AuthManager interface {
-	// Cluster password lifecycle
-	AddClusterPassword(ctx context.Context, clusterName string) error
-	RemoveClusterPassword(ctx context.Context, clusterName string) error
-	GetClusterPassword(ctx context.Context, clusterName string) (string, error)
+	// Cluster authentication lifecycle
+	EnsureClusterAuth(ctx context.Context, cluster *clusterv1.Cluster) error
+	DeleteClusterAuth(ctx context.Context, cluster *clusterv1.Cluster) error
+	GetClusterPassword(ctx context.Context, cluster *clusterv1.Cluster) (string, error)
 
 	// Cleanup
-	DeleteAllSecrets(ctx context.Context) error
+	DeleteGatewaySecrets(ctx context.Context) error
 }
 
 type authManager struct {
@@ -38,7 +32,7 @@ type authManager struct {
 	config            Config
 }
 
-// NewAuthManager creates a new auth manager
+// NewAuthManager creates a new auth manager with config for managing htpasswd secrets
 func NewAuthManager(client client.Client, config Config) AuthManager {
 	return &authManager{
 		client:            client,
@@ -47,268 +41,257 @@ func NewAuthManager(client client.Client, config Config) AuthManager {
 	}
 }
 
-// getAuthSecret returns a reusable auth secret object with the correct metadata
-func (am *authManager) getAuthSecret() *corev1.Secret {
+// getClusterSecretName returns the secret name for a cluster's auth
+func (am *authManager) getClusterSecretName(clusterName string) string {
+	return fmt.Sprintf("%s-observability-%s-auth", clusterName, am.config.AuthType)
+}
+
+// getClusterSecret returns a cluster auth secret object with the correct metadata
+func (am *authManager) getClusterSecret(cluster *clusterv1.Cluster) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      am.config.AuthSecretName,
-			Namespace: am.config.AuthSecretNamespace,
+			Name:      am.getClusterSecretName(cluster.Name),
+			Namespace: cluster.Namespace,
 		},
 	}
 }
 
-// generateHtpasswdContent creates htpasswd content from entries in auth secret
+// generateHtpasswdContent creates htpasswd content from per-cluster auth secrets
 func (am *authManager) generateHtpasswdContent(ctx context.Context) (string, error) {
-	authSecret := am.getAuthSecret()
-	err := am.client.Get(ctx, client.ObjectKeyFromObject(authSecret), authSecret)
+	// List all cluster auth secrets using labels across all namespaces
+	secretList := &corev1.SecretList{}
+	err := am.client.List(ctx, secretList,
+		client.MatchingLabels{
+			"app.kubernetes.io/component":           fmt.Sprintf("%s-auth", am.config.AuthType),
+			"observability.giantswarm.io/auth-type": string(am.config.AuthType),
+		})
 	if err != nil {
-		return "", fmt.Errorf("failed to get auth secret: %w", err)
+		return "", fmt.Errorf("failed to list cluster auth secrets: %w", err)
 	}
 
-	// Collect cluster names
-	var clusterNames []string
-	for clusterName := range authSecret.Data {
-		// TODO: Remove once the credentials key has been removed from all installations in a subsequent release
-		// This was the old format before per-cluster passwords were introduced
-		if clusterName == "credentials" {
-			continue
+	// Collect htpasswd entries from cluster secrets
+	var htpasswdEntries []string
+	for _, secret := range secretList.Items {
+		htpasswdData, exists := secret.Data["htpasswd"]
+		if !exists {
+			continue // Skip secrets without htpasswd data
 		}
-		clusterNames = append(clusterNames, clusterName)
+		htpasswdEntries = append(htpasswdEntries, string(htpasswdData))
 	}
 
-	// Sort cluster names for deterministic output
-	sort.Strings(clusterNames)
+	// Sort for deterministic output
+	sort.Strings(htpasswdEntries)
 
-	// Build htpasswd content from entries
-	var htpasswdLines []string
-	for _, clusterName := range clusterNames {
-		if clusterAuthBytes, exists := authSecret.Data[clusterName]; exists {
-			var clusterAuthData ClusterAuthData
-			if err := json.Unmarshal(clusterAuthBytes, &clusterAuthData); err != nil {
-				return "", fmt.Errorf("failed to unmarshal cluster data for %s: %w", clusterName, err)
-			}
-
-			// Use cached htpasswd from JSON structure
-			if clusterAuthData.Htpasswd == "" {
-				return "", fmt.Errorf("missing htpasswd entry for cluster %s", clusterName)
-			}
-			htpasswdLines = append(htpasswdLines, clusterAuthData.Htpasswd)
-		}
-	}
-
-	return strings.Join(htpasswdLines, "\n"), nil
+	return strings.Join(htpasswdEntries, "\n"), nil
 }
 
-// createOrUpdateHtpasswdSecret creates or updates an htpasswd secret with the given name and data key
-func (am *authManager) createOrUpdateHtpasswdSecret(ctx context.Context, secretName, dataKey string) error {
+// createOrUpdateGatewaySecret creates or updates a gateway secret with htpasswd content
+func (am *authManager) createOrUpdateGatewaySecret(ctx context.Context, secretName, dataKey string) error {
 	logger := log.FromContext(ctx)
-	htpasswdSecret := &corev1.Secret{
+	gatewaySecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
-			Namespace: am.config.SecretsNamespace,
+			Namespace: am.config.GatewaySecrets.Namespace,
 		},
 	}
 
-	result, err := ctrl.CreateOrUpdate(ctx, am.client, htpasswdSecret, func() error {
-		// Generate htpasswd content
+	result, err := ctrl.CreateOrUpdate(ctx, am.client, gatewaySecret, func() error {
+		// Generate htpasswd content from per-cluster secrets
 		htpasswdContent, err := am.generateHtpasswdContent(ctx)
 		if err != nil {
 			return err
 		}
 
 		// Initialize or update the secret data
-		if htpasswdSecret.Data == nil {
-			htpasswdSecret.Data = make(map[string][]byte)
+		if gatewaySecret.Data == nil {
+			gatewaySecret.Data = make(map[string][]byte)
 		}
-		htpasswdSecret.Data[dataKey] = []byte(htpasswdContent)
+		gatewaySecret.Data[dataKey] = []byte(htpasswdContent)
 
 		return nil
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to create or update %s secret: %w", secretName, err)
-	}
-
-	logger.Info("Htpasswd secret processed", "secret", secretName, "result", result)
-	return nil
-}
-
-// AddClusterPassword adds a password for a specific cluster to the auth secret
-func (am *authManager) AddClusterPassword(ctx context.Context, clusterName string) error {
-	logger := log.FromContext(ctx)
-	authSecret := am.getAuthSecret()
-
-	result, err := ctrl.CreateOrUpdate(ctx, am.client, authSecret, func() error {
-		// Initialize Data map if it doesn't exist
-		if authSecret.Data == nil {
-			authSecret.Data = make(map[string][]byte)
-		}
-
-		// Check if cluster already has a password
-		if _, exists := authSecret.Data[clusterName]; exists {
-			return nil // Already exists, no changes needed
-		}
-
-		// Generate password for new cluster
-		password, err := am.passwordGenerator.GeneratePassword(32)
-		if err != nil {
-			return fmt.Errorf("failed to generate password for cluster %s: %w", clusterName, err)
-		}
-
-		// Generate htpasswd entry
-		htpasswdEntry, err := am.passwordGenerator.GenerateHtpasswd(clusterName, password)
-		if err != nil {
-			return fmt.Errorf("failed to generate htpasswd for cluster %s: %w", clusterName, err)
-		}
-
-		// Store both password and htpasswd in JSON format
-		clusterData := ClusterAuthData{
-			Password: password,
-			Htpasswd: htpasswdEntry,
-		}
-		clusterDataBytes, err := json.Marshal(clusterData)
-		if err != nil {
-			return fmt.Errorf("failed to marshal cluster data for %s: %w", clusterName, err)
-		}
-		authSecret.Data[clusterName] = clusterDataBytes
-
-		return nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to create or update auth secret: %w", err)
-	}
-
-	logger.Info("Auth secret processed", "result", result, "cluster", clusterName)
-
-	// Always ensure htpasswd secrets are up to date
-	// This handles cases where auth secret was updated but htpasswd generation failed previously
-	err = am.regenerateHtpasswdSecrets(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to ensure htpasswd secrets are consistent: %w", err)
-	}
-
-	return nil
-}
-
-// RemoveClusterPassword removes a cluster's password from the auth secret
-func (am *authManager) RemoveClusterPassword(ctx context.Context, clusterName string) error {
-	logger := log.FromContext(ctx)
-	authSecret := am.getAuthSecret()
-
-	result, err := ctrl.CreateOrUpdate(ctx, am.client, authSecret, func() error {
-		// If Data doesn't exist, nothing to do
-		if authSecret.Data == nil {
-			return nil
-		}
-		// Check if cluster password exists using comma-ok idiom
-		if _, exists := authSecret.Data[clusterName]; !exists {
-			return nil
-		}
-
-		// Remove cluster entry
-		delete(authSecret.Data, clusterName)
-		return nil
-	})
-
-	if err != nil {
-		// If the namespace or secret doesn't exist, that's fine - cluster is being deleted anyway
+		// If namespace doesn't exist, ignore the error - this happens during deletion
 		if client.IgnoreNotFound(err) == nil {
-			logger.Info("Auth secret or namespace not found during cluster deletion - this is expected", "cluster", clusterName)
 			return nil
 		}
-		return fmt.Errorf("failed to update auth secret: %w", err)
+		return fmt.Errorf("failed to create or update gateway secret %s: %w", secretName, err)
 	}
 
-	logger.Info("Auth secret processed for removal", "result", result, "cluster", clusterName)
-
-	// Always ensure htpasswd secrets are consistent
-	err = am.regenerateHtpasswdSecrets(ctx)
-	if err != nil {
-		// Also ignore not found errors when regenerating - if mimir namespace is gone, that's expected
-		if client.IgnoreNotFound(err) == nil {
-			logger.Info("Mimir namespace not found during htpasswd regeneration - this is expected during deletion", "cluster", clusterName)
-			return nil
-		}
-		return fmt.Errorf("failed to ensure htpasswd secrets are consistent: %w", err)
-	}
-
+	logger.Info("Gateway secret processed", "secret", secretName, "result", result)
 	return nil
 }
 
 // GetClusterPassword retrieves the password for a specific cluster
-func (am *authManager) GetClusterPassword(ctx context.Context, clusterName string) (string, error) {
-	authSecret := am.getAuthSecret()
+func (am *authManager) GetClusterPassword(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
+	clusterSecret := am.getClusterSecret(cluster)
 
-	err := am.client.Get(ctx, types.NamespacedName{
-		Name:      am.config.AuthSecretName,
-		Namespace: am.config.AuthSecretNamespace,
-	}, authSecret)
+	err := am.client.Get(ctx, client.ObjectKeyFromObject(clusterSecret), clusterSecret)
 	if err != nil {
-		return "", fmt.Errorf("failed to get auth secret: %w", err)
+		return "", fmt.Errorf("failed to get cluster auth secret: %w", err)
 	}
 
-	// Check if cluster data exists
-	if clusterAuthBytes, exists := authSecret.Data[clusterName]; exists {
-		var clusterAuthData ClusterAuthData
-		if err := json.Unmarshal(clusterAuthBytes, &clusterAuthData); err != nil {
-			return "", fmt.Errorf("failed to unmarshal cluster data for %s: %w", clusterName, err)
-		}
-		return clusterAuthData.Password, nil
+	password, exists := clusterSecret.Data["password"]
+	if !exists {
+		return "", fmt.Errorf("password not found in cluster auth secret")
 	}
 
-	return "", fmt.Errorf("password not found for cluster %s", clusterName)
+	return string(password), nil
 }
 
-// regenerateHtpasswdSecrets ensures both ingress and httproute secrets are up to date
-// This method always checks and updates the secrets regardless of whether changes were made
-// to fix potential consistency issues from previous failed operations
-func (am *authManager) regenerateHtpasswdSecrets(ctx context.Context) error {
-	err := am.createOrUpdateHtpasswdSecret(ctx, am.config.IngressSecretName, IngressDataKey)
+// regenerateGatewaySecrets ensures both ingress and httproute gateway secrets are up to date
+// This method aggregates htpasswd entries from all cluster secrets
+func (am *authManager) regenerateGatewaySecrets(ctx context.Context) error {
+	logger := log.FromContext(ctx)
+
+	// Update ingress gateway secret
+	err := am.createOrUpdateGatewaySecret(ctx,
+		am.config.GatewaySecrets.IngressSecretName,
+		am.config.GatewaySecrets.IngressDataKey)
 	if err != nil {
-		return fmt.Errorf("failed to update ingress secret: %w", err)
+		// Ignore namespace not found errors during deletion - this is expected
+		if client.IgnoreNotFound(err) == nil {
+			logger.Info("Gateway secrets namespace not found during regeneration - this is expected during deletion")
+			return nil
+		}
+		return fmt.Errorf("failed to update ingress gateway secret: %w", err)
 	}
-	err = am.createOrUpdateHtpasswdSecret(ctx, am.config.HTTPRouteSecretName, HTTPRouteDataKey)
+
+	// Update HTTPRoute gateway secret
+	err = am.createOrUpdateGatewaySecret(ctx,
+		am.config.GatewaySecrets.HTTPRouteSecretName,
+		am.config.GatewaySecrets.HTTPRouteDataKey)
 	if err != nil {
-		return fmt.Errorf("failed to update httproute secret: %w", err)
+		// Ignore namespace not found errors during deletion - this is expected
+		if client.IgnoreNotFound(err) == nil {
+			logger.Info("Gateway secrets namespace not found during regeneration - this is expected during deletion")
+			return nil
+		}
+		return fmt.Errorf("failed to update HTTPRoute gateway secret: %w", err)
 	}
 
 	return nil
 }
 
-// DeleteAllSecrets deletes all managed secrets
-func (am *authManager) DeleteAllSecrets(ctx context.Context) error {
-	// Delete ingress secret
+// EnsureClusterAuth ensures cluster authentication is configured (implements controller interface)
+func (am *authManager) EnsureClusterAuth(ctx context.Context, cluster *clusterv1.Cluster) error {
+	logger := log.FromContext(ctx)
+
+	// Create per-cluster secret with owner reference
+	clusterSecret := am.getClusterSecret(cluster)
+
+	result, err := ctrl.CreateOrUpdate(ctx, am.client, clusterSecret, func() error {
+		// Set owner reference for automatic cleanup
+		if err := controllerutil.SetControllerReference(cluster, clusterSecret, am.client.Scheme()); err != nil {
+			return fmt.Errorf("failed to set owner reference: %w", err)
+		}
+
+		// Set labels for easy identification and filtering
+		if clusterSecret.Labels == nil {
+			clusterSecret.Labels = make(map[string]string)
+		}
+		clusterSecret.Labels["app.kubernetes.io/component"] = fmt.Sprintf("%s-auth", am.config.AuthType)
+		clusterSecret.Labels["app.kubernetes.io/part-of"] = "observability-operator"
+		clusterSecret.Labels["observability.giantswarm.io/cluster"] = cluster.Name
+		clusterSecret.Labels["observability.giantswarm.io/auth-type"] = string(am.config.AuthType)
+
+		// Initialize Data map if it doesn't exist
+		if clusterSecret.Data == nil {
+			clusterSecret.Data = make(map[string][]byte)
+		}
+
+		// Check if password and htpasswd already exists
+		if _, hasPassword := clusterSecret.Data["password"]; hasPassword {
+			if _, hasHtpasswd := clusterSecret.Data["htpasswd"]; hasHtpasswd {
+				return nil // Already configured
+			}
+		}
+
+		// Generate new credentials
+		password, err := am.passwordGenerator.GeneratePassword(32)
+		if err != nil {
+			return fmt.Errorf("failed to generate password: %w", err)
+		}
+
+		htpasswdEntry, err := am.passwordGenerator.GenerateHtpasswd(cluster.Name, password)
+		if err != nil {
+			return fmt.Errorf("failed to generate htpasswd: %w", err)
+		}
+
+		// Store credentials
+		clusterSecret.Data["password"] = []byte(password)
+		clusterSecret.Data["htpasswd"] = []byte(htpasswdEntry)
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to create or update cluster auth secret: %w", err)
+	}
+
+	logger.Info("Cluster auth secret processed", "secret", clusterSecret.Name, "result", result)
+
+	// Regenerate gateway secrets to include this cluster
+	return am.regenerateGatewaySecrets(ctx)
+}
+
+// DeleteClusterAuth removes cluster authentication (implements controller interface)
+func (am *authManager) DeleteClusterAuth(ctx context.Context, cluster *clusterv1.Cluster) error {
+	logger := log.FromContext(ctx)
+
+	clusterSecret := am.getClusterSecret(cluster)
+
+	// Delete cluster secret (owner reference should handle this automatically, but be explicit)
+	err := client.IgnoreNotFound(am.client.Delete(ctx, clusterSecret))
+	if err != nil {
+		return fmt.Errorf("failed to delete cluster auth secret: %w", err)
+	}
+
+	logger.Info("Cluster auth secret deleted", "secret", clusterSecret.Name)
+
+	// Regenerate gateway secrets to exclude this cluster
+	return am.regenerateGatewaySecrets(ctx)
+}
+
+// DeleteGatewaySecrets deletes all managed gateway secrets (for cleanup)
+func (am *authManager) DeleteGatewaySecrets(ctx context.Context) error {
+	// Delete gateway secrets
 	ingressSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      am.config.IngressSecretName,
-			Namespace: am.config.SecretsNamespace,
+			Name:      am.config.GatewaySecrets.IngressSecretName,
+			Namespace: am.config.GatewaySecrets.Namespace,
 		},
 	}
 	if err := client.IgnoreNotFound(am.client.Delete(ctx, ingressSecret)); err != nil {
-		return fmt.Errorf("failed to delete ingress secret %s/%s: %w", am.config.SecretsNamespace, am.config.IngressSecretName, err)
+		return fmt.Errorf("failed to delete ingress gateway secret: %w", err)
 	}
 
-	// Delete httproute secret
 	httprouteSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      am.config.HTTPRouteSecretName,
-			Namespace: am.config.SecretsNamespace,
+			Name:      am.config.GatewaySecrets.HTTPRouteSecretName,
+			Namespace: am.config.GatewaySecrets.Namespace,
 		},
 	}
 	if err := client.IgnoreNotFound(am.client.Delete(ctx, httprouteSecret)); err != nil {
-		return fmt.Errorf("failed to delete httproute secret %s/%s: %w", am.config.SecretsNamespace, am.config.HTTPRouteSecretName, err)
+		return fmt.Errorf("failed to delete HTTPRoute gateway secret: %w", err)
 	}
 
-	// Delete auth secret
-	authSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      am.config.AuthSecretName,
-			Namespace: am.config.AuthSecretNamespace,
-		},
+	// Delete all cluster auth secrets (they should be cleaned up by owner references, but be explicit)
+	secretList := &corev1.SecretList{}
+	err := am.client.List(ctx, secretList,
+		client.MatchingLabels{
+			"app.kubernetes.io/component":           fmt.Sprintf("%s-auth", am.config.AuthType),
+			"observability.giantswarm.io/auth-type": string(am.config.AuthType),
+		})
+	if err != nil {
+		return fmt.Errorf("failed to list cluster auth secrets for deletion: %w", err)
 	}
-	if err := client.IgnoreNotFound(am.client.Delete(ctx, authSecret)); err != nil {
-		return fmt.Errorf("failed to delete auth secret %s/%s: %w", am.config.AuthSecretNamespace, am.config.AuthSecretName, err)
+
+	for _, secret := range secretList.Items {
+		if err := client.IgnoreNotFound(am.client.Delete(ctx, &secret)); err != nil {
+			return fmt.Errorf("failed to delete cluster auth secret %s: %w", secret.Name, err)
+		}
 	}
 
 	return nil
