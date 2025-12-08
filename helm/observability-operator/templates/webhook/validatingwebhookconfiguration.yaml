@@ -91,8 +91,8 @@ webhooks:
   - v1
   clientConfig:
     service:
-      name: webhook-service
-      namespace: system
+      name: {{ include "resource.default.name" . }}-webhook
+      namespace: {{ .Release.Namespace }}
       path: /validate-v1alpha2-grafana-organization
   failurePolicy: Fail
   name: grafanaorganizationv1alpha2.observability.giantswarm.io
