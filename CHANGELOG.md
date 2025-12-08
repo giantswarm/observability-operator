@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.51.2] - 2025-12-08
+
 ### Fixed
 
 - Fix GrafanaOrganization v1alpha2 validation webhook service name to match Helm deployment.
@@ -799,7 +801,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.51.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.51.2...HEAD
+[0.51.2]: https://github.com/giantswarm/observability-operator/compare/v0.51.1...v0.51.2
 [0.51.1]: https://github.com/giantswarm/observability-operator/compare/v0.51.0...v0.51.1
 [0.51.0]: https://github.com/giantswarm/observability-operator/compare/v0.50.0...v0.51.0
 [0.50.0]: https://github.com/giantswarm/observability-operator/compare/v0.49.0...v0.50.0
