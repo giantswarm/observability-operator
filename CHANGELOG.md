@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.51.0] - 2025-12-08
+
 ### Added
 
 - Add v1alpha2 API with conversion webhooks and enhanced multi-tenant configuration support for GrafanaOrganization CRD with more granular data access types.
@@ -787,7 +789,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.50.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.51.0...HEAD
+[0.51.0]: https://github.com/giantswarm/observability-operator/compare/v0.50.0...v0.51.0
 [0.50.0]: https://github.com/giantswarm/observability-operator/compare/v0.49.0...v0.50.0
 [0.49.0]: https://github.com/giantswarm/observability-operator/compare/v0.48.1...v0.49.0
 [0.48.1]: https://github.com/giantswarm/observability-operator/compare/v0.48.0...v0.48.1
