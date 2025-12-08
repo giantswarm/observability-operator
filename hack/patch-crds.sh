@@ -13,11 +13,9 @@ add_conversion_webhook() {
     # Check if conversion config already exists
     if grep -q "conversion:" "$CRD_FILE"; then
         echo "Conversion webhook configuration already exists"
-        return 0
-    fi
-    
-    # Add conversion webhook config after "scope: Cluster"
-    sed -i '/scope: Cluster/a\
+    else
+        # Add conversion webhook config after "scope: Cluster"
+        sed -i '/scope: Cluster/a\
   conversion:\
     strategy: Webhook\
     webhook:\
@@ -29,8 +27,17 @@ add_conversion_webhook() {
       conversionReviewVersions:\
       - v1\
       - v1beta1' "$CRD_FILE"
+        echo "Conversion webhook configuration added successfully"
+    fi
     
-    echo "Conversion webhook configuration added successfully"
+    # Add cert-manager CA injection annotation
+    if ! grep -q "cert-manager.io/inject-ca-from" "$CRD_FILE"; then
+        sed -i '/controller-gen.kubebuilder.io\/version/a\
+    cert-manager.io/inject-ca-from: monitoring/observability-operator-webhook-cert' "$CRD_FILE"
+        echo "CA injection annotation added successfully"
+    else
+        echo "CA injection annotation already exists"
+    fi
 }
 
 # Function to add MCB deployment comment
