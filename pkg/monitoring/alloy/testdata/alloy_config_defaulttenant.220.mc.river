@@ -38,6 +38,28 @@ prometheus.operator.servicemonitors "giantswarm_legacy" {
       operator = "DoesNotExist"
     }
   }
+  // Add the target's app.kubernetes.io/instance value into the metrics's app label
+  // In the scope of servicemonitors the app.kubernetes.io/instance might be
+  // exposed by 3 different Kubernetes resources.
+  // The precedences order from highest to lowest is: Pod, Endpoint, Service.
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
   scrape {
     default_scrape_interval = "60s"
   }
@@ -58,6 +80,13 @@ prometheus.operator.podmonitors "giantswarm_legacy" {
       operator = "DoesNotExist"
     }
   }
+  // Add the Pod app.kubernetes.io/instance value into the metrics's app label
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
   scrape {
     default_scrape_interval = "60s"
   }
@@ -76,6 +105,28 @@ prometheus.operator.servicemonitors "giantswarm" {
       values   = ["giantswarm"]
     }
   }
+  // Add the target's app.kubernetes.io/instance value into the metrics's app label
+  // In the scope of servicemonitors the app.kubernetes.io/instance might be
+  // exposed by 3 different Kubernetes resources.
+  // The precedences order from highest to lowest is: Pod, Endpoint, Service.
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
   scrape {
     default_scrape_interval = "60s"
   }
@@ -92,6 +143,13 @@ prometheus.operator.podmonitors "giantswarm" {
       operator = "In"
       values   = ["giantswarm"]
     }
+  }
+  // Add the Pod app.kubernetes.io/instance value into the metrics's app label
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
   }
   scrape {
     default_scrape_interval = "60s"

@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move password generation into auth package for complete self-containment.
 - Consolidate cluster password retrieval into auth package, removing duplicate functionality from monitoring package.
 - Use cluster name as user in Alloy secret to authenticate against Mimir.
+- Set `app` label on metrics to the value of the ServiceMonitor/PodMonitor target resource `app.kubernetes.io/instance` label
 
 ### Removed
 
