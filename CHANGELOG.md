@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix CRD conversion webhook service name to match Helm deployment.
+
 ## [0.51.0] - 2025-12-08
 
 ### Added

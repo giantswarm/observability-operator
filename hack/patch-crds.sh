@@ -23,8 +23,8 @@ add_conversion_webhook() {
     webhook:\
       clientConfig:\
         service:\
-          name: observability-operator-webhook-service\
-          namespace: system\
+          name: observability-operator-webhook\
+          namespace: monitoring\
           path: /convert\
       conversionReviewVersions:\
       - v1\
