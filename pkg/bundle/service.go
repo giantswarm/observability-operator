@@ -9,15 +9,15 @@ import (
 	"github.com/blang/semver/v4"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
-	apimachineryerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
@@ -42,92 +42,91 @@ func getConfigMapObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 	}
 }
 
-// Configure configures the observability-bundle application.
-// the observabilitybundle application to enable monitoring agents.
+// Configure creates or updates the observability-bundle configuration based on
+// cluster feature flags and links it to the bundle app via extraConfigs.
 func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clusterv1.Cluster) error {
-	logger := log.FromContext(ctx).WithValues("appName", observabilityBundleAppName)
-	logger.Info("configuring application")
+	logger := log.FromContext(ctx)
+	logger.Info("configuring bundle")
 
-	bundleConfiguration := bundleConfiguration{
-		Apps: map[string]app{
-			commonmonitoring.MonitoringAlloyAppName: {
-				AppName: commonmonitoring.AlloyMonitoringAgentAppName,
+	bundleConfig := s.buildBundleConfiguration(cluster)
 
-				Enabled: s.config.Monitoring.IsMonitored(cluster),
-			},
-		},
-	}
-	logger.Info("create or update configmap")
-	err := s.createOrUpdateObservabilityBundleConfigMap(ctx, cluster, bundleConfiguration)
+	logger.Info("creating or updating configmap")
+	err := s.createOrUpdateConfigMap(ctx, cluster, bundleConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create or update observability bundle configmap: %w", err)
+		return fmt.Errorf("failed to create/update bundle configmap: %w", err)
 	}
+	logger.Info("configmap created or updated successfully")
 
-	logger.Info("configure application")
-	err = s.configureObservabilityBundleApp(ctx, cluster)
+	logger.Info("configuring bundle")
+	err = s.configureApp(ctx, cluster)
 	if err != nil {
-		return fmt.Errorf("failed to configure observability bundle app: %w", err)
+		return fmt.Errorf("failed to configure bundle: %w", err)
 	}
 
-	logger.Info("application is configured successfully")
+	logger.Info("bundle configured successfully")
 
 	return nil
 }
 
-func (s BundleConfigurationService) createOrUpdateObservabilityBundleConfigMap(
-	ctx context.Context, cluster *clusterv1.Cluster, configuration bundleConfiguration) error {
-
-	logger := log.FromContext(ctx)
-
-	values, err := yaml.Marshal(configuration)
-	if err != nil {
-		return fmt.Errorf("failed to marshal configuration to yaml: %w", err)
+// buildBundleConfiguration creates the bundle configuration based on cluster feature flags.
+func (s BundleConfigurationService) buildBundleConfiguration(cluster *clusterv1.Cluster) bundleConfiguration {
+	return bundleConfiguration{
+		Apps: map[string]app{
+			apps.AlloyMetricsHelmValueKey: {
+				AppName: apps.AlloyMetricsAppName,
+				Enabled: s.config.Monitoring.IsMonitoringEnabled(cluster),
+			},
+			apps.AlloyLogsHelmValueKey: {
+				AppName: apps.AlloyLogsAppName,
+				Enabled: s.config.Logging.IsLoggingEnabled(cluster),
+			},
+			apps.AlloyEventsHelmValueKey: {
+				AppName: apps.AlloyEventsAppName,
+				Enabled: s.isEventsEnabled(cluster),
+			},
+		},
 	}
+}
 
+// isEventsEnabled returns true if events logging should be enabled.
+// Events are enabled when either logging or tracing is enabled.
+func (s BundleConfigurationService) isEventsEnabled(cluster *clusterv1.Cluster) bool {
+	return s.config.Logging.IsLoggingEnabled(cluster) || s.config.Tracing.IsTracingEnabled(cluster)
+}
+
+func (s BundleConfigurationService) createOrUpdateConfigMap(ctx context.Context, cluster *clusterv1.Cluster, configuration bundleConfiguration) error {
 	configMapObjectKey := getConfigMapObjectKey(cluster)
-	desired := v1.ConfigMap{
+	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      configMapObjectKey.Name,
 			Namespace: configMapObjectKey.Namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/name":       observabilityBundleAppName,
-				"app.kubernetes.io/managed-by": "observability-operator",
-				"app.kubernetes.io/part-of":    "observability-platform",
-			},
 		},
-		Data: map[string]string{"values": string(values)},
 	}
 
-	var current v1.ConfigMap
-	err = s.client.Get(ctx, configMapObjectKey, &current)
-	if err != nil {
-		if apimachineryerrors.IsNotFound(err) {
-			err = s.client.Create(ctx, &desired)
-			if err != nil {
-				return fmt.Errorf("failed to create configmap: %w", err)
-			}
-			logger.Info("configuration created")
-		} else {
-			return fmt.Errorf("failed to get configmap: %w", err)
+	_, err := controllerutil.CreateOrUpdate(ctx, s.client, configMap, func() error {
+		configMap.Labels = map[string]string{
+			"app.kubernetes.io/name":       observabilityBundleAppName,
+			"app.kubernetes.io/managed-by": "observability-operator",
+			"app.kubernetes.io/part-of":    "observability-platform",
 		}
-	}
-
-	if !reflect.DeepEqual(current.Data, desired.Data) ||
-		!reflect.DeepEqual(current.Labels, desired.Labels) {
-		err := s.client.Update(ctx, &desired)
+		values, err := yaml.Marshal(configuration)
 		if err != nil {
-			return fmt.Errorf("failed to update configmap: %w", err)
+			return fmt.Errorf("failed to marshal configuration to yaml: %w", err)
 		}
-		logger.Info("configuration updated")
+
+		configMap.Data = map[string]string{
+			"values": string(values),
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create/update configmap: %w", err)
 	}
 
-	logger.Info("configuration up to date")
 	return nil
 }
 
-func (s BundleConfigurationService) configureObservabilityBundleApp(
-	ctx context.Context, cluster *clusterv1.Cluster) error {
-
+func (s BundleConfigurationService) configureApp(ctx context.Context, cluster *clusterv1.Cluster) error {
 	configMapObjectKey := getConfigMapObjectKey(cluster)
 
 	// Get observability bundle app metadata.

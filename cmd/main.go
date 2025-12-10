@@ -129,7 +129,7 @@ func parseFlags() (err error) {
 	flag.StringVar(&cfg.Monitoring.AlertmanagerURL, "alertmanager-url", "",
 		"The URL of the Alertmanager API.")
 	flag.BoolVar(&cfg.Monitoring.Enabled, "monitoring-enabled", false,
-		"Enable monitoring at the management cluster level.")
+		"Enable monitoring at the installation level.")
 	flag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
 		"Configures the number of time series needed to add an extra prometheus agent shard.")
 	flag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
@@ -165,11 +165,11 @@ func parseFlags() (err error) {
 
 	// Tracing configuration flags
 	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
-		"Enable distributed tracing support in Grafana.")
+		"Enable distributed tracing at the installation level.")
 
 	// Logging configuration flags
 	flag.BoolVar(&cfg.Logging.Enabled, "logging-enabled", false,
-		"Enable logging support in Grafana.")
+		"Enable logging at the installation level.")
 
 	// Zap logging options
 	opts := zap.Options{

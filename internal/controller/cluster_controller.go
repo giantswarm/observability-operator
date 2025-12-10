@@ -163,7 +163,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		logger.Info("monitoring is disabled at the installation level.")
 	}
 
-	if !r.Config.Monitoring.IsMonitored(cluster) {
+	if !r.Config.Monitoring.IsMonitoringEnabled(cluster) {
 		logger.Info("monitoring is disabled for this cluster.")
 	}
 
@@ -209,7 +209,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Cluster specific configuration
-	if r.Config.Monitoring.IsMonitored(cluster) {
+	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
 		// Ensure cluster has authentication configured for metrics
 		err = r.MimirAuthManager.EnsureClusterAuth(ctx, cluster)
 		if err != nil {
@@ -262,7 +262,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 
 		// Cluster specific configuration
-		if r.Config.Monitoring.IsMonitored(cluster) {
+		if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
 			// Delete Alloy monitoring configuration.
 			err = r.AlloyService.ReconcileDelete(ctx, cluster)
 			if err != nil {
