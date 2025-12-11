@@ -46,24 +46,23 @@ func getConfigMapObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 // cluster feature flags and links it to the bundle app via extraConfigs.
 func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
-	logger.Info("configuring bundle")
 
 	bundleConfig := s.buildBundleConfiguration(cluster)
 
-	logger.Info("creating or updating configmap")
+	logger.Info("creating or updating observability-bundle configmap")
 	err := s.createOrUpdateConfigMap(ctx, cluster, bundleConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create/update bundle configmap: %w", err)
+		return err
 	}
-	logger.Info("configmap created or updated successfully")
+	logger.Info("observability-bundle configmap created or updated successfully")
 
-	logger.Info("configuring bundle")
+	logger.Info("configuring observability-bundle app")
 	err = s.configureApp(ctx, cluster)
 	if err != nil {
-		return fmt.Errorf("failed to configure bundle: %w", err)
+		return fmt.Errorf("failed to configure observability-bundle app: %w", err)
 	}
 
-	logger.Info("bundle configured successfully")
+	logger.Info("observability-bundle app configured successfully")
 
 	return nil
 }
@@ -129,7 +128,7 @@ func (s BundleConfigurationService) createOrUpdateConfigMap(ctx context.Context,
 func (s BundleConfigurationService) configureApp(ctx context.Context, cluster *clusterv1.Cluster) error {
 	configMapObjectKey := getConfigMapObjectKey(cluster)
 
-	// Get observability bundle app metadata.
+	// Get observability-bundle app metadata.
 	appObjectKey := types.NamespacedName{
 		Name:      fmt.Sprintf("%s-%s", cluster.Name, observabilityBundleAppName),
 		Namespace: cluster.Namespace,
@@ -138,7 +137,7 @@ func (s BundleConfigurationService) configureApp(ctx context.Context, cluster *c
 	var current appv1.App
 	err := s.client.Get(ctx, appObjectKey, &current)
 	if err != nil {
-		return fmt.Errorf("failed to get app: %w", err)
+		return fmt.Errorf("failed to get observability-bundle app: %w", err)
 	}
 
 	desired := current.DeepCopy()
@@ -166,7 +165,7 @@ func (s BundleConfigurationService) configureApp(ctx context.Context, cluster *c
 	if !reflect.DeepEqual(current, *desired) {
 		err := s.client.Update(ctx, desired)
 		if err != nil {
-			return fmt.Errorf("failed to update app: %w", err)
+			return fmt.Errorf("failed to update observability-bundle app: %w", err)
 		}
 	}
 
@@ -176,7 +175,7 @@ func (s BundleConfigurationService) configureApp(ctx context.Context, cluster *c
 func (s BundleConfigurationService) RemoveConfiguration(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
 
-	logger.Info("deleting observability-bundle configuration")
+	logger.Info("deleting observability-bundle configmap")
 
 	configMapObjectKey := getConfigMapObjectKey(cluster)
 	var current = v1.ConfigMap{
@@ -186,19 +185,19 @@ func (s BundleConfigurationService) RemoveConfiguration(ctx context.Context, clu
 		},
 	}
 	if err := s.client.Delete(ctx, &current); client.IgnoreNotFound(err) != nil {
-		return fmt.Errorf("failed to delete observability bundle configmap: %w", err)
+		return fmt.Errorf("failed to delete observability-bundle configmap: %w", err)
 	}
 
-	logger.Info("observability-bundle configuration has been deleted successfully")
+	logger.Info("observability-bundle configmap has been deleted successfully")
 
 	return nil
 }
 
-// GetObservabilityBundleAppVersion retrieves the version of the observability bundle app
+// GetObservabilityBundleAppVersion retrieves the version of the observability-bundle app
 // installed in the cluster. It returns an error if the app is not found or if
 // the version cannot be parsed.
 func (s BundleConfigurationService) GetObservabilityBundleAppVersion(ctx context.Context, cluster *clusterv1.Cluster) (version semver.Version, err error) {
-	// Get observability bundle app metadata.
+	// Get observability-bundle app metadata.
 	appMeta := types.NamespacedName{
 		Name:      fmt.Sprintf("%s-%s", cluster.GetName(), observabilityBundleAppName),
 		Namespace: cluster.GetNamespace(),
@@ -207,7 +206,7 @@ func (s BundleConfigurationService) GetObservabilityBundleAppVersion(ctx context
 	var currentApp appv1.App
 	err = s.client.Get(ctx, appMeta, &currentApp)
 	if err != nil {
-		return version, fmt.Errorf("failed to get observability bundle app: %w", err)
+		return version, fmt.Errorf("failed to get observability-bundle app: %w", err)
 	}
 	return semver.Parse(currentApp.Spec.Version)
 }
