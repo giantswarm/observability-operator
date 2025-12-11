@@ -26,6 +26,12 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 )
 
+// authManagerEntry pairs an auth manager with its feature check function
+type authManagerEntry struct {
+	authManager auth.AuthManager
+	isEnabled   func(*clusterv1.Cluster) bool
+}
+
 // ClusterMonitoringReconciler reconciles a Cluster object
 type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
@@ -35,8 +41,8 @@ type ClusterMonitoringReconciler struct {
 	AlloyService alloy.Service
 	// HeartbeatRepositories is the list of repositories for managing heartbeats.
 	HeartbeatRepositories []heartbeat.HeartbeatRepository
-	// MimirAuthManager manages mimir authentication secrets.
-	MimirAuthManager auth.AuthManager
+	// authManagers contains all authentication managers with their feature checks.
+	authManagers map[auth.AuthType]authManagerEntry
 	// BundleConfigurationService is the service for configuring the observability bundle.
 	BundleConfigurationService *bundle.BundleConfigurationService
 	// FinalizerHelper is the helper for managing finalizers.
@@ -75,6 +81,42 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		),
 	)
 
+	lokiAuthManager := auth.NewAuthManager(
+		managerClient,
+		auth.NewConfig(
+			auth.AuthTypeLogs,             // authType
+			"loki",                        // gatewaySecretsNamespace
+			"loki-gateway-ingress-auth",   // ingressSecretName
+			"loki-gateway-httproute-auth", // httprouteSecretName
+		),
+	)
+
+	tempoAuthManager := auth.NewAuthManager(
+		managerClient,
+		auth.NewConfig(
+			auth.AuthTypeTraces,            // authType
+			"tempo",                        // gatewaySecretsNamespace
+			"tempo-gateway-ingress-auth",   // ingressSecretName
+			"tempo-gateway-httproute-auth", // httprouteSecretName
+		),
+	)
+
+	// Build map of auth managers with their feature checks
+	authManagers := map[auth.AuthType]authManagerEntry{
+		auth.AuthTypeMetrics: {
+			authManager: mimirAuthManager,
+			isEnabled:   cfg.Monitoring.IsMonitored,
+		},
+		auth.AuthTypeLogs: {
+			authManager: lokiAuthManager,
+			isEnabled:   cfg.Logging.IsLoggingEnabled,
+		},
+		auth.AuthTypeTraces: {
+			authManager: tempoAuthManager,
+			isEnabled:   cfg.Tracing.IsTracingEnabled,
+		},
+	}
+
 	alloyService := alloy.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
@@ -87,7 +129,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		Config:                     cfg,
 		HeartbeatRepositories:      heartbeatRepositories,
 		AlloyService:               alloyService,
-		MimirAuthManager:           mimirAuthManager,
+		authManagers:               authManagers,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
@@ -208,15 +250,25 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 	}
 
-	// Cluster specific configuration
-	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-		// Ensure cluster has authentication configured for metrics
-		err = r.MimirAuthManager.EnsureClusterAuth(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to ensure cluster auth for metrics")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	// Handle authentication for all observability backends
+	for authType, entry := range r.authManagers {
+		if entry.isEnabled(cluster) {
+			err = entry.authManager.EnsureClusterAuth(ctx, cluster)
+			if err != nil {
+				logger.Error(err, fmt.Sprintf("failed to ensure cluster auth for %s", authType))
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			}
+		} else {
+			err = entry.authManager.DeleteClusterAuth(ctx, cluster)
+			if err != nil {
+				logger.Error(err, fmt.Sprintf("failed to delete cluster auth for %s", authType))
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			}
 		}
+	}
 
+	// Metrics-specific: Alloy monitoring configuration
+	if r.Config.Monitoring.IsMonitored(cluster) {
 		observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to configure get observability-bundle version")
@@ -230,13 +282,6 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 	} else {
-		// Remove cluster auth when monitoring disabled
-		err = r.MimirAuthManager.DeleteClusterAuth(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete cluster auth for metrics")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-		}
-
 		// Clean up any existing alloy monitoring configuration
 		err = r.AlloyService.ReconcileDelete(ctx, cluster)
 		if err != nil {
@@ -261,20 +306,23 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 
-		// Cluster specific configuration
+		// Metrics-specific: Delete Alloy monitoring configuration
 		if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-			// Delete Alloy monitoring configuration.
 			err = r.AlloyService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy monitoring config")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
+		}
 
-			// Remove cluster auth on cluster deletion
-			err = r.MimirAuthManager.DeleteClusterAuth(ctx, cluster)
-			if err != nil {
-				logger.Error(err, "failed to delete cluster auth for metrics")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		// Delete cluster auth for all enabled observability backends
+		for authType, entry := range r.authManagers {
+			if entry.isEnabled(cluster) {
+				err = entry.authManager.DeleteClusterAuth(ctx, cluster)
+				if err != nil {
+					logger.Error(err, fmt.Sprintf("failed to delete cluster auth for %s", authType))
+					return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+				}
 			}
 		}
 		// TODO add deletion of rules in the Mimir ruler on cluster deletion
@@ -322,7 +370,7 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 	return nil
 }
 
-// tearDown tears down the monitoring stack management cluster specific components like the hearbeat, mimir secrets and so on.
+// tearDown tears down the monitoring stack management cluster specific components like the hearbeat, gateway secrets and so on.
 func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
 	for i, heartbeatRepo := range r.HeartbeatRepositories {
 		err := heartbeatRepo.Delete(ctx)
@@ -331,9 +379,12 @@ func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
 		}
 	}
 
-	err := r.MimirAuthManager.DeleteGatewaySecrets(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to delete mimir secrets: %w", err)
+	// Delete all gateway secrets for all observability backends
+	for authType, entry := range r.authManagers {
+		err := entry.authManager.DeleteGatewaySecrets(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete %s secrets: %w", authType, err)
+		}
 	}
 
 	return nil

@@ -117,6 +117,16 @@ var _ = Describe("Cluster Controller", func() {
 				AuthManager: mimirAuthManager,
 			}
 
+			// Create auth managers map for the reconciler
+			authManagers := map[auth.AuthType]authManagerEntry{
+				auth.AuthTypeMetrics: {
+					authManager: mimirAuthManager,
+					isEnabled: func(c *clusterv1.Cluster) bool {
+						return config.Config{Monitoring: config.MonitoringConfig{Enabled: true}}.Monitoring.IsMonitored(c)
+					},
+				},
+			}
+
 			reconciler = &ClusterMonitoringReconciler{
 				Client: k8sClient,
 				Config: config.Config{
@@ -132,7 +142,7 @@ var _ = Describe("Cluster Controller", func() {
 				},
 				BundleConfigurationService: bundleService,
 				AlloyService:               alloyService,
-				MimirAuthManager:           mimirAuthManager,
+				authManagers:               authManagers,
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
 			}
 		})

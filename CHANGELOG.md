@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add enabling/disabling of the logging and events/tracing alloys towards the removal of the logging-operator.
+- Use authManager for logs and traces. This is creating the secrets per cluster as well as the ingress and http route secrets but those are not used yet.
 
 ## [0.51.2] - 2025-12-08
 
