@@ -112,13 +112,13 @@ func TestDatasourceMimirCardinality(t *testing.T) {
 
 func TestGenerateDatasources(t *testing.T) {
 	tests := []struct {
-		name            string
-		organization    *organization.Organization
-		tracingEnabled  bool
-		expectedLen     int
-		checkTempo      bool
-		checkShared     bool
-		checkAlerting   bool
+		name             string
+		organization     *organization.Organization
+		tracingEnabled   bool
+		expectedLen      int
+		checkTempo       bool
+		checkShared      bool
+		checkAlerting    bool
 		perTenantDSCount int
 	}{
 		{
