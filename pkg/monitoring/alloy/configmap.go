@@ -16,6 +16,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/blang/semver/v4"
 
+	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
@@ -58,7 +59,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	}
 
 	// Compute the number of shards based on the number of series.
-	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", service="%s"})by(pod))[6h:1h]))`, cluster.Name, commonmonitoring.AlloyMonitoringAgentAppName)
+	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", service="%s"})by(pod))[6h:1h]))`, cluster.Name, apps.AlloyMetricsAppName)
 	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, a.Monitoring.MetricsQueryURL)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to query head series")
@@ -147,8 +148,8 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		IsSupportingScrapeConfigs bool
 	}{
-		AlloySecretName:      commonmonitoring.AlloyMonitoringAgentAppName,
-		AlloySecretNamespace: commonmonitoring.AlloyMonitoringAgentAppNamespace,
+		AlloySecretName:      apps.AlloyMetricsAppName,
+		AlloySecretNamespace: apps.AlloyNamespace,
 
 		MimirRulerAPIURLKey:                   mimirRulerAPIURLKey,
 		MimirRemoteWriteAPIUsernameKey:        mimirRemoteWriteAPIUsernameKey,

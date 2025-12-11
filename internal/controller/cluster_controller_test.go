@@ -122,7 +122,7 @@ var _ = Describe("Cluster Controller", func() {
 				auth.AuthTypeMetrics: {
 					authManager: mimirAuthManager,
 					isEnabled: func(c *clusterv1.Cluster) bool {
-						return config.Config{Monitoring: config.MonitoringConfig{Enabled: true}}.Monitoring.IsMonitored(c)
+						return config.Config{Monitoring: config.MonitoringConfig{Enabled: true}}.Monitoring.IsMonitoringEnabled(c)
 					},
 				},
 			}

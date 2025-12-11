@@ -16,14 +16,6 @@ const (
 	// ServicePriorityLabel is the label used to determine the priority of a service.
 	servicePriorityLabel = "giantswarm.io/service-priority"
 
-	// secret is created in via https://github.com/giantswarm/alloy-app/blob/main/helm/alloy/templates/secret.yaml.
-	// this means the secret is created in the same namespace and with the same name as the alloy app.
-	AlloyMonitoringAgentAppName      = "alloy-metrics"
-	AlloyMonitoringAgentAppNamespace = "kube-system"
-
-	// Applications name in the observability-bundle
-	MonitoringAlloyAppName = "alloyMetrics"
-
 	PriorityClassName = "giantswarm-critical"
 
 	QueueConfigCapacity          = 30000
