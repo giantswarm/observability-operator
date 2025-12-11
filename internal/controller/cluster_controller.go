@@ -105,7 +105,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	authManagers := map[auth.AuthType]authManagerEntry{
 		auth.AuthTypeMetrics: {
 			authManager: mimirAuthManager,
-			isEnabled:   cfg.Monitoring.IsMonitored,
+			isEnabled:   cfg.Monitoring.IsMonitoringEnabled,
 		},
 		auth.AuthTypeLogs: {
 			authManager: lokiAuthManager,
@@ -268,7 +268,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Metrics-specific: Alloy monitoring configuration
-	if r.Config.Monitoring.IsMonitored(cluster) {
+	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
 		observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to configure get observability-bundle version")
