@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add enabling/disabling of the logging and events/tracing alloys towards the removal of the logging-operator.
+
 ## [0.52.0] - 2025-12-16
 
 ### Added

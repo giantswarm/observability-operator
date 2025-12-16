@@ -105,7 +105,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	authManagers := map[auth.AuthType]authManagerEntry{
 		auth.AuthTypeMetrics: {
 			authManager: mimirAuthManager,
-			isEnabled:   cfg.Monitoring.IsMonitored,
+			isEnabled:   cfg.Monitoring.IsMonitoringEnabled,
 		},
 		auth.AuthTypeLogs: {
 			authManager: lokiAuthManager,
@@ -205,7 +205,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		logger.Info("monitoring is disabled at the installation level.")
 	}
 
-	if !r.Config.Monitoring.IsMonitored(cluster) {
+	if !r.Config.Monitoring.IsMonitoringEnabled(cluster) {
 		logger.Info("monitoring is disabled for this cluster.")
 	}
 
@@ -268,7 +268,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Metrics-specific: Alloy monitoring configuration
-	if r.Config.Monitoring.IsMonitored(cluster) {
+	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
 		observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to configure get observability-bundle version")
@@ -307,7 +307,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 
 		// Metrics-specific: Delete Alloy monitoring configuration
-		if r.Config.Monitoring.IsMonitored(cluster) {
+		if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
 			err = r.AlloyService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy monitoring config")
