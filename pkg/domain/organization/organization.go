@@ -48,7 +48,7 @@ func (o *Organization) Admins() []string        { return o.admins }
 func (o *Organization) Editors() []string       { return o.editors }
 func (o *Organization) Viewers() []string       { return o.viewers }
 
-// TenantIDs returns a slice of all tenant IDs (for backward compatibility)
+// TenantIDs returns a slice of all tenant IDs
 func (o *Organization) TenantIDs() []string {
 	tenantIDs := make([]string, len(o.tenants))
 	for i, tenant := range o.tenants {

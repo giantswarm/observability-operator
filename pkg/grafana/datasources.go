@@ -93,6 +93,7 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization *organiz
 func (s *Service) generateDatasources(organization *organization.Organization) (datasources []Datasource) {
 	// Multi-tenant header value is a pipe-separated list of tenant IDs for data reading
 	multiTenantIDsHeaderValue := strings.Join(organization.TenantIDs(), "|")
+	alertingTenants := organization.GetAlertingTenants()
 
 	// 1. Create multi-tenant data reading datasources
 
@@ -102,6 +103,7 @@ func (s *Service) generateDatasources(organization *organization.Organization) (
 		UID:  LokiDatasourceUID,
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
+			"manageAlerts":    len(alertingTenants) == 1,
 		},
 		SecureJSONData: map[string]string{
 			"httpHeaderValue1": multiTenantIDsHeaderValue,
@@ -114,7 +116,7 @@ func (s *Service) generateDatasources(organization *organization.Organization) (
 		lokiDatasource.JSONData["derivedFields"] = []map[string]any{
 			{
 				"name":          "traceID",
-				"matcherRegex":  "[tT]race_?[Ii][dD]\"?[:=](\\w+)",
+				"matcherRegex":  traceIDRegex,
 				"datasourceUid": TempoDatasourceUID,
 				// Open a new tab when clicking the link
 				"targetBlank":     true,
@@ -133,6 +135,7 @@ func (s *Service) generateDatasources(organization *organization.Organization) (
 		IsDefault: true,
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
+			"manageAlerts":    len(alertingTenants) == 1,
 		},
 		SecureJSONData: map[string]string{
 			"httpHeaderValue1": multiTenantIDsHeaderValue,
@@ -155,8 +158,7 @@ func (s *Service) generateDatasources(organization *organization.Organization) (
 
 	// 2. Create per-tenant datasources ONLY for alerting-enabled tenants
 	// Skip per-tenant datasources for mono-tenant organizations as they're redundant
-	alertingTenants := organization.GetAlertingTenants()
-	if len(organization.Tenants()) > 1 {
+	if len(alertingTenants) > 1 {
 		for _, tenant := range alertingTenants {
 			// Per-tenant Loki datasource for log viewing and alerting
 			lokiPerTenantDatasource := DatasourceLoki().Merge(Datasource{
@@ -164,6 +166,7 @@ func (s *Service) generateDatasources(organization *organization.Organization) (
 				UID:  fmt.Sprintf("%s-%s", LokiDatasourceUID, tenant.Name),
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
+					"manageAlerts":    true,
 				},
 				SecureJSONData: map[string]string{
 					"httpHeaderValue1": tenant.Name,
@@ -175,7 +178,7 @@ func (s *Service) generateDatasources(organization *organization.Organization) (
 				lokiPerTenantDatasource.JSONData["derivedFields"] = []map[string]any{
 					{
 						"name":            "traceID",
-						"matcherRegex":    "[tT]race_?[Ii][dD]\"?[:=](\\w+)",
+						"matcherRegex":    traceIDRegex,
 						"datasourceUid":   TempoDatasourceUID,
 						"targetBlank":     true,
 						"url":             "${__value.raw}",
@@ -192,6 +195,7 @@ func (s *Service) generateDatasources(organization *organization.Organization) (
 				UID:  fmt.Sprintf("%s-%s", MimirDatasourceUID, tenant.Name),
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
+					"manageAlerts":    true,
 				},
 				SecureJSONData: map[string]string{
 					"httpHeaderValue1": tenant.Name,
