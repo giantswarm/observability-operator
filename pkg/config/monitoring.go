@@ -1,7 +1,6 @@
 package config
 
 import (
-	"strconv"
 	"time"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
@@ -9,6 +8,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
 
+// TODO rename to observability.giantswarm.io/monitoring
 const MonitoringLabel = "giantswarm.io/monitoring"
 
 // QueueConfig represents the configuration for the remote write queue.
@@ -26,6 +26,7 @@ type QueueConfig struct {
 
 // MonitoringConfig represents the configuration used by the monitoring package.
 type MonitoringConfig struct {
+	// Enabled controls monitoring at the installation level
 	Enabled bool
 
 	AlertmanagerSecretName string
@@ -39,32 +40,17 @@ type MonitoringConfig struct {
 	QueueConfig          QueueConfig
 }
 
-// IsMonitored should be enabled when all conditions are met:
-//   - global monitoring flag is enabled
-//   - monitoring label is not set or is set to true on the cluster object
-func (c MonitoringConfig) IsMonitored(cluster *clusterv1.Cluster) bool {
-	if !c.Enabled {
-		return false
-	}
-
-	// Check if label is set on the cluster object
-	labels := cluster.GetLabels()
-	monitoringLabelValue, ok := labels[MonitoringLabel]
-	if !ok {
-		// If it's not set, monitoring is enabled by default
-		return true
-	}
-
-	monitoringEnabled, err := strconv.ParseBool(monitoringLabelValue)
-	if err != nil {
-		return true
-	}
-	return monitoringEnabled
-}
-
 // Validate validates the monitoring configuration
 func (c MonitoringConfig) Validate() error {
 	// Add validation logic here if needed
 	// For now, monitoring config is always valid
 	return nil
+}
+
+// Monitoring is enabled when all conditions are met:
+//   - monitoring is enabled at the installation level (global flag)
+//   - cluster is not being deleted
+//   - cluster-specific monitoring label is set to true (or missing/invalid, defaulting to true)
+func (c MonitoringConfig) IsMonitoringEnabled(cluster *clusterv1.Cluster) bool {
+	return isClusterFeatureEnabled(c.Enabled, cluster, MonitoringLabel)
 }
