@@ -248,12 +248,12 @@ func TestGenerateDatasources(t *testing.T) {
 					},
 				},
 			}
-		result := service.generateDatasources(tt.organization)
+			result := service.generateDatasources(tt.organization)
 
-		assert.Len(t, result, tt.expectedLen)
+			assert.Len(t, result, tt.expectedLen)
 
-		// Check that all datasources have the correct multi-tenant headers
-		expectedHeaderValue := strings.Join(tt.organization.TenantIDs(), "|")			// Count per-tenant datasources
+			// Check that all datasources have the correct multi-tenant headers
+			expectedHeaderValue := strings.Join(tt.organization.TenantIDs(), "|") // Count per-tenant datasources
 			perTenantCount := 0
 			multiTenantDatasources := []string{"Loki", "Mimir", "Tempo"}
 
