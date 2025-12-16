@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.52.0] - 2025-12-16
+
 ### Added
 
 - Add support for per-tenant datasources in Grafana based on tenant access types (data vs alerting) to enable fine-grained control over alerting permissions.
@@ -806,7 +808,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.51.2...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.52.0...HEAD
+[0.52.0]: https://github.com/giantswarm/observability-operator/compare/v0.51.2...v0.52.0
 [0.51.2]: https://github.com/giantswarm/observability-operator/compare/v0.51.1...v0.51.2
 [0.51.1]: https://github.com/giantswarm/observability-operator/compare/v0.51.0...v0.51.1
 [0.51.0]: https://github.com/giantswarm/observability-operator/compare/v0.50.0...v0.51.0
