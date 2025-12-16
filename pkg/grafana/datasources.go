@@ -214,22 +214,20 @@ func (s *Service) generateDatasources(organization *organization.Organization) (
 				},
 			}))
 		}
-	} else {
-		// For mono-tenant organizations, add alerting datasources without tenant suffix
-		// since they're not redundant with multi-tenant ones
-		for _, tenant := range alertingTenants {
-			// Per-tenant Alertmanager datasource for alerts management (essential for alerting)
-			datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
-				Name: "Mimir Alertmanager",
-				UID:  MimirAlertmanagerDatasourceUID,
-				JSONData: map[string]any{
-					"httpHeaderName1": common.OrgIDHeader,
-				},
-				SecureJSONData: map[string]string{
-					"httpHeaderValue1": tenant.Name,
-				},
-			}))
-		}
+	} else if len(alertingTenants) == 1 {
+		// For single-alerting-tenant organizations, add alerting datasources without tenant suffix
+		tenant := alertingTenants[0]
+		// Alertmanager datasource for alerts management
+		datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
+			Name: "Mimir Alertmanager",
+			UID:  MimirAlertmanagerDatasourceUID,
+			JSONData: map[string]any{
+				"httpHeaderName1": common.OrgIDHeader,
+			},
+			SecureJSONData: map[string]string{
+				"httpHeaderValue1": tenant.Name,
+			},
+		}))
 	}
 
 	// 3. Add special datasources for Shared Org
