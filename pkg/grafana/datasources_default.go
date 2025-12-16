@@ -6,6 +6,11 @@ const (
 	// datasourceUIDPrefix is the prefix for all datasources managed by the operator
 	datasourceUIDPrefix       = "gs-"
 	datasourceProxyAccessMode = "proxy"
+
+	// traceIDRegex is a regular expression pattern that matches trace IDs in log lines.
+	// It matches variations like: traceId, trace_id, TraceID, TRACE_ID with either colon or equals separator.
+	// Example matches: traceId=abc123, trace_id:def456, TraceID="ghi789"
+	traceIDRegex = "[tT]race_?[Ii][dD]\"?[:=](\\w+)"
 )
 
 var (

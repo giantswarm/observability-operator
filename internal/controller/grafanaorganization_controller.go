@@ -182,7 +182,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		// Set error status and update metric before returning
 		orgStatus = metrics.OrgStatusError
 		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
-		return ctrl.Result{}, fmt.Errorf("failed to upsert grafanaOrganization: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to configure grafanaOrganization: %w", err)
 	}
 
 	// Update CR status if anything was changed

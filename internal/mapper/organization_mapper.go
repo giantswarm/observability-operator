@@ -15,15 +15,26 @@ func NewOrganizationMapper() *OrganizationMapper {
 
 // FromGrafanaOrganization converts a v1alpha2.GrafanaOrganization to a domain organization
 func (m *OrganizationMapper) FromGrafanaOrganization(grafanaOrganization *v1alpha2.GrafanaOrganization) *organization.Organization {
-	tenantIDs := make([]string, len(grafanaOrganization.Spec.Tenants))
-	for i, tenant := range grafanaOrganization.Spec.Tenants {
-		tenantIDs[i] = string(tenant.Name)
+	tenants := make([]organization.TenantConfig, 0, len(grafanaOrganization.Spec.Tenants))
+	for _, tenant := range grafanaOrganization.Spec.Tenants {
+		types := make([]string, 0, len(tenant.Types))
+		for _, t := range tenant.Types {
+			types = append(types, string(t))
+		}
+		// Default to data-only if no types specified
+		if len(types) == 0 {
+			types = []string{"data"}
+		}
+		tenants = append(tenants, organization.TenantConfig{
+			Name:  string(tenant.Name),
+			Types: types,
+		})
 	}
 
 	return organization.New(
 		grafanaOrganization.Status.OrgID,
 		grafanaOrganization.Spec.DisplayName,
-		tenantIDs,
+		tenants,
 		grafanaOrganization.Spec.RBAC.Admins,
 		grafanaOrganization.Spec.RBAC.Editors,
 		grafanaOrganization.Spec.RBAC.Viewers,

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add support for per-tenant datasources in Grafana based on tenant access types (data vs alerting) to enable fine-grained control over alerting permissions.
+
 ## [0.53.0] - 2025-12-16
 
 ### Added

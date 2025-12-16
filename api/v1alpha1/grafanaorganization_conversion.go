@@ -29,7 +29,7 @@ func (src *GrafanaOrganization) ConvertTo(dstRaw conversion.Hub) error {
 	for i, tenantID := range src.Spec.Tenants {
 		dst.Spec.Tenants[i] = v1alpha2.TenantConfig{
 			Name: v1alpha2.TenantID(tenantID),
-			// Default to both types for backward compatibility
+			// Default to both types for backward compatibility with v1alpha1
 			Types: []v1alpha2.TenantType{v1alpha2.TenantTypeData, v1alpha2.TenantTypeAlerting},
 		}
 	}
