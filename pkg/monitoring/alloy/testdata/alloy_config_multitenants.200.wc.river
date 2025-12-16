@@ -66,7 +66,7 @@ mimir.rules.kubernetes "tenant2" {
 // remote write pipeline configuration for tenant tenant1
 
 prometheus.operator.servicemonitors "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver]
+  forward_to = [prometheus.remote_write.tenant1.receiver, prometheus.remote_write.victoriametrics.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
@@ -105,7 +105,7 @@ prometheus.operator.servicemonitors "tenant1" {
 }
 
 prometheus.operator.podmonitors "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver]
+  forward_to = [prometheus.remote_write.tenant1.receiver, prometheus.remote_write.victoriametrics.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
@@ -169,11 +169,29 @@ prometheus.remote_write "tenant1" {
   }
 }
 
+// VictoriaMetrics remote write configuration (shared by all tenants)
+prometheus.remote_write "victoriametrics" {
+  endpoint {
+    url = "http://victoriametrics-victoria-metrics-cluster-vminsert.victoriametrics.svc:8480/insert/0/prometheus/api/v1/write"
+  }
+  external_labels = {
+    "cluster_id" = "test-cluster",
+    "cluster_type" = "workload_cluster",
+    "customer" = "dummy-customer",
+    "installation" = "dummy-cluster",
+    "organization" = "dummy-org",
+    "pipeline" = "dummy-pipeline",
+    "provider" = "capa",
+    "region" = "dummy-region",
+    "service_priority" = "highest",
+  }
+}
+
 
 // remote write pipeline configuration for tenant tenant2
 
 prometheus.operator.servicemonitors "tenant2" {
-  forward_to = [prometheus.remote_write.tenant2.receiver]
+  forward_to = [prometheus.remote_write.tenant2.receiver, prometheus.remote_write.victoriametrics.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
@@ -212,7 +230,7 @@ prometheus.operator.servicemonitors "tenant2" {
 }
 
 prometheus.operator.podmonitors "tenant2" {
-  forward_to = [prometheus.remote_write.tenant2.receiver]
+  forward_to = [prometheus.remote_write.tenant2.receiver, prometheus.remote_write.victoriametrics.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
@@ -262,6 +280,24 @@ prometheus.remote_write "tenant2" {
   }
   wal {
     truncate_frequency = "1m0s"
+  }
+  external_labels = {
+    "cluster_id" = "test-cluster",
+    "cluster_type" = "workload_cluster",
+    "customer" = "dummy-customer",
+    "installation" = "dummy-cluster",
+    "organization" = "dummy-org",
+    "pipeline" = "dummy-pipeline",
+    "provider" = "capa",
+    "region" = "dummy-region",
+    "service_priority" = "highest",
+  }
+}
+
+// VictoriaMetrics remote write configuration (shared by all tenants)
+prometheus.remote_write "victoriametrics" {
+  endpoint {
+    url = "http://victoriametrics-victoria-metrics-cluster-vminsert.victoriametrics.svc:8480/insert/0/prometheus/api/v1/write"
   }
   external_labels = {
     "cluster_id" = "test-cluster",
