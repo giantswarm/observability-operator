@@ -1,5 +1,15 @@
 package organization
 
+import (
+	"errors"
+	"slices"
+)
+
+const GiantSwarmDefaultTenant = "giantswarm"
+
+var ErrOrganizationNotFound = errors.New("organization not found")
+var SharedOrg = NewFromGrafana(1, "Shared Org")
+
 // TenantConfig represents a tenant with its access types
 type TenantConfig struct {
 	Name  string
@@ -58,14 +68,16 @@ func (o *Organization) TenantIDs() []string {
 }
 
 // GetAlertingTenants returns tenants that have alerting access
+// The "giantswarm" tenant is only included if the organization name is "Giant Swarm"
 func (o *Organization) GetAlertingTenants() []TenantConfig {
 	var alertingTenants []TenantConfig
 	for _, tenant := range o.tenants {
-		for _, t := range tenant.Types {
-			if t == "alerting" {
-				alertingTenants = append(alertingTenants, tenant)
-				break
+		if slices.Contains(tenant.Types, "alerting") {
+			// Filter: only allow giantswarm tenant for "Giant Swarm" organization
+			if tenant.Name == GiantSwarmDefaultTenant && o.name != "Giant Swarm" {
+				continue
 			}
+			alertingTenants = append(alertingTenants, tenant)
 		}
 	}
 	return alertingTenants
