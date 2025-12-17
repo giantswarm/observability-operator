@@ -186,10 +186,9 @@ func parseFlags() (err error) {
 	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
 		"Enable distributed tracing at the installation level.")
 
-
 	var defaultLoggingNamespaces StringSliceVar
 	var includeEventsFromNamespaces StringSliceVar
-	var excludeEventsFromNamespaces StringSliceVar	
+	var excludeEventsFromNamespaces StringSliceVar
 	// Logging configuration flags
 	flag.BoolVar(&cfg.Logging.Enabled, "logging-enabled", false,
 		"Enable logging at the installation level.")

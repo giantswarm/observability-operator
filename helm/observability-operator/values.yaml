@@ -52,19 +52,19 @@ tracing:
 logging:
   # -- Enable or disable logging support
   enabled: false
-  
+
   # -- Enable node filtering
   enableNodeFiltering: false
-  
-  # -- Enable network monitoring
+
+  # -- Enable network monitoring (TODO this needs to be moved to a different section as it's not logging-specific)
   enableNetworkMonitoring: false
-  
+
   # -- Default namespaces to collect logs from
   defaultNamespaces: []
   # defaultNamespaces:
   #   - kube-system
   #   - default
-  
+
   # -- Namespaces to include/exclude for events
   includeEventsFromNamespaces: []
   excludeEventsFromNamespaces: []
