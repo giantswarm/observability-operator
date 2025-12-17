@@ -52,6 +52,22 @@ tracing:
 logging:
   # -- Enable or disable logging support
   enabled: false
+  
+  # -- Enable node filtering
+  enableNodeFiltering: false
+  
+  # -- Enable network monitoring
+  enableNetworkMonitoring: false
+  
+  # -- Default namespaces to collect logs from
+  defaultNamespaces: []
+  # defaultNamespaces:
+  #   - kube-system
+  #   - default
+  
+  # -- Namespaces to include/exclude for events
+  includeEventsFromNamespaces: []
+  excludeEventsFromNamespaces: []
 
 operator:
   # -- Configures the resources for the operator deployment
