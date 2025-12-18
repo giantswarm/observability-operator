@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add logging configuration flags for workload cluster log collection: `--logging-default-namespaces`, `--logging-enable-node-filtering`, `--logging-enable-network-monitoring`, `--logging-include-events-from-namespaces`, and `--logging-exclude-events-from-namespaces`.
+- Add logging configuration section to Helm chart values for controlling log collection behavior.
+
 ## [0.54.0] - 2025-12-17
 
 ### Added

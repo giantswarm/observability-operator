@@ -30,45 +30,70 @@ spec:
         - --management-cluster-name={{ $.Values.managementCluster.name }}
         - --management-cluster-pipeline={{ $.Values.managementCluster.pipeline }}
         - --management-cluster-region={{ $.Values.managementCluster.region }}
-        # Monitoring configuration
+        - --operator-namespace={{ include "resource.default.namespace" . }}
+        {{- if .Values.webhook.enabled }}
+        - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+        {{- end }}
+        # Alerting configuration
         - --alertmanager-enabled={{ $.Values.alerting.enabled }}
         - --alertmanager-secret-name={{ include "alertmanager-secret.name" . }}
         - --alertmanager-url={{ $.Values.alerting.alertmanagerURL }}
-        - --monitoring-enabled={{ $.Values.monitoring.enabled }}
-        - --monitoring-sharding-scale-up-series-count={{ $.Values.monitoring.sharding.scaleUpSeriesCount }}
-        - --monitoring-sharding-scale-down-percentage={{ $.Values.monitoring.sharding.scaleDownPercentage }}
-        - --monitoring-wal-truncate-frequency={{ $.Values.monitoring.wal.truncateFrequency }}
-        {{- if .Values.monitoring.queueConfig.batchSendDeadline }}
-        - --monitoring-queue-config-batch-send-deadline={{ $.Values.monitoring.queueConfig.batchSendDeadline }}
+        # Monitoring configuration
+        {{ with .Values.monitoring }}
+        - --monitoring-enabled={{ .enabled }}
+        - --monitoring-sharding-scale-up-series-count={{ .sharding.scaleUpSeriesCount }}
+        - --monitoring-sharding-scale-down-percentage={{ .sharding.scaleDownPercentage }}
+        - --monitoring-wal-truncate-frequency={{ .wal.truncateFrequency }}
+        {{- with .queueConfig }}
+        {{- if .batchSendDeadline }}
+        - --monitoring-queue-config-batch-send-deadline={{ .batchSendDeadline }}
         {{- end }}
-        {{- if .Values.monitoring.queueConfig.capacity }}
-        - --monitoring-queue-config-capacity={{ $.Values.monitoring.queueConfig.capacity }}
+        {{- if .capacity }}
+        - --monitoring-queue-config-capacity={{ .capacity }}
         {{- end }}
-        {{- if .Values.monitoring.queueConfig.maxBackoff }}
-        - --monitoring-queue-config-max-backoff={{ $.Values.monitoring.queueConfig.maxBackoff }}
+        {{- if .maxBackoff }}
+        - --monitoring-queue-config-max-backoff={{ .maxBackoff }}
         {{- end }}
-        {{- if .Values.monitoring.queueConfig.maxSamplesPerSend }}
-        - --monitoring-queue-config-max-samples-per-send={{ $.Values.monitoring.queueConfig.maxSamplesPerSend }}
+        {{- if .maxSamplesPerSend }}
+        - --monitoring-queue-config-max-samples-per-send={{ .maxSamplesPerSend }}
         {{- end }}
-        {{- if .Values.monitoring.queueConfig.maxShards }}
-        - --monitoring-queue-config-max-shards={{ $.Values.monitoring.queueConfig.maxShards }}
+        {{- if .maxShards }}
+        - --monitoring-queue-config-max-shards={{ .maxShards }}
         {{- end }}
-        {{- if .Values.monitoring.queueConfig.minBackoff }}
-        - --monitoring-queue-config-min-backoff={{ $.Values.monitoring.queueConfig.minBackoff }}
+        {{- if .minBackoff }}
+        - --monitoring-queue-config-min-backoff={{ .minBackoff }}
         {{- end }}
-        {{- if .Values.monitoring.queueConfig.minShards }}
-        - --monitoring-queue-config-min-shards={{ $.Values.monitoring.queueConfig.minShards }}
+        {{- if .minShards }}
+        - --monitoring-queue-config-min-shards={{ .minShards }}
         {{- end }}
-        {{- if .Values.monitoring.queueConfig.retryOnHttp429 }}
-        - --monitoring-queue-config-retry-on-http-429={{ $.Values.monitoring.queueConfig.retryOnHttp429 }}
+        {{- if .retryOnHttp429 }}
+        - --monitoring-queue-config-retry-on-http-429={{ .retryOnHttp429 }}
         {{- end }}
-        {{- if .Values.monitoring.queueConfig.sampleAgeLimit }}
-        - --monitoring-queue-config-sample-age-limit={{ $.Values.monitoring.queueConfig.sampleAgeLimit }}
+        {{- if .sampleAgeLimit }}
+        - --monitoring-queue-config-sample-age-limit={{ .sampleAgeLimit }}
         {{- end }}
-        - --operator-namespace={{ include "resource.default.namespace" . }}
+        {{- end }}
+        {{- end }}
         - --tracing-enabled={{ $.Values.tracing.enabled }}
-        - --logging-enabled={{ $.Values.logging.enabled }}
-        - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+        # Logging configuration
+        {{ with .Values.logging }}
+        - --logging-enabled={{ .enabled }}
+        {{- if .enableNodeFiltering }}
+        - --logging-enable-node-filtering=true
+        {{- end }}
+        {{- if .enableNetworkMonitoring }}
+        - --logging-enable-network-monitoring=true
+        {{- end }}
+        {{- if .defaultNamespaces }}
+        - --logging-default-namespaces={{ .defaultNamespaces | join "," }}
+        {{- end }}
+        {{- if .includeEventsFromNamespaces }}
+        - --logging-include-events-from-namespaces={{ .includeEventsFromNamespaces | join "," }}
+        {{- end }}
+        {{- if .excludeEventsFromNamespaces }}
+        - --logging-exclude-events-from-namespaces={{ .excludeEventsFromNamespaces | join "," }}
+        {{- end }}
+        {{- end }}
         env:
         - name: ENABLE_WEBHOOKS
           value: {{ .Values.webhook.enabled | quote }}

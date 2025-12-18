@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
@@ -11,11 +13,30 @@ const LoggingLabel = "giantswarm.io/logging"
 type LoggingConfig struct {
 	// Enabled controls logging at the installation level
 	Enabled bool
+
+	// EnableNodeFiltering enables node filtering in Alloy logging configuration
+	EnableNodeFiltering bool
+
+	// EnableNetworkMonitoring enables network monitoring in Alloy logging configuration
+	EnableNetworkMonitoring bool
+
+	// DefaultNamespaces is the list of namespaces to collect logs from by default
+	DefaultNamespaces []string
+
+	// IncludeEventsNamespaces is the list of namespaces to collect events from
+	// If empty, collect from all namespaces
+	IncludeEventsNamespaces []string
+
+	// ExcludeEventsNamespaces is the list of namespaces to exclude events from
+	ExcludeEventsNamespaces []string
 }
 
 // Validate validates the logging configuration
 func (l LoggingConfig) Validate() error {
-	// Logging config is always valid since it's just a boolean flag
+	// Check for conflicting namespace configurations
+	if len(l.IncludeEventsNamespaces) > 0 && len(l.ExcludeEventsNamespaces) > 0 {
+		return fmt.Errorf("cannot specify both include and exclude events namespaces")
+	}
 	return nil
 }
 
