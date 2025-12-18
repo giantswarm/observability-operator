@@ -14,10 +14,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
-var ErrOrganizationNotFound = errors.New("organization not found")
-
-var SharedOrg = organization.NewFromGrafana(1, "Shared Org")
-
 // UpsertOrganization creates or updates an organization in Grafana based on the provided domain organization.
 func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Organization) error {
 	logger := log.FromContext(ctx)
@@ -26,7 +22,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Orga
 	// Get the current organization stored in Grafana
 	currentOrg, err := s.findOrgByID(org.ID())
 	if err != nil {
-		if errors.Is(err, ErrOrganizationNotFound) {
+		if errors.Is(err, organization.ErrOrganizationNotFound) {
 			foundOrgByName, err := s.FindOrgByName(org.Name())
 			if err == nil && foundOrgByName != nil {
 				// If the organization does not exist in Grafana, but we found it by name, we can use that ID.
@@ -78,7 +74,7 @@ func (s *Service) deleteOrganization(ctx context.Context, org *organization.Orga
 	logger.Info("deleting organization")
 	_, err := s.findOrgByID(org.ID())
 	if err != nil {
-		if errors.Is(err, ErrOrganizationNotFound) {
+		if errors.Is(err, organization.ErrOrganizationNotFound) {
 			logger.Info("organization id was not found, skipping deletion")
 			// If the CR orgID does not exist in Grafana, then we create the organization
 			return nil
@@ -121,13 +117,13 @@ func (s *Service) FindOrgByName(name string) (*organization.Organization, error)
 // findOrgByID is a wrapper function used to find a Grafana organization by its id
 func (s *Service) findOrgByID(orgID int64) (*organization.Organization, error) {
 	if orgID == 0 {
-		return nil, ErrOrganizationNotFound
+		return nil, organization.ErrOrganizationNotFound
 	}
 
 	org, err := s.grafanaClient.Orgs().GetOrgByID(orgID)
 	if err != nil {
 		if isNotFound(err) {
-			return nil, fmt.Errorf("%w: %w", ErrOrganizationNotFound, err)
+			return nil, fmt.Errorf("%w: %w", organization.ErrOrganizationNotFound, err)
 		}
 
 		return nil, fmt.Errorf("failed to get organization by id: %w", err)

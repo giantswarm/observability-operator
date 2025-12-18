@@ -19,6 +19,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
@@ -104,7 +105,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version) (string, error) {
 	var values bytes.Buffer
 
-	organization, err := a.Read(ctx, cluster)
+	org, err := a.Read(ctx, cluster)
 	if err != nil {
 		return "", fmt.Errorf("failed to read organization: %w", err)
 	}
@@ -162,7 +163,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		ClusterID: cluster.Name,
 
 		Tenants:         tenants,
-		DefaultTenantID: commonmonitoring.DefaultWriteTenant,
+		DefaultTenantID: organization.GiantSwarmDefaultTenant,
 
 		QueueConfigBatchSendDeadline: a.Monitoring.QueueConfig.BatchSendDeadline,
 		QueueConfigCapacity:          a.Monitoring.QueueConfig.Capacity,
@@ -181,7 +182,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 			"cluster_type":     a.Cluster.GetClusterType(cluster),
 			"customer":         a.Cluster.Customer,
 			"installation":     a.Cluster.Name,
-			"organization":     organization,
+			"organization":     org,
 			"pipeline":         a.Cluster.Pipeline,
 			"provider":         provider,
 			"region":           a.Cluster.Region,
