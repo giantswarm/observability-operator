@@ -38,8 +38,8 @@ type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
 	Client client.Client
 	Config config.Config
-	// AlloyMonitoringService is the service which manages Alloy monitoring agent configuration.
-	AlloyMonitoringService alloy.Service
+	// AlloyMetricsService is the service which manages Alloy monitoring agent configuration.
+	AlloyMetricsService alloy.Service
 	// AlloyLogsService is the service which manages Alloy logs configuration.
 	AlloyLogsService *loggingalloy.LogsService
 	// AlloyEventsService is the service which manages Alloy events configuration.
@@ -122,7 +122,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		},
 	}
 
-	alloyMonitoringService := alloy.Service{
+	alloyMetricsService := alloy.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
 		Config:                 cfg,
@@ -137,7 +137,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		Client:                     managerClient,
 		Config:                     cfg,
 		HeartbeatRepositories:      heartbeatRepositories,
-		AlloyMonitoringService:     alloyMonitoringService,
+		AlloyMetricsService:        alloyMetricsService,
 		AlloyLogsService:           alloyLogsService,
 		AlloyEventsService:         alloyEventsService,
 		authManagers:               authManagers,
@@ -294,14 +294,14 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	// Metrics-specific: Alloy monitoring configuration
 	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
 		// Create or update Alloy monitoring configuration.
-		err = r.AlloyMonitoringService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		err = r.AlloyMetricsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy monitoring config")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 	} else {
 		// Clean up any existing alloy monitoring configuration
-		err = r.AlloyMonitoringService.ReconcileDelete(ctx, cluster)
+		err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy monitoring config")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
@@ -358,7 +358,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// Metrics-specific: Delete Alloy monitoring configuration
 		if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-			err = r.AlloyMonitoringService.ReconcileDelete(ctx, cluster)
+			err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy monitoring config")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil

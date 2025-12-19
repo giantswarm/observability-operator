@@ -14,10 +14,10 @@ import (
 // EventsService manages Alloy events logger configuration for workload clusters.
 // It creates and manages ConfigMaps and Secrets for Kubernetes event collection.
 type EventsService struct {
-	client             client.Client
-	config             config.Config
-	logsAuthManager    auth.AuthManager
-	tracesAuthManager  auth.AuthManager
+	client            client.Client
+	config            config.Config
+	logsAuthManager   auth.AuthManager
+	tracesAuthManager auth.AuthManager
 }
 
 // NewEventsService creates a new EventsService instance.
