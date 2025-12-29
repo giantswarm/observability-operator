@@ -5,9 +5,10 @@ type AuthType string
 
 const (
 	// Auth types
-	AuthTypeMetrics AuthType = "metrics"
-	AuthTypeLogs    AuthType = "logs"
-	AuthTypeTraces  AuthType = "traces"
+	AuthTypeMetrics         AuthType = "metrics"
+	AuthTypeLogs            AuthType = "logs"
+	AuthTypeTraces          AuthType = "traces"
+	AuthTypeVictoriaMetrics AuthType = "victoriametrics"
 
 	// Gateway secret data keys (supporting migration from Ingress to Gateway API)
 	IngressDataKey   = "auth"

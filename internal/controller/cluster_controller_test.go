@@ -100,6 +100,16 @@ var _ = Describe("Cluster Controller", func() {
 				),
 			)
 
+			victoriaMetricsAuthManager := auth.NewAuthManager(
+				k8sClient,
+				auth.NewConfig(
+					auth.AuthTypeVictoriaMetrics,
+					"victoriametrics",
+					"victoria-metrics-ingress-auth",
+					"victoria-metrics-httproute-auth",
+				),
+			)
+
 			alloyService := alloy.Service{
 				Client:                 k8sClient,
 				OrganizationRepository: organizationRepository,
@@ -123,6 +133,12 @@ var _ = Describe("Cluster Controller", func() {
 					authManager: mimirAuthManager,
 					isEnabled: func(c *clusterv1.Cluster) bool {
 						return config.Config{Monitoring: config.MonitoringConfig{Enabled: true}}.Monitoring.IsMonitoringEnabled(c)
+					},
+				},
+				auth.AuthTypeVictoriaMetrics: {
+					authManager: victoriaMetricsAuthManager,
+					isEnabled: func(c *clusterv1.Cluster) bool {
+						return true
 					},
 				},
 			}

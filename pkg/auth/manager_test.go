@@ -204,3 +204,55 @@ func TestAuthManager(t *testing.T) {
 		})
 	})
 }
+
+func TestAuthManagerVictoriaMetrics(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	require.NoError(t, clusterv1.AddToScheme(scheme))
+
+	config := NewConfig(
+		AuthTypeVictoriaMetrics,
+		"victoriametrics",
+		"victoria-metrics-ingress-auth",
+		"victoria-metrics-httproute-auth",
+	)
+
+	t.Run("EnsureClusterAuth", func(t *testing.T) {
+		t.Run("should create new per-cluster auth secret for Victoria Metrics", func(t *testing.T) {
+			client := fake.NewClientBuilder().WithScheme(scheme).Build()
+			manager := &authManager{
+				client:            client,
+				passwordGenerator: &mockPasswordGenerator{},
+				config:            config,
+			}
+
+			ctx := context.Background()
+			cluster := &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "test-cluster-namespace",
+				},
+			}
+			err := manager.EnsureClusterAuth(ctx, cluster)
+			require.NoError(t, err)
+
+			// Verify per-cluster auth secret was created
+			clusterSecret := &corev1.Secret{}
+			err = client.Get(ctx, types.NamespacedName{
+				Name:      "test-cluster-observability-victoriametrics-auth",
+				Namespace: "test-cluster-namespace",
+			}, clusterSecret)
+			require.NoError(t, err)
+
+			// Verify password and htpasswd data
+			assert.Equal(t, "generated-password-32-chars-long", string(clusterSecret.Data["password"]))
+			assert.Equal(t, "test-cluster:$2a$10$encryptedgenerated-password-32-chars-long", string(clusterSecret.Data["htpasswd"]))
+
+			// Verify labels
+			assert.Equal(t, "victoriametrics-auth", clusterSecret.Labels["app.kubernetes.io/component"])
+			assert.Equal(t, "observability-operator", clusterSecret.Labels["app.kubernetes.io/part-of"])
+			assert.Equal(t, "test-cluster", clusterSecret.Labels["observability.giantswarm.io/cluster"])
+			assert.Equal(t, "victoriametrics", clusterSecret.Labels["observability.giantswarm.io/auth-type"])
+		})
+	})
+}
