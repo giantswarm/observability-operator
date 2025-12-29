@@ -138,7 +138,7 @@ var _ = Describe("Cluster Controller", func() {
 				auth.AuthTypeVictoriaMetrics: {
 					authManager: victoriaMetricsAuthManager,
 					isEnabled: func(c *clusterv1.Cluster) bool {
-						return config.Config{VictoriaMetrics: config.VictoriaMetricsConfig{Enabled: true}}.VictoriaMetrics.IsVictoriaMetricsEnabled(c)
+						return true
 					},
 				},
 			}
