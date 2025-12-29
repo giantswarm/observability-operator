@@ -23,6 +23,11 @@ const (
 	mimirRemoteWriteAPIURLKey      = "mimirRemoteWriteAPIURL"
 	mimirRemoteWriteAPIUsernameKey = "mimirRemoteWriteAPIUsername"
 	mimirRemoteWriteAPIPasswordKey = "mimirRemoteWriteAPIPassword" // #nosec G101
+
+	vmRemoteWriteAPINameKey     = "vmRemoteWriteAPIName"
+	vmRemoteWriteAPIURLKey      = "vmRemoteWriteAPIURL"
+	vmRemoteWriteAPIUsernameKey = "RemoteWriteAPIUsername"
+	vmRemoteWriteAPIPasswordKey = "RemoteWriteAPIPassword" // #nosec G101
 )
 
 var (
@@ -37,6 +42,7 @@ func init() {
 
 func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string][]byte, error) {
 	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, a.Cluster.BaseDomain)
+	vmRemoteWriteUrl := fmt.Sprintf(commonmonitoring.VMRemoteWriteEndpointURLFormat, a.Cluster.BaseDomain)
 	password, err := a.AuthManager.GetClusterPassword(ctx, cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mimir auth password for cluster %s: %w", cluster.Name, err)
@@ -53,6 +59,10 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		{Name: mimirRemoteWriteAPINameKey, Value: commonmonitoring.RemoteWriteName},
 		{Name: mimirRemoteWriteAPIUsernameKey, Value: cluster.Name},
 		{Name: mimirRemoteWriteAPIPasswordKey, Value: password},
+		{Name: vmRemoteWriteAPIURLKey, Value: vmRemoteWriteUrl},
+		{Name: vmRemoteWriteAPINameKey, Value: commonmonitoring.VMRemoteWriteName},
+		{Name: vmRemoteWriteAPIUsernameKey, Value: cluster.Name},
+		{Name: vmRemoteWriteAPIPasswordKey, Value: password},
 	}
 
 	var values bytes.Buffer

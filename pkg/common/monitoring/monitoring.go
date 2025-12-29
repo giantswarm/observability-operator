@@ -28,6 +28,10 @@ const (
 	RemoteWriteEndpointURLFormat = MimirBaseURLFormat + "/api/v1/push"
 	RemoteWriteTimeout           = "60s"
 
+	VMRemoteWriteName              = "victoriametrics"
+	VMBaseURLFormat                = "https://victoriametrics.%s"
+	VMRemoteWriteEndpointURLFormat = VMBaseURLFormat + "/insert/multitenant/prometheus/api/v1/write"
+
 	OrgIDHeader        = "X-Scope-OrgID"
 	DefaultWriteTenant = "giantswarm"
 )

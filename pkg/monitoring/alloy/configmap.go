@@ -126,6 +126,11 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		MimirRemoteWriteTimeout               string
 		MimirRemoteWriteTLSInsecureSkipVerify bool
 
+		VMRemoteWriteAPINameKey     string
+		VMRemoteWriteAPIURLKey      string
+		VMRemoteWriteAPIUsernameKey string
+		VMRemoteWriteAPIPasswordKey string
+
 		ClusterID         string
 		IsWorkloadCluster bool
 
@@ -158,6 +163,11 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		MimirRemoteWriteAPINameKey:            mimirRemoteWriteAPINameKey,
 		MimirRemoteWriteTimeout:               commonmonitoring.RemoteWriteTimeout,
 		MimirRemoteWriteTLSInsecureSkipVerify: a.Cluster.InsecureCA,
+
+		VMRemoteWriteAPINameKey:     vmRemoteWriteAPINameKey,
+		VMRemoteWriteAPIURLKey:      vmRemoteWriteAPIURLKey,
+		VMRemoteWriteAPIUsernameKey: vmRemoteWriteAPIUsernameKey,
+		VMRemoteWriteAPIPasswordKey: vmRemoteWriteAPIPasswordKey,
 
 		ClusterID: cluster.Name,
 

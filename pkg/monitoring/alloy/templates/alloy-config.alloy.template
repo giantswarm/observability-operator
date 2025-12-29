@@ -47,7 +47,7 @@ mimir.rules.kubernetes "{{ . }}" {
 // remote write pipeline configuration for tenant {{ . }}
 {{- if eq . $.DefaultTenantID }}
 prometheus.operator.servicemonitors "{{ . }}_legacy" {
-  forward_to = [prometheus.remote_write.{{ . }}.receiver, prometheus.remote_write.victoriametrics.receiver]
+  forward_to = [prometheus.remote_write.{{ . }}.receiver, prometheus.remote_write.victoriametrics_{{ . }}.receiver]
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
@@ -89,7 +89,7 @@ prometheus.operator.servicemonitors "{{ . }}_legacy" {
 }
 
 prometheus.operator.podmonitors "{{ . }}_legacy" {
-  forward_to = [prometheus.remote_write.{{ . }}.receiver, prometheus.remote_write.victoriametrics.receiver]
+  forward_to = [prometheus.remote_write.{{ . }}.receiver, prometheus.remote_write.victoriametrics_{{ . }}.receiver]
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
@@ -117,7 +117,7 @@ prometheus.operator.podmonitors "{{ . }}_legacy" {
 {{ end }}
 
 prometheus.operator.servicemonitors "{{ . }}" {
-  forward_to = [prometheus.remote_write.{{ . }}.receiver, prometheus.remote_write.victoriametrics.receiver]
+  forward_to = [prometheus.remote_write.{{ . }}.receiver, prometheus.remote_write.victoriametrics_{{ . }}.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
@@ -156,7 +156,7 @@ prometheus.operator.servicemonitors "{{ . }}" {
 }
 
 prometheus.operator.podmonitors "{{ . }}" {
-  forward_to = [prometheus.remote_write.{{ . }}.receiver, prometheus.remote_write.victoriametrics.receiver]
+  forward_to = [prometheus.remote_write.{{ . }}.receiver, prometheus.remote_write.victoriametrics_{{ . }}.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
@@ -181,7 +181,7 @@ prometheus.operator.podmonitors "{{ . }}" {
 
 {{- if $.IsSupportingScrapeConfigs }}
 prometheus.operator.scrapeconfigs "{{ . }}" {
-  forward_to = [prometheus.remote_write.{{ . }}.receiver, prometheus.remote_write.victoriametrics.receiver]
+  forward_to = [prometheus.remote_write.{{ . }}.receiver, prometheus.remote_write.victoriametrics_{{ . }}.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
@@ -264,9 +264,28 @@ prometheus.remote_write "{{ . }}" {
 }
 
 // VictoriaMetrics remote write configuration (shared by all tenants)
-prometheus.remote_write "victoriametrics" {
+prometheus.remote_write "victoriametrics_{{ . }}" {
   endpoint {
+    name           = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.VMRemoteWriteAPINameKey }}"])
+    enable_http2   = false
+    remote_timeout = "{{ $.MimirRemoteWriteTimeout }}"
+
+    {{- if $.IsWorkloadCluster }}
+    url = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.VMRemoteWriteAPIURLKey }}"])
+    basic_auth {
+      username = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.VMRemoteWriteAPIUsernameKey }}"])
+      password = remote.kubernetes.secret.credentials.data["{{ $.VMRemoteWriteAPIPasswordKey }}"]
+    }
+    {{- else }}
     url = "http://victoriametrics-victoria-metrics-cluster-vminsert.victoriametrics.svc:8480/insert/0/prometheus/api/v1/write"
+    {{- end }}
+
+    headers = {
+      "X-Scope-OrgID" = "{{ . }}",
+    }
+    tls_config {
+      insecure_skip_verify = {{ $.MimirRemoteWriteTLSInsecureSkipVerify }}
+    }
   }
   external_labels = {
     {{- range $key, $value := $.ExternalLabels }}
