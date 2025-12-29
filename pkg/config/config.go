@@ -10,10 +10,11 @@ type Config struct {
 	Operator OperatorConfig
 
 	// Subsystem configurations
-	Logging    LoggingConfig
-	Grafana    GrafanaConfig
-	Monitoring MonitoringConfig
-	Tracing    TracingConfig
+	Logging         LoggingConfig
+	Grafana         GrafanaConfig
+	Monitoring      MonitoringConfig
+	Tracing         TracingConfig
+	VictoriaMetrics VictoriaMetricsConfig
 
 	// Management cluster configuration
 	Cluster ClusterConfig
@@ -44,6 +45,9 @@ func (c Config) Validate() error {
 	}
 	if err := c.Monitoring.Validate(); err != nil {
 		return fmt.Errorf("monitoring config validation failed: %w", err)
+	}
+	if err := c.VictoriaMetrics.Validate(); err != nil {
+		return fmt.Errorf("victoria metrics config validation failed: %w", err)
 	}
 	if err := c.Cluster.Validate(); err != nil {
 		return fmt.Errorf("cluster config validation failed: %w", err)

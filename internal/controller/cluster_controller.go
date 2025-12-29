@@ -101,6 +101,16 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		),
 	)
 
+	victoriaMetricsAuthManager := auth.NewAuthManager(
+		managerClient,
+		auth.NewConfig(
+			auth.AuthTypeVictoriaMetrics,      // authType
+			"victoriametrics",                 // gatewaySecretsNamespace
+			"victoria-metrics-ingress-auth",   // ingressSecretName
+			"victoria-metrics-httproute-auth", // httprouteSecretName
+		),
+	)
+
 	// Build map of auth managers with their feature checks
 	authManagers := map[auth.AuthType]authManagerEntry{
 		auth.AuthTypeMetrics: {
@@ -114,6 +124,12 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		auth.AuthTypeTraces: {
 			authManager: tempoAuthManager,
 			isEnabled:   cfg.Tracing.IsTracingEnabled,
+		},
+		auth.AuthTypeVictoriaMetrics: {
+			authManager: victoriaMetricsAuthManager,
+			isEnabled: func(cluster *clusterv1.Cluster) bool {
+				return true
+			},
 		},
 	}
 

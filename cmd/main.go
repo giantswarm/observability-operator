@@ -171,6 +171,10 @@ func parseFlags() (err error) {
 	flag.BoolVar(&cfg.Logging.Enabled, "logging-enabled", false,
 		"Enable logging at the installation level.")
 
+	// Victoria Metrics configuration flags
+	flag.BoolVar(&cfg.VictoriaMetrics.Enabled, "victoriametrics-enabled", false,
+		"Enable Victoria Metrics at the installation level.")
+
 	// Zap logging options
 	opts := zap.Options{
 		Development: false,
