@@ -28,7 +28,10 @@ type Service struct {
 	client.Client
 	organization.OrganizationRepository
 	config.Config
-	auth.AuthManager
+	// AuthManager for Mimir metrics authentication
+	AuthManager auth.AuthManager
+	// VMAuthManager for Victoria Metrics authentication
+	VMAuthManager auth.AuthManager
 }
 
 func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {

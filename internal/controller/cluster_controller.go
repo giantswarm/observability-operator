@@ -138,6 +138,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		OrganizationRepository: organizationRepository,
 		Config:                 cfg,
 		AuthManager:            mimirAuthManager,
+		VMAuthManager:          victoriaMetricsAuthManager,
 	}
 
 	r := &ClusterMonitoringReconciler{

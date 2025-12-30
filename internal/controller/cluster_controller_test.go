@@ -124,7 +124,8 @@ var _ = Describe("Cluster Controller", func() {
 						Enabled: true,
 					},
 				},
-				AuthManager: mimirAuthManager,
+				AuthManager:   mimirAuthManager,
+				VMAuthManager: victoriaMetricsAuthManager,
 			}
 
 			// Create auth managers map for the reconciler
