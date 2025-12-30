@@ -221,6 +221,7 @@ prometheus.remote_write "victoriametrics_giantswarm" {
     "provider" = "capz",
     "region" = "dummy-region",
     "service_priority" = "highest",
+    "vm_account_id" = "0"
   }
 }
 

@@ -168,6 +168,7 @@ prometheus.remote_write "victoriametrics_tenant1" {
     "provider" = "capa",
     "region" = "dummy-region",
     "service_priority" = "highest",
+    "vm_account_id" = "1"
   }
 }
 
@@ -299,6 +300,7 @@ prometheus.remote_write "victoriametrics_tenant2" {
     "provider" = "capa",
     "region" = "dummy-region",
     "service_priority" = "highest",
+    "vm_account_id" = "1"
   }
 }
 

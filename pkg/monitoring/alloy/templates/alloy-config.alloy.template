@@ -291,6 +291,11 @@ prometheus.remote_write "victoriametrics_{{ . }}" {
     {{- range $key, $value := $.ExternalLabels }}
     "{{ $key }}" = "{{ $value }}",
     {{- end }}
+    {{- if eq . "giantswarm" }}
+    "vm_account_id" = "0"
+    {{- else }}
+    "vm_account_id" = "1"
+    {{- end }}
   }
 }
 
