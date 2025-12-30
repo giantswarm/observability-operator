@@ -39,7 +39,7 @@ mimir.rules.kubernetes "tenant1" {
 // remote write pipeline configuration for tenant tenant1
 
 prometheus.operator.servicemonitors "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver, prometheus.remote_write.victoriametrics.receiver]
+  forward_to = [prometheus.remote_write.tenant1.receiver, prometheus.remote_write.victoriametrics_tenant1.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
@@ -78,7 +78,7 @@ prometheus.operator.servicemonitors "tenant1" {
 }
 
 prometheus.operator.podmonitors "tenant1" {
-  forward_to = [prometheus.remote_write.tenant1.receiver, prometheus.remote_write.victoriametrics.receiver]
+  forward_to = [prometheus.remote_write.tenant1.receiver, prometheus.remote_write.victoriametrics_tenant1.receiver]
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"
@@ -143,9 +143,23 @@ prometheus.remote_write "tenant1" {
 }
 
 // VictoriaMetrics remote write configuration (shared by all tenants)
-prometheus.remote_write "victoriametrics" {
+prometheus.remote_write "victoriametrics_tenant1" {
   endpoint {
-    url = "http://victoriametrics-victoria-metrics-cluster-vminsert.victoriametrics.svc:8480/insert/0/prometheus/api/v1/write"
+    name           = nonsensitive(remote.kubernetes.secret.credentials.data["vmRemoteWriteAPIName"])
+    enable_http2   = false
+    remote_timeout = "60s"
+    url = nonsensitive(remote.kubernetes.secret.credentials.data["vmRemoteWriteAPIURL"])
+    basic_auth {
+      username = nonsensitive(remote.kubernetes.secret.credentials.data["RemoteWriteAPIUsername"])
+      password = remote.kubernetes.secret.credentials.data["RemoteWriteAPIPassword"]
+    }
+
+    headers = {
+      "X-Scope-OrgID" = "tenant1",
+    }
+    tls_config {
+      insecure_skip_verify = false
+    }
   }
   external_labels = {
     "cluster_id" = "single-tenant-cluster",
