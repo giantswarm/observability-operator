@@ -291,11 +291,10 @@ prometheus.remote_write "victoriametrics_{{ . }}" {
     {{- range $key, $value := $.ExternalLabels }}
     "{{ $key }}" = "{{ $value }}",
     {{- end }}
-    // the vm_account_id label is needed to handle multitenancy on VM side
     {{- if eq . "giantswarm" }}
-    "vm_account_id" = "0"
+    "vm_account_id" = "0",
     {{- else }}
-    "vm_account_id" = "1"
+    "vm_account_id" = "1",
     {{- end }}
   }
 }

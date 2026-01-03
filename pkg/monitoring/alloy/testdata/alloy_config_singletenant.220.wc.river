@@ -187,8 +187,7 @@ prometheus.remote_write "victoriametrics_tenant1" {
     "provider" = "capz",
     "region" = "dummy-region",
     "service_priority" = "highest",
-    // the vm_account_id label is needed to handle multitenancy on VM side
-    "vm_account_id" = "1"
+    "vm_account_id" = "1",
   }
 }
 
