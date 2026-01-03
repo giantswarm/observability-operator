@@ -221,6 +221,7 @@ prometheus.remote_write "victoriametrics_giantswarm" {
     "provider" = "capz",
     "region" = "dummy-region",
     "service_priority" = "highest",
+    // the vm_account_id label is needed to handle multitenancy on VM side
     "vm_account_id" = "0"
   }
 }
