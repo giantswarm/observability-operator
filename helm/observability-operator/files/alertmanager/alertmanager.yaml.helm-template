@@ -79,13 +79,26 @@ route:
   {{- if .pagerdutyToken }}
 
   {{- if eq $.Values.managementCluster.pipeline "stable" }}
-  # PagerDuty pipeline=stable
+  # PagerDuty pipeline=stable anytime
   - receiver: pagerduty-{{ .name }}
     matchers:
     - severity="page"
     - pipeline="stable"
     - all_pipelines!="true"
     - team="{{ .name }}"
+    - cancel_if_outside_working_hours!="true"
+    continue: true
+
+  # PagerDuty pipeline=stable business hours
+  - receiver: pagerduty-{{ .name }}
+    matchers:
+    - severity="page"
+    - pipeline="stable"
+    - all_pipelines!="true"
+    - team="{{ .name }}"
+    - cancel_if_outside_working_hours="true"
+    active_time_intervals:
+    - business-hours
     continue: true
   {{- end }}
 
@@ -102,11 +115,22 @@ route:
     continue: true
   {{- end }}
 
-  # PagerDuty all-pipelines
+  # PagerDuty all-pipelines anytime
   - receiver: pagerduty-{{ .name }}
     matchers:
     - all_pipelines="true"
     - team="{{ .name }}"
+    - cancel_if_outside_working_hours!="true"
+    continue: true
+
+  # PagerDuty all-pipelines business hours
+  - receiver: pagerduty-{{ .name }}
+    matchers:
+    - all_pipelines="true"
+    - team="{{ .name }}"
+    - cancel_if_outside_working_hours="true"
+    active_time_intervals:
+    - business-hours
     continue: true
   {{- end }}
 
@@ -355,11 +379,6 @@ inhibit_rules:
   target_matchers:
   - cancel_if_control_plane_node_down=true
   equal: [cluster_id]
-
-- source_matchers:
-  - outside_working_hours=true
-  target_matchers:
-  - cancel_if_outside_working_hours=true
 
 - source_matchers:
   - has_worker_nodes=false

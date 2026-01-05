@@ -90,10 +90,10 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization *organiz
 // generateDatasources generates the list of datasources for a given organization.
 // It configures the datasources to use the appropriate multi-tenant headers based on the organization's tenant IDs.
 // It returns the list of desired datasources.
-func (s *Service) generateDatasources(organization *organization.Organization) (datasources []Datasource) {
+func (s *Service) generateDatasources(org *organization.Organization) (datasources []Datasource) {
 	// Multi-tenant header value is a pipe-separated list of tenant IDs for data reading
-	multiTenantIDsHeaderValue := strings.Join(organization.TenantIDs(), "|")
-	alertingTenants := organization.GetAlertingTenants()
+	multiTenantIDsHeaderValue := strings.Join(org.TenantIDs(), "|")
+	alertingTenants := org.GetAlertingTenants()
 
 	// 1. Create multi-tenant data reading datasources
 
@@ -231,14 +231,14 @@ func (s *Service) generateDatasources(organization *organization.Organization) (
 	}
 
 	// 3. Add special datasources for Shared Org
-	if organization.Name() == SharedOrg.Name() {
+	if org.Name() == organization.SharedOrg.Name() {
 		// Add Mimir Cardinality datasources to the "Shared Org"
 		datasources = append(datasources, DatasourceMimirCardinality().Merge(Datasource{
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
 			},
 			SecureJSONData: map[string]string{
-				"httpHeaderValue1": strings.Join(organization.TenantIDs(), "|"),
+				"httpHeaderValue1": strings.Join(org.TenantIDs(), "|"),
 			},
 		}))
 	}
