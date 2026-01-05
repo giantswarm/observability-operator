@@ -49,7 +49,7 @@ func (s StringSliceVar) String() string {
 }
 
 func (s *StringSliceVar) Set(value string) error {
-	*s = strings.Split(value, ",")
+	*s = append(*s, strings.Split(value, ",")...)
 	return nil
 }
 
