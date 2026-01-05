@@ -228,6 +228,35 @@
                 "enabled": {
                     "type": "boolean",
                     "description": "Enable or disable logging support"
+                },
+                "enableNodeFiltering": {
+                    "type": "boolean",
+                    "description": "Enable node filtering in Alloy logging configuration"
+                },
+                "enableNetworkMonitoring": {
+                    "type": "boolean",
+                    "description": "Enable network monitoring in Alloy logging configuration"
+                },
+                "defaultNamespaces": {
+                    "type": "array",
+                    "description": "Default namespaces to collect logs from",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includeEventsFromNamespaces": {
+                    "type": "array",
+                    "description": "Namespaces to include/exclude for events",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludeEventsFromNamespaces": {
+                    "type": "array",
+                    "description": "Namespaces to exclude from event collection",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

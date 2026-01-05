@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -39,6 +40,18 @@ import (
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	//+kubebuilder:scaffold:imports
 )
+
+// StringSliceVar is a custom flag type that accepts comma-separated values
+type StringSliceVar []string
+
+func (s StringSliceVar) String() string {
+	return strings.Join(s, ",")
+}
+
+func (s *StringSliceVar) Set(value string) error {
+	*s = append(*s, strings.Split(value, ",")...)
+	return nil
+}
 
 var (
 	cfg config.Config
@@ -167,9 +180,22 @@ func parseFlags() (err error) {
 	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
 		"Enable distributed tracing at the installation level.")
 
+	var defaultLoggingNamespaces StringSliceVar
+	var includeEventsFromNamespaces StringSliceVar
+	var excludeEventsFromNamespaces StringSliceVar
 	// Logging configuration flags
 	flag.BoolVar(&cfg.Logging.Enabled, "logging-enabled", false,
 		"Enable logging at the installation level.")
+	flag.Var(&defaultLoggingNamespaces, "logging-default-namespaces",
+		"Comma-separated list of namespaces to collect logs from by default on workload clusters")
+	flag.BoolVar(&cfg.Logging.EnableNodeFiltering, "logging-enable-node-filtering", false,
+		"Enable/disable node filtering in Alloy logging configuration")
+	flag.BoolVar(&cfg.Logging.EnableNetworkMonitoring, "logging-enable-network-monitoring", false,
+		"Enable/disable network monitoring in Alloy logging configuration")
+	flag.Var(&includeEventsFromNamespaces, "logging-include-events-from-namespaces",
+		"Comma-separated list of namespaces to collect events from on workload clusters (if empty, collect from all)")
+	flag.Var(&excludeEventsFromNamespaces, "logging-exclude-events-from-namespaces",
+		"Comma-separated list of namespaces to exclude events from on workload clusters")
 
 	// Zap logging options
 	opts := zap.Options{
@@ -206,6 +232,11 @@ func parseFlags() (err error) {
 	if queueSampleAgeLimit != "" {
 		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
 	}
+
+	// Apply logging configuration
+	cfg.Logging.DefaultNamespaces = defaultLoggingNamespaces
+	cfg.Logging.IncludeEventsNamespaces = includeEventsFromNamespaces
+	cfg.Logging.ExcludeEventsNamespaces = excludeEventsFromNamespaces
 
 	return nil
 }
