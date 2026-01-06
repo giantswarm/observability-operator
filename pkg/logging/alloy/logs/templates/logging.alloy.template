@@ -1,0 +1,32 @@
+{{/*
+TODO: Copy the actual template content from:
+https://github.com/giantswarm/logging-operator/blob/main/pkg/resource/logging-config/alloy/logging.alloy.template
+
+This template should contain the Alloy River configuration for:
+- Log collection from Kubernetes pods
+- Log forwarding to Loki
+- Cluster labels and metadata
+- Node filtering (conditional)
+- Network monitoring with Beyla (conditional)
+- Multi-tenant support
+
+Template variables available:
+- .ClusterID
+- .ClusterType
+- .Organization
+- .Installation
+- .Provider
+- .MaxBackoffPeriod
+- .RemoteTimeout
+- .IsWorkloadCluster
+- .NodeFilteringEnabled
+- .NetworkMonitoringEnabled
+- .InsecureSkipVerify
+- .SecretName
+- .LoggingURLKey
+- .LoggingTenantIDKey
+- .LoggingUsernameKey
+- .LoggingPasswordKey
+- .LokiRulerAPIURLKey
+- .Tenants (array)
+*/}}

@@ -1,0 +1,16 @@
+{{/*
+TODO: Copy the actual template content from:
+https://github.com/giantswarm/logging-operator/blob/main/pkg/resource/logging-config/alloy/logging-config.alloy.yaml.template
+
+This template should contain the Helm values wrapper for Alloy logging configuration.
+
+Template variables available:
+- .AlloyConfig (the River configuration)
+- .AlloyImageTag (optional, pointer to string)
+- .DefaultWorkloadClusterNamespaces (array)
+- .DefaultWriteTenant
+- .NetworkMonitoringEnabled
+- .NodeFilteringEnabled
+- .IsWorkloadCluster
+- .PriorityClassName
+*/}}
