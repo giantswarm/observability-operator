@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/auth"
+	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
@@ -47,6 +48,8 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 			return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 		}
 		configmap.Data = data
+		// TODO remove once labels.Common is updated with these labels
+		configmap.Labels = labels.Common
 
 		return nil
 	})
@@ -61,6 +64,8 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 			return fmt.Errorf("failed to generate alloy events secret: %w", err)
 		}
 		secret.Data = data
+		// TODO remove once labels.Common is updated with these labels
+		secret.Labels = labels.Common
 
 		return nil
 	})

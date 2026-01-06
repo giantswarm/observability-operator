@@ -28,8 +28,8 @@ const (
 	RemoteWriteEndpointURLFormat = MimirBaseURLFormat + "/api/v1/push"
 	RemoteWriteTimeout           = "60s"
 
-	// Loki configuration (TODO move elsewhere)
-	LokiBaseURLFormat = "https://loki.%s"
+	// Loki configuration (TODO move elsewhere) and remove the write prefix eventually
+	LokiBaseURLFormat = "https://write.loki.%s"
 	LokiPushURLFormat = LokiBaseURLFormat + "/loki/api/v1/push"
 
 	// Tempo configuration (TODO move elsewhere)
