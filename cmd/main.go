@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -15,6 +14,7 @@ import (
 
 	"github.com/Netflix/go-env"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
+	pflag "github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,17 +41,59 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-// StringSliceVar is a custom flag type that accepts comma-separated values
-type StringSliceVar []string
+const (
+	// Operator configuration flag names
+	flagMetricsBindAddress     = "metrics-bind-address"
+	flagHealthProbeBindAddress = "health-probe-bind-address"
+	flagLeaderElect            = "leader-elect"
+	flagMetricsSecure          = "metrics-secure"
+	flagEnableHTTP2            = "enable-http2"
+	flagWebhookCertPath        = "webhook-cert-path"
+	flagOperatorNamespace      = "operator-namespace"
 
-func (s StringSliceVar) String() string {
-	return strings.Join(s, ",")
-}
+	// Grafana configuration flag names
+	flagGrafanaURL = "grafana-url"
 
-func (s *StringSliceVar) Set(value string) error {
-	*s = append(*s, strings.Split(value, ",")...)
-	return nil
-}
+	// Management cluster configuration flag names
+	flagManagementClusterBaseDomain = "management-cluster-base-domain"
+	flagManagementClusterCustomer   = "management-cluster-customer"
+	flagManagementClusterInsecureCA = "management-cluster-insecure-ca"
+	flagManagementClusterName       = "management-cluster-name"
+	flagManagementClusterPipeline   = "management-cluster-pipeline"
+	flagManagementClusterRegion     = "management-cluster-region"
+
+	// Monitoring configuration flag names
+	flagAlertmanagerEnabled                   = "alertmanager-enabled"
+	flagAlertmanagerSecretName                = "alertmanager-secret-name"
+	flagAlertmanagerURL                       = "alertmanager-url"
+	flagMonitoringEnabled                     = "monitoring-enabled"
+	flagMonitoringShardingScaleUpSeriesCount  = "monitoring-sharding-scale-up-series-count"
+	flagMonitoringShardingScaleDownPercentage = "monitoring-sharding-scale-down-percentage"
+	flagMonitoringWALTruncateFrequency        = "monitoring-wal-truncate-frequency"
+	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
+
+	// Queue configuration flag names
+	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
+	flagQueueCapacity          = "monitoring-queue-config-capacity"
+	flagQueueMaxBackoff        = "monitoring-queue-config-max-backoff"
+	flagQueueMaxSamplesPerSend = "monitoring-queue-config-max-samples-per-send"
+	flagQueueMaxShards         = "monitoring-queue-config-max-shards"
+	flagQueueMinBackoff        = "monitoring-queue-config-min-backoff"
+	flagQueueMinShards         = "monitoring-queue-config-min-shards"
+	flagQueueRetryOnHttp429    = "monitoring-queue-config-retry-on-http-429"
+	flagQueueSampleAgeLimit    = "monitoring-queue-config-sample-age-limit"
+
+	// Tracing configuration flag names
+	flagTracingEnabled = "tracing-enabled"
+
+	// Logging configuration flag names
+	flagLoggingEnabled                     = "logging-enabled"
+	flagLoggingDefaultNamespaces           = "logging-default-namespaces"
+	flagLoggingEnableNodeFiltering         = "logging-enable-node-filtering"
+	flagLoggingEnableNetworkMonitoring     = "logging-enable-network-monitoring"
+	flagLoggingIncludeEventsFromNamespaces = "logging-include-events-from-namespaces"
+	flagLoggingExcludeEventsFromNamespaces = "logging-exclude-events-from-namespaces"
+)
 
 var (
 	cfg config.Config
@@ -95,61 +137,57 @@ func runner() error {
 // parseFlags parses all command line flags and updates the configuration.
 func parseFlags() (err error) {
 	// Operator configuration flags
-	flag.StringVar(&cfg.Operator.MetricsAddr, "metrics-bind-address", ":8080",
+	pflag.StringVar(&cfg.Operator.MetricsAddr, flagMetricsBindAddress, ":8080",
 		"The address the metric endpoint binds to.")
-	flag.StringVar(&cfg.Operator.ProbeAddr, "health-probe-bind-address", ":8081",
+	pflag.StringVar(&cfg.Operator.ProbeAddr, flagHealthProbeBindAddress, ":8081",
 		"The address the probe endpoint binds to.")
-	flag.BoolVar(&cfg.Operator.EnableLeaderElection, "leader-elect", false,
+	pflag.BoolVar(&cfg.Operator.EnableLeaderElection, flagLeaderElect, false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&cfg.Operator.SecureMetrics, "metrics-secure", false,
+	pflag.BoolVar(&cfg.Operator.SecureMetrics, flagMetricsSecure, false,
 		"If set the metrics endpoint is served securely")
-	flag.BoolVar(&cfg.Operator.EnableHTTP2, "enable-http2", false,
+	pflag.BoolVar(&cfg.Operator.EnableHTTP2, flagEnableHTTP2, false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	flag.StringVar(&cfg.Operator.WebhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
+	pflag.StringVar(&cfg.Operator.WebhookCertPath, flagWebhookCertPath, "/tmp/k8s-webhook-server/serving-certs",
 		"Path to the directory where the webhook server will store its TLS certificate and key.")
-	flag.StringVar(&cfg.Operator.OperatorNamespace, "operator-namespace", "",
+	pflag.StringVar(&cfg.Operator.OperatorNamespace, flagOperatorNamespace, "",
 		"The namespace where the observability-operator is running.")
 
 	// Grafana configuration flags
 	var grafanaURL string
-	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local", "grafana URL")
-	// Parse Grafana URL
-	cfg.Grafana.URL, err = url.Parse(grafanaURL)
-	if err != nil {
-		return fmt.Errorf("failed to parse grafana URL: %w", err)
-	}
+	pflag.StringVar(&grafanaURL, flagGrafanaURL, "http://grafana.monitoring.svc.cluster.local",
+		"grafana URL")
 
 	// Management cluster configuration flags
-	flag.StringVar(&cfg.Cluster.BaseDomain, "management-cluster-base-domain", "",
+	pflag.StringVar(&cfg.Cluster.BaseDomain, flagManagementClusterBaseDomain, "",
 		"The base domain of the management cluster.")
-	flag.StringVar(&cfg.Cluster.Customer, "management-cluster-customer", "",
+	pflag.StringVar(&cfg.Cluster.Customer, flagManagementClusterCustomer, "",
 		"The customer of the management cluster.")
-	flag.BoolVar(&cfg.Cluster.InsecureCA, "management-cluster-insecure-ca", false,
+	pflag.BoolVar(&cfg.Cluster.InsecureCA, flagManagementClusterInsecureCA, false,
 		"Flag to indicate if the management cluster has an insecure CA that should be trusted")
-	flag.StringVar(&cfg.Cluster.Name, "management-cluster-name", "",
+	pflag.StringVar(&cfg.Cluster.Name, flagManagementClusterName, "",
 		"The name of the management cluster.")
-	flag.StringVar(&cfg.Cluster.Pipeline, "management-cluster-pipeline", "",
+	pflag.StringVar(&cfg.Cluster.Pipeline, flagManagementClusterPipeline, "",
 		"The pipeline of the management cluster.")
-	flag.StringVar(&cfg.Cluster.Region, "management-cluster-region", "",
+	pflag.StringVar(&cfg.Cluster.Region, flagManagementClusterRegion, "",
 		"The region of the management cluster.")
 
 	// Monitoring configuration flags
-	flag.BoolVar(&cfg.Monitoring.AlertmanagerEnabled, "alertmanager-enabled", false,
+	pflag.BoolVar(&cfg.Monitoring.AlertmanagerEnabled, flagAlertmanagerEnabled, false,
 		"Enable Alertmanager controller.")
-	flag.StringVar(&cfg.Monitoring.AlertmanagerSecretName, "alertmanager-secret-name", "",
+	pflag.StringVar(&cfg.Monitoring.AlertmanagerSecretName, flagAlertmanagerSecretName, "",
 		"The name of the secret containing the Alertmanager configuration.")
-	flag.StringVar(&cfg.Monitoring.AlertmanagerURL, "alertmanager-url", "",
+	pflag.StringVar(&cfg.Monitoring.AlertmanagerURL, flagAlertmanagerURL, "",
 		"The URL of the Alertmanager API.")
-	flag.BoolVar(&cfg.Monitoring.Enabled, "monitoring-enabled", false,
+	pflag.BoolVar(&cfg.Monitoring.Enabled, flagMonitoringEnabled, false,
 		"Enable monitoring at the installation level.")
-	flag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
+	pflag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleUpSeriesCount, flagMonitoringShardingScaleUpSeriesCount, 0,
 		"Configures the number of time series needed to add an extra prometheus agent shard.")
-	flag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
+	pflag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleDownPercentage, flagMonitoringShardingScaleDownPercentage, 0,
 		"Configures the percentage of removed series to scale down the number of prometheus agent shards.")
-	flag.DurationVar(&cfg.Monitoring.WALTruncateFrequency, "monitoring-wal-truncate-frequency", 2*time.Hour,
+	pflag.DurationVar(&cfg.Monitoring.WALTruncateFrequency, flagMonitoringWALTruncateFrequency, 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
-	flag.StringVar(&cfg.Monitoring.MetricsQueryURL, "monitoring-metrics-query-url", "http://mimir-gateway.mimir.svc/prometheus",
+	pflag.StringVar(&cfg.Monitoring.MetricsQueryURL, flagMonitoringMetricsQueryURL, "http://mimir-gateway.mimir.svc/prometheus",
 		"URL to query for cluster metrics")
 
 	// Queue configuration flags for Alloy remote write
@@ -157,44 +195,41 @@ func parseFlags() (err error) {
 	var queueCapacity, queueMaxSamplesPerSend, queueMaxShards, queueMinShards int
 	var queueRetryOnHttp429 bool
 
-	flag.StringVar(&queueBatchSendDeadline, "monitoring-queue-config-batch-send-deadline", "",
+	pflag.StringVar(&queueBatchSendDeadline, flagQueueBatchSendDeadline, "",
 		"Maximum time samples wait in the buffer before sending (e.g., '5s'). If empty, Alloy default is used.")
-	flag.IntVar(&queueCapacity, "monitoring-queue-config-capacity", 0,
+	pflag.IntVar(&queueCapacity, flagQueueCapacity, 0,
 		"Number of samples to buffer per shard. If 0, Alloy default is used.")
-	flag.StringVar(&queueMaxBackoff, "monitoring-queue-config-max-backoff", "",
+	pflag.StringVar(&queueMaxBackoff, flagQueueMaxBackoff, "",
 		"Maximum backoff time between retries (e.g., '5m'). If empty, Alloy default is used.")
-	flag.IntVar(&queueMaxSamplesPerSend, "monitoring-queue-config-max-samples-per-send", 0,
+	pflag.IntVar(&queueMaxSamplesPerSend, flagQueueMaxSamplesPerSend, 0,
 		"Maximum number of samples to send in a single request. If 0, Alloy default is used.")
-	flag.IntVar(&queueMaxShards, "monitoring-queue-config-max-shards", 0,
+	pflag.IntVar(&queueMaxShards, flagQueueMaxShards, 0,
 		"Maximum number of shards to use. If 0, Alloy default is used.")
-	flag.StringVar(&queueMinBackoff, "monitoring-queue-config-min-backoff", "",
+	pflag.StringVar(&queueMinBackoff, flagQueueMinBackoff, "",
 		"Minimum backoff time between retries (e.g., '30ms'). If empty, Alloy default is used.")
-	flag.IntVar(&queueMinShards, "monitoring-queue-config-min-shards", 0,
+	pflag.IntVar(&queueMinShards, flagQueueMinShards, 0,
 		"Minimum number of shards to use. If 0, Alloy default is used.")
-	flag.BoolVar(&queueRetryOnHttp429, "monitoring-queue-config-retry-on-http-429", false,
+	pflag.BoolVar(&queueRetryOnHttp429, flagQueueRetryOnHttp429, false,
 		"Retry when an HTTP 429 status code is received.")
-	flag.StringVar(&queueSampleAgeLimit, "monitoring-queue-config-sample-age-limit", "",
+	pflag.StringVar(&queueSampleAgeLimit, flagQueueSampleAgeLimit, "",
 		"Maximum age of samples to send (e.g., '30m'). If empty, Alloy default is used.")
 
 	// Tracing configuration flags
-	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
+	pflag.BoolVar(&cfg.Tracing.Enabled, flagTracingEnabled, false,
 		"Enable distributed tracing at the installation level.")
 
-	var defaultLoggingNamespaces StringSliceVar
-	var includeEventsFromNamespaces StringSliceVar
-	var excludeEventsFromNamespaces StringSliceVar
 	// Logging configuration flags
-	flag.BoolVar(&cfg.Logging.Enabled, "logging-enabled", false,
+	pflag.BoolVar(&cfg.Logging.Enabled, flagLoggingEnabled, false,
 		"Enable logging at the installation level.")
-	flag.Var(&defaultLoggingNamespaces, "logging-default-namespaces",
+	pflag.StringSliceVar(&cfg.Logging.DefaultNamespaces, flagLoggingDefaultNamespaces, []string{},
 		"Comma-separated list of namespaces to collect logs from by default on workload clusters")
-	flag.BoolVar(&cfg.Logging.EnableNodeFiltering, "logging-enable-node-filtering", false,
+	pflag.BoolVar(&cfg.Logging.EnableNodeFiltering, flagLoggingEnableNodeFiltering, false,
 		"Enable/disable node filtering in Alloy logging configuration")
-	flag.BoolVar(&cfg.Logging.EnableNetworkMonitoring, "logging-enable-network-monitoring", false,
+	pflag.BoolVar(&cfg.Logging.EnableNetworkMonitoring, flagLoggingEnableNetworkMonitoring, false,
 		"Enable/disable network monitoring in Alloy logging configuration")
-	flag.Var(&includeEventsFromNamespaces, "logging-include-events-from-namespaces",
+	pflag.StringSliceVar(&cfg.Logging.IncludeEventsNamespaces, flagLoggingIncludeEventsFromNamespaces, []string{},
 		"Comma-separated list of namespaces to collect events from on workload clusters (if empty, collect from all)")
-	flag.Var(&excludeEventsFromNamespaces, "logging-exclude-events-from-namespaces",
+	pflag.StringSliceVar(&cfg.Logging.ExcludeEventsNamespaces, flagLoggingExcludeEventsFromNamespaces, []string{},
 		"Comma-separated list of namespaces to exclude events from on workload clusters")
 
 	// Zap logging options
@@ -202,41 +237,43 @@ func parseFlags() (err error) {
 		Development: false,
 	}
 	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	pflag.Parse()
 
-	// Apply queue configuration flags after parsing
-	if queueBatchSendDeadline != "" {
+	// Parse Grafana URL after flags are parsed
+	cfg.Grafana.URL, err = url.Parse(grafanaURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse grafana URL: %w", err)
+	}
+
+	// Apply queue configuration flags after parsing (only if explicitly set)
+	if pflag.CommandLine.Changed(flagQueueBatchSendDeadline) {
 		cfg.Monitoring.QueueConfig.BatchSendDeadline = &queueBatchSendDeadline
 	}
-	if queueCapacity > 0 {
+	if pflag.CommandLine.Changed(flagQueueCapacity) {
 		cfg.Monitoring.QueueConfig.Capacity = &queueCapacity
 	}
-	if queueMaxBackoff != "" {
+	if pflag.CommandLine.Changed(flagQueueMaxBackoff) {
 		cfg.Monitoring.QueueConfig.MaxBackoff = &queueMaxBackoff
 	}
-	if queueMaxSamplesPerSend > 0 {
+	if pflag.CommandLine.Changed(flagQueueMaxSamplesPerSend) {
 		cfg.Monitoring.QueueConfig.MaxSamplesPerSend = &queueMaxSamplesPerSend
 	}
-	if queueMaxShards > 0 {
+	if pflag.CommandLine.Changed(flagQueueMaxShards) {
 		cfg.Monitoring.QueueConfig.MaxShards = &queueMaxShards
 	}
-	if queueMinBackoff != "" {
+	if pflag.CommandLine.Changed(flagQueueMinBackoff) {
 		cfg.Monitoring.QueueConfig.MinBackoff = &queueMinBackoff
 	}
-	if queueMinShards > 0 {
+	if pflag.CommandLine.Changed(flagQueueMinShards) {
 		cfg.Monitoring.QueueConfig.MinShards = &queueMinShards
 	}
-	if queueRetryOnHttp429 {
+	if pflag.CommandLine.Changed(flagQueueRetryOnHttp429) {
 		cfg.Monitoring.QueueConfig.RetryOnHttp429 = &queueRetryOnHttp429
 	}
-	if queueSampleAgeLimit != "" {
+	if pflag.CommandLine.Changed(flagQueueSampleAgeLimit) {
 		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
 	}
-
-	// Apply logging configuration
-	cfg.Logging.DefaultNamespaces = defaultLoggingNamespaces
-	cfg.Logging.IncludeEventsNamespaces = includeEventsFromNamespaces
-	cfg.Logging.ExcludeEventsNamespaces = excludeEventsFromNamespaces
 
 	return nil
 }
