@@ -8,27 +8,17 @@ import (
 	"time"
 
 	"github.com/blang/semver/v4"
+	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
+	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 var managementClusterName = "dummy-cluster"
-
-// MockOrganizationRepository implements a minimal OrganizationRepository with call tracking.
-type MockOrganizationRepository struct {
-	CallCount   int
-	LastCluster *clusterv1.Cluster
-}
-
-func (m *MockOrganizationRepository) Read(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
-	m.CallCount++
-	m.LastCluster = cluster
-	return "dummy-org", nil
-}
 
 func TestGenerateAlloyConfig(t *testing.T) {
 	tests := []struct {
@@ -252,7 +242,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			ctx := context.Background()
 			// Create a dummy Service with minimal dependencies.
 			service := &Service{
-				OrganizationRepository: &MockOrganizationRepository{},
+				OrganizationRepository: mocks.NewMockOrganizationRepository("dummy-org"),
 				Config: config.Config{
 					Cluster: config.ClusterConfig{
 						InsecureCA: false,
@@ -294,8 +284,8 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				t.Fatalf("failed to read golden file: %v", err)
 			}
 			want := string(wantBytes)
-			if got != want {
-				t.Errorf("generated config does not match golden file for %s.\nGot:\n%s\n\nWant:\n%s", tt.name, got, want)
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("generated config mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
