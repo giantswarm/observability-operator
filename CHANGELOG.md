@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add logging configuration section to Helm chart values for controlling log collection behavior.
 - Takeover `alloy-events` configuration
 
+### Changed
+
+- Change flag parsing from flag default library to `pflag`
+
 ## [0.55.0] - 2026-01-05
 
 ### Changed
