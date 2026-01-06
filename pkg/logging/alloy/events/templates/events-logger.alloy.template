@@ -1,0 +1,181 @@
+logging {
+	level  = "info"
+	format = "logfmt"
+}
+
+remote.kubernetes.secret "credentials" {
+	namespace = "kube-system"
+	name = "{{ .SecretName }}"
+}
+
+loki.source.kubernetes_events "local" {
+	{{- if and .IsWorkloadCluster .IncludeNamespaces }}
+	namespaces = ["{{ join "\", \"" .IncludeNamespaces }}"]
+	{{- else }}
+	namespaces = []
+	{{- end }}
+
+	{{- if and .IsWorkloadCluster .ExcludeNamespaces }}
+	forward_to = [loki.process.default.receiver]
+	{{- else }}
+	forward_to = [loki.write.default.receiver]
+	{{- end }}
+}
+
+{{- if and .IsWorkloadCluster .ExcludeNamespaces }}
+// exclude configured namespaces
+loki.process "default" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.drop {
+		source = "namespace"
+		expression = {{ join "|" .ExcludeNamespaces | quote }}
+	}
+}
+{{- end }}
+
+// Loki target configuration
+loki.write "default" {
+	endpoint {
+		max_backoff_period = "{{ .MaxBackoffPeriod }}"
+		remote_timeout     = "{{ .RemoteTimeout }}"
+		tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingTenantIDKey }}"])
+
+		{{- if .IsWorkloadCluster }}
+		url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingURLKey }}"])
+		basic_auth {
+			username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
+			password = remote.kubernetes.secret.credentials.data["{{ .LoggingPasswordKey }}"]
+		}
+		{{- else }}
+		url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
+		{{- end }}
+
+		tls_config {
+			insecure_skip_verify = {{ .InsecureSkipVerify }}
+		}
+	}
+	external_labels = {
+		cluster_id       = "{{ .ClusterID }}",
+		cluster_type     = "{{ .ClusterType }}",
+		organization     = "{{ .Organization }}",
+		provider         = "{{ .Provider }}",
+		scrape_job       = "kubernetes-events",
+	}
+}
+
+{{- if .TracingEnabled }}
+otelcol.auth.basic "tracing_credentials" {
+	username = nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TracingUsernameKey }}"])
+	password = remote.kubernetes.secret.credentials.data["{{ .TracingPasswordKey }}"]
+}
+
+// OTLP receiver for traces
+otelcol.receiver.otlp "traces" {
+	grpc {
+		endpoint = "0.0.0.0:4317"
+	}
+	http {
+		endpoint = "0.0.0.0:4318"
+	}
+
+	output {
+		traces = [otelcol.processor.k8sattributes.default.input]
+	}
+}
+
+otelcol.processor.k8sattributes "default" {
+	extract {
+		metadata = [
+			"k8s.namespace.name",
+			"k8s.pod.name",
+			"k8s.container.name",
+		]
+		label {
+			key = "observability.giantswarm.io/tenant"
+			tag_name = "giantswarm.tenant"
+		}
+		otel_annotations = true
+	}
+
+	output {
+		traces = [otelcol.processor.transform.default.input]
+	}
+}
+
+otelcol.processor.transform "default" {
+	error_mode = "ignore"
+
+	trace_statements {
+		context = "resource"
+		statements = [
+			`set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
+			`set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
+			`set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
+			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+		]
+	}
+
+	output {
+		traces = [
+			{{- range .Tenants }}
+			otelcol.processor.filter.{{ . }}.input,
+			{{- end }}
+		]
+	}
+}
+
+// one OTLP gRPC exporter for traces per tenant
+{{- range .Tenants }}
+otelcol.processor.filter "{{ . }}" {
+	traces {
+		span = [
+			`resource.attributes["giantswarm.tenant"] != "{{ . }}"`,
+		]
+	}
+	output {
+		traces = [otelcol.processor.transform.cleanup_{{ . }}.input]
+	}
+}
+
+// Remove giantswarm.tenant resource attribute after filtering
+otelcol.processor.transform "cleanup_{{ . }}" {
+	error_mode = "ignore"
+
+	trace_statements {
+		context = "resource"
+		statements = [
+			`delete_key(resource.attributes, "giantswarm.tenant")`,
+		]
+	}
+
+	output {
+		traces = [otelcol.exporter.otlp.{{ . }}.input]
+	}
+}
+
+// one OTLP gRPC exporter for traces per tenant
+otelcol.exporter.otlp "{{ . }}" {
+	client {
+		{{- if $.IsWorkloadCluster }}
+		auth     = otelcol.auth.basic.tracing_credentials.handler
+		endpoint = "{{ $.TracingEndpoint }}"
+		tls {
+			insecure_skip_verify = false
+		}
+		{{- else }}
+		tls {
+			// Use insecure connection since this exporter uses a (direct) internal Tempo endpoint which is not behind a TLS reverse proxy.
+			insecure = true
+		}
+		endpoint = "tempo-distributor.tempo.svc:4317"
+		{{- end }}
+
+		headers = {
+			"X-Scope-OrgID" = "{{ . }}",
+		}
+	}
+}
+
+{{- end }}
+{{- end }}

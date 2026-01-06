@@ -13,22 +13,11 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 var managementClusterName = "dummy-cluster"
-
-// MockOrganizationRepository implements a minimal OrganizationRepository with call tracking.
-type MockOrganizationRepository struct {
-	CallCount   int
-	LastCluster *clusterv1.Cluster
-}
-
-func (m *MockOrganizationRepository) Read(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
-	m.CallCount++
-	m.LastCluster = cluster
-	return "dummy-org", nil
-}
 
 func TestGenerateAlloyConfig(t *testing.T) {
 	tests := []struct {
@@ -120,7 +109,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			tenants:                    []string{commonmonitoring.DefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.wc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
@@ -137,7 +126,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			tenants:                    []string{commonmonitoring.DefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.mc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
@@ -224,7 +213,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			tenants:                    []string{commonmonitoring.DefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.wc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
@@ -241,7 +230,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{commonmonitoring.DefaultWriteTenant},
+			tenants:                    []string{commonmonitoring.DefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.mc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
@@ -252,7 +241,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 			ctx := context.Background()
 			// Create a dummy Service with minimal dependencies.
 			service := &Service{
-				OrganizationRepository: &MockOrganizationRepository{},
+				OrganizationRepository: mocks.NewMockOrganizationRepository("dummy-org"),
 				Config: config.Config{
 					Cluster: config.ClusterConfig{
 						InsecureCA: false,

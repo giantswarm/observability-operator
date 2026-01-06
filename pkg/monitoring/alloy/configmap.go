@@ -162,7 +162,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		ClusterID: cluster.Name,
 
 		Tenants:         tenants,
-		DefaultTenantID: commonmonitoring.DefaultWriteTenant,
+		DefaultTenantID: commonmonitoring.DefaultTenant,
 
 		QueueConfigBatchSendDeadline: a.Monitoring.QueueConfig.BatchSendDeadline,
 		QueueConfigCapacity:          a.Monitoring.QueueConfig.Capacity,

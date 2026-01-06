@@ -28,11 +28,17 @@ const (
 	RemoteWriteEndpointURLFormat = MimirBaseURLFormat + "/api/v1/push"
 	RemoteWriteTimeout           = "60s"
 
-	OrgIDHeader        = "X-Scope-OrgID"
-	DefaultWriteTenant = "giantswarm"
-)
+	// Loki configuration (TODO move elsewhere)
+	LokiBaseURLFormat = "https://loki.%s"
+	LokiPushURLFormat = LokiBaseURLFormat + "/loki/api/v1/push"
 
-var DefaultReadTenant = "giantswarm"
+	// Tempo configuration (TODO move elsewhere)
+	TempoIngressURLFormat = "tempo-gateway.%s"
+
+	// TODO move elsewhere
+	OrgIDHeader   = "X-Scope-OrgID"
+	DefaultTenant = "giantswarm"
+)
 
 func GetServicePriority(cluster *clusterv1.Cluster) string {
 	if servicePriority, ok := cluster.GetLabels()[servicePriorityLabel]; ok && servicePriority != "" {

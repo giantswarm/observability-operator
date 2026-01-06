@@ -1,0 +1,35 @@
+logging {
+	level  = "info"
+	format = "logfmt"
+}
+
+remote.kubernetes.secret "credentials" {
+	namespace = "kube-system"
+	name = "alloy-events"
+}
+
+loki.source.kubernetes_events "local" {
+	namespaces = []
+	forward_to = [loki.write.default.receiver]
+}
+
+// Loki target configuration
+loki.write "default" {
+	endpoint {
+		max_backoff_period = "10m"
+		remote_timeout     = "60s"
+		tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
+		url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
+
+		tls_config {
+			insecure_skip_verify = false
+		}
+	}
+	external_labels = {
+		cluster_id       = "test-installation",
+		cluster_type     = "management_cluster",
+		organization     = "test-organization",
+		provider         = "test-provider",
+		scrape_job       = "kubernetes-events",
+	}
+}

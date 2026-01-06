@@ -1,0 +1,48 @@
+logging {
+	level  = "info"
+	format = "logfmt"
+}
+
+remote.kubernetes.secret "credentials" {
+	namespace = "kube-system"
+	name = "alloy-events"
+}
+
+loki.source.kubernetes_events "local" {
+	namespaces = []
+	forward_to = [loki.process.default.receiver]
+}
+// exclude configured namespaces
+loki.process "default" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.drop {
+		source = "namespace"
+		expression = "namespace1|namespace2"
+	}
+}
+
+// Loki target configuration
+loki.write "default" {
+	endpoint {
+		max_backoff_period = "10m"
+		remote_timeout     = "60s"
+		tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
+		url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-url"])
+		basic_auth {
+			username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
+			password = remote.kubernetes.secret.credentials.data["logging-password"]
+		}
+
+		tls_config {
+			insecure_skip_verify = false
+		}
+	}
+	external_labels = {
+		cluster_id       = "exclude-namespaces",
+		cluster_type     = "workload_cluster",
+		organization     = "test-organization",
+		provider         = "test-provider",
+		scrape_job       = "kubernetes-events",
+	}
+}

@@ -22,7 +22,8 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/config"
-	loggingalloy "github.com/giantswarm/observability-operator/pkg/logging/alloy"
+	"github.com/giantswarm/observability-operator/pkg/logging/alloy/events"
+	"github.com/giantswarm/observability-operator/pkg/logging/alloy/logs"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 )
@@ -41,9 +42,9 @@ type ClusterMonitoringReconciler struct {
 	// AlloyMetricsService is the service which manages Alloy monitoring agent configuration.
 	AlloyMetricsService alloy.Service
 	// AlloyLogsService is the service which manages Alloy logs configuration.
-	AlloyLogsService *loggingalloy.LogsService
+	AlloyLogsService logs.Service
 	// AlloyEventsService is the service which manages Alloy events configuration.
-	AlloyEventsService *loggingalloy.EventsService
+	AlloyEventsService events.Service
 	// HeartbeatRepositories is the list of repositories for managing heartbeats.
 	HeartbeatRepositories []heartbeat.HeartbeatRepository
 	// authManagers contains all authentication managers with their feature checks.
@@ -130,9 +131,19 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	}
 
 	// Initialize logging services
-	alloyLogsService := loggingalloy.NewLogsService(managerClient, cfg, lokiAuthManager)
-	alloyEventsService := loggingalloy.NewEventsService(managerClient, cfg, lokiAuthManager, tempoAuthManager)
-
+	alloyLogsService := logs.Service{
+		Client:                 managerClient,
+		OrganizationRepository: organizationRepository,
+		Config:                 cfg,
+		LogsAuthManager:        lokiAuthManager,
+	}
+	alloyEventsService := events.Service{
+		Client:                 managerClient,
+		OrganizationRepository: organizationRepository,
+		Config:                 cfg,
+		LogsAuthManager:        lokiAuthManager,
+		TracesAuthManager:      tempoAuthManager,
+	}
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
 		Config:                     cfg,

@@ -15,7 +15,7 @@ mimir.rules.kubernetes "{{ . }}" {
   address = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRulerAPIURLKey }}"])
   basic_auth {
     username   = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIUsernameKey }}"])
-     password = remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIPasswordKey }}"]
+    password = remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIPasswordKey }}"]
   }
   extra_query_matchers {
     matcher {

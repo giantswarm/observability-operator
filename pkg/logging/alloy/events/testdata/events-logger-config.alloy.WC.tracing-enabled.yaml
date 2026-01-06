@@ -1,0 +1,139 @@
+logging {
+	level  = "info"
+	format = "logfmt"
+}
+
+remote.kubernetes.secret "credentials" {
+	namespace = "kube-system"
+	name = "alloy-events"
+}
+
+loki.source.kubernetes_events "local" {
+	namespaces = []
+	forward_to = [loki.write.default.receiver]
+}
+
+// Loki target configuration
+loki.write "default" {
+	endpoint {
+		max_backoff_period = "10m"
+		remote_timeout     = "60s"
+		tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
+		url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-url"])
+		basic_auth {
+			username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
+			password = remote.kubernetes.secret.credentials.data["logging-password"]
+		}
+
+		tls_config {
+			insecure_skip_verify = false
+		}
+	}
+	external_labels = {
+		cluster_id       = "test-cluster",
+		cluster_type     = "workload_cluster",
+		organization     = "test-organization",
+		provider         = "test-provider",
+		scrape_job       = "kubernetes-events",
+	}
+}
+otelcol.auth.basic "tracing_credentials" {
+	username = nonsensitive(remote.kubernetes.secret.credentials.data["tracing-username"])
+	password = remote.kubernetes.secret.credentials.data["tracing-password"]
+}
+
+// OTLP receiver for traces
+otelcol.receiver.otlp "traces" {
+	grpc {
+		endpoint = "0.0.0.0:4317"
+	}
+	http {
+		endpoint = "0.0.0.0:4318"
+	}
+
+	output {
+		traces = [otelcol.processor.k8sattributes.default.input]
+	}
+}
+
+otelcol.processor.k8sattributes "default" {
+	extract {
+		metadata = [
+			"k8s.namespace.name",
+			"k8s.pod.name",
+			"k8s.container.name",
+		]
+		label {
+			key = "observability.giantswarm.io/tenant"
+			tag_name = "giantswarm.tenant"
+		}
+		otel_annotations = true
+	}
+
+	output {
+		traces = [otelcol.processor.transform.default.input]
+	}
+}
+
+otelcol.processor.transform "default" {
+	error_mode = "ignore"
+
+	trace_statements {
+		context = "resource"
+		statements = [
+			`set(attributes["giantswarm.cluster.id"], "test-cluster")`,
+			`set(attributes["giantswarm.cluster.type"], "workload_cluster")`,
+			`set(attributes["giantswarm.cluster.organization"], "test-organization")`,
+			`set(attributes["giantswarm.cluster.provider"], "test-provider")`,
+		]
+	}
+
+	output {
+		traces = [
+			otelcol.processor.filter.giantswarm.input,
+		]
+	}
+}
+
+// one OTLP gRPC exporter for traces per tenant
+otelcol.processor.filter "giantswarm" {
+	traces {
+		span = [
+			`resource.attributes["giantswarm.tenant"] != "giantswarm"`,
+		]
+	}
+	output {
+		traces = [otelcol.processor.transform.cleanup_giantswarm.input]
+	}
+}
+
+// Remove giantswarm.tenant resource attribute after filtering
+otelcol.processor.transform "cleanup_giantswarm" {
+	error_mode = "ignore"
+
+	trace_statements {
+		context = "resource"
+		statements = [
+			`delete_key(resource.attributes, "giantswarm.tenant")`,
+		]
+	}
+
+	output {
+		traces = [otelcol.exporter.otlp.giantswarm.input]
+	}
+}
+
+// one OTLP gRPC exporter for traces per tenant
+otelcol.exporter.otlp "giantswarm" {
+	client {
+		auth     = otelcol.auth.basic.tracing_credentials.handler
+		endpoint = "tempo-gateway.test.gigantic.io:443"
+		tls {
+			insecure_skip_verify = false
+		}
+
+		headers = {
+			"X-Scope-OrgID" = "giantswarm",
+		}
+	}
+}
