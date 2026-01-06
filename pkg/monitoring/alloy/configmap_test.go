@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/blang/semver/v4"
+	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
@@ -283,8 +284,8 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				t.Fatalf("failed to read golden file: %v", err)
 			}
 			want := string(wantBytes)
-			if got != want {
-				t.Errorf("generated config does not match golden file for %s.\nGot:\n%s\n\nWant:\n%s", tt.name, got, want)
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("generated config mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
