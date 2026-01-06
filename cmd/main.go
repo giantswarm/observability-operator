@@ -155,7 +155,8 @@ func parseFlags() (err error) {
 
 	// Grafana configuration flags
 	var grafanaURL string
-	pflag.StringVar(&grafanaURL, flagGrafanaURL, "http://grafana.monitoring.svc.cluster.local", "grafana URL")
+	pflag.StringVar(&grafanaURL, flagGrafanaURL, "http://grafana.monitoring.svc.cluster.local",
+		"grafana URL")
 
 	// Management cluster configuration flags
 	pflag.StringVar(&cfg.Cluster.BaseDomain, flagManagementClusterBaseDomain, "",
