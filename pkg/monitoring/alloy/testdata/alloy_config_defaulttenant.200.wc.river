@@ -11,8 +11,8 @@ remote.kubernetes.secret "credentials" {
 mimir.rules.kubernetes "giantswarm" {
   address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
   basic_auth {
-    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+    username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+    password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
   }
   extra_query_matchers {
     matcher {
