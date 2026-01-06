@@ -36,8 +36,7 @@ const (
 	TempoIngressURLFormat = "tempo-gateway.%s"
 
 	// TODO move elsewhere
-	OrgIDHeader   = "X-Scope-OrgID"
-	DefaultTenant = "giantswarm"
+	OrgIDHeader = "X-Scope-OrgID"
 )
 
 func GetServicePriority(cluster *clusterv1.Cluster) string {

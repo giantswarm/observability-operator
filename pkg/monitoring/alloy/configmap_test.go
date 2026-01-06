@@ -12,9 +12,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 var managementClusterName = "dummy-cluster"
@@ -109,7 +109,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{commonmonitoring.DefaultTenant},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.wc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
@@ -126,7 +126,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{commonmonitoring.DefaultTenant},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.mc.river"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
@@ -213,7 +213,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{commonmonitoring.DefaultTenant},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.wc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
@@ -230,7 +230,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{commonmonitoring.DefaultTenant},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.mc.river"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},

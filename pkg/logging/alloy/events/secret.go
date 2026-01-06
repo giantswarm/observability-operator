@@ -15,6 +15,7 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 const (
@@ -63,7 +64,7 @@ func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 	// Build secret environment variables map
 	secretEnv := map[string]string{
 		lokiURLKey:         lokiURL,
-		lokiTenantIDKey:    commonmonitoring.DefaultTenant,
+		lokiTenantIDKey:    organization.GiantSwarmDefaultTenant,
 		lokiUsernameKey:    cluster.Name,
 		lokiPasswordKey:    logsPassword,
 		lokiRulerAPIURLKey: lokiRulerURL,

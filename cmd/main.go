@@ -45,17 +45,11 @@ import (
 type StringSliceVar []string
 
 func (s StringSliceVar) String() string {
-	return ""
+	return strings.Join(s, ",")
 }
 
 func (s *StringSliceVar) Set(value string) error {
-	if value == "" {
-		*s = []string{}
-		return nil
-	}
-	for _, part := range strings.Split(value, ",") {
-		*s = append(*s, strings.TrimSpace(part))
-	}
+	*s = append(*s, strings.Split(value, ",")...)
 	return nil
 }
 

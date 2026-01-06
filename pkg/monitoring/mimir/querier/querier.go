@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 var (
@@ -42,7 +43,7 @@ func (t tenantRoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 	}
 
 	// Set the tenant organization ID header
-	reqCopy.Header.Set(monitoring.OrgIDHeader, monitoring.DefaultTenant)
+	reqCopy.Header.Set(monitoring.OrgIDHeader, organization.GiantSwarmDefaultTenant)
 
 	// Forward the request to the underlying transport
 	return t.rt.RoundTrip(reqCopy)
