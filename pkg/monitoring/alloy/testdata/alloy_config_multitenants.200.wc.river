@@ -11,7 +11,7 @@ remote.kubernetes.secret "credentials" {
 mimir.rules.kubernetes "tenant1" {
   address = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
   basic_auth {
-    username   = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
+    username = nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
     password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
   }
   extra_query_matchers {
