@@ -100,7 +100,7 @@ var _ = Describe("Cluster Controller", func() {
 				),
 			)
 
-			AlloyMetricsService := alloy.Service{
+			alloyMetricsService := alloy.Service{
 				Client:                 k8sClient,
 				OrganizationRepository: organizationRepository,
 				Config: config.Config{
@@ -141,7 +141,7 @@ var _ = Describe("Cluster Controller", func() {
 					},
 				},
 				BundleConfigurationService: bundleService,
-				AlloyMetricsService:     AlloyMetricsService,
+				AlloyMetricsService:        alloyMetricsService,
 				authManagers:               authManagers,
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
 			}
