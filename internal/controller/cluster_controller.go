@@ -322,6 +322,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	// Logging-specific: Alloy logs configuration
 	if r.Config.Logging.IsLoggingEnabled(cluster) {
 		// Create or update Alloy logs configuration
+		// TODO make sure we can enable network monitoring separately from logging
 		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy logs config")
@@ -337,6 +338,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 	} else {
 		// Clean up any existing alloy logs configuration
+		// TODO make sure we can enable network monitoring separately from logging
 		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy logs config")
@@ -344,6 +346,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 
 		// Clean up any existing alloy events configuration
+		// TODO make sure we can enable tracing separately from logging
 		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy events config")
@@ -379,6 +382,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		// Logging-specific: Alloy logs configuration
 		if r.Config.Logging.IsLoggingEnabled(cluster) {
 			// Clean up any existing alloy logs configuration
+			// TODO make sure we can enable network monitoring separately from logging
 			err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy logs config")

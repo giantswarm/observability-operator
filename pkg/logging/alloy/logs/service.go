@@ -49,7 +49,8 @@ func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	logger.Info("alloy-logs-service - ensuring alloy logs is configured")
 
 	// Check if network monitoring should be enabled
-	networkMonitoringEnabled := observabilityBundleVersion.GE(networkMonitoringMinVersion) && s.Config.Logging.EnableNetworkMonitoring
+	// Network monitoring requires observability-bundle >= 2.3.0 and must be explicitly enabled
+	networkMonitoringEnabled := observabilityBundleVersion.GE(networkMonitoringMinVersion) && s.Config.Monitoring.IsNetworkMonitoringEnabled(cluster)
 
 	configmap := ConfigMap(cluster)
 	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, configmap, func() error {

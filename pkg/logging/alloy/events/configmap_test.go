@@ -9,9 +9,13 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/google/go-cmp/cmp"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
@@ -42,6 +46,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 						"cluster.x-k8s.io/provider": "aws",
 					},
 				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.yaml"),
@@ -59,6 +68,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 						"cluster.x-k8s.io/provider": "aws",
 					},
 				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.yaml"),
@@ -74,6 +88,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					Labels: map[string]string{
 						"giantswarm.io/cluster":     "include-namespaces",
 						"cluster.x-k8s.io/provider": "aws",
+					},
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
 					},
 				},
 			},
@@ -94,6 +113,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 						"cluster.x-k8s.io/provider": "aws",
 					},
 				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.exclude-namespaces.yaml"),
@@ -110,6 +134,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					Labels: map[string]string{
 						"giantswarm.io/cluster":     managementClusterName,
 						"cluster.x-k8s.io/provider": "aws",
+					},
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
 					},
 				},
 			},
@@ -129,6 +158,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 						"cluster.x-k8s.io/provider": "aws",
 					},
 				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.tracing-enabled.yaml"),
@@ -142,10 +176,31 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 
+			// Create a fake client with a GrafanaOrganization to provide tenants
+			scheme := runtime.NewScheme()
+			_ = v1alpha1.AddToScheme(scheme)
+			_ = clusterv1.AddToScheme(scheme)
+
+			grafanaOrg := &v1alpha1.GrafanaOrganization{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-org",
+					Namespace: "default",
+				},
+				Spec: v1alpha1.GrafanaOrganizationSpec{
+					Tenants: []v1alpha1.TenantID{"giantswarm"},
+				},
+			}
+
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(grafanaOrg).
+				Build()
+
 			// Create service with test configuration
 			cfg := config.Config{
 				Cluster: config.ClusterConfig{
 					BaseDomain: "test.gigantic.io",
+					Name:       managementClusterName,
 				},
 				Logging: config.LoggingConfig{
 					IncludeEventsNamespaces: tt.includeNamespaces,
@@ -155,42 +210,26 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 
 			mockOrgRepo := mocks.NewMockOrganizationRepository("test-organization")
 			service := &Service{
+				Client:                 fakeClient,
 				Config:                 cfg,
 				OrganizationRepository: mockOrgRepo,
 			}
 
-			// Get cluster metadata
-			clusterID := tt.cluster.Name
-			installation := managementClusterName
-			if _, ok := tt.cluster.Labels["giantswarm.io/cluster"]; ok {
-				installation = managementClusterName
-			}
-			organization := "test-organization"
-			provider := "test-provider"
-			clusterType := "workload_cluster"
-			if installation == clusterID {
-				clusterType = "management_cluster"
-			}
-			isWorkloadCluster := clusterType == "workload_cluster"
-
-			tempoURL := ""
-			if tt.tracingEnabled && isWorkloadCluster {
-				tempoURL = "tempo-gateway.test.gigantic.io"
-			}
-
-			// Generate Alloy events config
-			result, err := service.generateAlloyEventsConfig(
-				clusterID,
-				clusterType,
-				organization,
-				provider,
-				tempoURL,
-				tt.tenants,
+			// Generate Alloy events config using the actual service method
+			resultMap, err := service.GenerateAlloyEventsConfigMapData(
+				ctx,
+				tt.cluster,
 				tt.tracingEnabled,
-				isWorkloadCluster,
+				tt.observabilityBundleVersion,
 			)
 			if err != nil {
-				t.Fatalf("generateAlloyEventsConfig() failed: %v", err)
+				t.Fatalf("GenerateAlloyEventsConfigMapData() failed: %v", err)
+			}
+
+			// Extract the values from the map
+			result, ok := resultMap["values"]
+			if !ok {
+				t.Fatalf("GenerateAlloyEventsConfigMapData() did not return 'values' key")
 			}
 
 			if os.Getenv("UPDATE_GOLDEN_FILES") == "true" {
@@ -212,10 +251,8 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 
 			// Compare
 			if diff := cmp.Diff(string(expected), result); diff != "" {
-				t.Errorf("generateAlloyEventsConfig() mismatch (-want +got):\n%s", diff)
+				t.Errorf("GenerateAlloyEventsConfigMapData() mismatch (-want +got):\n%s", diff)
 			}
-
-			_ = ctx
 		})
 	}
 }

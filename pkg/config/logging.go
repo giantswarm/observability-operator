@@ -17,9 +17,6 @@ type LoggingConfig struct {
 	// EnableNodeFiltering enables node filtering in Alloy logging configuration
 	EnableNodeFiltering bool
 
-	// EnableNetworkMonitoring enables network monitoring in Alloy logging configuration
-	EnableNetworkMonitoring bool
-
 	// DefaultNamespaces is the list of namespaces to collect logs from by default
 	DefaultNamespaces []string
 

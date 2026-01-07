@@ -13,8 +13,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
-	"sigs.k8s.io/yaml"
 
+	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
@@ -198,41 +198,27 @@ func generateAlloyConfig(
 		Organization:             org,
 		Installation:             clusterConfig.Name,
 		Provider:                 provider,
-		MaxBackoffPeriod:         "10m",
-		RemoteTimeout:            commonmonitoring.RemoteWriteTimeout,
+		MaxBackoffPeriod:         commonmonitoring.LokiMaxBackoffPeriod,
+		RemoteTimeout:            commonmonitoring.LokiRemoteTimeout,
 		IsWorkloadCluster:        isWorkloadCluster,
 		NodeFilteringEnabled:     enableNodeFiltering,
 		NetworkMonitoringEnabled: enableNetworkMonitoring,
 		InsecureSkipVerify:       insecureCA,
-		SecretName:               SecretName,
-		LoggingURLKey:            "logging-url",
-		LoggingTenantIDKey:       "logging-tenant-id",
-		LoggingUsernameKey:       "logging-username",
-		LoggingPasswordKey:       "logging-password",
-		LokiRulerAPIURLKey:       "ruler-api-url",
+		SecretName:               apps.AlloyLogsAppName,
+		LoggingURLKey:            commonmonitoring.LokiURLKey,
+		LoggingTenantIDKey:       commonmonitoring.LokiTenantIDKey,
+		LoggingUsernameKey:       commonmonitoring.LokiUsernameKey,
+		LoggingPasswordKey:       commonmonitoring.LokiPasswordKey,
+		LokiRulerAPIURLKey:       commonmonitoring.LokiRulerAPIURLKey,
 		Tenants:                  tenants,
 	}
 
-	// Execute template
+	// Execute template to generate River configuration
 	var buffer bytes.Buffer
 	err := alloyLoggingTemplate.Execute(&buffer, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute alloy config template: %w", err)
 	}
 
-	// Convert to YAML for the configmap
-	type AlloyConfig struct {
-		AlloyConfig string `yaml:"alloyConfig"`
-	}
-
-	alloyConfigWrapper := AlloyConfig{
-		AlloyConfig: buffer.String(),
-	}
-
-	yamlBytes, err := yaml.Marshal(alloyConfigWrapper)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal alloy config to yaml: %w", err)
-	}
-
-	return string(yamlBytes), nil
+	return buffer.String(), nil
 }

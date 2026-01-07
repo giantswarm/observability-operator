@@ -32,6 +32,18 @@ const (
 	LokiBaseURLFormat = "https://write.loki.%s"
 	LokiPushURLFormat = LokiBaseURLFormat + "/loki/api/v1/push"
 
+	// TODO: move these Loki secret keys to a more appropriate location
+	// Secret keys used for Loki authentication in Alloy configurations
+	LokiURLKey         = "logging-url"
+	LokiTenantIDKey    = "logging-tenant-id"
+	LokiUsernameKey    = "logging-username"
+	LokiPasswordKey    = "logging-password"
+	LokiRulerAPIURLKey = "ruler-api-url"
+
+	// Loki performance tuning constants
+	LokiMaxBackoffPeriod = "10m"
+	LokiRemoteTimeout    = "60s"
+
 	// Tempo configuration (TODO move elsewhere)
 	TempoIngressURLFormat = "tempo-gateway.%s"
 
