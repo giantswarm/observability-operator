@@ -78,6 +78,9 @@ spec:
         # Logging configuration
         {{ with .Values.logging }}
         - --logging-enabled={{ .enabled }}
+        {{- if .enableAlloyEventsReconciliation }}
+        - --logging-enable-alloy-events-reconciliation=true
+        {{- end }}
         {{- if .enableNodeFiltering }}
         - --logging-enable-node-filtering=true
         {{- end }}

@@ -35,6 +35,12 @@ type Service struct {
 }
 
 func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
+	// No-op if events collection is disabled at installation level
+	// TODO remove once the logging operator is gone
+	if !a.Config.Logging.EnableAlloyEventsReconciliation {
+		return nil
+	}
+
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is configured")
 
@@ -48,7 +54,6 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 			return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 		}
 		configmap.Data = data
-		// TODO remove once labels.Common is updated with these labels
 		configmap.Labels = labels.Common
 
 		return nil
@@ -64,7 +69,6 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 			return fmt.Errorf("failed to generate alloy events secret: %w", err)
 		}
 		secret.Data = data
-		// TODO remove once labels.Common is updated with these labels
 		secret.Labels = labels.Common
 
 		return nil
@@ -79,6 +83,12 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 }
 
 func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
+	// No-op if events collection is disabled at installation level
+	// TODO remove once the logging operator is gone
+	if !a.Config.Logging.EnableAlloyEventsReconciliation {
+		return nil
+	}
+
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is removed")
 
