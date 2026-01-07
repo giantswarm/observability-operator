@@ -49,11 +49,11 @@ func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clus
 
 	// Build secret environment variables map
 	secretEnv := map[string]string{
-		"logging-url":        lokiURL,
-		"logging-tenant-id":  organization.GiantSwarmDefaultTenant,
-		"logging-username":   cluster.Name,
-		"logging-password":   logsPassword,
-		"ruler-api-url":      lokiRulerAPIURL,
+		"logging-url":       lokiURL,
+		"logging-tenant-id": organization.GiantSwarmDefaultTenant,
+		"logging-username":  cluster.Name,
+		"logging-password":  logsPassword,
+		"ruler-api-url":     lokiRulerAPIURL,
 	}
 
 	// Prepare template data

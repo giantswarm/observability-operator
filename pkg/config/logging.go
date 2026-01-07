@@ -14,7 +14,11 @@ type LoggingConfig struct {
 	// Enabled controls logging at the installation level
 	Enabled bool
 
-	// EnableAlloyEventsReconciliation controls events collection at the installation level
+	// EnableAlloyLogsReconciliation controls Alloy logs reconciliation at the installation level
+	// Disabled by default
+	EnableAlloyLogsReconciliation bool
+
+	// EnableAlloyEventsReconciliation controls Alloy events reconciliation at the installation level
 	// Disabled by default
 	EnableAlloyEventsReconciliation bool
 

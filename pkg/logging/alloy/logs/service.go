@@ -45,6 +45,11 @@ type Service struct {
 }
 
 func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
+	// No-op if Alloy logs reconciliation is disabled at installation level
+	if !s.Config.Logging.EnableAlloyLogsReconciliation {
+		return nil
+	}
+
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-logs-service - ensuring alloy logs is configured")
 
@@ -88,6 +93,11 @@ func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 }
 
 func (s *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
+	// No-op if Alloy logs reconciliation is disabled at installation level
+	if !s.Config.Logging.EnableAlloyLogsReconciliation {
+		return nil
+	}
+
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-logs-service - ensuring alloy logs is removed")
 
