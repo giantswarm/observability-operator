@@ -115,19 +115,6 @@ alloy:
         		]
         	}
         	output {
-        		traces = [otelcol.processor.transform.cleanup_giantswarm.input]
-        	}
-        }
-        // Remove giantswarm.tenant resource attribute after filtering
-        otelcol.processor.transform "cleanup_giantswarm" {
-        	error_mode = "ignore"
-        	trace_statements {
-        		context = "resource"
-        		statements = [
-        			`delete_key(resource.attributes, "giantswarm.tenant")`,
-        		]
-        	}
-        	output {
         		traces = [otelcol.exporter.otlp.giantswarm.input]
         	}
         }

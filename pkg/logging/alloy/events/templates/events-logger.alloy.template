@@ -134,22 +134,6 @@ otelcol.processor.filter "{{ . }}" {
 		]
 	}
 	output {
-		traces = [otelcol.processor.transform.cleanup_{{ . }}.input]
-	}
-}
-
-// Remove giantswarm.tenant resource attribute after filtering
-otelcol.processor.transform "cleanup_{{ . }}" {
-	error_mode = "ignore"
-
-	trace_statements {
-		context = "resource"
-		statements = [
-			`delete_key(resource.attributes, "giantswarm.tenant")`,
-		]
-	}
-
-	output {
 		traces = [otelcol.exporter.otlp.{{ . }}.input]
 	}
 }

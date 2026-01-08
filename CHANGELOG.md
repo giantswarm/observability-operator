@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Change flag parsing from flag default library to `pflag`
 
+### Removed
+
+- Remove tenant cleanup from the trace resource attribute so we can count the number of individual trace sources.
+
 ## [0.55.0] - 2026-01-05
 
 ### Changed
