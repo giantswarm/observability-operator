@@ -22,6 +22,8 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/logging/alloy/events"
+	"github.com/giantswarm/observability-operator/pkg/logging/alloy/logs"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 )
@@ -37,8 +39,12 @@ type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
 	Client client.Client
 	Config config.Config
-	// AlloyService is the service which manages Alloy monitoring agent configuration.
-	AlloyService alloy.Service
+	// AlloyMetricsService is the service which manages Alloy monitoring agent configuration.
+	AlloyMetricsService alloy.Service
+	// AlloyLogsService is the service which manages Alloy logs configuration.
+	AlloyLogsService logs.Service
+	// AlloyEventsService is the service which manages Alloy events configuration.
+	AlloyEventsService events.Service
 	// HeartbeatRepositories is the list of repositories for managing heartbeats.
 	HeartbeatRepositories []heartbeat.HeartbeatRepository
 	// authManagers contains all authentication managers with their feature checks.
@@ -117,18 +123,34 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		},
 	}
 
-	alloyService := alloy.Service{
+	alloyMetricsService := alloy.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
 		Config:                 cfg,
 		AuthManager:            mimirAuthManager,
 	}
 
+	// Initialize logging services
+	alloyLogsService := logs.Service{
+		Client:                 managerClient,
+		OrganizationRepository: organizationRepository,
+		Config:                 cfg,
+		LogsAuthManager:        lokiAuthManager,
+	}
+	alloyEventsService := events.Service{
+		Client:                 managerClient,
+		OrganizationRepository: organizationRepository,
+		Config:                 cfg,
+		LogsAuthManager:        lokiAuthManager,
+		TracesAuthManager:      tempoAuthManager,
+	}
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
 		Config:                     cfg,
 		HeartbeatRepositories:      heartbeatRepositories,
-		AlloyService:               alloyService,
+		AlloyMetricsService:        alloyMetricsService,
+		AlloyLogsService:           alloyLogsService,
+		AlloyEventsService:         alloyEventsService,
 		authManagers:               authManagers,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
@@ -274,25 +296,57 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 	}
 
+	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
+	if err != nil {
+		logger.Error(err, "failed to configure get observability-bundle version")
+		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	}
+
 	// Metrics-specific: Alloy monitoring configuration
 	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-		observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to configure get observability-bundle version")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
-		}
-
 		// Create or update Alloy monitoring configuration.
-		err = r.AlloyService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		err = r.AlloyMetricsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy monitoring config")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 	} else {
 		// Clean up any existing alloy monitoring configuration
-		err = r.AlloyService.ReconcileDelete(ctx, cluster)
+		err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy monitoring config")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+	}
+
+	// Logging-specific: Alloy logs configuration
+	if r.Config.Logging.IsLoggingEnabled(cluster) {
+		// Create or update Alloy logs configuration
+		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		if err != nil {
+			logger.Error(err, "failed to create or update alloy logs config")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+
+		// Create or update Alloy events configuration
+		// TODO make sure we can enable tracing separately from logging
+		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		if err != nil {
+			logger.Error(err, "failed to create or update alloy events config")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+	} else {
+		// Clean up any existing alloy logs configuration
+		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
+		if err != nil {
+			logger.Error(err, "failed to delete alloy logs config")
+			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+
+		// Clean up any existing alloy events configuration
+		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
+		if err != nil {
+			logger.Error(err, "failed to delete alloy events config")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 		}
 	}
@@ -315,9 +369,27 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// Metrics-specific: Delete Alloy monitoring configuration
 		if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-			err = r.AlloyService.ReconcileDelete(ctx, cluster)
+			err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy monitoring config")
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			}
+		}
+
+		// Logging-specific: Alloy logs configuration
+		if r.Config.Logging.IsLoggingEnabled(cluster) {
+			// Clean up any existing alloy logs configuration
+			err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
+			if err != nil {
+				logger.Error(err, "failed to delete alloy logs config")
+				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			}
+
+			// Clean up any existing alloy events configuration
+			// TODO make sure we can enable tracing separately from logging
+			err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
+			if err != nil {
+				logger.Error(err, "failed to delete alloy events config")
 				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 			}
 		}

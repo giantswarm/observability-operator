@@ -53,6 +53,9 @@ logging:
   # -- Enable or disable logging support
   enabled: false
 
+  # -- Enable or disable Alloy events reconciliation
+  enableAlloyEventsReconciliation: false
+
   # -- Enable node filtering
   enableNodeFiltering: false
 

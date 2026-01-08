@@ -88,6 +88,7 @@ const (
 
 	// Logging configuration flag names
 	flagLoggingEnabled                     = "logging-enabled"
+	flagLoggingEnableEvents                = "logging-enable-alloy-events-reconciliation"
 	flagLoggingDefaultNamespaces           = "logging-default-namespaces"
 	flagLoggingEnableNodeFiltering         = "logging-enable-node-filtering"
 	flagLoggingEnableNetworkMonitoring     = "logging-enable-network-monitoring"
@@ -221,6 +222,8 @@ func parseFlags() (err error) {
 	// Logging configuration flags
 	pflag.BoolVar(&cfg.Logging.Enabled, flagLoggingEnabled, false,
 		"Enable logging at the installation level.")
+	pflag.BoolVar(&cfg.Logging.EnableAlloyEventsReconciliation, flagLoggingEnableEvents, false,
+		"Enable Alloy events reconciliation at the installation level.")
 	pflag.StringSliceVar(&cfg.Logging.DefaultNamespaces, flagLoggingDefaultNamespaces, []string{},
 		"Comma-separated list of namespaces to collect logs from by default on workload clusters")
 	pflag.BoolVar(&cfg.Logging.EnableNodeFiltering, flagLoggingEnableNodeFiltering, false,
