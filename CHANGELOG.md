@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add logging configuration flags for workload cluster log collection: `--logging-default-namespaces`, `--logging-enable-node-filtering`, `--logging-enable-network-monitoring`, `--logging-include-events-from-namespaces`, and `--logging-exclude-events-from-namespaces`.
 - Add logging configuration section to Helm chart values for controlling log collection behavior.
 - Add support for `alloy-events` configuration
+- Add support for `alloy-logs` configuration
 
 ### Changed
 
