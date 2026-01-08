@@ -19,16 +19,8 @@ import (
 )
 
 const (
-	lokiURLKey              = "logging-url"
-	lokiTenantIDKey         = "logging-tenant-id"
-	lokiUsernameKey         = "logging-username"
-	lokiPasswordKey         = "logging-password" // #nosec G101
-	lokiRulerAPIURLKey      = "ruler-api-url"
 	tempoTracingUsernameKey = "tracing-username"
 	tempoTracingPasswordKey = "tracing-password" // #nosec G101
-
-	lokiMaxBackoffPeriod = "10m"
-	lokiRemoteTimeout    = "60s"
 )
 
 var (
@@ -63,11 +55,11 @@ func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 
 	// Build secret environment variables map
 	secretEnv := map[string]string{
-		lokiURLKey:         lokiURL,
-		lokiTenantIDKey:    organization.GiantSwarmDefaultTenant,
-		lokiUsernameKey:    cluster.Name,
-		lokiPasswordKey:    logsPassword,
-		lokiRulerAPIURLKey: lokiRulerURL,
+		commonmonitoring.LokiURLKey:         lokiURL,
+		commonmonitoring.LokiTenantIDKey:    organization.GiantSwarmDefaultTenant,
+		commonmonitoring.LokiUsernameKey:    cluster.Name,
+		commonmonitoring.LokiPasswordKey:    logsPassword,
+		commonmonitoring.LokiRulerAPIURLKey: lokiRulerURL,
 	}
 
 	// Add tracing credentials if tracing is enabled
