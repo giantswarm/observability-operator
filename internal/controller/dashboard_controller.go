@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -167,13 +168,16 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 	// Convert ConfigMap to domain objects using mapper
 	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
+	// Collect all errors to ensure all dashboards have a chance to be processed
+	var dashboardErrors []error
+
 	// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
 	for _, dash := range dashboards {
 		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
 			logger.Error(nil, "Dashboard validation failed during reconciliation - webhook may have been bypassed",
 				"dashboard", dash.UID(), "organization", dash.Organization(), "errors", validationErrors,
 				"configmap", dashboard.Name, "namespace", dashboard.Namespace)
-			return fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors)
+			dashboardErrors = append(dashboardErrors, fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors))
 		}
 	}
 
@@ -182,9 +186,18 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 		logger.Info("Configuring dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
 		err = grafanaService.ConfigureDashboard(ctx, dashboard)
 		if err != nil {
-			return fmt.Errorf("failed to configure dashboard: %w", err)
+			logger.Error(err, "failed to configure dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
+			dashboardErrors = append(dashboardErrors, fmt.Errorf("configure dashboard %s: %w", dashboard.UID(), err))
+			continue
 		}
 		logger.Info("Configured dashboard in Grafana", "uid", dashboard.UID(), "organization", dashboard.Organization())
+	}
+
+	// If any errors occurred, combine them and return
+	if len(dashboardErrors) > 0 {
+		combinedErr := errors.Join(dashboardErrors...)
+		logger.Error(combinedErr, "dashboard configuration completed with errors", "error_count", len(dashboardErrors))
+		return combinedErr
 	}
 
 	return nil

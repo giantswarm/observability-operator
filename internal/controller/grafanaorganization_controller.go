@@ -3,6 +3,7 @@ package controller
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"slices"
@@ -200,41 +201,55 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		logger.Info("updated orgID in the grafanaOrganization status")
 	}
 
+	// Collect all errors to ensure all independent tasks have a chance to run
+	var reconcileErrors []error
+
 	// Configure the organization's datasources and handle status updates
 	datasources, err := grafanaService.ConfigureDatasources(ctx, organization)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to configure datasources: %w", err)
-	}
-
-	// Build the list of configured datasources for the status
-	var configuredDatasources = make([]v1alpha2.DataSource, len(datasources))
-	for i, datasource := range datasources {
-		configuredDatasources[i] = v1alpha2.DataSource{
-			ID:   datasource.ID,
-			Name: datasource.Name,
+		logger.Error(err, "failed to configure datasources")
+		reconcileErrors = append(reconcileErrors, fmt.Errorf("configure datasources: %w", err))
+	} else {
+		// Build the list of configured datasources for the status
+		var configuredDatasources = make([]v1alpha2.DataSource, len(datasources))
+		for i, datasource := range datasources {
+			configuredDatasources[i] = v1alpha2.DataSource{
+				ID:   datasource.ID,
+				Name: datasource.Name,
+			}
 		}
-	}
 
-	// Sort the datasources by ID to ensure consistent ordering
-	slices.SortStableFunc(configuredDatasources, func(a, b v1alpha2.DataSource) int {
-		return cmp.Compare(a.ID, b.ID)
-	})
+		// Sort the datasources by ID to ensure consistent ordering
+		slices.SortStableFunc(configuredDatasources, func(a, b v1alpha2.DataSource) int {
+			return cmp.Compare(a.ID, b.ID)
+		})
 
-	// Update the status if the datasources have changed
-	if !slices.Equal(grafanaOrganization.Status.DataSources, configuredDatasources) {
-		logger.Info("updating datasources in the GrafanaOrganization status")
-		grafanaOrganization.Status.DataSources = configuredDatasources
-		if err := r.Client.Status().Update(ctx, grafanaOrganization); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update GrafanaOrganization status: %w", err)
+		// Update the status if the datasources have changed
+		if !slices.Equal(grafanaOrganization.Status.DataSources, configuredDatasources) {
+			logger.Info("updating datasources in the GrafanaOrganization status")
+			grafanaOrganization.Status.DataSources = configuredDatasources
+			if err := r.Client.Status().Update(ctx, grafanaOrganization); err != nil {
+				logger.Error(err, "failed to update GrafanaOrganization datasources status")
+				reconcileErrors = append(reconcileErrors, fmt.Errorf("update datasources status: %w", err))
+			} else {
+				logger.Info("updated datasources in the GrafanaOrganization status")
+			}
 		}
-		logger.Info("updated datasources in the GrafanaOrganization status")
 	}
 
 	err = r.configureGrafanaSSOSettings(ctx, grafanaService)
 	if err != nil {
+		logger.Error(err, "failed to configure SSO settings")
+		reconcileErrors = append(reconcileErrors, fmt.Errorf("configure SSO settings: %w", err))
+	}
+
+	// If any errors occurred, combine them and return
+	if len(reconcileErrors) > 0 {
+		combinedErr := errors.Join(reconcileErrors...)
+		logger.Error(combinedErr, "grafana organization reconciliation completed with errors", "error_count", len(reconcileErrors))
 		orgStatus = metrics.OrgStatusError
 		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
-		return ctrl.Result{}, fmt.Errorf("failed to setup grafanaOrganization: %w", err)
+		return ctrl.Result{}, combinedErr
 	}
 
 	// Set info metrics
@@ -288,6 +303,8 @@ func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.C
 
 // reconcileDelete deletes the grafana organization.
 func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) error {
+	logger := log.FromContext(ctx)
+
 	// We do not need to delete anything if there is no finalizer on the grafana organization
 	if !controllerutil.ContainsFinalizer(grafanaOrganization, v1alpha2.GrafanaOrganizationFinalizer) {
 		return nil
@@ -299,20 +316,26 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	// Convert to domain object
 	organization := r.organizationMapper.FromGrafanaOrganization(grafanaOrganization)
 
+	// Collect all errors to ensure all cleanup tasks have a chance to run
+	var deleteErrors []error
+
 	err := grafanaService.DeleteOrganization(ctx, organization)
 	if err != nil {
-		return fmt.Errorf("failed to delete grafana organization: %w", err)
+		logger.Error(err, "failed to delete grafana organization")
+		deleteErrors = append(deleteErrors, fmt.Errorf("delete organization: %w", err))
 	}
 
 	grafanaOrganization.Status.OrgID = 0
 	err = r.Client.Status().Update(ctx, grafanaOrganization)
 	if err != nil {
-		return fmt.Errorf("failed to update grafanaOrganization status: %w", err)
+		logger.Error(err, "failed to update grafanaOrganization status")
+		deleteErrors = append(deleteErrors, fmt.Errorf("update status: %w", err))
 	}
 
 	err = r.configureGrafanaSSOSettings(ctx, grafanaService)
 	if err != nil {
-		return err
+		logger.Error(err, "failed to configure SSO settings after deletion")
+		deleteErrors = append(deleteErrors, fmt.Errorf("configure SSO settings: %w", err))
 	}
 
 	// Clean up metrics - delete metric series for this organization
@@ -322,6 +345,13 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, metrics.OrgStatusActive)
 	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, metrics.OrgStatusPending)
 	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, metrics.OrgStatusError)
+
+	// If any errors occurred during deletion, combine them and return
+	if len(deleteErrors) > 0 {
+		combinedErr := errors.Join(deleteErrors...)
+		logger.Error(combinedErr, "grafana organization deletion completed with errors", "error_count", len(deleteErrors))
+		return combinedErr
+	}
 
 	// Finalizer handling needs to come last.
 	err = r.finalizerHelper.EnsureRemoved(ctx, grafanaOrganization)
