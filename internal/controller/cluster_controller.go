@@ -21,6 +21,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
+	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/logging/alloy/events"
 	"github.com/giantswarm/observability-operator/pkg/logging/alloy/logs"
@@ -76,6 +77,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	}
 
 	organizationRepository := organization.NewNamespaceRepository(managerClient)
+	tenantRepository := tenancy.NewKubernetesRepository(managerClient)
 
 	mimirAuthManager := auth.NewAuthManager(
 		managerClient,
@@ -126,6 +128,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	alloyMetricsService := alloy.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
+		TenantRepository:       tenantRepository,
 		Config:                 cfg,
 		AuthManager:            mimirAuthManager,
 	}
@@ -134,12 +137,14 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	alloyLogsService := logs.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
+		TenantRepository:       tenantRepository,
 		Config:                 cfg,
 		LogsAuthManager:        lokiAuthManager,
 	}
 	alloyEventsService := events.Service{
 		Client:                 managerClient,
 		OrganizationRepository: organizationRepository,
+		TenantRepository:       tenantRepository,
 		Config:                 cfg,
 		LogsAuthManager:        lokiAuthManager,
 		TracesAuthManager:      tempoAuthManager,

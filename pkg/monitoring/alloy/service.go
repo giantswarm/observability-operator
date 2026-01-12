@@ -27,6 +27,7 @@ const (
 type Service struct {
 	client.Client
 	organization.OrganizationRepository
+	tenancy.TenantRepository
 	config.Config
 	auth.AuthManager
 }
@@ -36,8 +37,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	logger.Info("alloy-service - ensuring alloy is configured")
 
 	// Get list of tenants
-	var tenants []string
-	tenants, err := tenancy.ListTenants(ctx, a.Client)
+	tenants, err := a.TenantRepository.List(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}

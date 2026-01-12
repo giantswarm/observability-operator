@@ -24,8 +24,8 @@ import (
 // and configures the Alertmanager instance with the configuration stored in the secret.
 // This controller do not make use of finalizers as the configuration is not removed from Alertmanager when the secret is deleted.
 type AlertmanagerReconciler struct {
-	client client.Client
-
+	client              client.Client
+	tenantRepository    tenancy.TenantRepository
 	alertmanagerService alertmanager.Service
 }
 
@@ -33,6 +33,7 @@ type AlertmanagerReconciler struct {
 func SetupAlertmanagerReconciler(mgr ctrl.Manager, cfg config.Config) error {
 	r := &AlertmanagerReconciler{
 		client:              mgr.GetClient(),
+		tenantRepository:    tenancy.NewKubernetesRepository(mgr.GetClient()),
 		alertmanagerService: alertmanager.New(cfg),
 	}
 
@@ -104,8 +105,7 @@ func (r AlertmanagerReconciler) Reconcile(ctx context.Context, req reconcile.Req
 		return ctrl.Result{}, nil
 	}
 	// Get list of tenants
-	var tenants []string
-	tenants, err := tenancy.ListTenants(ctx, r.client)
+	tenants, err := r.tenantRepository.List(ctx)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to list tenants: %w", err)
 	}

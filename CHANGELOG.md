@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Refactor tenant listing functionality into a repository interface pattern (`TenantRepository`) with Kubernetes implementation for better separation of concerns and testability.
+- Update monitoring alloy secret template to use map-based structure matching the events and logs secret patterns.
+
 ## [0.56.0] - 2026-01-12
 
 ### Added
