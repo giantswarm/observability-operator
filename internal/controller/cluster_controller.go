@@ -274,23 +274,6 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		errs = append(errs, fmt.Errorf("bundle configuration: %w", err))
 	}
 
-	// Handle authentication for all observability backends (independent tasks)
-	for authType, entry := range r.authManagers {
-		if entry.isEnabled(cluster) {
-			err = entry.authManager.EnsureClusterAuth(ctx, cluster)
-			if err != nil {
-				logger.Error(err, fmt.Sprintf("failed to ensure cluster auth for %s", authType))
-				errs = append(errs, fmt.Errorf("ensure cluster auth for %s: %w", authType, err))
-			}
-		} else {
-			err = entry.authManager.DeleteClusterAuth(ctx, cluster)
-			if err != nil {
-				logger.Error(err, fmt.Sprintf("failed to delete cluster auth for %s", authType))
-				errs = append(errs, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
-			}
-		}
-	}
-
 	// Reconcile alloy services (bundled dependent tasks)
 	err = r.reconcileAlloyServices(ctx, cluster)
 	if err != nil {
@@ -319,6 +302,21 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 // all alloy services. If getting the version fails, all dependent tasks fail.
 func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
+
+	// Handle authentication for all observability backends (independent tasks)
+	for authType, entry := range r.authManagers {
+		if entry.isEnabled(cluster) {
+			err := entry.authManager.EnsureClusterAuth(ctx, cluster)
+			if err != nil {
+				return fmt.Errorf("failed to ensure cluster auth for %s: %w", authType, err)
+			}
+		} else {
+			err := entry.authManager.DeleteClusterAuth(ctx, cluster)
+			if err != nil {
+				return fmt.Errorf("failed to delete cluster auth for %s: %w", authType, err)
+			}
+		}
+	}
 
 	// Get bundle version - this is required for all alloy service operations
 	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
