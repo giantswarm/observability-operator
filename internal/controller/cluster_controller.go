@@ -308,9 +308,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 
 	// If any errors occurred, combine them and return
 	if len(reconcileErrors) > 0 {
-		combinedErr := errors.Join(reconcileErrors...)
-		logger.Error(combinedErr, "reconciliation completed with errors", "error_count", len(reconcileErrors))
-		return ctrl.Result{}, combinedErr
+		return ctrl.Result{}, errors.Join(reconcileErrors...)
 	}
 
 	return ctrl.Result{}, nil
@@ -456,9 +454,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 		// If any errors occurred during deletion, combine them and return
 		if len(deleteErrors) > 0 {
-			combinedErr := errors.Join(deleteErrors...)
-			logger.Error(combinedErr, "deletion completed with errors", "error_count", len(deleteErrors))
-			return ctrl.Result{}, combinedErr
+			return ctrl.Result{}, errors.Join(deleteErrors...)
 		}
 
 		// We get the latest state of the object to avoid race conditions.
@@ -497,9 +493,7 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 	// If any errors occurred, combine them and return
 	if len(mgmtErrors) > 0 {
-		combinedErr := errors.Join(mgmtErrors...)
-		logger.Error(combinedErr, "management cluster reconciliation completed with errors", "error_count", len(mgmtErrors))
-		return ctrl.Result{}, combinedErr
+		return ctrl.Result{}, errors.Join(mgmtErrors...)
 	}
 
 	return ctrl.Result{}, nil

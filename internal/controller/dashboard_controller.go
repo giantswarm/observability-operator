@@ -199,9 +199,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 
 	// If any errors occurred, combine them and return
 	if len(dashboardErrors) > 0 {
-		combinedErr := errors.Join(dashboardErrors...)
-		logger.Error(combinedErr, "dashboard configuration completed with errors", "error_count", len(dashboardErrors))
-		return combinedErr
+		return errors.Join(dashboardErrors...)
 	}
 
 	return nil

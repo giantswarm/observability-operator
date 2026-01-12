@@ -106,7 +106,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Watches(
 			&v1.Pod{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
-				var logger = log.FromContext(ctx)
+				logger := log.FromContext(ctx)
 				var organizations v1alpha2.GrafanaOrganizationList
 
 				err := mgr.GetClient().List(ctx, &organizations)
@@ -211,7 +211,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		reconcileErrors = append(reconcileErrors, fmt.Errorf("configure datasources: %w", err))
 	} else {
 		// Build the list of configured datasources for the status
-		var configuredDatasources = make([]v1alpha2.DataSource, len(datasources))
+		configuredDatasources := make([]v1alpha2.DataSource, len(datasources))
 		for i, datasource := range datasources {
 			configuredDatasources[i] = v1alpha2.DataSource{
 				ID:   datasource.ID,
@@ -245,11 +245,9 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	// If any errors occurred, combine them and return
 	if len(reconcileErrors) > 0 {
-		combinedErr := errors.Join(reconcileErrors...)
-		logger.Error(combinedErr, "grafana organization reconciliation completed with errors", "error_count", len(reconcileErrors))
 		orgStatus = metrics.OrgStatusError
 		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
-		return ctrl.Result{}, combinedErr
+		return ctrl.Result{}, errors.Join(reconcileErrors...)
 	}
 
 	// Set info metrics
@@ -348,9 +346,7 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 
 	// If any errors occurred during deletion, combine them and return
 	if len(deleteErrors) > 0 {
-		combinedErr := errors.Join(deleteErrors...)
-		logger.Error(combinedErr, "grafana organization deletion completed with errors", "error_count", len(deleteErrors))
-		return combinedErr
+		return errors.Join(deleteErrors...)
 	}
 
 	// Finalizer handling needs to come last.
