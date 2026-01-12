@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/alerting/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
@@ -77,7 +78,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	}
 
 	organizationRepository := organization.NewNamespaceRepository(managerClient)
-	tenantRepository := tenancy.NewKubernetesRepository(managerClient)
+	tenantRepository := tenancy.NewTenantRepository(managerClient)
 
 	mimirAuthManager := auth.NewAuthManager(
 		managerClient,
@@ -125,30 +126,35 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		},
 	}
 
+	// Create agent configuration repository
+	agentConfigurationRepository := agent.NewConfigurationRepository(managerClient)
+
 	alloyMetricsService := alloy.Service{
-		Client:                 managerClient,
-		OrganizationRepository: organizationRepository,
-		TenantRepository:       tenantRepository,
-		Config:                 cfg,
-		AuthManager:            mimirAuthManager,
+		Config:                  cfg,
+		ConfigurationRepository: agentConfigurationRepository,
+		OrganizationRepository:  organizationRepository,
+		TenantRepository:        tenantRepository,
+		AuthManager:             mimirAuthManager,
 	}
 
 	// Initialize logging services
 	alloyLogsService := logs.Service{
-		Client:                 managerClient,
-		OrganizationRepository: organizationRepository,
-		TenantRepository:       tenantRepository,
-		Config:                 cfg,
-		LogsAuthManager:        lokiAuthManager,
+		Config:                  cfg,
+		ConfigurationRepository: agentConfigurationRepository,
+		OrganizationRepository:  organizationRepository,
+		TenantRepository:        tenantRepository,
+		LogsAuthManager:         lokiAuthManager,
 	}
+
 	alloyEventsService := events.Service{
-		Client:                 managerClient,
-		OrganizationRepository: organizationRepository,
-		TenantRepository:       tenantRepository,
-		Config:                 cfg,
-		LogsAuthManager:        lokiAuthManager,
-		TracesAuthManager:      tempoAuthManager,
+		Config:                  cfg,
+		ConfigurationRepository: agentConfigurationRepository,
+		OrganizationRepository:  organizationRepository,
+		TenantRepository:        tenantRepository,
+		LogsAuthManager:         lokiAuthManager,
+		TracesAuthManager:       tempoAuthManager,
 	}
+
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
 		Config:                     cfg,

@@ -45,7 +45,7 @@ func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) error {
 		For(&corev1.Secret{}).
 		WithValidator(&AlertmanagerConfigSecretValidator{
 			client:           mgr.GetClient(),
-			tenantRepository: tenancy.NewKubernetesRepository(mgr.GetClient()),
+			tenantRepository: tenancy.NewTenantRepository(mgr.GetClient()),
 		}).
 		WithCustomPath("/validate-alertmanager-config").
 		Complete()

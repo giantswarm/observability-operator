@@ -16,7 +16,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
+	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
@@ -349,9 +351,10 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 
 			mockOrgRepo := mocks.NewMockOrganizationRepository("test-organization")
 			service := &Service{
-				Client:                 fakeClient,
-				Config:                 cfg,
-				OrganizationRepository: mockOrgRepo,
+				ConfigurationRepository: agent.NewConfigurationRepository(fakeClient),
+				Config:                  cfg,
+				OrganizationRepository:  mockOrgRepo,
+				TenantRepository:        tenancy.NewTenantRepository(fakeClient),
 			}
 
 			// Generate Alloy logs config using the actual service method

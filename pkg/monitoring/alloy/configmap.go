@@ -61,7 +61,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	// Compute the number of shards based on the number of series.
 	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", service="%s"})by(pod))[6h:1h]))`, cluster.Name, apps.AlloyMetricsAppName)
-	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, a.Monitoring.MetricsQueryURL)
+	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, a.Config.Monitoring.MetricsQueryURL)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to query head series")
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
@@ -72,7 +72,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		return nil, fmt.Errorf("failed to get cluster sharding strategy: %w", err)
 	}
 
-	shardingStrategy := a.Monitoring.DefaultShardingStrategy.Merge(clusterShardingStrategy)
+	shardingStrategy := a.Config.Monitoring.DefaultShardingStrategy.Merge(clusterShardingStrategy)
 	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
 	alloyConfig, err := a.generateAlloyConfig(ctx, cluster, tenants, observabilityBundleVersion)
@@ -105,7 +105,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version) (string, error) {
 	var values bytes.Buffer
 
-	org, err := a.Read(ctx, cluster)
+	org, err := a.OrganizationRepository.Read(ctx, cluster)
 	if err != nil {
 		return "", fmt.Errorf("failed to read organization: %w", err)
 	}
@@ -158,38 +158,38 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		MimirRemoteWriteAPIURLKey:             mimirRemoteWriteAPIURLKey,
 		MimirRemoteWriteAPINameKey:            mimirRemoteWriteAPINameKey,
 		MimirRemoteWriteTimeout:               commonmonitoring.RemoteWriteTimeout,
-		MimirRemoteWriteTLSInsecureSkipVerify: a.Cluster.InsecureCA,
+		MimirRemoteWriteTLSInsecureSkipVerify: a.Config.Cluster.InsecureCA,
 
 		ClusterID: cluster.Name,
 
 		Tenants:         tenants,
 		DefaultTenantID: organization.GiantSwarmDefaultTenant,
 
-		QueueConfigBatchSendDeadline: a.Monitoring.QueueConfig.BatchSendDeadline,
-		QueueConfigCapacity:          a.Monitoring.QueueConfig.Capacity,
-		QueueConfigMaxBackoff:        a.Monitoring.QueueConfig.MaxBackoff,
-		QueueConfigMaxSamplesPerSend: a.Monitoring.QueueConfig.MaxSamplesPerSend,
-		QueueConfigMaxShards:         a.Monitoring.QueueConfig.MaxShards,
-		QueueConfigMinBackoff:        a.Monitoring.QueueConfig.MinBackoff,
-		QueueConfigMinShards:         a.Monitoring.QueueConfig.MinShards,
-		QueueConfigRetryOnHttp429:    a.Monitoring.QueueConfig.RetryOnHttp429,
-		QueueConfigSampleAgeLimit:    a.Monitoring.QueueConfig.SampleAgeLimit,
+		QueueConfigBatchSendDeadline: a.Config.Monitoring.QueueConfig.BatchSendDeadline,
+		QueueConfigCapacity:          a.Config.Monitoring.QueueConfig.Capacity,
+		QueueConfigMaxBackoff:        a.Config.Monitoring.QueueConfig.MaxBackoff,
+		QueueConfigMaxSamplesPerSend: a.Config.Monitoring.QueueConfig.MaxSamplesPerSend,
+		QueueConfigMaxShards:         a.Config.Monitoring.QueueConfig.MaxShards,
+		QueueConfigMinBackoff:        a.Config.Monitoring.QueueConfig.MinBackoff,
+		QueueConfigMinShards:         a.Config.Monitoring.QueueConfig.MinShards,
+		QueueConfigRetryOnHttp429:    a.Config.Monitoring.QueueConfig.RetryOnHttp429,
+		QueueConfigSampleAgeLimit:    a.Config.Monitoring.QueueConfig.SampleAgeLimit,
 
-		WALTruncateFrequency: a.Monitoring.WALTruncateFrequency.String(),
+		WALTruncateFrequency: a.Config.Monitoring.WALTruncateFrequency.String(),
 
 		ExternalLabels: map[string]string{
 			"cluster_id":       cluster.Name,
-			"cluster_type":     a.Cluster.GetClusterType(cluster),
-			"customer":         a.Cluster.Customer,
-			"installation":     a.Cluster.Name,
+			"cluster_type":     a.Config.Cluster.GetClusterType(cluster),
+			"customer":         a.Config.Cluster.Customer,
+			"installation":     a.Config.Cluster.Name,
 			"organization":     org,
-			"pipeline":         a.Cluster.Pipeline,
+			"pipeline":         a.Config.Cluster.Pipeline,
 			"provider":         provider,
-			"region":           a.Cluster.Region,
+			"region":           a.Config.Cluster.Region,
 			"service_priority": commonmonitoring.GetServicePriority(cluster),
 		},
 
-		IsWorkloadCluster:         a.Cluster.IsWorkloadCluster(cluster),
+		IsWorkloadCluster:         a.Config.Cluster.IsWorkloadCluster(cluster),
 		IsSupportingScrapeConfigs: observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
 	}
 

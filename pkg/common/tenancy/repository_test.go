@@ -128,7 +128,7 @@ func TestKubernetesTenantRepository_List(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(tt.initialObjs...).Build()
-			repo := NewKubernetesRepository(fakeClient)
+			repo := NewTenantRepository(fakeClient)
 
 			result, err := repo.List(context.Background())
 

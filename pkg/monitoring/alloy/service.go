@@ -5,15 +5,14 @@ import (
 	_ "embed"
 	"fmt"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/blang/semver/v4"
 
+	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/auth"
+	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
@@ -25,11 +24,11 @@ const (
 )
 
 type Service struct {
-	client.Client
-	organization.OrganizationRepository
-	tenancy.TenantRepository
-	config.Config
-	auth.AuthManager
+	Config                  config.Config
+	ConfigurationRepository agent.ConfigurationRepository
+	OrganizationRepository  organization.OrganizationRepository
+	TenantRepository        tenancy.TenantRepository
+	AuthManager             auth.AuthManager
 }
 
 func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
@@ -42,32 +41,30 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}
 
-	configmap := ConfigMap(cluster)
-	_, err = controllerutil.CreateOrUpdate(ctx, a.Client, configmap, func() error {
-		data, err := a.GenerateAlloyMonitoringConfigMapData(ctx, configmap, cluster, tenants, observabilityBundleVersion)
-		if err != nil {
-			return fmt.Errorf("failed to generate alloy monitoring configmap: %w", err)
-		}
-		configmap.Data = data
-
-		return nil
-	})
+	// Generate ConfigMap data
+	configMapData, err := a.GenerateAlloyMonitoringConfigMapData(ctx, nil, cluster, tenants, observabilityBundleVersion)
 	if err != nil {
-		return fmt.Errorf("failed to create or update alloy monitoring configmap: %w", err)
+		return fmt.Errorf("failed to generate alloy monitoring configmap: %w", err)
 	}
 
-	secret := Secret(cluster)
-	_, err = controllerutil.CreateOrUpdate(ctx, a.Client, secret, func() error {
-		data, err := a.GenerateAlloyMonitoringSecretData(ctx, cluster)
-		if err != nil {
-			return fmt.Errorf("failed to generate alloy monitoring secret: %w", err)
-		}
-		secret.Data = data
+	// Generate Secret data
+	secretData, err := a.GenerateAlloyMonitoringSecretData(ctx, cluster)
+	if err != nil {
+		return fmt.Errorf("failed to generate alloy monitoring secret: %w", err)
+	}
 
-		return nil
+	// Save configuration via repository
+	err = a.ConfigurationRepository.Save(ctx, &agent.AgentConfiguration{
+		ClusterName:      cluster.Name,
+		ClusterNamespace: cluster.Namespace,
+		ConfigMapName:    fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
+		SecretName:       fmt.Sprintf("%s-%s", cluster.Name, SecretName),
+		ConfigMapData:    configMapData,
+		SecretData:       secretData,
+		Labels:           labels.Common,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create or update alloy monitoring secret: %w", err)
+		return fmt.Errorf("failed to save alloy monitoring configuration: %w", err)
 	}
 
 	logger.Info("alloy-service - ensured alloy is configured")
@@ -79,16 +76,15 @@ func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluste
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-service - ensuring alloy is removed")
 
-	configmap := ConfigMap(cluster)
-	err := a.Delete(ctx, configmap)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete alloy monitoring configmap: %w", err)
-	}
-
-	secret := Secret(cluster)
-	err = a.Delete(ctx, secret)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete alloy monitoring secret: %w", err)
+	err := a.ConfigurationRepository.Delete(
+		ctx,
+		cluster.Name,
+		cluster.Namespace,
+		fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
+		fmt.Sprintf("%s-%s", cluster.Name, SecretName),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete alloy monitoring configuration: %w", err)
 	}
 
 	logger.Info("alloy-service - ensured alloy is removed")
