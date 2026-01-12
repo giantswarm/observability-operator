@@ -267,14 +267,6 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	// Collect all errors to ensure all independent tasks have a chance to run
 	var errs []error
 
-	// Management cluster specific configuration
-	if cluster.Name == r.Config.Cluster.Name {
-		_, err := r.reconcileManagementCluster(ctx)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("management cluster reconciliation: %w", err))
-		}
-	}
-
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
 	err = r.BundleConfigurationService.Configure(ctx, cluster)
 	if err != nil {
@@ -304,6 +296,14 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	if err != nil {
 		logger.Error(err, "failed to reconcile alloy services")
 		errs = append(errs, fmt.Errorf("alloy services: %w", err))
+	}
+
+	// Management cluster specific configuration
+	if cluster.Name == r.Config.Cluster.Name {
+		_, err := r.reconcileManagementCluster(ctx)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("management cluster reconciliation: %w", err))
+		}
 	}
 
 	// If any errors occurred, combine them and return
