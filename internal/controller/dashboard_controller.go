@@ -120,7 +120,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&v1.Pod{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
-				var logger = log.FromContext(ctx)
+				logger := log.FromContext(ctx)
 				var dashboards v1.ConfigMapList
 
 				err := mgr.GetClient().List(ctx, &dashboards, client.MatchingLabels{DashboardSelectorLabelName: DashboardSelectorLabelValue})
@@ -154,11 +154,11 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // reconcileCreate ensures the Grafana dashboard described in configmap is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
-func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error { // nolint:unparam
+func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboardConfigMap *v1.ConfigMap) error { // nolint:unparam
 	logger := log.FromContext(ctx)
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
-	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboard)
+	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboardConfigMap)
 	if err != nil {
 		return fmt.Errorf("failed to ensure finalizer is added: %w", err)
 	}
@@ -167,30 +167,34 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 	}
 
 	// Convert ConfigMap to domain objects using mapper
-	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
+	dashboards := r.dashboardMapper.FromConfigMap(dashboardConfigMap)
+
 	// Collect all errors to ensure all dashboards have a chance to be processed
 	var dashboardErrors []error
 
-	// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
-	for _, dash := range dashboards {
-		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
-			logger.Error(nil, "Dashboard validation failed during reconciliation - webhook may have been bypassed",
-				"dashboard", dash.UID(), "organization", dash.Organization(), "errors", validationErrors,
-				"configmap", dashboard.Name, "namespace", dashboard.Namespace)
-			dashboardErrors = append(dashboardErrors, fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors))
-		}
-	}
-
 	// Process each dashboard
 	for _, dashboard := range dashboards {
+		// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
+		if validationErrors := dashboard.Validate(); len(validationErrors) > 0 {
+			logger.Error(nil, "dashboard validate failed - webhook may have been bypassed",
+				"uid", dashboard.UID(), "organization", dashboard.Organization(), "errors", validationErrors,
+				"configmap", dashboardConfigMap.Name, "namespace", dashboardConfigMap.Namespace)
+			dashboardErrors = append(dashboardErrors, fmt.Errorf("dashboard validation failed for uid %s: %v", dashboard.UID(), validationErrors))
+			continue
+		}
+
 		logger.Info("Configuring dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
 		err = grafanaService.ConfigureDashboard(ctx, dashboard)
 		if err != nil {
-			logger.Error(err, "failed to configure dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
-			dashboardErrors = append(dashboardErrors, fmt.Errorf("configure dashboard %s: %w", dashboard.UID(), err))
+			logger.Error(err, "dashboard configuration failed",
+				"uid", dashboard.UID(), "organization", dashboard.Organization(),
+				"configmap", dashboardConfigMap.Name, "namespace", dashboardConfigMap.Namespace)
+			dashboardErrors = append(dashboardErrors, fmt.Errorf("dashboard configuration failed for uid %s: %w", dashboard.UID(), err))
 			continue
 		}
-		logger.Info("Configured dashboard in Grafana", "uid", dashboard.UID(), "organization", dashboard.Organization())
+		logger.Info("dashboard configured in Grafana",
+			"uid", dashboard.UID(), "organization", dashboard.Organization(),
+			"configmap", dashboardConfigMap.Name, "namespace", dashboardConfigMap.Namespace)
 	}
 
 	// If any errors occurred, combine them and return
