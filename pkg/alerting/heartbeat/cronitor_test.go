@@ -120,14 +120,13 @@ func TestCreateOrUpdate_CreateNew(t *testing.T) {
 				}, nil
 			}
 
-			// Second call: PUT to create monitor
-			if req.Method == http.MethodPut && callCount == 2 {
+			// Second call: POST to create monitor
+			if req.Method == http.MethodPost && callCount == 2 {
 				return &http.Response{
 					StatusCode: http.StatusCreated,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}, nil
 			}
-
 			// Third call: GET to ping monitor (for new monitor to associate with environment)
 			if req.Method == http.MethodGet && callCount == 3 {
 				if req.URL.Host != "cronitor.link" {
@@ -155,7 +154,7 @@ func TestCreateOrUpdate_CreateNew(t *testing.T) {
 	}
 
 	if callCount != 3 {
-		t.Errorf("expected 3 HTTP calls (GET, PUT, PING), got %d", callCount)
+		t.Errorf("expected 3 HTTP calls (GET, POST, PING), got %d", callCount)
 	}
 }
 
