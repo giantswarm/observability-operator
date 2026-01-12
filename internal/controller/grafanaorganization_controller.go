@@ -202,13 +202,13 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Collect all errors to ensure all independent tasks have a chance to run
-	var reconcileErrors []error
+	var errs []error
 
 	// Configure the organization's datasources and handle status updates
 	datasources, err := grafanaService.ConfigureDatasources(ctx, organization)
 	if err != nil {
 		logger.Error(err, "failed to configure datasources")
-		reconcileErrors = append(reconcileErrors, fmt.Errorf("configure datasources: %w", err))
+		errs = append(errs, fmt.Errorf("configure datasources: %w", err))
 	} else {
 		// Build the list of configured datasources for the status
 		configuredDatasources := make([]v1alpha2.DataSource, len(datasources))
@@ -230,7 +230,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 			grafanaOrganization.Status.DataSources = configuredDatasources
 			if err := r.Client.Status().Update(ctx, grafanaOrganization); err != nil {
 				logger.Error(err, "failed to update GrafanaOrganization datasources status")
-				reconcileErrors = append(reconcileErrors, fmt.Errorf("update datasources status: %w", err))
+				errs = append(errs, fmt.Errorf("update datasources status: %w", err))
 			} else {
 				logger.Info("updated datasources in the GrafanaOrganization status")
 			}
@@ -240,14 +240,14 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	err = r.configureGrafanaSSOSettings(ctx, grafanaService)
 	if err != nil {
 		logger.Error(err, "failed to configure SSO settings")
-		reconcileErrors = append(reconcileErrors, fmt.Errorf("configure SSO settings: %w", err))
+		errs = append(errs, fmt.Errorf("configure SSO settings: %w", err))
 	}
 
 	// If any errors occurred, combine them and return
-	if len(reconcileErrors) > 0 {
+	if len(errs) > 0 {
 		orgStatus = metrics.OrgStatusError
 		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
-		return ctrl.Result{}, errors.Join(reconcileErrors...)
+		return ctrl.Result{}, errors.Join(errs...)
 	}
 
 	// Set info metrics
