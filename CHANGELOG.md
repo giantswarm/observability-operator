@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Change flag parsing from flag default library to `pflag`
+- Improve controller error handling to ensure independent reconciliation tasks run even when some fail.
+  - Return joined reconciliation errors instead of failing fast on the first error.
+  - Moved Alloy reconciliation into reconcileAlloyService
+  - Move Dashboard validation and configuration into the same loop
 
 ### Removed
 
