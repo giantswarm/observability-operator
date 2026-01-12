@@ -325,20 +325,20 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 	}
 
 	// Collect errors for independent alloy service operations
-	var alloyErrors []error
+	var errs []error
 
 	// Metrics-specific: Alloy monitoring configuration
 	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
 		err = r.AlloyMetricsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy monitoring config")
-			alloyErrors = append(alloyErrors, fmt.Errorf("alloy metrics reconcile create: %w", err))
+			errs = append(errs, fmt.Errorf("alloy metrics reconcile create: %w", err))
 		}
 	} else {
 		err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy monitoring config")
-			alloyErrors = append(alloyErrors, fmt.Errorf("alloy metrics reconcile delete: %w", err))
+			errs = append(errs, fmt.Errorf("alloy metrics reconcile delete: %w", err))
 		}
 	}
 
@@ -349,7 +349,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy logs config")
-			alloyErrors = append(alloyErrors, fmt.Errorf("alloy logs reconcile create: %w", err))
+			errs = append(errs, fmt.Errorf("alloy logs reconcile create: %w", err))
 		}
 
 		// Create or update Alloy events configuration
@@ -357,7 +357,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy events config")
-			alloyErrors = append(alloyErrors, fmt.Errorf("alloy events reconcile create: %w", err))
+			errs = append(errs, fmt.Errorf("alloy events reconcile create: %w", err))
 		}
 	} else {
 		// Clean up any existing alloy logs configuration
@@ -365,7 +365,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy logs config")
-			alloyErrors = append(alloyErrors, fmt.Errorf("alloy logs reconcile delete: %w", err))
+			errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
 		}
 
 		// Clean up any existing alloy events configuration
@@ -373,13 +373,13 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy events config")
-			alloyErrors = append(alloyErrors, fmt.Errorf("alloy events reconcile delete: %w", err))
+			errs = append(errs, fmt.Errorf("alloy events reconcile delete: %w", err))
 		}
 	}
 
 	// If any alloy service operations failed, combine them and return
-	if len(alloyErrors) > 0 {
-		return errors.Join(alloyErrors...)
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	return nil
