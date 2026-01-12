@@ -282,7 +282,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		reconcileErrors = append(reconcileErrors, fmt.Errorf("bundle configuration: %w", err))
 	}
 
-	// Handle authentication for all observability backends
+	// Handle authentication for all observability backends (independent tasks)
 	for authType, entry := range r.authManagers {
 		if entry.isEnabled(cluster) {
 			err = entry.authManager.EnsureClusterAuth(ctx, cluster)
@@ -299,63 +299,11 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		}
 	}
 
-	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
+	// Reconcile alloy services (bundled dependent tasks)
+	err = r.reconcileAlloyServices(ctx, cluster)
 	if err != nil {
-		logger.Error(err, "failed to configure get observability-bundle version")
-		reconcileErrors = append(reconcileErrors, fmt.Errorf("get observability-bundle version: %w", err))
-		// Continue with zero value to allow remaining tasks to run
-	}
-
-	// Metrics-specific: Alloy monitoring configuration
-	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-		// Create or update Alloy monitoring configuration.
-		err = r.AlloyMetricsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
-		if err != nil {
-			logger.Error(err, "failed to create or update alloy monitoring config")
-			reconcileErrors = append(reconcileErrors, fmt.Errorf("alloy metrics reconcile create: %w", err))
-		}
-	} else {
-		// Clean up any existing alloy monitoring configuration
-		err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy monitoring config")
-			reconcileErrors = append(reconcileErrors, fmt.Errorf("alloy metrics reconcile delete: %w", err))
-		}
-	}
-
-	// Logging-specific: Alloy logs configuration
-	if r.Config.Logging.IsLoggingEnabled(cluster) {
-		// Create or update Alloy logs configuration
-		// TODO make sure we can enable network monitoring separately from logging
-		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
-		if err != nil {
-			logger.Error(err, "failed to create or update alloy logs config")
-			reconcileErrors = append(reconcileErrors, fmt.Errorf("alloy logs reconcile create: %w", err))
-		}
-
-		// Create or update Alloy events configuration
-		// TODO make sure we can enable tracing separately from logging
-		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
-		if err != nil {
-			logger.Error(err, "failed to create or update alloy events config")
-			reconcileErrors = append(reconcileErrors, fmt.Errorf("alloy events reconcile create: %w", err))
-		}
-	} else {
-		// Clean up any existing alloy logs configuration
-		// TODO make sure we can enable network monitoring separately from logging
-		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy logs config")
-			reconcileErrors = append(reconcileErrors, fmt.Errorf("alloy logs reconcile delete: %w", err))
-		}
-
-		// Clean up any existing alloy events configuration
-		// TODO make sure we can enable tracing separately from logging
-		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy events config")
-			reconcileErrors = append(reconcileErrors, fmt.Errorf("alloy events reconcile delete: %w", err))
-		}
+		logger.Error(err, "failed to reconcile alloy services")
+		reconcileErrors = append(reconcileErrors, fmt.Errorf("alloy services: %w", err))
 	}
 
 	// If any errors occurred, combine them and return
@@ -366,6 +314,79 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// reconcileAlloyServices reconciles all alloy services. This is a bundled operation
+// where getting the observability bundle version is a dependency for configuring
+// all alloy services. If getting the version fails, all dependent tasks fail.
+func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context, cluster *clusterv1.Cluster) error {
+	logger := log.FromContext(ctx)
+
+	// Get bundle version - this is required for all alloy service operations
+	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
+	if err != nil {
+		return fmt.Errorf("failed to get observability-bundle version: %w", err)
+	}
+
+	// Collect errors for independent alloy service operations
+	var alloyErrors []error
+
+	// Metrics-specific: Alloy monitoring configuration
+	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
+		err = r.AlloyMetricsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		if err != nil {
+			logger.Error(err, "failed to create or update alloy monitoring config")
+			alloyErrors = append(alloyErrors, fmt.Errorf("alloy metrics reconcile create: %w", err))
+		}
+	} else {
+		err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
+		if err != nil {
+			logger.Error(err, "failed to delete alloy monitoring config")
+			alloyErrors = append(alloyErrors, fmt.Errorf("alloy metrics reconcile delete: %w", err))
+		}
+	}
+
+	// Logging-specific: Alloy logs configuration
+	if r.Config.Logging.IsLoggingEnabled(cluster) {
+		// Create or update Alloy logs configuration
+		// TODO make sure we can enable network monitoring separately from logging
+		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		if err != nil {
+			logger.Error(err, "failed to create or update alloy logs config")
+			alloyErrors = append(alloyErrors, fmt.Errorf("alloy logs reconcile create: %w", err))
+		}
+
+		// Create or update Alloy events configuration
+		// TODO make sure we can enable tracing separately from logging
+		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		if err != nil {
+			logger.Error(err, "failed to create or update alloy events config")
+			alloyErrors = append(alloyErrors, fmt.Errorf("alloy events reconcile create: %w", err))
+		}
+	} else {
+		// Clean up any existing alloy logs configuration
+		// TODO make sure we can enable network monitoring separately from logging
+		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
+		if err != nil {
+			logger.Error(err, "failed to delete alloy logs config")
+			alloyErrors = append(alloyErrors, fmt.Errorf("alloy logs reconcile delete: %w", err))
+		}
+
+		// Clean up any existing alloy events configuration
+		// TODO make sure we can enable tracing separately from logging
+		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
+		if err != nil {
+			logger.Error(err, "failed to delete alloy events config")
+			alloyErrors = append(alloyErrors, fmt.Errorf("alloy events reconcile delete: %w", err))
+		}
+	}
+
+	// If any alloy service operations failed, combine them and return
+	if len(alloyErrors) > 0 {
+		return errors.Join(alloyErrors...)
+	}
+
+	return nil
 }
 
 // reconcileDelete handles cluster deletion.
