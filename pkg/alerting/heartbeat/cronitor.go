@@ -115,14 +115,14 @@ func (r *CronitorHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 	}
 
 	isNewMonitor := errors.Is(err, ErrMonitorNotFound)
-	var shouldPing bool
+	var needsPing bool
 
 	if isNewMonitor {
 		logger.Info("heartbeat monitor does not exist, creating new monitor")
 		if err := r.createMonitor(ctx, monitor); err != nil {
 			return err
 		}
-		shouldPing = true
+		needsPing = true
 	} else {
 		// Monitor exists, check if it needs updating
 		if !r.hasChanged(existingMonitor, monitor) {
@@ -134,11 +134,11 @@ func (r *CronitorHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 			return err
 		}
 		// Ping if pipeline changed to associate monitor with new environment
-		shouldPing = r.pipelineChanged(existingMonitor)
+		needsPing = r.pipelineChanged(existingMonitor)
 	}
 
 	// Ping to associate monitor with environment
-	if shouldPing {
+	if needsPing {
 		logger.Info("sending ping to associate monitor with environment",
 			"is_new", isNewMonitor,
 			"pipeline", r.Config.Cluster.Pipeline)
