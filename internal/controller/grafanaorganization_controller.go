@@ -315,25 +315,25 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	organization := r.organizationMapper.FromGrafanaOrganization(grafanaOrganization)
 
 	// Collect all errors to ensure all cleanup tasks have a chance to run
-	var deleteErrors []error
+	var errs []error
 
 	err := grafanaService.DeleteOrganization(ctx, organization)
 	if err != nil {
 		logger.Error(err, "failed to delete grafana organization")
-		deleteErrors = append(deleteErrors, fmt.Errorf("delete organization: %w", err))
+		errs = append(errs, fmt.Errorf("delete organization: %w", err))
 	}
 
 	grafanaOrganization.Status.OrgID = 0
 	err = r.Client.Status().Update(ctx, grafanaOrganization)
 	if err != nil {
 		logger.Error(err, "failed to update grafanaOrganization status")
-		deleteErrors = append(deleteErrors, fmt.Errorf("update status: %w", err))
+		errs = append(errs, fmt.Errorf("update status: %w", err))
 	}
 
 	err = r.configureGrafanaSSOSettings(ctx, grafanaService)
 	if err != nil {
 		logger.Error(err, "failed to configure SSO settings after deletion")
-		deleteErrors = append(deleteErrors, fmt.Errorf("configure SSO settings: %w", err))
+		errs = append(errs, fmt.Errorf("configure SSO settings: %w", err))
 	}
 
 	// Clean up metrics - delete metric series for this organization
@@ -345,8 +345,8 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	metrics.GrafanaOrganizationInfo.DeleteLabelValues(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, orgID, metrics.OrgStatusError)
 
 	// If any errors occurred during deletion, combine them and return
-	if len(deleteErrors) > 0 {
-		return errors.Join(deleteErrors...)
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	// Finalizer handling needs to come last.
