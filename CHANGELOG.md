@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.56.0] - 2026-01-12
+
 ### Added
 
 - Add logging configuration flags for workload cluster log collection: `--logging-default-namespaces`, `--logging-enable-node-filtering`, `--logging-enable-network-monitoring`, `--logging-include-events-from-namespaces`, and `--logging-exclude-events-from-namespaces`.
@@ -844,7 +846,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.55.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.56.0...HEAD
+[0.56.0]: https://github.com/giantswarm/observability-operator/compare/v0.55.0...v0.56.0
 [0.55.0]: https://github.com/giantswarm/observability-operator/compare/v0.54.0...v0.55.0
 [0.54.0]: https://github.com/giantswarm/observability-operator/compare/v0.53.0...v0.54.0
 [0.53.0]: https://github.com/giantswarm/observability-operator/compare/v0.52.0...v0.53.0
