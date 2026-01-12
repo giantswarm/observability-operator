@@ -264,14 +264,6 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		return ctrl.Result{}, nil
 	}
 
-	// Management cluster specific configuration
-	if cluster.Name == r.Config.Cluster.Name {
-		result := r.reconcileManagementCluster(ctx)
-		if result != nil {
-			return *result, nil
-		}
-	}
-
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
 	err = r.BundleConfigurationService.Configure(ctx, cluster)
 	if err != nil {
@@ -351,6 +343,14 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		if err != nil {
 			logger.Error(err, "failed to delete alloy events config")
 			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		}
+	}
+
+	// Management cluster specific configuration
+	if cluster.Name == r.Config.Cluster.Name {
+		result := r.reconcileManagementCluster(ctx)
+		if result != nil {
+			return *result, nil
 		}
 	}
 
