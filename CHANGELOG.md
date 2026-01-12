@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update Cronitor heartbeat API integration to use POST for monitor creation and PUT for updates, matching current API specification. Enhance error logging to include full request details (method, URL, request/response bodies) for better debugging.
+- Improve controller error handling to ensure independent reconciliation tasks run even when some fail.
+  - Return joined reconciliation errors instead of failing fast on the first error.
+  - Moved Alloy reconciliation into reconcileAlloyService
+  - Move Dashboard validation and configuration into the same loop
+
+## [0.56.0] - 2026-01-12
+
 ### Added
 
 - Add logging configuration flags for workload cluster log collection: `--logging-default-namespaces`, `--logging-enable-node-filtering`, `--logging-enable-network-monitoring`, `--logging-include-events-from-namespaces`, and `--logging-exclude-events-from-namespaces`.
@@ -17,10 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Change flag parsing from flag default library to `pflag`
-- Improve controller error handling to ensure independent reconciliation tasks run even when some fail.
-  - Return joined reconciliation errors instead of failing fast on the first error.
-  - Moved Alloy reconciliation into reconcileAlloyService
-  - Move Dashboard validation and configuration into the same loop
 
 ### Removed
 
@@ -848,7 +854,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.55.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.56.0...HEAD
+[0.56.0]: https://github.com/giantswarm/observability-operator/compare/v0.55.0...v0.56.0
 [0.55.0]: https://github.com/giantswarm/observability-operator/compare/v0.54.0...v0.55.0
 [0.54.0]: https://github.com/giantswarm/observability-operator/compare/v0.53.0...v0.54.0
 [0.53.0]: https://github.com/giantswarm/observability-operator/compare/v0.52.0...v0.53.0
