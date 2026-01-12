@@ -170,7 +170,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 	dashboards := r.dashboardMapper.FromConfigMap(dashboardConfigMap)
 
 	// Collect all errors to ensure all dashboards have a chance to be processed
-	var dashboardErrors []error
+	var errs []error
 
 	// Process each dashboard
 	for _, dashboard := range dashboards {
@@ -179,7 +179,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 			logger.Error(nil, "dashboard validate failed - webhook may have been bypassed",
 				"uid", dashboard.UID(), "organization", dashboard.Organization(), "errors", validationErrors,
 				"configmap", dashboardConfigMap.Name, "namespace", dashboardConfigMap.Namespace)
-			dashboardErrors = append(dashboardErrors, fmt.Errorf("dashboard validation failed for uid %s: %v", dashboard.UID(), validationErrors))
+			errs = append(errs, fmt.Errorf("dashboard validation failed for uid %s: %v", dashboard.UID(), validationErrors))
 			continue
 		}
 
@@ -189,7 +189,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 			logger.Error(err, "dashboard configuration failed",
 				"uid", dashboard.UID(), "organization", dashboard.Organization(),
 				"configmap", dashboardConfigMap.Name, "namespace", dashboardConfigMap.Namespace)
-			dashboardErrors = append(dashboardErrors, fmt.Errorf("dashboard configuration failed for uid %s: %w", dashboard.UID(), err))
+			errs = append(errs, fmt.Errorf("dashboard configuration failed for uid %s: %w", dashboard.UID(), err))
 			continue
 		}
 		logger.Info("dashboard configured in Grafana",
@@ -198,8 +198,8 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 	}
 
 	// If any errors occurred, combine them and return
-	if len(dashboardErrors) > 0 {
-		return errors.Join(dashboardErrors...)
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	return nil
