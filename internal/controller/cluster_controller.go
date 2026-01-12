@@ -401,13 +401,13 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 	// We do not need to delete anything if there is no finalizer on the cluster
 	if controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
 		// Collect all errors to ensure all cleanup tasks have a chance to run
-		var deleteErrors []error
+		var errs []error
 
 		// We always remove the bundle configure, even if monitoring is disabled for the cluster.
 		err := r.BundleConfigurationService.RemoveConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to remove the observability-bundle configuration")
-			deleteErrors = append(deleteErrors, fmt.Errorf("remove bundle configuration: %w", err))
+			errs = append(errs, fmt.Errorf("remove bundle configuration: %w", err))
 		}
 
 		// Metrics-specific: Delete Alloy monitoring configuration
@@ -415,7 +415,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy monitoring config")
-				deleteErrors = append(deleteErrors, fmt.Errorf("delete alloy metrics: %w", err))
+				errs = append(errs, fmt.Errorf("delete alloy metrics: %w", err))
 			}
 		}
 
@@ -426,7 +426,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy logs config")
-				deleteErrors = append(deleteErrors, fmt.Errorf("alloy logs reconcile delete: %w", err))
+				errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
 			}
 
 			// Clean up any existing alloy events configuration
@@ -434,7 +434,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy events config")
-				deleteErrors = append(deleteErrors, fmt.Errorf("alloy events reconcile delete: %w", err))
+				errs = append(errs, fmt.Errorf("alloy events reconcile delete: %w", err))
 			}
 		}
 
@@ -444,7 +444,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 				err = entry.authManager.DeleteClusterAuth(ctx, cluster)
 				if err != nil {
 					logger.Error(err, fmt.Sprintf("failed to delete cluster auth for %s", authType))
-					deleteErrors = append(deleteErrors, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
+					errs = append(errs, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
 				}
 			}
 		}
@@ -455,13 +455,13 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			err := r.tearDown(ctx)
 			if err != nil {
 				logger.Error(err, "failed to tear down the monitoring stack")
-				deleteErrors = append(deleteErrors, fmt.Errorf("teardown monitoring stack: %w", err))
+				errs = append(errs, fmt.Errorf("teardown monitoring stack: %w", err))
 			}
 		}
 
 		// If any errors occurred during deletion, combine them and return
-		if len(deleteErrors) > 0 {
-			return ctrl.Result{}, errors.Join(deleteErrors...)
+		if len(errs) > 0 {
+			return ctrl.Result{}, errors.Join(errs...)
 		}
 
 		// We get the latest state of the object to avoid race conditions.
