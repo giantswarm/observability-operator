@@ -167,7 +167,7 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// Reconcile all clusters when the grafana organizations have changed to update agents configs with the new list of tenants where metrics are sent to.
 		Watches(&v1alpha1.GrafanaOrganization{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
-				var logger = log.FromContext(ctx)
+				logger := log.FromContext(ctx)
 				var clusters clusterv1.ClusterList
 
 				err := mgr.GetClient().List(ctx, &clusters)
@@ -264,16 +264,16 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		return ctrl.Result{}, nil
 	}
 
+	// Collect all errors to ensure all independent tasks have a chance to run
+	var reconcileErrors []error
+
 	// Management cluster specific configuration
 	if cluster.Name == r.Config.Cluster.Name {
 		_, err := r.reconcileManagementCluster(ctx)
 		if err != nil {
-			return ctrl.Result{}, err
+			reconcileErrors = append(reconcileErrors, fmt.Errorf("management cluster reconciliation: %w", err))
 		}
 	}
-
-	// Collect all errors to ensure all tasks have a chance to run
-	var reconcileErrors []error
 
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
 	err = r.BundleConfigurationService.Configure(ctx, cluster)
