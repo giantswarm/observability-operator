@@ -215,21 +215,37 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 
 	// Convert ConfigMap to domain objects using mapper
 	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
-	// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
+
+	// Collect all errors to ensure all dashboards have a chance to be processed
+	var errs []error
+
+	// Process each dashboard: validate and delete in the same loop
 	for _, dash := range dashboards {
+		// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
 		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
 			logger.Error(nil, "Dashboard validation failed during reconciliation - webhook may have been bypassed",
 				"dashboard", dash.UID(), "organization", dash.Organization(), "errors", validationErrors,
 				"configmap", dashboard.Name, "namespace", dashboard.Namespace)
-			return fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors)
+			errs = append(errs, fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors))
+			continue
 		}
+
+		err := grafanaService.DeleteDashboard(ctx, dash)
+		if err != nil {
+			logger.Error(err, "failed to delete dashboard",
+				"uid", dash.UID(), "organization", dash.Organization(),
+				"configmap", dashboard.Name, "namespace", dashboard.Namespace)
+			errs = append(errs, fmt.Errorf("failed to delete dashboard uid %s: %w", dash.UID(), err))
+			continue
+		}
+		logger.Info("dashboard deleted from Grafana",
+			"uid", dash.UID(), "organization", dash.Organization(),
+			"configmap", dashboard.Name, "namespace", dashboard.Namespace)
 	}
 
-	for _, dashboard := range dashboards {
-		err := grafanaService.DeleteDashboard(ctx, dashboard)
-		if err != nil {
-			return fmt.Errorf("failed to delete dashboard: %w", err)
-		}
+	// If any errors occurred, combine them and return
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	// Finalizer handling needs to come last.
