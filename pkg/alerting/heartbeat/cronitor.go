@@ -115,31 +115,32 @@ func (r *CronitorHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 	}
 
 	isNewMonitor := errors.Is(err, ErrMonitorNotFound)
+	var shouldPing bool
 
-	var pipelineChanged bool
-	if !isNewMonitor {
+	if isNewMonitor {
+		logger.Info("heartbeat monitor does not exist, creating new monitor")
+		if err := r.createMonitor(ctx, monitor); err != nil {
+			return err
+		}
+		shouldPing = true
+	} else {
 		// Monitor exists, check if it needs updating
 		if !r.hasChanged(existingMonitor, monitor) {
 			logger.Info("heartbeat monitor is up to date")
 			return nil
 		}
 		logger.Info("heartbeat monitor has changed, updating")
-		// Check if pipeline changed by comparing pipeline tags
-		pipelineChanged = r.pipelineChanged(existingMonitor)
-	} else {
-		logger.Info("heartbeat monitor does not exist, creating new monitor")
+		if err := r.updateMonitor(ctx, monitor); err != nil {
+			return err
+		}
+		// Ping if pipeline changed to associate monitor with new environment
+		shouldPing = r.pipelineChanged(existingMonitor)
 	}
 
-	// PUT works for both create and update
-	if err := r.putMonitor(ctx, monitor); err != nil {
-		return err
-	}
-
-	// Ping when creating new monitor or when pipeline changed to associate with correct environment
-	if isNewMonitor || pipelineChanged {
+	// Ping to associate monitor with environment
+	if shouldPing {
 		logger.Info("sending ping to associate monitor with environment",
 			"is_new", isNewMonitor,
-			"pipeline_changed", pipelineChanged,
 			"pipeline", r.Config.Cluster.Pipeline)
 		if err := r.pingMonitor(ctx, monitor.Key); err != nil {
 			logger.Error(err, "failed to ping monitor, monitor created but not associated with environment")
@@ -170,7 +171,7 @@ func (r *CronitorHeartbeatRepository) Delete(ctx context.Context) error {
 	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return r.handleErrorResponse(resp, "failed to delete monitor")
+		return r.handleErrorResponse(ctx, resp, "DELETE", url, nil, "failed to delete monitor")
 	}
 
 	logger.Info("deleted heartbeat monitor successfully")
@@ -191,7 +192,7 @@ func (r *CronitorHeartbeatRepository) getMonitor(ctx context.Context, key string
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, r.handleErrorResponse(resp, "failed to get monitor")
+		return nil, r.handleErrorResponse(ctx, resp, "GET", url, nil, "failed to get monitor")
 	}
 
 	var monitor CronitorMonitor
@@ -202,11 +203,35 @@ func (r *CronitorHeartbeatRepository) getMonitor(ctx context.Context, key string
 	return &monitor, nil
 }
 
-// putMonitor creates or updates a monitor in Cronitor using PUT.
-// PUT works for both creation and updates according to Cronitor API docs.
+// createMonitor creates a new monitor in Cronitor using POST.
 // Note: Environments are never sent via API - they are automatically associated
 // when telemetry (pings) are sent to that environment.
-func (r *CronitorHeartbeatRepository) putMonitor(ctx context.Context, monitor *CronitorMonitor) error {
+func (r *CronitorHeartbeatRepository) createMonitor(ctx context.Context, monitor *CronitorMonitor) error {
+	logger := log.FromContext(ctx)
+
+	body, err := json.Marshal(monitor)
+	if err != nil {
+		return fmt.Errorf("failed to marshal monitor: %w", err)
+	}
+
+	resp, err := r.doAuthenticatedRequest(ctx, http.MethodPost, cronitorAPIBaseURL, body)
+	if err != nil {
+		return fmt.Errorf("failed to create monitor: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return r.handleErrorResponse(ctx, resp, "POST", cronitorAPIBaseURL, body, "failed to create monitor")
+	}
+
+	logger.Info("created heartbeat monitor successfully")
+	return nil
+}
+
+// updateMonitor updates an existing monitor in Cronitor using PUT.
+// Note: Environments are never sent via API - they are automatically associated
+// when telemetry (pings) are sent to that environment.
+func (r *CronitorHeartbeatRepository) updateMonitor(ctx context.Context, monitor *CronitorMonitor) error {
 	logger := log.FromContext(ctx)
 
 	body, err := json.Marshal(monitor)
@@ -217,15 +242,15 @@ func (r *CronitorHeartbeatRepository) putMonitor(ctx context.Context, monitor *C
 	url := fmt.Sprintf("%s/%s", cronitorAPIBaseURL, monitor.Key)
 	resp, err := r.doAuthenticatedRequest(ctx, http.MethodPut, url, body)
 	if err != nil {
-		return fmt.Errorf("failed to put monitor: %w", err)
+		return fmt.Errorf("failed to update monitor: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return r.handleErrorResponse(resp, "failed to put monitor")
+	if resp.StatusCode != http.StatusOK {
+		return r.handleErrorResponse(ctx, resp, "PUT", url, body, "failed to update monitor")
 	}
 
-	logger.Info("saved heartbeat monitor successfully")
+	logger.Info("updated heartbeat monitor successfully")
 	return nil
 }
 
@@ -270,7 +295,7 @@ func (r *CronitorHeartbeatRepository) pingMonitor(ctx context.Context, monitorKe
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return r.handleErrorResponse(resp, "failed to ping monitor")
+		return r.handleErrorResponse(ctx, resp, "GET", url, nil, "failed to ping monitor")
 	}
 
 	return nil
@@ -307,8 +332,21 @@ func (r *CronitorHeartbeatRepository) doAuthenticatedRequest(ctx context.Context
 	return resp, nil
 }
 
-// handleErrorResponse reads the response body and returns a formatted error.
-func (r *CronitorHeartbeatRepository) handleErrorResponse(resp *http.Response, message string) error {
-	body, _ := io.ReadAll(resp.Body)
-	return fmt.Errorf("%s, status code: %d, body: %s", message, resp.StatusCode, string(body))
+// handleErrorResponse reads the response body and returns a formatted error with request details.
+func (r *CronitorHeartbeatRepository) handleErrorResponse(ctx context.Context, resp *http.Response, method, url string, requestBody []byte, message string) error {
+	logger := log.FromContext(ctx)
+	responseBody, _ := io.ReadAll(resp.Body)
+
+	// Log the full request details for debugging
+	logger.Error(nil, "cronitor API request failed",
+		"message", message,
+		"method", method,
+		"url", url,
+		"status_code", resp.StatusCode,
+		"request_body", string(requestBody),
+		"response_body", string(responseBody),
+	)
+
+	return fmt.Errorf("%s: method=%s url=%s status_code=%d response_body=%s",
+		message, method, url, resp.StatusCode, string(responseBody))
 }
