@@ -470,7 +470,7 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 	logger := log.FromContext(ctx)
 
 	// Collect all errors to ensure all tasks have a chance to run
-	var mgmtErrors []error
+	var errs []error
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
 	if r.Config.Monitoring.Enabled {
@@ -478,20 +478,20 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 			err := heartbeatRepo.CreateOrUpdate(ctx)
 			if err != nil {
 				logger.Error(err, "failed to create or update heartbeat", "repository_index", i)
-				mgmtErrors = append(mgmtErrors, fmt.Errorf("heartbeat repository %d: %w", i, err))
+				errs = append(errs, fmt.Errorf("heartbeat repository %d: %w", i, err))
 			}
 		}
 	} else {
 		err := r.tearDown(ctx)
 		if err != nil {
 			logger.Error(err, "failed to tear down the monitoring stack")
-			mgmtErrors = append(mgmtErrors, fmt.Errorf("teardown monitoring stack: %w", err))
+			errs = append(errs, fmt.Errorf("teardown monitoring stack: %w", err))
 		}
 	}
 
 	// If any errors occurred, combine them and return
-	if len(mgmtErrors) > 0 {
-		return ctrl.Result{}, errors.Join(mgmtErrors...)
+	if len(errs) > 0 {
+		return ctrl.Result{}, errors.Join(errs...)
 	}
 
 	return ctrl.Result{}, nil
