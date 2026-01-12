@@ -265,13 +265,13 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	}
 
 	// Collect all errors to ensure all independent tasks have a chance to run
-	var reconcileErrors []error
+	var errs []error
 
 	// Management cluster specific configuration
 	if cluster.Name == r.Config.Cluster.Name {
 		_, err := r.reconcileManagementCluster(ctx)
 		if err != nil {
-			reconcileErrors = append(reconcileErrors, fmt.Errorf("management cluster reconciliation: %w", err))
+			errs = append(errs, fmt.Errorf("management cluster reconciliation: %w", err))
 		}
 	}
 
@@ -279,7 +279,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	err = r.BundleConfigurationService.Configure(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to configure the observability-bundle")
-		reconcileErrors = append(reconcileErrors, fmt.Errorf("bundle configuration: %w", err))
+		errs = append(errs, fmt.Errorf("bundle configuration: %w", err))
 	}
 
 	// Handle authentication for all observability backends (independent tasks)
@@ -288,13 +288,13 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 			err = entry.authManager.EnsureClusterAuth(ctx, cluster)
 			if err != nil {
 				logger.Error(err, fmt.Sprintf("failed to ensure cluster auth for %s", authType))
-				reconcileErrors = append(reconcileErrors, fmt.Errorf("ensure cluster auth for %s: %w", authType, err))
+				errs = append(errs, fmt.Errorf("ensure cluster auth for %s: %w", authType, err))
 			}
 		} else {
 			err = entry.authManager.DeleteClusterAuth(ctx, cluster)
 			if err != nil {
 				logger.Error(err, fmt.Sprintf("failed to delete cluster auth for %s", authType))
-				reconcileErrors = append(reconcileErrors, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
+				errs = append(errs, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
 			}
 		}
 	}
@@ -303,12 +303,12 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	err = r.reconcileAlloyServices(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to reconcile alloy services")
-		reconcileErrors = append(reconcileErrors, fmt.Errorf("alloy services: %w", err))
+		errs = append(errs, fmt.Errorf("alloy services: %w", err))
 	}
 
 	// If any errors occurred, combine them and return
-	if len(reconcileErrors) > 0 {
-		return ctrl.Result{}, errors.Join(reconcileErrors...)
+	if len(errs) > 0 {
+		return ctrl.Result{}, errors.Join(errs...)
 	}
 
 	return ctrl.Result{}, nil
