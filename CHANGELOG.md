@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve controller error handling to ensure independent reconciliation tasks run even when some fail.
   - Return joined reconciliation errors instead of failing fast on the first error.
   - Moved Alloy reconciliation into reconcileAlloyService
-  - Move Dashboard validation and configuration into the same loop
+  - Move Dashboard validation into configuration and deletion loops
+  - Add cluster controller RateLimiter to limit retries to 5mn
 
 ## [0.56.0] - 2026-01-12
 
