@@ -20,8 +20,8 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 )
 
 var _ = Describe("Cluster Controller", func() {
@@ -102,7 +102,7 @@ var _ = Describe("Cluster Controller", func() {
 				),
 			)
 
-			alloyMetricsService := alloy.Service{
+			alloyMetricsService := metrics.Service{
 				Config: config.Config{
 					Cluster: config.ClusterConfig{
 						Name:     "management-cluster",
