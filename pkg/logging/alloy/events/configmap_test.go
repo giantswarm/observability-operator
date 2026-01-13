@@ -17,6 +17,7 @@ import (
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
+	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
@@ -213,6 +214,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				Client:                 fakeClient,
 				Config:                 cfg,
 				OrganizationRepository: mockOrgRepo,
+				TenantRepository:       tenancy.NewKubernetesRepository(fakeClient),
 			}
 
 			// Generate Alloy events config using the actual service method
