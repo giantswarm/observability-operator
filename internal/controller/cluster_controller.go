@@ -18,6 +18,8 @@ import (
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent"
+	"github.com/giantswarm/observability-operator/pkg/agent/collectors/events"
+	"github.com/giantswarm/observability-operator/pkg/agent/collectors/logs"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
 	"github.com/giantswarm/observability-operator/pkg/alerting/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/auth"
@@ -25,8 +27,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
-	"github.com/giantswarm/observability-operator/pkg/logging/alloy/events"
-	"github.com/giantswarm/observability-operator/pkg/logging/alloy/logs"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 )
 
