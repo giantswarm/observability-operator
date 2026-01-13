@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/crypto/sha3"
 )
 
 // PasswordGenerator generates passwords and htpasswd entries
@@ -30,9 +30,6 @@ func (g *simplePasswordGenerator) GeneratePassword(length int) (string, error) {
 }
 
 func (g *simplePasswordGenerator) GenerateHtpasswd(username, password string) (string, error) {
-	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("failed to encrypt password: %w", err)
-	}
+	encryptedPassword := sha3.New256().Sum([]byte(password))
 	return fmt.Sprintf("%s:%s", username, string(encryptedPassword)), nil
 }
