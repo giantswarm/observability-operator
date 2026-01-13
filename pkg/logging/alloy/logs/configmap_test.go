@@ -351,10 +351,10 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 
 			mockOrgRepo := mocks.NewMockOrganizationRepository("test-organization")
 			service := &Service{
-				ConfigurationRepository: agent.NewConfigurationRepository(fakeClient),
-				Config:                  cfg,
-				OrganizationRepository:  mockOrgRepo,
-				TenantRepository:        tenancy.NewTenantRepository(fakeClient),
+				Client:                 fakeClient,
+				Config:                 cfg,
+				OrganizationRepository: mockOrgRepo,
+				TenantRepository:       tenancy.NewKubernetesRepository(fakeClient),
 			}
 
 			// Generate Alloy logs config using the actual service method
