@@ -46,14 +46,14 @@ func TestPasswordGenerator(t *testing.T) {
 			htpasswd, err := generator.GenerateHtpasswd(username, password)
 			require.NoError(t, err)
 
-			// Should be in format username:encrypted_password
+			// Should be in format username:{SHA}encrypted_password
 			parts := splitHtpasswd(htpasswd)
 			require.Len(t, parts, 2)
 			assert.Equal(t, username, parts[0])
 
-			// Verify the password hash matches SHA3-256
+			// Verify the password hash matches {SHA} prefix + SHA3-256 hex
 			expectedHash := sha3.Sum256([]byte(password))
-			assert.Equal(t, hex.EncodeToString(expectedHash[:]), parts[1])
+			assert.Equal(t, "{SHA}"+hex.EncodeToString(expectedHash[:]), parts[1])
 		})
 
 		t.Run("should generate same hash for same password", func(t *testing.T) {
@@ -87,9 +87,9 @@ func TestPasswordGenerator(t *testing.T) {
 			require.Len(t, parts, 2)
 			assert.Equal(t, "username", parts[0])
 
-			// Verify the empty password hash matches SHA3-256
+			// Verify the empty password hash matches {SHA} prefix + SHA3-256 hex
 			expectedHash := sha3.Sum256([]byte(""))
-			assert.Equal(t, hex.EncodeToString(expectedHash[:]), parts[1])
+			assert.Equal(t, "{SHA}"+hex.EncodeToString(expectedHash[:]), parts[1])
 		})
 	})
 }
