@@ -32,5 +32,5 @@ func (g *simplePasswordGenerator) GeneratePassword(length int) (string, error) {
 func (g *simplePasswordGenerator) GenerateHtpasswd(username, password string) (string, error) {
 	hash := sha3.Sum256([]byte(password))
 	encryptedPassword := hex.EncodeToString(hash[:])
-	return fmt.Sprintf("%s:%s", username, encryptedPassword), nil
+	return fmt.Sprintf("%s:{SHA}%s", username, encryptedPassword), nil
 }
