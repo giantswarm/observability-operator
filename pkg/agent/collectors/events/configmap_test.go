@@ -32,6 +32,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 		tenants                    []string
 		goldenPath                 string
 		observabilityBundleVersion semver.Version
+		loggingEnabled             bool
 		tracingEnabled             bool
 		includeNamespaces          []string
 		excludeNamespaces          []string
@@ -55,8 +56,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			tracingEnabled:             false,
+			observabilityBundleVersion: semver.MustParse("1.7.0"),		loggingEnabled:             true,			tracingEnabled:             false,
 		},
 		{
 			name: "WorkloadCluster_NoTracing",
@@ -77,8 +77,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			tracingEnabled:             false,
+			observabilityBundleVersion: semver.MustParse("1.7.0"),		loggingEnabled:             true,			tracingEnabled:             false,
 		},
 		{
 			name: "WorkloadCluster_IncludeNamespaces",
@@ -99,8 +98,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.include-namespaces.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			tracingEnabled:             false,
+			observabilityBundleVersion: semver.MustParse("1.7.0"),		loggingEnabled:             true,			tracingEnabled:             false,
 			includeNamespaces:          []string{"namespace1", "namespace2"},
 		},
 		{
@@ -122,8 +120,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.exclude-namespaces.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			tracingEnabled:             false,
+			observabilityBundleVersion: semver.MustParse("1.7.0"),		loggingEnabled:             true,			tracingEnabled:             false,
 			excludeNamespaces:          []string{"namespace1", "namespace2"},
 		},
 		{
@@ -145,8 +142,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.tracing-enabled.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			tracingEnabled:             true,
+			observabilityBundleVersion: semver.MustParse("1.11.0"),		loggingEnabled:             true,			tracingEnabled:             true,
 		},
 		{
 			name: "WorkloadCluster_TracingEnabled",
@@ -167,17 +163,108 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.tracing-enabled.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			tracingEnabled:             true,
+			observabilityBundleVersion: semver.MustParse("1.11.0"),		loggingEnabled:             true,			tracingEnabled:             true,
 		},
-	}
+	{
+		name: "WorkloadCluster_TracingOnly",
+		cluster: &clusterv1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster",
+				Namespace: "default",
+				Labels: map[string]string{
+					"giantswarm.io/cluster":     "test-cluster",
+					"cluster.x-k8s.io/provider": "aws",
+				},
+			},
+			Spec: clusterv1.ClusterSpec{
+				InfrastructureRef: &corev1.ObjectReference{
+					Kind: "AWSCluster",
+				},
+			},
+		},
+		tenants:                    []string{"giantswarm"},
+		goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.tracing-only.yaml"),
+		observabilityBundleVersion: semver.MustParse("1.11.0"),
+		loggingEnabled:             false,
+		tracingEnabled:             true,
+	},
+	{
+		name: "WorkloadCluster_NeitherEnabled",
+		cluster: &clusterv1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-cluster",
+				Namespace: "default",
+				Labels: map[string]string{
+					"giantswarm.io/cluster":     "test-cluster",
+					"cluster.x-k8s.io/provider": "aws",
+				},
+			},
+			Spec: clusterv1.ClusterSpec{
+				InfrastructureRef: &corev1.ObjectReference{
+					Kind: "AWSCluster",
+				},
+			},
+		},
+		tenants:                    []string{"giantswarm"},
+		goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.neither-enabled.yaml"),
+		observabilityBundleVersion: semver.MustParse("1.11.0"),
+		loggingEnabled:             false,
+		tracingEnabled:             false,
+	},
+	{
+		name: "ManagementCluster_TracingOnly",
+		cluster: &clusterv1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      managementClusterName,
+				Namespace: "default",
+				Labels: map[string]string{
+					"giantswarm.io/cluster":     managementClusterName,
+					"cluster.x-k8s.io/provider": "aws",
+				},
+			},
+			Spec: clusterv1.ClusterSpec{
+				InfrastructureRef: &corev1.ObjectReference{
+					Kind: "AWSCluster",
+				},
+			},
+		},
+		tenants:                    []string{"giantswarm"},
+		goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.tracing-only.yaml"),
+		observabilityBundleVersion: semver.MustParse("1.11.0"),
+		loggingEnabled:             false,
+		tracingEnabled:             true,
+	},
+	{
+		name: "ManagementCluster_NeitherEnabled",
+		cluster: &clusterv1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      managementClusterName,
+				Namespace: "default",
+				Labels: map[string]string{
+					"giantswarm.io/cluster":     managementClusterName,
+					"cluster.x-k8s.io/provider": "aws",
+				},
+			},
+			Spec: clusterv1.ClusterSpec{
+				InfrastructureRef: &corev1.ObjectReference{
+					Kind: "AWSCluster",
+				},
+			},
+		},
+		tenants:                    []string{"giantswarm"},
+		goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.neither-enabled.yaml"),
+		observabilityBundleVersion: semver.MustParse("1.11.0"),
+		loggingEnabled:             false,
+		tracingEnabled:             false,
+	},
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-			defer cancel()
+for _, tt := range tests {
+	t.Run(tt.name, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
 
-			// Create a fake client with a GrafanaOrganization to provide tenants
+		// Create a fake client with a GrafanaOrganization to provide tenants
 			scheme := runtime.NewScheme()
 			_ = v1alpha1.AddToScheme(scheme)
 			_ = clusterv1.AddToScheme(scheme)
@@ -213,6 +300,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			service := &Service{
 				Config:                 cfg,
 				OrganizationRepository: mockOrgRepo,
+				// TODO replace with a mock
 				TenantRepository:       tenancy.NewTenantRepository(fakeClient),
 			}
 
@@ -220,6 +308,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			resultMap, err := service.GenerateAlloyEventsConfigMapData(
 				ctx,
 				tt.cluster,
+				tt.loggingEnabled,
 				tt.tracingEnabled,
 				tt.observabilityBundleVersion,
 			)

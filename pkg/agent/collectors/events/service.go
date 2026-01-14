@@ -44,17 +44,18 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is configured")
 
-	// Determine if tracing is enabled based on config and observability bundle version
-	tracingEnabled := a.Config.Tracing.Enabled && observabilityBundleVersion.GE(minimumTracingSupportVersion)
+	// Determine if logging and tracing are enabled for this cluster
+	loggingEnabled := a.Config.Logging.IsLoggingEnabled(cluster)
+	tracingEnabled := a.Config.Tracing.IsTracingEnabled(cluster) && observabilityBundleVersion.GE(minimumTracingSupportVersion)
 
 	// Generate ConfigMap data
-	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, tracingEnabled, observabilityBundleVersion)
+	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, observabilityBundleVersion)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 	}
 
 	// Generate Secret data
-	secretData, err := a.GenerateAlloyEventsSecretData(ctx, cluster, tracingEnabled)
+	secretData, err := a.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events secret: %w", err)
 	}

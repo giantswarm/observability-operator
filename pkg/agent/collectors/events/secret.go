@@ -29,23 +29,25 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, tracingEnabled bool) (map[string]string, error) {
-	lokiURL := fmt.Sprintf(commonmonitoring.LokiPushURLFormat, a.Config.Cluster.BaseDomain)
-	lokiRulerURL := fmt.Sprintf(commonmonitoring.LokiBaseURLFormat, a.Config.Cluster.BaseDomain)
+func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool) (map[string]string, error) {
+	secrets := map[string]string{}
 
-	// Get Loki auth credentials
-	logsPassword, err := a.LogsAuthManager.GetClusterPassword(ctx, cluster)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
-	}
+	// Add Loki credentials if logging is enabled
+	if loggingEnabled {
+		lokiURL := fmt.Sprintf(commonmonitoring.LokiPushURLFormat, a.Config.Cluster.BaseDomain)
+		lokiRulerURL := fmt.Sprintf(commonmonitoring.LokiBaseURLFormat, a.Config.Cluster.BaseDomain)
 
-	// Build secret environment variables map
-	secrets := map[string]string{
-		commonmonitoring.LokiURLKey:         lokiURL,
-		commonmonitoring.LokiTenantIDKey:    organization.GiantSwarmDefaultTenant,
-		commonmonitoring.LokiUsernameKey:    cluster.Name,
-		commonmonitoring.LokiPasswordKey:    logsPassword,
-		commonmonitoring.LokiRulerAPIURLKey: lokiRulerURL,
+		// Get Loki auth credentials
+		logsPassword, err := a.LogsAuthManager.GetClusterPassword(ctx, cluster)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
+		}
+
+		secrets[commonmonitoring.LokiURLKey] = lokiURL
+		secrets[commonmonitoring.LokiTenantIDKey] = organization.GiantSwarmDefaultTenant
+		secrets[commonmonitoring.LokiUsernameKey] = cluster.Name
+		secrets[commonmonitoring.LokiPasswordKey] = logsPassword
+		secrets[commonmonitoring.LokiRulerAPIURLKey] = lokiRulerURL
 	}
 
 	// Add tracing credentials if tracing is enabled
