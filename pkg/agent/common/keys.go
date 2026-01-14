@@ -17,11 +17,11 @@ const (
 	LokiPushURLFormat = LokiBaseURLFormat + "/loki/api/v1/push"
 
 	// Loki secret keys for authentication and endpoint configuration
-	LokiURLKey         = "logging-url"         // URL for Loki push endpoint
-	LokiTenantIDKey    = "logging-tenant-id"   // Tenant ID for multi-tenancy
-	LokiUsernameKey    = "logging-username"    // Username for basic auth
-	LokiPasswordKey    = "logging-password"    // Password for basic auth
-	LokiRulerAPIURLKey = "ruler-api-url"       // URL for Loki ruler API
+	LokiURLKey         = "logging-url"       // URL for Loki push endpoint
+	LokiTenantIDKey    = "logging-tenant-id" // Tenant ID for multi-tenancy
+	LokiUsernameKey    = "logging-username"  // Username for basic auth
+	LokiPasswordKey    = "logging-password"  // Password for basic auth
+	LokiRulerAPIURLKey = "ruler-api-url"     // URL for Loki ruler API
 
 	// Loki performance tuning parameters
 	LokiMaxBackoffPeriod = "10m" // Maximum backoff period for retries
@@ -48,8 +48,8 @@ const (
 	MimirRemoteWriteAPINameKey     = "mimirRemoteWriteAPIName"     // Name identifier for remote write
 
 	// Mimir default values and URL templates
-	MimirRemoteWriteName              = "mimir"                            // Default remote write name
-	MimirBaseURLFormat                = "https://mimir.%s"                 // Base URL template for Mimir
+	MimirRemoteWriteName              = "mimir"                             // Default remote write name
+	MimirBaseURLFormat                = "https://mimir.%s"                  // Base URL template for Mimir
 	MimirRemoteWriteEndpointURLFormat = MimirBaseURLFormat + "/api/v1/push" // Full remote write endpoint URL
-	MimirRemoteWriteTimeout           = "60s"                              // Timeout for remote write operations
+	MimirRemoteWriteTimeout           = "60s"                               // Timeout for remote write operations
 )
