@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update Cronitor heartbeat API integration to use POST for monitor creation and PUT for updates, matching current API specification. Enhance error logging to include full request details (method, URL, request/response bodies) for better debugging.
 - Move logs and events collectors from `pkg/monitoring/alloy` and `pkg/logging/alloy/{logs,events}` to `pkg/agent/collectors/{metrics,logs,events}` to consolidate agent-related code under a unified package structure.
 - Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
+- Enable independent configuration of logging and network monitoring features. Log collection now works when logging is enabled, and network monitoring collection can be enabled separately from logging for flexible per-cluster observability configurations.
 
 ## [0.56.0] - 2026-01-12
 
