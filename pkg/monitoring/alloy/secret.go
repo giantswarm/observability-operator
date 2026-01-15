@@ -62,7 +62,7 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 
 	// Execute template
 	var values bytes.Buffer
-	err = alloyMonitoringSecretTemplate.Execute(&values, data)
+	err = alloyMonitoringSecretTemplate.Execute(&values, templateData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to template alloy monitoring secret: %w", err)
 	}
