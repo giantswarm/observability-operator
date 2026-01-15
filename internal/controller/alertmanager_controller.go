@@ -33,6 +33,7 @@ type AlertmanagerReconciler struct {
 func SetupAlertmanagerReconciler(mgr ctrl.Manager, cfg config.Config) error {
 	r := &AlertmanagerReconciler{
 		client:              mgr.GetClient(),
+		tenantRepository:    tenancy.NewKubernetesRepository(mgr.GetClient()),
 		alertmanagerService: alertmanager.New(cfg),
 		tenantRepository:    tenancy.NewTenantRepository(mgr.GetClient()),
 	}
