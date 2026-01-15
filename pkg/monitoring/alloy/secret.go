@@ -44,19 +44,24 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 
 	mimirRulerUrl := fmt.Sprintf(commonmonitoring.MimirBaseURLFormat, a.Cluster.BaseDomain)
 
-	data := []struct {
-		Name  string
-		Value string
+	// Build secret environment variables map
+	secretEnv := map[string]string{
+		mimirRulerAPIURLKey:            mimirRulerUrl,
+		mimirRemoteWriteAPIURLKey:      remoteWriteUrl,
+		mimirRemoteWriteAPINameKey:     commonmonitoring.RemoteWriteName,
+		mimirRemoteWriteAPIUsernameKey: cluster.Name,
+		mimirRemoteWriteAPIPasswordKey: password,
+	}
+
+	// Prepare template data
+	templateData := struct {
+		ExtraSecretEnv map[string]string
 	}{
-		{Name: mimirRulerAPIURLKey, Value: mimirRulerUrl},
-		{Name: mimirRemoteWriteAPIURLKey, Value: remoteWriteUrl},
-		{Name: mimirRemoteWriteAPINameKey, Value: commonmonitoring.RemoteWriteName},
-		{Name: mimirRemoteWriteAPIUsernameKey, Value: cluster.Name},
-		{Name: mimirRemoteWriteAPIPasswordKey, Value: password},
+		ExtraSecretEnv: secretEnv,
 	}
 
 	var values bytes.Buffer
-	err = alloyMonitoringSecretTemplate.Execute(&values, data)
+	err = alloyMonitoringSecretTemplate.Execute(&values, templateData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to template alloy monitoring secret: %w", err)
 	}

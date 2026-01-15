@@ -14,10 +14,26 @@ const (
 	TenantSelectorLabel = "observability.giantswarm.io/tenant"
 )
 
-// ListTenants retrieves a unique, sorted list of tenant IDs from all active GrafanaOrganization resources.
-func ListTenants(ctx context.Context, k8sClient client.Client) ([]string, error) {
+// TenantRepository defines an interface for reading tenant information.
+type TenantRepository interface {
+	// List retrieves a unique, sorted list of tenant IDs from all active GrafanaOrganization resources.
+	List(ctx context.Context) ([]string, error)
+}
+
+// KubernetesTenantRepository implements TenantRepository using Kubernetes resources.
+type KubernetesTenantRepository struct {
+	client.Client
+}
+
+// NewKubernetesRepository creates a new KubernetesTenantRepository.
+func NewKubernetesRepository(client client.Client) TenantRepository {
+	return KubernetesTenantRepository{Client: client}
+}
+
+// List retrieves a unique, sorted list of tenant IDs from all active GrafanaOrganization resources.
+func (r KubernetesTenantRepository) List(ctx context.Context) ([]string, error) {
 	var grafanaOrganizations v1alpha1.GrafanaOrganizationList
-	if err := k8sClient.List(ctx, &grafanaOrganizations); err != nil {
+	if err := r.Client.List(ctx, &grafanaOrganizations); err != nil {
 		return nil, fmt.Errorf("failed to list GrafanaOrganizations: %w", err)
 	}
 

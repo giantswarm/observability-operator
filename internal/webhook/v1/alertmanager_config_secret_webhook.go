@@ -43,7 +43,10 @@ var log = logf.Log.WithName("alertmanagerconfig-secret-resource")
 func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) error {
 	err := ctrl.NewWebhookManagedBy(mgr).
 		For(&corev1.Secret{}).
-		WithValidator(&AlertmanagerConfigSecretValidator{client: mgr.GetClient()}).
+		WithValidator(&AlertmanagerConfigSecretValidator{
+			client:           mgr.GetClient(),
+			tenantRepository: tenancy.NewKubernetesRepository(mgr.GetClient()),
+		}).
 		WithCustomPath("/validate-alertmanager-config").
 		Complete()
 	if err != nil {
@@ -64,7 +67,8 @@ func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) error {
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 // +kubebuilder:object:generate=false
 type AlertmanagerConfigSecretValidator struct {
-	client client.Client
+	client           client.Client
+	tenantRepository tenancy.TenantRepository
 }
 
 var _ webhook.CustomValidator = &AlertmanagerConfigSecretValidator{}
@@ -123,7 +127,7 @@ func (v *AlertmanagerConfigSecretValidator) validateTenant(ctx context.Context, 
 	}
 
 	// Check that the tenant is defined in a Grafana Organization.
-	tenants, err := tenancy.ListTenants(ctx, v.client)
+	tenants, err := v.tenantRepository.List(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}

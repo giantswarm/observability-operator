@@ -19,7 +19,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 )
 
 var (
@@ -49,7 +48,7 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 
 func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, tracingEnabled bool, observabilityBundleVersion semver.Version) (map[string]string, error) {
 	// Get list of tenants
-	tenants, err := tenancy.ListTenants(ctx, a.Client)
+	tenants, err := a.TenantRepository.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tenants: %w", err)
 	}
