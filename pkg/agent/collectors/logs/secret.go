@@ -9,8 +9,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
+	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
@@ -25,8 +25,8 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 }
 
 func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string]string, error) {
-	lokiURL := fmt.Sprintf(commonmonitoring.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
-	lokiRulerAPIURL := fmt.Sprintf(commonmonitoring.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
+	lokiURL := fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
+	lokiRulerAPIURL := fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
 
 	// Get Loki password
 	logsPassword, err := s.LogsAuthManager.GetClusterPassword(ctx, cluster)
@@ -36,11 +36,11 @@ func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clus
 
 	// Build secret environment variables map
 	secrets := map[string]string{
-		commonmonitoring.LokiURLKey:         lokiURL,
-		commonmonitoring.LokiTenantIDKey:    organization.GiantSwarmDefaultTenant,
-		commonmonitoring.LokiUsernameKey:    cluster.Name,
-		commonmonitoring.LokiPasswordKey:    logsPassword,
-		commonmonitoring.LokiRulerAPIURLKey: lokiRulerAPIURL,
+		common.LokiURLKey:         lokiURL,
+		common.LokiTenantIDKey:    organization.GiantSwarmDefaultTenant,
+		common.LokiUsernameKey:    cluster.Name,
+		common.LokiPasswordKey:    logsPassword,
+		common.LokiRulerAPIURLKey: lokiRulerAPIURL,
 	}
 
 	return secrets, nil
