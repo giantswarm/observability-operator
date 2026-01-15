@@ -1,8 +1,7 @@
-package alloy
+package metrics
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
