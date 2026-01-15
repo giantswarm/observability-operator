@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `ConfigurationRepository` interface in `pkg/agent` for managing agent (Alloy) configuration persistence with Kubernetes-based implementation.
+
 ### Changed
 
 - Refactor tenant listing functionality into a repository interface pattern (`TenantRepository`) with Kubernetes implementation for better separation of concerns and testability.
