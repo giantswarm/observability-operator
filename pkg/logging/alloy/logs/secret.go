@@ -1,13 +1,10 @@
 package logs
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
 	"fmt"
-	"text/template"
 
-	"github.com/Masterminds/sprig/v3"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
@@ -16,16 +13,6 @@ import (
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
-
-var (
-	//go:embed templates/alloy-secret.yaml.template
-	alloySecret         string
-	alloySecretTemplate *template.Template
-)
-
-func init() {
-	alloySecretTemplate = template.Must(template.New("alloy-secret.yaml").Funcs(sprig.FuncMap()).Parse(alloySecret))
-}
 
 func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	return &v1.Secret{
@@ -37,7 +24,7 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string][]byte, error) {
+func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string]string, error) {
 	lokiURL := fmt.Sprintf(commonmonitoring.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
 	lokiRulerAPIURL := fmt.Sprintf(commonmonitoring.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
 
@@ -48,7 +35,7 @@ func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clus
 	}
 
 	// Build secret environment variables map
-	secretEnv := map[string]string{
+	secrets := map[string]string{
 		commonmonitoring.LokiURLKey:         lokiURL,
 		commonmonitoring.LokiTenantIDKey:    organization.GiantSwarmDefaultTenant,
 		commonmonitoring.LokiUsernameKey:    cluster.Name,
@@ -56,21 +43,5 @@ func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clus
 		commonmonitoring.LokiRulerAPIURLKey: lokiRulerAPIURL,
 	}
 
-	// Prepare template data
-	templateData := struct {
-		ExtraSecretEnv map[string]string
-	}{
-		ExtraSecretEnv: secretEnv,
-	}
-
-	// Execute template
-	var values bytes.Buffer
-	err = alloySecretTemplate.Execute(&values, templateData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute alloy secret template: %w", err)
-	}
-
-	return map[string][]byte{
-		"values": values.Bytes(),
-	}, nil
+	return secrets, nil
 }
