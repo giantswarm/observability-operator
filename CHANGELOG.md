@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Move Dashboard validation into configuration and deletion loops
   - Add cluster controller RateLimiter to limit retries to 5mn
 
+### Removed
+
+- Remove `alloy-logs` and `alloy-events` reconciliation flags as the migration is over and we do not need them anymore.
+
 ## [0.56.0] - 2026-01-12
 
 ### Added
