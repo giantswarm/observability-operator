@@ -99,7 +99,7 @@ verticalPodAutoscaler:
       controlledValues: "RequestsAndLimits"
       maxAllowed: 
         cpu: 500m
-        memory: 10Gi
+        memory: 12Gi
       minAllowed:
         cpu: 25m
         memory: 512Mi
