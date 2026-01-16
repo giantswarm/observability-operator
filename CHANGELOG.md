@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Moved Alloy reconciliation into reconcileAlloyService
   - Move Dashboard validation into configuration and deletion loops
   - Add cluster controller RateLimiter to limit retries to 5mn
+- Allow alloy-metrics to go up to 12GB RAM requests
 
 ## [0.56.0] - 2026-01-12
 
