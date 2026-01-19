@@ -17,7 +17,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
@@ -52,7 +51,7 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 
 func (s *Service) GenerateAlloyLogsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, networkMonitoringEnabled bool) (map[string]string, error) {
 	// Get tenant IDs
-	tenants, err := tenancy.ListTenants(ctx, s.Client)
+	tenants, err := s.TenantRepository.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tenant IDs: %w", err)
 	}

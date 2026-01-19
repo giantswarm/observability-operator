@@ -14,6 +14,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
+	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
@@ -40,6 +41,7 @@ var (
 type Service struct {
 	Client                 client.Client
 	OrganizationRepository organization.OrganizationRepository
+	TenantRepository       tenancy.TenantRepository
 	Config                 config.Config
 	LogsAuthManager        auth.AuthManager
 }

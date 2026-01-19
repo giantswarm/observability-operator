@@ -13,7 +13,7 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
-func TestListTenants(t *testing.T) {
+func TestKubernetesTenantRepository_List(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme) // Register GrafanaOrganization with the scheme
 
@@ -128,8 +128,9 @@ func TestListTenants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(tt.initialObjs...).Build()
+			repo := NewKubernetesRepository(fakeClient)
 
-			result, err := ListTenants(context.Background(), fakeClient)
+			result, err := repo.List(context.Background())
 
 			if tt.expectErr {
 				if err == nil {
