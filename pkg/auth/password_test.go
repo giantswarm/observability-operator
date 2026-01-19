@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/sha3"
 )
 
 func TestPasswordGenerator(t *testing.T) {
@@ -53,7 +52,7 @@ func TestPasswordGenerator(t *testing.T) {
 			require.Len(t, parts, 2)
 			assert.Equal(t, username, parts[0])
 
-			// Verify the password hash matches {SHA} prefix + SHA3-256 hex
+			// Verify the password hash matches {SHA} prefix + SHA1 hex
 			expectedHash := sha1.Sum([]byte(password))
 			assert.Equal(t, "{SHA}"+hex.EncodeToString(expectedHash[:]), parts[1])
 		})
@@ -68,7 +67,7 @@ func TestPasswordGenerator(t *testing.T) {
 			htpasswd2, err := generator.GenerateHtpasswd(username, password)
 			require.NoError(t, err)
 
-			// SHA3 is deterministic, so hashes should be the same
+			// SHA1 is deterministic, so hashes should be the same
 			assert.Equal(t, htpasswd1, htpasswd2)
 		})
 
@@ -89,8 +88,8 @@ func TestPasswordGenerator(t *testing.T) {
 			require.Len(t, parts, 2)
 			assert.Equal(t, "username", parts[0])
 
-			// Verify the empty password hash matches {SHA} prefix + SHA3-256 hex
-			expectedHash := sha3.Sum256([]byte(""))
+			// Verify the empty password hash matches {SHA} prefix + SHA1 hex
+			expectedHash := sha1.Sum([]byte(""))
 			assert.Equal(t, "{SHA}"+hex.EncodeToString(expectedHash[:]), parts[1])
 		})
 	})
