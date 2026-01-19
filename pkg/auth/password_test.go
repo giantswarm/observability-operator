@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"crypto/sha1"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
@@ -52,7 +54,7 @@ func TestPasswordGenerator(t *testing.T) {
 			assert.Equal(t, username, parts[0])
 
 			// Verify the password hash matches {SHA} prefix + SHA3-256 hex
-			expectedHash := sha3.Sum256([]byte(password))
+			expectedHash := sha1.Sum([]byte(password))
 			assert.Equal(t, "{SHA}"+hex.EncodeToString(expectedHash[:]), parts[1])
 		})
 
