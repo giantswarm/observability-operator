@@ -1,12 +1,13 @@
 package auth
 
 import (
+	"encoding/hex"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/crypto/sha3"
 )
 
 func TestPasswordGenerator(t *testing.T) {
@@ -45,17 +46,17 @@ func TestPasswordGenerator(t *testing.T) {
 			htpasswd, err := generator.GenerateHtpasswd(username, password)
 			require.NoError(t, err)
 
-			// Should be in format username:encrypted_password
+			// Should be in format username:{SHA}encrypted_password
 			parts := splitHtpasswd(htpasswd)
 			require.Len(t, parts, 2)
 			assert.Equal(t, username, parts[0])
 
-			// Verify the password can be verified with bcrypt
-			err = bcrypt.CompareHashAndPassword([]byte(parts[1]), []byte(password))
-			assert.NoError(t, err)
+			// Verify the password hash matches {SHA} prefix + SHA3-256 hex
+			expectedHash := sha3.Sum256([]byte(password))
+			assert.Equal(t, "{SHA}"+hex.EncodeToString(expectedHash[:]), parts[1])
 		})
 
-		t.Run("should generate different hashes for same password", func(t *testing.T) {
+		t.Run("should generate same hash for same password", func(t *testing.T) {
 			username := "test-cluster"
 			password := "test-password"
 
@@ -65,17 +66,8 @@ func TestPasswordGenerator(t *testing.T) {
 			htpasswd2, err := generator.GenerateHtpasswd(username, password)
 			require.NoError(t, err)
 
-			// Hashes should be different due to salt
-			assert.NotEqual(t, htpasswd1, htpasswd2)
-
-			// But both should verify the same password
-			parts1 := splitHtpasswd(htpasswd1)
-			parts2 := splitHtpasswd(htpasswd2)
-
-			err = bcrypt.CompareHashAndPassword([]byte(parts1[1]), []byte(password))
-			assert.NoError(t, err)
-			err = bcrypt.CompareHashAndPassword([]byte(parts2[1]), []byte(password))
-			assert.NoError(t, err)
+			// SHA3 is deterministic, so hashes should be the same
+			assert.Equal(t, htpasswd1, htpasswd2)
 		})
 
 		t.Run("should handle empty username", func(t *testing.T) {
@@ -95,9 +87,9 @@ func TestPasswordGenerator(t *testing.T) {
 			require.Len(t, parts, 2)
 			assert.Equal(t, "username", parts[0])
 
-			// Should be able to verify empty password
-			err = bcrypt.CompareHashAndPassword([]byte(parts[1]), []byte(""))
-			assert.NoError(t, err)
+			// Verify the empty password hash matches {SHA} prefix + SHA3-256 hex
+			expectedHash := sha3.Sum256([]byte(""))
+			assert.Equal(t, "{SHA}"+hex.EncodeToString(expectedHash[:]), parts[1])
 		})
 	})
 }
