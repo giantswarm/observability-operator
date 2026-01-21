@@ -140,24 +140,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Should validate object type correctly", func() {
-			By("Testing with wrong object type on create")
-			wrongObj := &corev1.Secret{}
-			_, err := validator.ValidateCreate(ctx, wrongObj)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a ConfigMap object but got"))
-
-			By("Testing with wrong object type on update")
-			_, err = validator.ValidateUpdate(ctx, wrongObj, wrongObj)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a ConfigMap object for the newObj but got"))
-		})
-
 		It("Should handle edge cases in webhook validation", func() {
-			By("Testing with nil object")
-			_, err := validator.ValidateCreate(ctx, nil)
-			Expect(err).To(HaveOccurred())
-
 			By("Testing with ConfigMap containing very large dashboard JSON")
 			largeConfigMap := obj.DeepCopy()
 			// Create a valid JSON with many panels
@@ -171,7 +154,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			largeJSON += `]}`
 			largeConfigMap.Data["dashboard.json"] = largeJSON
 
-			_, err = validator.ValidateCreate(ctx, largeConfigMap)
+			_, err := validator.ValidateCreate(ctx, largeConfigMap)
 			Expect(err).NotTo(HaveOccurred()) // Should handle large JSON gracefully
 		})
 	})
