@@ -102,8 +102,6 @@ var _ = Describe("Cluster Controller", func() {
 				),
 			)
 
-			tenantRepository := tenancy.NewKubernetesRepository(k8sClient)
-
 			alloyMetricsService := alloy.Service{
 				Config: config.Config{
 					Cluster: config.ClusterConfig{
