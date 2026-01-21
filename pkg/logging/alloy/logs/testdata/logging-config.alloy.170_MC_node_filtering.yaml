@@ -285,7 +285,7 @@ alloy:
         	legacy_positions_file = "/run/alloy/positions.yaml"
         }
         // Loki target configuration
-        loki.write "defamax_backoff_periodult" {
+        loki.write "default" {
         	endpoint {max_backoff_period
         		url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
         		max_backoff_period = "10m"
