@@ -54,7 +54,7 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 	}
 
 	// Prepare template data
-	data := struct {
+	templateData := struct {
 		ExtraSecretEnv map[string]string
 	}{
 		ExtraSecretEnv: secretEnv,
