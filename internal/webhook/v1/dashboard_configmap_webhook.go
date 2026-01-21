@@ -22,11 +22,10 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/giantswarm/observability-operator/internal/mapper"
@@ -36,14 +35,13 @@ import (
 var dashboardconfigmaplog = logf.Log.WithName("dashboardconfigmap-resource")
 
 // SetupDashboardConfigMapWebhookWithManager registers the webhook for ConfigMap in the manager.
-func SetupDashboardConfigMapWebhookWithManager(mgr ctrl.Manager) error {
-	err := ctrl.NewWebhookManagedBy(mgr).
-		For(&corev1.ConfigMap{}).
+func SetupDashboardConfigMapWebhookWithManager(mgr manager.Manager) error {
+	err := ctrl.NewWebhookManagedBy(mgr, &corev1.ConfigMap{}).
 		WithValidator(&DashboardConfigMapValidator{
 			client:          mgr.GetClient(),
 			dashboardMapper: mapper.New(),
 		}).
-		WithCustomPath("/validate-dashboard-configmap").
+		WithValidatorCustomPath("/validate-dashboard-configmap").
 		Complete()
 	if err != nil {
 		return fmt.Errorf("failed to build dashboard webhook manager: %w", err)
@@ -68,44 +66,33 @@ type DashboardConfigMapValidator struct {
 	dashboardMapper *mapper.DashboardMapper
 }
 
-var _ webhook.CustomValidator = &DashboardConfigMapValidator{}
+var _ admission.Validator[*corev1.ConfigMap] = &DashboardConfigMapValidator{}
 
-// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type ConfigMap.
-func (v *DashboardConfigMapValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	configmap, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		return nil, fmt.Errorf("expected a ConfigMap object but got %T", obj)
-	}
-
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type ConfigMap.
+func (v *DashboardConfigMapValidator) ValidateCreate(ctx context.Context, Obj *corev1.ConfigMap) (admission.Warnings, error) {
 	// Only validate ConfigMaps that are specifically marked as dashboard ConfigMaps
-	if !v.isDashboardConfigMap(configmap) {
+	if !v.isDashboardConfigMap(Obj) {
 		return nil, nil
 	}
 
-	dashboardconfigmaplog.Info("Validation for dashboard ConfigMap upon creation", "name", configmap.GetName())
+	dashboardconfigmaplog.Info("Validation for dashboard ConfigMap upon creation", "name", Obj.GetName())
 
-	return v.validateDashboard(configmap)
+	return v.validateDashboard(Obj)
 }
 
-// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type ConfigMap.
-func (v *DashboardConfigMapValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	configmap, ok := newObj.(*corev1.ConfigMap)
-	if !ok {
-		return nil, fmt.Errorf("expected a ConfigMap object for the newObj but got %T", newObj)
-	}
-
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type ConfigMap.
+func (v *DashboardConfigMapValidator) ValidateUpdate(ctx context.Context, oldObj, newObj *corev1.ConfigMap) (admission.Warnings, error) {
 	// Only validate ConfigMaps that are specifically marked as dashboard ConfigMaps
-	if !v.isDashboardConfigMap(configmap) {
+	if !v.isDashboardConfigMap(newObj) {
 		return nil, nil
 	}
 
-	dashboardconfigmaplog.Info("Validation for dashboard ConfigMap upon update", "name", configmap.GetName())
-
-	return v.validateDashboard(configmap)
+	dashboardconfigmaplog.Info("Validation for dashboard ConfigMap upon update", "name", newObj.GetName())
+	return v.validateDashboard(newObj)
 }
 
-// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type ConfigMap.
-func (v *DashboardConfigMapValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type ConfigMap.
+func (v *DashboardConfigMapValidator) ValidateDelete(ctx context.Context, obj *corev1.ConfigMap) (admission.Warnings, error) {
 	// We have nothing to validate on deletion
 	return nil, nil
 }
