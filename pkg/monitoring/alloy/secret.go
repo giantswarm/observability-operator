@@ -38,7 +38,6 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		mimirRemoteWriteAPIUsernameKey: cluster.Name,
 		mimirRemoteWriteAPIPasswordKey: password,
 	}
-
 	return secrets, nil
 }
 
