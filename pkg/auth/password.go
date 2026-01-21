@@ -2,10 +2,10 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-
-	"crypto/sha1"
 )
 
 // PasswordGenerator generates passwords and htpasswd entries
@@ -31,6 +31,6 @@ func (g *simplePasswordGenerator) GeneratePassword(length int) (string, error) {
 
 func (g *simplePasswordGenerator) GenerateHtpasswd(username, password string) (string, error) {
 	hash := sha1.Sum([]byte(password))
-	encryptedPassword := hex.EncodeToString(hash[:])
+	encryptedPassword := base64.StdEncoding.EncodeToString(hash[:])
 	return fmt.Sprintf("%s:{SHA}%s", username, encryptedPassword), nil
 }

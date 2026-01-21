@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix auth password hash encoding by using base64 instead of hexadecimals.
+
 ## [0.57.0] - 2026-01-19
 
 ### Changed

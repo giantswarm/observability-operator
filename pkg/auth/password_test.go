@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"encoding/hex"
+	"encoding/base64"
 	"strings"
 	"testing"
 
@@ -54,7 +54,7 @@ func TestPasswordGenerator(t *testing.T) {
 
 			// Verify the password hash matches {SHA} prefix + SHA1 hex
 			expectedHash := sha1.Sum([]byte(password))
-			assert.Equal(t, "{SHA}"+hex.EncodeToString(expectedHash[:]), parts[1])
+			assert.Equal(t, "{SHA}"+base64.StdEncoding.EncodeToString(expectedHash[:]), parts[1])
 		})
 
 		t.Run("should generate same hash for same password", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestPasswordGenerator(t *testing.T) {
 
 			// Verify the empty password hash matches {SHA} prefix + SHA1 hex
 			expectedHash := sha1.Sum([]byte(""))
-			assert.Equal(t, "{SHA}"+hex.EncodeToString(expectedHash[:]), parts[1])
+			assert.Equal(t, "{SHA}"+base64.StdEncoding.EncodeToString(expectedHash[:]), parts[1])
 		})
 	})
 }
