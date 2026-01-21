@@ -290,7 +290,7 @@ alloy:
         		url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
         		max_backoff_period = "10m"
         		remote_timeout     = "60s"
-        		tenant_id       url   = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
+        		tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
         		tls_config {
         			insecure_skip_verify = false
         		}
