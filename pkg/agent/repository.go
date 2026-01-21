@@ -10,6 +10,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/giantswarm/observability-operator/pkg/agent/common"
 )
 
 // AgentConfiguration represents the configuration for an Alloy agent deployment
@@ -24,7 +26,7 @@ type AgentConfiguration struct {
 
 	// Data to persist
 	ConfigMapData map[string]string
-	SecretData    map[string][]byte
+	SecretData    map[string]string // Environment variables for the secret
 
 	// Labels to apply to resources
 	Labels map[string]string
@@ -82,7 +84,14 @@ func (r *k8sConfigurationRepository) Save(ctx context.Context, config *AgentConf
 	}
 
 	_, err = controllerutil.CreateOrUpdate(ctx, r.client, secret, func() error {
-		secret.Data = config.SecretData
+		// Generate secret data using the shared template
+		secretData, err := common.GenerateSecretData(config.SecretData)
+		if err != nil {
+			return fmt.Errorf("failed to generate secret data: %w", err)
+		}
+		secret.Data = map[string][]byte{
+			"values": secretData,
+		}
 		secret.Labels = config.Labels
 		return nil
 	})
