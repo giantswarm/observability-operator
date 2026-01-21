@@ -15,13 +15,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/pkg/agent"
+	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
 	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 )
 
 var _ = Describe("Cluster Controller", func() {
@@ -102,7 +102,7 @@ var _ = Describe("Cluster Controller", func() {
 				),
 			)
 
-			alloyMetricsService := alloy.Service{
+			alloyMetricsService := metrics.Service{
 				Config: config.Config{
 					Cluster: config.ClusterConfig{
 						Name:     "management-cluster",

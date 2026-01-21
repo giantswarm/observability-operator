@@ -21,6 +21,7 @@ import (
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent"
+	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
 	"github.com/giantswarm/observability-operator/pkg/alerting/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
@@ -30,7 +31,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/logging/alloy/events"
 	"github.com/giantswarm/observability-operator/pkg/logging/alloy/logs"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/alloy"
 )
 
 // authManagerEntry pairs an auth manager with its feature check function
@@ -45,7 +45,7 @@ type ClusterMonitoringReconciler struct {
 	Client client.Client
 	Config config.Config
 	// AlloyMetricsService is the service which manages Alloy monitoring agent configuration.
-	AlloyMetricsService alloy.Service
+	AlloyMetricsService metrics.Service
 	// AlloyLogsService is the service which manages Alloy logs configuration.
 	AlloyLogsService logs.Service
 	// AlloyEventsService is the service which manages Alloy events configuration.
@@ -132,7 +132,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 	// Create agent configuration repository
 	agentConfigurationRepository := agent.NewConfigurationRepository(managerClient)
 
-	alloyMetricsService := alloy.Service{
+	alloyMetricsService := metrics.Service{
 		Config:                  cfg,
 		ConfigurationRepository: agentConfigurationRepository,
 		OrganizationRepository:  organizationRepository,
