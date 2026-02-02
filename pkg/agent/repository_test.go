@@ -30,8 +30,9 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 				ConfigMapData: map[string]string{
 					"config.yaml": "test: config",
 				},
-				SecretData: map[string][]byte{
-					"password": []byte("secret123"),
+				SecretData: map[string]string{
+					"MIMIR_URL":      "https://mimir.example.com",
+					"MIMIR_PASSWORD": "secret123",
 				},
 				Labels: map[string]string{
 					"app": "alloy",
@@ -65,8 +66,9 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 				if err != nil {
 					t.Errorf("Failed to get Secret: %v", err)
 				}
-				if string(secret.Data["password"]) != "secret123" {
-					t.Errorf("Secret data mismatch: got %v", secret.Data)
+				// Validate secret has the "values" key with generated template data
+				if _, ok := secret.Data["values"]; !ok {
+					t.Errorf("Secret missing 'values' key")
 				}
 			},
 		},
@@ -80,8 +82,9 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 				ConfigMapData: map[string]string{
 					"config.yaml": "updated: config",
 				},
-				SecretData: map[string][]byte{
-					"password": []byte("newsecret456"),
+				SecretData: map[string]string{
+					"MIMIR_URL":      "https://mimir-updated.example.com",
+					"MIMIR_PASSWORD": "newsecret456",
 				},
 				Labels: map[string]string{
 					"app": "alloy-updated",
@@ -103,7 +106,7 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						"password": []byte("oldsecret"),
+						"values": []byte("old data"),
 					},
 				},
 			},
@@ -134,8 +137,12 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 				if err != nil {
 					t.Errorf("Failed to get Secret: %v", err)
 				}
-				if string(secret.Data["password"]) != "newsecret456" {
-					t.Errorf("Secret data not updated: got %v", secret.Data)
+				// Validate secret has the "values" key with new generated data
+				if _, ok := secret.Data["values"]; !ok {
+					t.Errorf("Secret missing 'values' key")
+				}
+				if string(secret.Data["values"]) == "old data" {
+					t.Errorf("Secret data not updated")
 				}
 			},
 		},
