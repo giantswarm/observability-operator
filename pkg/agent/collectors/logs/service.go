@@ -5,12 +5,10 @@ import (
 	"fmt"
 
 	"github.com/blang/semver/v4"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
@@ -39,11 +37,11 @@ var (
 )
 
 type Service struct {
-	Client                 client.Client
-	OrganizationRepository organization.OrganizationRepository
-	TenantRepository       tenancy.TenantRepository
-	Config                 config.Config
-	LogsAuthManager        auth.AuthManager
+	Config                  config.Config
+	ConfigurationRepository agent.ConfigurationRepository
+	OrganizationRepository  organization.OrganizationRepository
+	TenantRepository        tenancy.TenantRepository
+	LogsAuthManager         auth.AuthManager
 }
 
 func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
@@ -54,34 +52,30 @@ func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	// Network monitoring requires observability-bundle >= 2.3.0 and must be explicitly enabled
 	networkMonitoringEnabled := observabilityBundleVersion.GE(networkMonitoringMinVersion) && s.Config.Monitoring.IsNetworkMonitoringEnabled(cluster)
 
-	configmap := ConfigMap(cluster)
-	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, configmap, func() error {
-		data, err := s.GenerateAlloyLogsConfigMapData(ctx, cluster, observabilityBundleVersion, networkMonitoringEnabled)
-		if err != nil {
-			return fmt.Errorf("failed to generate alloy logs configmap: %w", err)
-		}
-		configmap.Data = data
-		configmap.Labels = labels.Common
-
-		return nil
-	})
+	// Generate ConfigMap data
+	configMapData, err := s.GenerateAlloyLogsConfigMapData(ctx, cluster, observabilityBundleVersion, networkMonitoringEnabled)
 	if err != nil {
-		return fmt.Errorf("failed to create or update alloy logs configmap: %w", err)
+		return fmt.Errorf("failed to generate alloy logs configmap: %w", err)
 	}
 
-	secret := Secret(cluster)
-	_, err = controllerutil.CreateOrUpdate(ctx, s.Client, secret, func() error {
-		data, err := s.GenerateAlloyLogsSecretData(ctx, cluster)
-		if err != nil {
-			return fmt.Errorf("failed to generate alloy logs secret: %w", err)
-		}
-		secret.Data = data
-		secret.Labels = labels.Common
+	// Generate Secret data
+	secretData, err := s.GenerateAlloyLogsSecretData(ctx, cluster)
+	if err != nil {
+		return fmt.Errorf("failed to generate alloy logs secret: %w", err)
+	}
 
-		return nil
+	// Save configuration via repository
+	err = s.ConfigurationRepository.Save(ctx, &agent.AgentConfiguration{
+		ClusterName:      cluster.Name,
+		ClusterNamespace: cluster.Namespace,
+		ConfigMapName:    fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
+		SecretName:       fmt.Sprintf("%s-%s", cluster.Name, SecretName),
+		ConfigMapData:    configMapData,
+		SecretData:       secretData,
+		Labels:           labels.Common,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create or update alloy logs secret: %w", err)
+		return fmt.Errorf("failed to save alloy logs configuration: %w", err)
 	}
 
 	logger.Info("alloy-logs-service - ensured alloy logs is configured")
@@ -93,19 +87,15 @@ func (s *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluste
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-logs-service - ensuring alloy logs is removed")
 
-	configmap := ConfigMap(cluster)
-	err := s.Client.Delete(ctx, configmap)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete alloy logs configmap: %w", err)
+	err := s.ConfigurationRepository.Delete(
+		ctx,
+		cluster.Name,
+		cluster.Namespace,
+		fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
+		fmt.Sprintf("%s-%s", cluster.Name, SecretName),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete alloy logs configuration: %w", err)
 	}
-
-	secret := Secret(cluster)
-	err = s.Client.Delete(ctx, secret)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete alloy logs secret: %w", err)
-	}
-
-	logger.Info("alloy-logs-service - ensured alloy logs is removed")
-
 	return nil
 }

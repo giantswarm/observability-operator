@@ -7,16 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `ConfigurationRepository` interface in `pkg/agent` for managing agent (Alloy) configuration persistence with Kubernetes-based implementation. The repository now uses the shared secret template for generating agent secrets.
+- Add shared secret template infrastructure in `pkg/agent/common` to consolidate duplicate secret templates across metrics, logs, and events agents.
+
+## [0.57.1] - 2026-01-21
+
+### Fixed
+
+- Fix auth password hash encoding by using base64 instead of hexadecimals.
+
+## [0.57.0] - 2026-01-19
+
 ### Changed
 
 - Refactor tenant listing functionality into a repository interface pattern (`TenantRepository`) with Kubernetes implementation for better separation of concerns and testability.
 - Update monitoring alloy secret template to use map-based structure matching the events and logs secret patterns.
 - Update Cronitor heartbeat API integration to use POST for monitor creation and PUT for updates, matching current API specification. Enhance error logging to include full request details (method, URL, request/response bodies) for better debugging.
+- Move logs and events collectors from `pkg/monitoring/alloy` and `pkg/logging/alloy/{logs,events}` to `pkg/agent/collectors/{metrics,logs,events}` to consolidate agent-related code under a unified package structure.
 - Improve controller error handling to ensure independent reconciliation tasks run even when some fail.
   - Return joined reconciliation errors instead of failing fast on the first error.
   - Moved Alloy reconciliation into reconcileAlloyService
   - Move Dashboard validation into configuration and deletion loops
   - Add cluster controller RateLimiter to limit retries to 5mn
+- Change auth password hashing algorithm from bcrypt to sha1.
+- Allow alloy-metrics to go up to 12GB RAM requests
 
 ### Removed
 
@@ -861,7 +877,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.56.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.57.1...HEAD
+[0.57.1]: https://github.com/giantswarm/observability-operator/compare/v0.57.0...v0.57.1
+[0.57.0]: https://github.com/giantswarm/observability-operator/compare/v0.56.0...v0.57.0
 [0.56.0]: https://github.com/giantswarm/observability-operator/compare/v0.55.0...v0.56.0
 [0.55.0]: https://github.com/giantswarm/observability-operator/compare/v0.54.0...v0.55.0
 [0.54.0]: https://github.com/giantswarm/observability-operator/compare/v0.53.0...v0.54.0

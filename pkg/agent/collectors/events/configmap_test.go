@@ -211,10 +211,9 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 
 			mockOrgRepo := mocks.NewMockOrganizationRepository("test-organization")
 			service := &Service{
-				Client:                 fakeClient,
 				Config:                 cfg,
 				OrganizationRepository: mockOrgRepo,
-				TenantRepository:       tenancy.NewKubernetesRepository(fakeClient),
+				TenantRepository:       tenancy.NewTenantRepository(fakeClient),
 			}
 
 			// Generate Alloy events config using the actual service method

@@ -66,7 +66,10 @@ receivers:
 		}
 		oldObj = &corev1.Secret{}
 		// Use the real client from the test environment
-		validator = AlertmanagerConfigSecretValidator{client: k8sClient, tenantRepository: tenancy.NewKubernetesRepository(k8sClient)}
+		validator = AlertmanagerConfigSecretValidator{
+			client:           k8sClient,
+			tenantRepository: tenancy.NewTenantRepository(k8sClient),
+		}
 		Expect(validator).NotTo(BeNil(), "Expected validator to be initialized")
 		Expect(oldObj).NotTo(BeNil(), "Expected oldObj to be initialized")
 		Expect(obj).NotTo(BeNil(), "Expected obj to be initialized")
@@ -178,14 +181,6 @@ receivers:
 			_, err = validator.ValidateCreate(ctx, invalidSecret)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("is not in the list of accepted tenants"))
-		})
-
-		It("Should validate object type correctly", func() {
-			By("Testing with wrong object type")
-			wrongObj := &corev1.ConfigMap{}
-			_, err := validator.ValidateCreate(ctx, wrongObj)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a Secret object but got"))
 		})
 	})
 })

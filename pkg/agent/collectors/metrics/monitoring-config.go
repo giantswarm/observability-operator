@@ -1,4 +1,4 @@
-package alloy
+package metrics
 
 type monitoringConfig struct {
 	Alloy monitoringConfigAlloy `json:"alloy"`
