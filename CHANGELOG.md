@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `ConfigurationRepository` interface in `pkg/agent` for managing agent (Alloy) configuration persistence with Kubernetes-based implementation. The repository now uses the shared secret template for generating agent secrets.
 - Add shared secret template infrastructure in `pkg/agent/common` to consolidate duplicate secret templates across metrics, logs, and events agents.
 - Enable independent configuration of logging and network monitoring features. Log collection now works when logging is enabled, and network monitoring collection can be enabled separately from logging for flexible per-cluster observability configurations.
+- Move metrics, logs and events collectors from `pkg/monitoring/alloy` and `pkg/logging/alloy/{logs,events}` to `pkg/agent/collectors/{metrics,logs,events}` to consolidate agent-related code under a unified package structure.
 
 ## [0.57.1] - 2026-01-21
 
@@ -26,8 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor tenant listing functionality into a repository interface pattern (`TenantRepository`) with Kubernetes implementation for better separation of concerns and testability.
 - Update monitoring alloy secret template to use map-based structure matching the events and logs secret patterns.
 - Update Cronitor heartbeat API integration to use POST for monitor creation and PUT for updates, matching current API specification. Enhance error logging to include full request details (method, URL, request/response bodies) for better debugging.
-- Move logs and events collectors from `pkg/monitoring/alloy` and `pkg/logging/alloy/{logs,events}` to `pkg/agent/collectors/{metrics,logs,events}` to consolidate agent-related code under a unified package structure.
-- Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
 - Improve controller error handling to ensure independent reconciliation tasks run even when some fail.
   - Return joined reconciliation errors instead of failing fast on the first error.
   - Moved Alloy reconciliation into reconcileAlloyService
