@@ -141,11 +141,14 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 		},
 	}
 
+	scheme := runtime.NewScheme()
+	err := v1.AddToScheme(scheme)
+	if err != nil {
+		t.Fatalf("Failed to add v1 scheme: %v", err)
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			scheme := runtime.NewScheme()
-			_ = v1.AddToScheme(scheme)
-
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).
 				WithObjects(tt.existingObjs...).
@@ -283,10 +286,14 @@ func TestK8sConfigurationRepository_Delete(t *testing.T) {
 		},
 	}
 
+	scheme := runtime.NewScheme()
+	err := v1.AddToScheme(scheme)
+	if err != nil {
+		t.Fatalf("Failed to add v1 scheme: %v", err)
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			scheme := runtime.NewScheme()
-			_ = v1.AddToScheme(scheme)
 
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).
