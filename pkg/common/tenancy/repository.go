@@ -25,8 +25,8 @@ type KubernetesTenantRepository struct {
 	client.Client
 }
 
-// NewKubernetesRepository creates a new KubernetesTenantRepository.
-func NewKubernetesRepository(client client.Client) TenantRepository {
+// NewTenantRepository creates a new KubernetesTenantRepository.
+func NewTenantRepository(client client.Client) TenantRepository {
 	return KubernetesTenantRepository{Client: client}
 }
 

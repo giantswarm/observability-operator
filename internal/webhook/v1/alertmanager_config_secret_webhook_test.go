@@ -66,7 +66,10 @@ receivers:
 		}
 		oldObj = &corev1.Secret{}
 		// Use the real client from the test environment
-		validator = AlertmanagerConfigSecretValidator{client: k8sClient, tenantRepository: tenancy.NewKubernetesRepository(k8sClient)}
+		validator = AlertmanagerConfigSecretValidator{
+			client:           k8sClient,
+			tenantRepository: tenancy.NewTenantRepository(k8sClient),
+		}
 		Expect(validator).NotTo(BeNil(), "Expected validator to be initialized")
 		Expect(oldObj).NotTo(BeNil(), "Expected oldObj to be initialized")
 		Expect(obj).NotTo(BeNil(), "Expected obj to be initialized")

@@ -36,13 +36,13 @@ func init() {
 }
 
 func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string][]byte, error) {
-	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, a.Cluster.BaseDomain)
+	remoteWriteUrl := fmt.Sprintf(commonmonitoring.RemoteWriteEndpointURLFormat, a.Config.Cluster.BaseDomain)
 	password, err := a.AuthManager.GetClusterPassword(ctx, cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mimir auth password for cluster %s: %w", cluster.Name, err)
 	}
 
-	mimirRulerUrl := fmt.Sprintf(commonmonitoring.MimirBaseURLFormat, a.Cluster.BaseDomain)
+	mimirRulerUrl := fmt.Sprintf(commonmonitoring.MimirBaseURLFormat, a.Config.Cluster.BaseDomain)
 
 	// Build secret environment variables map
 	secretEnv := map[string]string{
@@ -60,16 +60,16 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		ExtraSecretEnv: secretEnv,
 	}
 
+	// Execute template
 	var values bytes.Buffer
 	err = alloyMonitoringSecretTemplate.Execute(&values, templateData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to template alloy monitoring secret: %w", err)
 	}
 
-	secretData := make(map[string][]byte)
-	secretData["values"] = values.Bytes()
-
-	return secretData, nil
+	return map[string][]byte{
+		"values": values.Bytes(),
+	}, nil
 }
 
 func Secret(cluster *clusterv1.Cluster) *v1.Secret {

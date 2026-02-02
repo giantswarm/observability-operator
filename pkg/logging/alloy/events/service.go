@@ -6,12 +6,10 @@ import (
 	"fmt"
 
 	"github.com/blang/semver/v4"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
@@ -28,12 +26,12 @@ const (
 var minimumTracingSupportVersion = semver.MustParse("1.11.0")
 
 type Service struct {
-	Client                 client.Client
-	OrganizationRepository organization.OrganizationRepository
-	TenantRepository       tenancy.TenantRepository
-	Config                 config.Config
-	LogsAuthManager        auth.AuthManager
-	TracesAuthManager      auth.AuthManager
+	Config                  config.Config
+	ConfigurationRepository agent.ConfigurationRepository
+	OrganizationRepository  organization.OrganizationRepository
+	TenantRepository        tenancy.TenantRepository
+	LogsAuthManager         auth.AuthManager
+	TracesAuthManager       auth.AuthManager
 }
 
 func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
@@ -49,34 +47,30 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	// Determine if tracing is enabled based on config and observability bundle version
 	tracingEnabled := a.Config.Tracing.Enabled && observabilityBundleVersion.GE(minimumTracingSupportVersion)
 
-	configmap := ConfigMap(cluster)
-	_, err := controllerutil.CreateOrUpdate(ctx, a.Client, configmap, func() error {
-		data, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, tracingEnabled, observabilityBundleVersion)
-		if err != nil {
-			return fmt.Errorf("failed to generate alloy events configmap: %w", err)
-		}
-		configmap.Data = data
-		configmap.Labels = labels.Common
-
-		return nil
-	})
+	// Generate ConfigMap data
+	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, tracingEnabled, observabilityBundleVersion)
 	if err != nil {
-		return fmt.Errorf("failed to create or update alloy events configmap: %w", err)
+		return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 	}
 
-	secret := Secret(cluster)
-	_, err = controllerutil.CreateOrUpdate(ctx, a.Client, secret, func() error {
-		data, err := a.GenerateAlloyEventsSecretData(ctx, cluster, tracingEnabled)
-		if err != nil {
-			return fmt.Errorf("failed to generate alloy events secret: %w", err)
-		}
-		secret.Data = data
-		secret.Labels = labels.Common
+	// Generate Secret data
+	secretData, err := a.GenerateAlloyEventsSecretData(ctx, cluster, tracingEnabled)
+	if err != nil {
+		return fmt.Errorf("failed to generate alloy events secret: %w", err)
+	}
 
-		return nil
+	// Save configuration via repository
+	err = a.ConfigurationRepository.Save(ctx, &agent.AgentConfiguration{
+		ClusterName:      cluster.Name,
+		ClusterNamespace: cluster.Namespace,
+		ConfigMapName:    fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
+		SecretName:       fmt.Sprintf("%s-%s", cluster.Name, SecretName),
+		ConfigMapData:    configMapData,
+		SecretData:       secretData,
+		Labels:           labels.Common,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create or update alloy events secret: %w", err)
+		return fmt.Errorf("failed to save alloy events configuration: %w", err)
 	}
 
 	logger.Info("alloy-events-service - ensured alloy events is configured")
@@ -94,19 +88,15 @@ func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluste
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is removed")
 
-	configmap := ConfigMap(cluster)
-	err := a.Client.Delete(ctx, configmap)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete alloy events configmap: %w", err)
+	err := a.ConfigurationRepository.Delete(
+		ctx,
+		cluster.Name,
+		cluster.Namespace,
+		fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
+		fmt.Sprintf("%s-%s", cluster.Name, SecretName),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete alloy events configuration: %w", err)
 	}
-
-	secret := Secret(cluster)
-	err = a.Client.Delete(ctx, secret)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete alloy events secret: %w", err)
-	}
-
-	logger.Info("alloy-events-service - ensured alloy events is removed")
-
 	return nil
 }

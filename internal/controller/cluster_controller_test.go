@@ -14,6 +14,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
@@ -101,12 +102,7 @@ var _ = Describe("Cluster Controller", func() {
 				),
 			)
 
-			tenantRepository := tenancy.NewKubernetesRepository(k8sClient)
-
 			alloyMetricsService := alloy.Service{
-				Client:                 k8sClient,
-				OrganizationRepository: organizationRepository,
-				TenantRepository:       tenantRepository,
 				Config: config.Config{
 					Cluster: config.ClusterConfig{
 						Name:     "management-cluster",
@@ -118,7 +114,10 @@ var _ = Describe("Cluster Controller", func() {
 						Enabled: true,
 					},
 				},
-				AuthManager: mimirAuthManager,
+				ConfigurationRepository: agent.NewConfigurationRepository(k8sClient),
+				OrganizationRepository:  organizationRepository,
+				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
+				AuthManager:             mimirAuthManager,
 			}
 
 			// Create auth managers map for the reconciler
