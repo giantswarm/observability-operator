@@ -14,9 +14,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
+	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
@@ -138,7 +138,7 @@ func generateAlloyLoggingConfig(
 		NetworkMonitoringEnabled:         enableNetworkMonitoring,
 		NodeFilteringEnabled:             enableNodeFiltering,
 		IsWorkloadCluster:                isWorkloadCluster,
-		PriorityClassName:                commonmonitoring.PriorityClassName,
+		PriorityClassName:                common.PriorityClassName,
 	}
 
 	// If node filtering is enabled but bundle version is before the fix, use a fixed Alloy version
@@ -203,19 +203,19 @@ func generateAlloyConfig(
 		Organization:             org,
 		Installation:             clusterConfig.Name,
 		Provider:                 provider,
-		MaxBackoffPeriod:         commonmonitoring.LokiMaxBackoffPeriod,
-		RemoteTimeout:            commonmonitoring.LokiRemoteTimeout,
+		MaxBackoffPeriod:         common.LokiMaxBackoffPeriod,
+		RemoteTimeout:            common.LokiRemoteTimeout,
 		IsWorkloadCluster:        isWorkloadCluster,
 		NodeFilteringEnabled:     enableNodeFiltering,
 		LoggingEnabled:           enableLogging,
 		NetworkMonitoringEnabled: enableNetworkMonitoring,
 		InsecureSkipVerify:       insecureCA,
 		SecretName:               apps.AlloyLogsAppName,
-		LoggingURLKey:            commonmonitoring.LokiURLKey,
-		LoggingTenantIDKey:       commonmonitoring.LokiTenantIDKey,
-		LoggingUsernameKey:       commonmonitoring.LokiUsernameKey,
-		LoggingPasswordKey:       commonmonitoring.LokiPasswordKey,
-		LokiRulerAPIURLKey:       commonmonitoring.LokiRulerAPIURLKey,
+		LoggingURLKey:            common.LokiURLKey,
+		LoggingTenantIDKey:       common.LokiTenantIDKey,
+		LoggingUsernameKey:       common.LokiUsernameKey,
+		LoggingPasswordKey:       common.LokiPasswordKey,
+		LokiRulerAPIURLKey:       common.LokiRulerAPIURLKey,
 		Tenants:                  tenants,
 	}
 

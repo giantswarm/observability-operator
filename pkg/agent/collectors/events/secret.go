@@ -9,14 +9,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
+	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
-)
-
-const (
-	tempoTracingUsernameKey = "tracing-username"
-	tempoTracingPasswordKey = "tracing-password" // #nosec G101
 )
 
 func Secret(cluster *clusterv1.Cluster) *v1.Secret {
@@ -34,8 +29,8 @@ func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 
 	// Add Loki credentials if logging is enabled
 	if loggingEnabled {
-		lokiURL := fmt.Sprintf(commonmonitoring.LokiPushURLFormat, a.Config.Cluster.BaseDomain)
-		lokiRulerURL := fmt.Sprintf(commonmonitoring.LokiBaseURLFormat, a.Config.Cluster.BaseDomain)
+		lokiURL := fmt.Sprintf(common.LokiPushURLFormat, a.Config.Cluster.BaseDomain)
+		lokiRulerURL := fmt.Sprintf(common.LokiBaseURLFormat, a.Config.Cluster.BaseDomain)
 
 		// Get Loki auth credentials
 		logsPassword, err := a.LogsAuthManager.GetClusterPassword(ctx, cluster)
@@ -43,11 +38,11 @@ func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 			return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
 		}
 
-		secrets[commonmonitoring.LokiURLKey] = lokiURL
-		secrets[commonmonitoring.LokiTenantIDKey] = organization.GiantSwarmDefaultTenant
-		secrets[commonmonitoring.LokiUsernameKey] = cluster.Name
-		secrets[commonmonitoring.LokiPasswordKey] = logsPassword
-		secrets[commonmonitoring.LokiRulerAPIURLKey] = lokiRulerURL
+		secrets[common.LokiURLKey] = lokiURL
+		secrets[common.LokiTenantIDKey] = organization.GiantSwarmDefaultTenant
+		secrets[common.LokiUsernameKey] = cluster.Name
+		secrets[common.LokiPasswordKey] = logsPassword
+		secrets[common.LokiRulerAPIURLKey] = lokiRulerURL
 	}
 
 	// Add tracing credentials if tracing is enabled
@@ -57,8 +52,8 @@ func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 			return nil, fmt.Errorf("failed to get tempo auth password for cluster %s: %w", cluster.Name, err)
 		}
 
-		secrets[tempoTracingUsernameKey] = cluster.Name
-		secrets[tempoTracingPasswordKey] = tracesPassword
+		secrets[common.TempoUsernameKey] = cluster.Name
+		secrets[common.TempoPasswordKey] = tracesPassword
 	}
 
 	return secrets, nil

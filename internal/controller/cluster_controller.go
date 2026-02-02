@@ -2,14 +2,17 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -178,7 +181,7 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// Reconcile all clusters when the grafana organizations have changed to update agents configs with the new list of tenants where metrics are sent to.
 		Watches(&v1alpha1.GrafanaOrganization{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
-				var logger = log.FromContext(ctx)
+				logger := log.FromContext(ctx)
 				var clusters clusterv1.ClusterList
 
 				err := mgr.GetClient().List(ctx, &clusters)
@@ -198,6 +201,12 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				}
 				return requests
 			})).
+		WithOptions(controller.Options{
+			RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](
+				5*time.Minute, // base delay
+				5*time.Minute, // max delay (same as base for constant 5-minute retry)
+			),
+		}).
 		Complete(r)
 	if err != nil {
 		return fmt.Errorf("failed to build controller: %w", err)
@@ -275,50 +284,81 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		return ctrl.Result{}, nil
 	}
 
+	// Collect all errors to ensure all independent tasks have a chance to run
+	var errs []error
+
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
 	err = r.BundleConfigurationService.Configure(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to configure the observability-bundle")
-		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		errs = append(errs, fmt.Errorf("bundle configuration: %w", err))
 	}
 
-	// Handle authentication for all observability backends
+	// Reconcile alloy services (bundled dependent tasks)
+	err = r.reconcileAlloyServices(ctx, cluster)
+	if err != nil {
+		logger.Error(err, "failed to reconcile alloy services")
+		errs = append(errs, fmt.Errorf("alloy services: %w", err))
+	}
+
+	// Management cluster specific configuration
+	if cluster.Name == r.Config.Cluster.Name {
+		_, err := r.reconcileManagementCluster(ctx)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("management cluster reconciliation: %w", err))
+		}
+	}
+
+	// If any errors occurred, combine them and return
+	if len(errs) > 0 {
+		return ctrl.Result{}, errors.Join(errs...)
+	}
+
+	return ctrl.Result{}, nil
+}
+
+// reconcileAlloyServices reconciles all alloy services. This is a bundled operation
+// where getting the observability bundle version is a dependency for configuring
+// all alloy services. If getting the version fails, all dependent tasks fail.
+func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context, cluster *clusterv1.Cluster) error {
+	logger := log.FromContext(ctx)
+
+	// Handle authentication for all observability backends (independent tasks)
 	for authType, entry := range r.authManagers {
 		if entry.isEnabled(cluster) {
-			err = entry.authManager.EnsureClusterAuth(ctx, cluster)
+			err := entry.authManager.EnsureClusterAuth(ctx, cluster)
 			if err != nil {
-				logger.Error(err, fmt.Sprintf("failed to ensure cluster auth for %s", authType))
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+				return fmt.Errorf("failed to ensure cluster auth for %s: %w", authType, err)
 			}
 		} else {
-			err = entry.authManager.DeleteClusterAuth(ctx, cluster)
+			err := entry.authManager.DeleteClusterAuth(ctx, cluster)
 			if err != nil {
-				logger.Error(err, fmt.Sprintf("failed to delete cluster auth for %s", authType))
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+				return fmt.Errorf("failed to delete cluster auth for %s: %w", authType, err)
 			}
 		}
 	}
 
+	// Get bundle version - this is required for all alloy service operations
 	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
 	if err != nil {
-		logger.Error(err, "failed to configure get observability-bundle version")
-		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+		return fmt.Errorf("failed to get observability-bundle version: %w", err)
 	}
+
+	// Collect errors for independent alloy service operations
+	var errs []error
 
 	// Metrics-specific: Alloy monitoring configuration
 	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-		// Create or update Alloy monitoring configuration.
 		err = r.AlloyMetricsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy monitoring config")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			errs = append(errs, fmt.Errorf("alloy metrics reconcile create: %w", err))
 		}
 	} else {
-		// Clean up any existing alloy monitoring configuration
 		err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy monitoring config")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			errs = append(errs, fmt.Errorf("alloy metrics reconcile delete: %w", err))
 		}
 	}
 
@@ -328,14 +368,14 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy logs config")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			errs = append(errs, fmt.Errorf("alloy logs reconcile create: %w", err))
 		}
 	} else {
 		// Clean up any existing alloy logs configuration
 		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy logs config")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
 		}
 	}
 
@@ -345,26 +385,23 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy events config")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			errs = append(errs, fmt.Errorf("alloy events reconcile create: %w", err))
 		}
 	} else {
 		// Clean up any existing alloy events configuration
 		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy events config")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			errs = append(errs, fmt.Errorf("alloy events reconcile delete: %w", err))
 		}
 	}
 
-	// Management cluster specific configuration
-	if cluster.Name == r.Config.Cluster.Name {
-		result := r.reconcileManagementCluster(ctx)
-		if result != nil {
-			return *result, nil
-		}
+	// If any alloy service operations failed, combine them and return
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // reconcileDelete handles cluster deletion.
@@ -373,11 +410,14 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 
 	// We do not need to delete anything if there is no finalizer on the cluster
 	if controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
+		// Collect all errors to ensure all cleanup tasks have a chance to run
+		var errs []error
+
 		// We always remove the bundle configure, even if monitoring is disabled for the cluster.
 		err := r.BundleConfigurationService.RemoveConfiguration(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to remove the observability-bundle configuration")
-			return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+			errs = append(errs, fmt.Errorf("remove bundle configuration: %w", err))
 		}
 
 		// Metrics-specific: Delete Alloy monitoring configuration
@@ -385,7 +425,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy monitoring config")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+				errs = append(errs, fmt.Errorf("delete alloy metrics: %w", err))
 			}
 		}
 
@@ -395,7 +435,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy logs config")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+				errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
 			}
 		}
 
@@ -405,7 +445,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy events config")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+				errs = append(errs, fmt.Errorf("alloy events reconcile delete: %w", err))
 			}
 		}
 
@@ -415,7 +455,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 				err = entry.authManager.DeleteClusterAuth(ctx, cluster)
 				if err != nil {
 					logger.Error(err, fmt.Sprintf("failed to delete cluster auth for %s", authType))
-					return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+					errs = append(errs, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
 				}
 			}
 		}
@@ -426,8 +466,13 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			err := r.tearDown(ctx)
 			if err != nil {
 				logger.Error(err, "failed to tear down the monitoring stack")
-				return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+				errs = append(errs, fmt.Errorf("teardown monitoring stack: %w", err))
 			}
+		}
+
+		// If any errors occurred during deletion, combine them and return
+		if len(errs) > 0 {
+			return ctrl.Result{}, errors.Join(errs...)
 		}
 
 		// We get the latest state of the object to avoid race conditions.
@@ -441,8 +486,11 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 	return ctrl.Result{}, nil
 }
 
-func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Context) *ctrl.Result {
+func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Context) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+
+	// Collect all errors to ensure all tasks have a chance to run
+	var errs []error
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
 	if r.Config.Monitoring.Enabled {
@@ -450,18 +498,23 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 			err := heartbeatRepo.CreateOrUpdate(ctx)
 			if err != nil {
 				logger.Error(err, "failed to create or update heartbeat", "repository_index", i)
-				return &ctrl.Result{RequeueAfter: 5 * time.Minute}
+				errs = append(errs, fmt.Errorf("heartbeat repository %d: %w", i, err))
 			}
 		}
 	} else {
 		err := r.tearDown(ctx)
 		if err != nil {
 			logger.Error(err, "failed to tear down the monitoring stack")
-			return &ctrl.Result{RequeueAfter: 5 * time.Minute}
+			errs = append(errs, fmt.Errorf("teardown monitoring stack: %w", err))
 		}
 	}
 
-	return nil
+	// If any errors occurred, combine them and return
+	if len(errs) > 0 {
+		return ctrl.Result{}, errors.Join(errs...)
+	}
+
+	return ctrl.Result{}, nil
 }
 
 // tearDown tears down the monitoring stack management cluster specific components like the hearbeat, gateway secrets and so on.

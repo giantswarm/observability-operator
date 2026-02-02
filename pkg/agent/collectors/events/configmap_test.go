@@ -312,8 +312,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			service := &Service{
 				Config:                 cfg,
 				OrganizationRepository: mockOrgRepo,
-				// TODO replace with a mock
-				TenantRepository: tenancy.NewTenantRepository(fakeClient),
+				TenantRepository:       tenancy.NewTenantRepository(fakeClient),
 			}
 
 			// Generate Alloy events config using the actual service method
