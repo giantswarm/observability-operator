@@ -148,7 +148,7 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 		},
 	}
 
-    scheme := runtime.NewScheme()
+	scheme := runtime.NewScheme()
 	err := v1.AddToScheme(scheme)
 	if err != nil {
 		t.Fatalf("Failed to add v1 scheme: %v", err)
