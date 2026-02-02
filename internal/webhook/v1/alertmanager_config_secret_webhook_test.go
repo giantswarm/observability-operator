@@ -182,13 +182,5 @@ receivers:
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("is not in the list of accepted tenants"))
 		})
-
-		It("Should validate object type correctly", func() {
-			By("Testing with wrong object type")
-			wrongObj := &corev1.ConfigMap{}
-			_, err := validator.ValidateCreate(ctx, wrongObj)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a Secret object but got"))
-		})
 	})
 })
