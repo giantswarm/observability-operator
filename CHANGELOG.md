@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `ConfigurationRepository` interface in `pkg/agent` for managing agent (Alloy) configuration persistence with Kubernetes-based implementation. The repository now uses the shared secret template for generating agent secrets.
 - Add shared secret template infrastructure in `pkg/agent/common` to consolidate duplicate secret templates across metrics, logs, and events agents.
 
+## [0.57.1] - 2026-01-21
+
+### Fixed
+
+- Fix auth password hash encoding by using base64 instead of hexadecimals.
+
+## [0.57.0] - 2026-01-19
+
 ### Changed
 
 - Refactor tenant listing functionality into a repository interface pattern (`TenantRepository`) with Kubernetes implementation for better separation of concerns and testability.
