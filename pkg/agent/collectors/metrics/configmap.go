@@ -16,9 +16,10 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/blang/semver/v4"
 
+	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
@@ -67,7 +68,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
 	}
 
-	clusterShardingStrategy, err := commonmonitoring.GetClusterShardingStrategy(cluster)
+	clusterShardingStrategy, err := monitoring.GetClusterShardingStrategy(cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster sharding strategy: %w", err)
 	}
@@ -86,7 +87,7 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		Replicas          int
 	}{
 		AlloyConfig:       alloyConfig,
-		PriorityClassName: commonmonitoring.PriorityClassName,
+		PriorityClassName: common.PriorityClassName,
 		Replicas:          shards,
 	}
 
@@ -157,7 +158,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		MimirRemoteWriteAPIPasswordKey:        mimirRemoteWriteAPIPasswordKey,
 		MimirRemoteWriteAPIURLKey:             mimirRemoteWriteAPIURLKey,
 		MimirRemoteWriteAPINameKey:            mimirRemoteWriteAPINameKey,
-		MimirRemoteWriteTimeout:               commonmonitoring.RemoteWriteTimeout,
+		MimirRemoteWriteTimeout:               common.MimirRemoteWriteTimeout,
 		MimirRemoteWriteTLSInsecureSkipVerify: a.Config.Cluster.InsecureCA,
 
 		ClusterID: cluster.Name,
@@ -186,7 +187,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 			"pipeline":         a.Config.Cluster.Pipeline,
 			"provider":         provider,
 			"region":           a.Config.Cluster.Region,
-			"service_priority": commonmonitoring.GetServicePriority(cluster),
+			"service_priority": monitoring.GetServicePriority(cluster),
 		},
 
 		IsWorkloadCluster:         a.Config.Cluster.IsWorkloadCluster(cluster),
