@@ -16,9 +16,9 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/blang/semver/v4"
 
+	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
-	commonmonitoring "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 )
 
 var (
@@ -69,7 +69,7 @@ func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	// Get Tempo URL for tracing (only for workload clusters with tracing enabled)
 	tempoURL := ""
 	if tracingEnabled && isWorkloadCluster {
-		tempoURL = fmt.Sprintf(commonmonitoring.TempoIngressURLFormat, a.Config.Cluster.BaseDomain)
+		tempoURL = fmt.Sprintf(common.TempoIngressURLFormat, a.Config.Cluster.BaseDomain)
 	}
 
 	// Generate the Alloy configuration from template
@@ -147,21 +147,21 @@ func (a *Service) generateAlloyEventsConfig(
 		Organization:       organization,
 		Provider:           provider,
 		InsecureSkipVerify: fmt.Sprintf("%t", a.Config.Cluster.InsecureCA),
-		MaxBackoffPeriod:   commonmonitoring.LokiMaxBackoffPeriod,
-		RemoteTimeout:      commonmonitoring.LokiRemoteTimeout,
+		MaxBackoffPeriod:   common.LokiMaxBackoffPeriod,
+		RemoteTimeout:      common.LokiRemoteTimeout,
 		IncludeNamespaces:  a.Config.Logging.IncludeEventsNamespaces,
 		ExcludeNamespaces:  a.Config.Logging.ExcludeEventsNamespaces,
 		SecretName:         apps.AlloyEventsAppName,
-		LoggingURLKey:      commonmonitoring.LokiURLKey,
-		LoggingTenantIDKey: commonmonitoring.LokiTenantIDKey,
-		LoggingUsernameKey: commonmonitoring.LokiUsernameKey,
-		LoggingPasswordKey: commonmonitoring.LokiPasswordKey,
+		LoggingURLKey:      common.LokiURLKey,
+		LoggingTenantIDKey: common.LokiTenantIDKey,
+		LoggingUsernameKey: common.LokiUsernameKey,
+		LoggingPasswordKey: common.LokiPasswordKey,
 		IsWorkloadCluster:  isWorkloadCluster,
 		LoggingEnabled:     loggingEnabled,
 		TracingEnabled:     tracingEnabled,
 		TracingEndpoint:    tracingEndpoint,
-		TracingUsernameKey: tempoTracingUsernameKey,
-		TracingPasswordKey: tempoTracingPasswordKey,
+		TracingUsernameKey: common.TempoUsernameKey,
+		TracingPasswordKey: common.TempoPasswordKey,
 		Tenants:            tenants,
 	}
 
