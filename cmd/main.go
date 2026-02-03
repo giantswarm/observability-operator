@@ -291,7 +291,8 @@ func setupApplication() error {
 	opts := zap.Options{
 		Development: false,
 	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	logger := zap.New(zap.UseFlagOptions(&opts))
+	ctrl.SetLogger(logger)
 
 	// Load environment variables
 	_, err := env.UnmarshalFromEnviron(&cfg.Environment)
@@ -366,7 +367,7 @@ func setupApplication() error {
 	// Create Grafana client generator for dependency injection
 	grafanaClientGen := &grafanaclient.DefaultGrafanaClientGenerator{}
 	// Setup controller for the Cluster resource.
-	err = controller.SetupClusterMonitoringReconciler(mgr, cfg)
+	err = controller.SetupClusterMonitoringReconciler(mgr, cfg, logger)
 	if err != nil {
 		return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
 	}
