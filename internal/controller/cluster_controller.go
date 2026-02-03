@@ -19,6 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/go-logr/logr"
+
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/events"
@@ -60,7 +62,7 @@ type ClusterMonitoringReconciler struct {
 	finalizerHelper FinalizerHelper
 }
 
-func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) error {
+func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, logger logr.Logger) error {
 	managerClient := mgr.GetClient()
 
 	// Create list of heartbeat repositories
@@ -75,9 +77,8 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config) er
 		heartbeatRepositories = append(heartbeatRepositories, cronitorRepository)
 	}
 
-	// Ensure at least one heartbeat repository is configured
 	if len(heartbeatRepositories) == 0 {
-		return fmt.Errorf("no heartbeat repositories configured: both CronitorHeartbeatManagementKey and CronitorHeartbeatPingKey must be set")
+		logger.Info("no heartbeat repositories configured (CronitorHeartbeatManagementKey/CronitorHeartbeatPingKey), disabling this feature")
 	}
 
 	organizationRepository := organization.NewNamespaceRepository(managerClient)
@@ -494,6 +495,10 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
 	if r.Config.Monitoring.Enabled {
+		if len(r.HeartbeatRepositories) == 0 {
+			logger.Info("no heartbeat repositories configured, skipping this feature")
+		}
+
 		for i, heartbeatRepo := range r.HeartbeatRepositories {
 			err := heartbeatRepo.CreateOrUpdate(ctx)
 			if err != nil {
