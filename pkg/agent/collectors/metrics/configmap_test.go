@@ -13,12 +13,34 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
+	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 var managementClusterName = "dummy-cluster"
+
+// mockAuthManager implements auth.AuthManager for testing
+type mockAuthManager struct{}
+
+func (m *mockAuthManager) EnsureClusterAuth(ctx context.Context, cluster *clusterv1.Cluster) error {
+	return nil
+}
+
+func (m *mockAuthManager) DeleteClusterAuth(ctx context.Context, cluster *clusterv1.Cluster) error {
+	return nil
+}
+
+func (m *mockAuthManager) GetClusterPassword(ctx context.Context, cluster *clusterv1.Cluster) (string, error) {
+	return "test-password", nil
+}
+
+func (m *mockAuthManager) DeleteGatewaySecrets(ctx context.Context) error {
+	return nil
+}
+
+var _ auth.AuthManager = &mockAuthManager{}
 
 func TestGenerateMonitoringConfig(t *testing.T) {
 	tests := []struct {
@@ -265,6 +287,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 
 			service := &Service{
 				OrganizationRepository: mocks.NewMockOrganizationRepository("dummy-org"),
+				AuthManager:            &mockAuthManager{},
 				Config: config.Config{
 					Cluster: config.ClusterConfig{
 						BaseDomain: "test.gigantic.io",

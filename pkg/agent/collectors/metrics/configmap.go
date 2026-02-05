@@ -63,7 +63,15 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	// Compute the number of shards based on the number of series.
 	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", service="%s"})by(pod))[6h:1h]))`, cluster.Name, apps.AlloyMetricsAppName)
 	metricsQueryURL := fmt.Sprintf(common.MimirQueryEndpointURLFormat, a.Config.Cluster.BaseDomain)
-	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, metricsQueryURL)
+
+	// Get credentials for Mimir authentication
+	password, err := a.AuthManager.GetClusterPassword(ctx, cluster)
+	if err != nil {
+		logger.Error(err, "alloy-service - failed to get cluster password for mimir query")
+		metrics.MimirQueryErrors.WithLabelValues().Inc()
+	}
+
+	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, metricsQueryURL, cluster.Name, password)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to query head series")
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
