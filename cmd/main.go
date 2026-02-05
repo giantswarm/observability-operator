@@ -70,7 +70,6 @@ const (
 	flagMonitoringShardingScaleUpSeriesCount  = "monitoring-sharding-scale-up-series-count"
 	flagMonitoringShardingScaleDownPercentage = "monitoring-sharding-scale-down-percentage"
 	flagMonitoringWALTruncateFrequency        = "monitoring-wal-truncate-frequency"
-	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
 	// TODO Rename the flag with the monitoring prefix when migration is done
 	flagMonitoringNetworkEnabled = "logging-enable-network-monitoring"
 
@@ -190,8 +189,6 @@ func parseFlags() (err error) {
 		"Configures the percentage of removed series to scale down the number of prometheus agent shards.")
 	pflag.DurationVar(&cfg.Monitoring.WALTruncateFrequency, flagMonitoringWALTruncateFrequency, 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
-	pflag.StringVar(&cfg.Monitoring.MetricsQueryURL, flagMonitoringMetricsQueryURL, "http://mimir-gateway.mimir.svc/prometheus",
-		"URL to query for cluster metrics")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, false,
 		"Enable/disable network monitoring in Alloy logging configuration")
 

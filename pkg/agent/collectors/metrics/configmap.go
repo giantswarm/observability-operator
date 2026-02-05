@@ -62,7 +62,8 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	// Compute the number of shards based on the number of series.
 	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", service="%s"})by(pod))[6h:1h]))`, cluster.Name, apps.AlloyMetricsAppName)
-	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, a.Config.Monitoring.MetricsQueryURL)
+	metricsQueryURL := fmt.Sprintf(common.MimirQueryEndpointURLFormat, a.Config.Cluster.BaseDomain)
+	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, metricsQueryURL)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to query head series")
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
@@ -96,8 +97,8 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		Replicas:                       shards,
 		KEDAAuthenticationEnabled:      a.Config.Monitoring.IsKEDAAuthenticationEnabled(cluster),
 		AlloySecretName:                apps.AlloyMetricsAppName,
-		MimirRemoteWriteAPIUsernameKey: mimirRemoteWriteAPIUsernameKey,
-		MimirRemoteWriteAPIPasswordKey: mimirRemoteWriteAPIPasswordKey,
+		MimirRemoteWriteAPIUsernameKey: common.MimirRemoteWriteAPIUsernameKey,
+		MimirRemoteWriteAPIPasswordKey: common.MimirRemoteWriteAPIPasswordKey,
 		MimirQueryAPIURLKey:            common.MimirQueryAPIURLKey,
 	}
 
@@ -163,11 +164,11 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		AlloySecretName:      apps.AlloyMetricsAppName,
 		AlloySecretNamespace: apps.AlloyNamespace,
 
-		MimirRulerAPIURLKey:                   mimirRulerAPIURLKey,
-		MimirRemoteWriteAPIUsernameKey:        mimirRemoteWriteAPIUsernameKey,
-		MimirRemoteWriteAPIPasswordKey:        mimirRemoteWriteAPIPasswordKey,
-		MimirRemoteWriteAPIURLKey:             mimirRemoteWriteAPIURLKey,
-		MimirRemoteWriteAPINameKey:            mimirRemoteWriteAPINameKey,
+		MimirRulerAPIURLKey:                   common.MimirRulerAPIURLKey,
+		MimirRemoteWriteAPIUsernameKey:        common.MimirRemoteWriteAPIUsernameKey,
+		MimirRemoteWriteAPIPasswordKey:        common.MimirRemoteWriteAPIPasswordKey,
+		MimirRemoteWriteAPIURLKey:             common.MimirRemoteWriteAPIURLKey,
+		MimirRemoteWriteAPINameKey:            common.MimirRemoteWriteAPINameKey,
 		MimirRemoteWriteTimeout:               common.MimirRemoteWriteTimeout,
 		MimirRemoteWriteTLSInsecureSkipVerify: a.Config.Cluster.InsecureCA,
 
