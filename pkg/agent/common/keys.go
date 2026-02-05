@@ -51,5 +51,9 @@ const (
 	MimirRemoteWriteName              = "mimir"                             // Default remote write name
 	MimirBaseURLFormat                = "https://mimir.%s"                  // Base URL template for Mimir
 	MimirRemoteWriteEndpointURLFormat = MimirBaseURLFormat + "/api/v1/push" // Full remote write endpoint URL
+	MimirQueryEndpointURLFormat       = MimirBaseURLFormat + "/prometheus"  // Prometheus-compatible query endpoint for KEDA
 	MimirRemoteWriteTimeout           = "60s"                               // Timeout for remote write operations
+
+	// MimirQueryAPIURLKey is the secret key for the Mimir query URL (used by KEDA prometheus scaler)
+	MimirQueryAPIURLKey = "mimirQueryAPIURL"
 )

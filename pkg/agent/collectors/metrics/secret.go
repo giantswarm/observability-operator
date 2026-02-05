@@ -28,6 +28,7 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 	}
 
 	mimirRulerUrl := fmt.Sprintf(common.MimirBaseURLFormat, a.Config.Cluster.BaseDomain)
+	mimirQueryUrl := fmt.Sprintf(common.MimirQueryEndpointURLFormat, a.Config.Cluster.BaseDomain)
 
 	// Build secret environment variables map
 	secrets := map[string]string{
@@ -36,6 +37,7 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		mimirRemoteWriteAPINameKey:     common.MimirRemoteWriteName,
 		mimirRemoteWriteAPIUsernameKey: cluster.Name,
 		mimirRemoteWriteAPIPasswordKey: password,
+		common.MimirQueryAPIURLKey:     mimirQueryUrl,
 	}
 
 	return secrets, nil
