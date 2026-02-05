@@ -20,7 +20,7 @@ import (
 
 var managementClusterName = "dummy-cluster"
 
-func TestGenerateAlloyConfig(t *testing.T) {
+func TestGenerateMonitoringConfig(t *testing.T) {
 	tests := []struct {
 		name                       string
 		cluster                    *clusterv1.Cluster
@@ -43,7 +43,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.200.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.200.wc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
@@ -60,7 +60,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.200.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.200.mc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
@@ -77,7 +77,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.200.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.200.wc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
@@ -94,7 +94,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.200.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.200.mc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
@@ -111,7 +111,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.200.wc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 		{
@@ -128,7 +128,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.200.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.200.mc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 		},
 
@@ -147,7 +147,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.220.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.220.wc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
 		{
@@ -164,7 +164,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_multitenants.220.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
 		{
@@ -181,7 +181,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.220.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.220.wc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
 		{
@@ -198,7 +198,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_singletenant.220.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
 		{
@@ -215,7 +215,7 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.wc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.220.wc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
 		{
@@ -232,26 +232,50 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
-			goldenPath:                 filepath.Join("testdata", "alloy_config_defaulttenant.220.mc.river"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+		},
+
+		// KEDA authentication tests
+		{
+			name: "WorkloadCluster_KEDAEnabled",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "default",
+					Labels: map[string]string{
+						config.KEDAAuthenticationLabel: "true",
+					},
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"giantswarm"},
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_keda_enabled.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.2.0"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			// Create a dummy Service with minimal dependencies.
+
 			service := &Service{
 				OrganizationRepository: mocks.NewMockOrganizationRepository("dummy-org"),
 				Config: config.Config{
 					Cluster: config.ClusterConfig{
+						BaseDomain: "test.gigantic.io",
 						InsecureCA: false,
 						Customer:   "dummy-customer",
-						Name:       "dummy-cluster",
+						Name:       managementClusterName,
 						Pipeline:   "dummy-pipeline",
 						Region:     "dummy-region",
 					},
 					Monitoring: config.MonitoringConfig{
+						Enabled:              true,
 						WALTruncateFrequency: time.Minute,
 						QueueConfig: config.QueueConfig{
 							Capacity:          &[]int{30000}[0],
@@ -263,9 +287,20 @@ func TestGenerateAlloyConfig(t *testing.T) {
 				},
 			}
 
-			got, err := service.generateAlloyConfig(ctx, tt.cluster, tt.tenants, tt.observabilityBundleVersion)
+			resultMap, err := service.GenerateAlloyMonitoringConfigMapData(
+				ctx,
+				nil, // currentState
+				tt.cluster,
+				tt.tenants,
+				tt.observabilityBundleVersion,
+			)
 			if err != nil {
-				t.Fatalf("generateAlloyConfig failed: %v", err)
+				t.Fatalf("GenerateAlloyMonitoringConfigMapData() failed: %v", err)
+			}
+
+			result, ok := resultMap["values"]
+			if !ok {
+				t.Fatalf("GenerateAlloyMonitoringConfigMapData() did not return 'values' key")
 			}
 
 			if os.Getenv("UPDATE_GOLDEN_FILES") == "true" {
@@ -274,18 +309,18 @@ func TestGenerateAlloyConfig(t *testing.T) {
 					t.Fatalf("failed to create golden directory: %v", err)
 				}
 				//nolint:gosec
-				if err := os.WriteFile(tt.goldenPath, []byte(got), 0644); err != nil {
+				if err := os.WriteFile(tt.goldenPath, []byte(result), 0644); err != nil {
 					t.Fatalf("failed to update golden file: %v", err)
 				}
 			}
 
-			wantBytes, err := os.ReadFile(tt.goldenPath)
+			expected, err := os.ReadFile(tt.goldenPath)
 			if err != nil {
-				t.Fatalf("failed to read golden file: %v", err)
+				t.Fatalf("Failed to read golden file %s: %v", tt.goldenPath, err)
 			}
-			want := string(wantBytes)
-			if diff := cmp.Diff(want, got); diff != "" {
-				t.Errorf("generated config mismatch (-want +got):\n%s", diff)
+
+			if diff := cmp.Diff(string(expected), result); diff != "" {
+				t.Errorf("GenerateAlloyMonitoringConfigMapData() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

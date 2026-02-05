@@ -51,5 +51,5 @@ func (l LoggingConfig) Validate() error {
 //   - cluster is not being deleted
 //   - cluster-specific logging label is set to true (or missing/invalid, defaulting to true)
 func (l LoggingConfig) IsLoggingEnabled(cluster *clusterv1.Cluster) bool {
-	return isClusterFeatureEnabled(l.Enabled, cluster, LoggingLabel)
+	return isClusterFeatureEnabled(l.Enabled, cluster, LoggingLabel, true)
 }
