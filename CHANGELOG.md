@@ -9,8 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add optional KEDA `ClusterTriggerAuthentication` resource for Mimir access. When the `giantswarm.io/keda-authentication: "true"` label is set on a cluster, a `mimir-auth` ClusterTriggerAuthentication is created that can be referenced by KEDA ScaledObjects for authenticated metric queries. The Mimir query URL is also added to the `alloy-metrics` secret under the `mimirQueryAPIURL` key.
-- Add `giantswarm.io/keda-namespace` annotation support. When `giantswarm.io/keda-authentication: "true"` is set, a copy of the `alloy-metrics` credentials Secret is created in the KEDA operator namespace (defaults to `keda`, configurable via annotation) so that the `ClusterTriggerAuthentication` can resolve its `secretTargetRef`.
+- Add KEDA `ClusterTriggerAuthentication` support for Mimir authentication. When the `giantswarm.io/keda-authentication: "true"` label is set on a cluster, a `giantswarm-mimir-auth` `ClusterTriggerAuthentication` and its backing credentials `Secret` are created in the KEDA operator namespace (defaults to `keda`, configurable via `giantswarm.io/keda-namespace` annotation). This enables KEDA `ScaledObjects` to query Mimir metrics with authentication.
+- Add `mimirQueryAPIURL` key to the `alloy-metrics` secret, providing a Prometheus-compatible Mimir query endpoint for use by KEDA.
+- Add generic `ExtraSecretObjects` pass-through in the agent configuration and shared secret template, allowing collectors to inject arbitrary Helm `extraObjects` YAML into the secret values.
+
+### Changed
+
+- Refactor `isClusterFeatureEnabled` to support both opt-in and opt-out models via a `defaultWhenMissing` parameter. Network monitoring and KEDA authentication use opt-in (disabled by default), while monitoring, logging, and tracing remain opt-out (enabled by default).
+- Move Mimir secret key constants from the metrics collector to `pkg/agent/common/keys.go` for reuse across packages.
 
 ## [0.58.0] - 2026-02-04
 

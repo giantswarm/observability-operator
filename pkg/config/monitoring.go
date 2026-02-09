@@ -48,6 +48,7 @@ type MonitoringConfig struct {
 	DefaultShardingStrategy sharding.Strategy
 	// WALTruncateFrequency is the frequency at which the WAL segments should be truncated.
 	WALTruncateFrequency time.Duration
+	MetricsQueryURL      string
 	QueueConfig          QueueConfig
 }
 
