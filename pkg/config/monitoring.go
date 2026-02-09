@@ -17,6 +17,9 @@ const NetworkMonitoringLabel = "giantswarm.io/network-monitoring"
 // TODO rename to observability.giantswarm.io/keda-authentication
 const KEDAAuthenticationLabel = "giantswarm.io/keda-authentication"
 
+// TODO rename to observability.giantswarm.io/keda-namespace
+const KEDANamespaceAnnotation = "giantswarm.io/keda-namespace"
+
 // QueueConfig represents the configuration for the remote write queue.
 type QueueConfig struct {
 	BatchSendDeadline *string
@@ -66,6 +69,20 @@ func (c MonitoringConfig) IsMonitoringEnabled(cluster *clusterv1.Cluster) bool {
 // TODO revisit this logic in the future when network monitoring is more widely adopted.
 func (c MonitoringConfig) IsNetworkMonitoringEnabled(cluster *clusterv1.Cluster) bool {
 	return isClusterFeatureEnabled(c.NetworkEnabled, cluster, NetworkMonitoringLabel, false)
+}
+
+const KEDADefaultNamespace = "keda"
+
+// GetKEDANamespace returns the KEDA operator namespace configured for a cluster via annotation.
+// Defaults to "keda" if the annotation is not set.
+func GetKEDANamespace(cluster *clusterv1.Cluster) string {
+	annotations := cluster.GetAnnotations()
+	if annotations != nil {
+		if ns, ok := annotations[KEDANamespaceAnnotation]; ok && ns != "" {
+			return ns
+		}
+	}
+	return KEDADefaultNamespace
 }
 
 // IsKEDAAuthenticationEnabled checks if KEDA authentication is enabled for a cluster.

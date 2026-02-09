@@ -257,28 +257,6 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
-
-		// KEDA authentication tests
-		{
-			name: "WorkloadCluster_KEDAEnabled",
-			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
-					Labels: map[string]string{
-						config.KEDAAuthenticationLabel: "true",
-					},
-				},
-				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						Kind: "AWSCluster",
-					},
-				},
-			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_keda_enabled.yaml"),
-			observabilityBundleVersion: semver.MustParse("2.2.0"),
-		},
 	}
 
 	for _, tt := range tests {

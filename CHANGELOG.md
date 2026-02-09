@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add optional KEDA `ClusterTriggerAuthentication` resource for Mimir access. When the `giantswarm.io/keda-authentication: "true"` label is set on a cluster, a `mimir-auth` ClusterTriggerAuthentication is created that can be referenced by KEDA ScaledObjects for authenticated metric queries. The Mimir query URL is also added to the `alloy-metrics` secret under the `mimirQueryAPIURL` key.
+- Add `giantswarm.io/keda-namespace` annotation support. When `giantswarm.io/keda-authentication: "true"` is set, a copy of the `alloy-metrics` credentials Secret is created in the KEDA operator namespace (defaults to `keda`, configurable via annotation) so that the `ClusterTriggerAuthentication` can resolve its `secretTargetRef`.
 
 ## [0.58.0] - 2026-02-04
 

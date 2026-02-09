@@ -91,23 +91,13 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	}
 
 	data := struct {
-		AlloyConfig                    string
-		PriorityClassName              string
-		Replicas                       int
-		KEDAAuthenticationEnabled      bool
-		AlloySecretName                string
-		MimirRemoteWriteAPIUsernameKey string
-		MimirRemoteWriteAPIPasswordKey string
-		MimirQueryAPIURLKey            string
+		AlloyConfig       string
+		PriorityClassName string
+		Replicas          int
 	}{
-		AlloyConfig:                    alloyConfig,
-		PriorityClassName:              common.PriorityClassName,
-		Replicas:                       shards,
-		KEDAAuthenticationEnabled:      a.Config.Monitoring.IsKEDAAuthenticationEnabled(cluster),
-		AlloySecretName:                apps.AlloyMetricsAppName,
-		MimirRemoteWriteAPIUsernameKey: common.MimirRemoteWriteAPIUsernameKey,
-		MimirRemoteWriteAPIPasswordKey: common.MimirRemoteWriteAPIPasswordKey,
-		MimirQueryAPIURLKey:            common.MimirQueryAPIURLKey,
+		AlloyConfig:       alloyConfig,
+		PriorityClassName: common.PriorityClassName,
+		Replicas:          shards,
 	}
 
 	var values bytes.Buffer
