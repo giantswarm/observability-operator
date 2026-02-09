@@ -1,7 +1,7 @@
 - apiVersion: keda.sh/v1alpha1
   kind: ClusterTriggerAuthentication
   metadata:
-    name: giantswarm-mimir-auth
+    name: {{ .SecretName }}
     labels:
       app.kubernetes.io/managed-by: observability-operator
       giantswarm.io/service-type: managed

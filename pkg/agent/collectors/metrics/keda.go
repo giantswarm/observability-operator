@@ -9,8 +9,9 @@ import (
 	"github.com/Masterminds/sprig/v3"
 
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
-	"github.com/giantswarm/observability-operator/pkg/common/apps"
 )
+
+const kedaAuthSecretName = "giantswarm-mimir-auth"
 
 var (
 	//go:embed templates/keda-objects.yaml.template
@@ -37,7 +38,7 @@ type kedaTemplateData struct {
 // in that namespace so KEDA can resolve it.
 func generateKEDAExtraObjects(kedaNamespace string, secretData map[string]string) (string, error) {
 	data := kedaTemplateData{
-		SecretName:  apps.AlloyMetricsAppName,
+		SecretName:  kedaAuthSecretName,
 		Namespace:   kedaNamespace,
 		UsernameKey: common.MimirRemoteWriteAPIUsernameKey,
 		PasswordKey: common.MimirRemoteWriteAPIPasswordKey,

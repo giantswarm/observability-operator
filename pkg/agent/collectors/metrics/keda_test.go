@@ -47,8 +47,8 @@ func TestGenerateKEDAExtraObjects(t *testing.T) {
 				if !strings.Contains(result, "name: giantswarm-mimir-auth") {
 					t.Error("expected giantswarm-mimir-auth name in output")
 				}
-				if !strings.Contains(result, "name: alloy-metrics") {
-					t.Error("expected alloy-metrics secret reference in output")
+				if strings.Count(result, "name: giantswarm-mimir-auth") < 2 {
+					t.Error("expected giantswarm-mimir-auth for both CTA and secret reference")
 				}
 			}
 
