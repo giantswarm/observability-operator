@@ -14,7 +14,7 @@ import (
 
 var (
 	//go:embed templates/keda-objects.yaml.template
-	kedaObjectsTemplate     string
+	kedaObjectsTemplate       string
 	kedaObjectsTemplateParsed *template.Template
 )
 
