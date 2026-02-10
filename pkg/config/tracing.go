@@ -25,5 +25,5 @@ func (c TracingConfig) Validate() error {
 //   - cluster is not being deleted
 //   - cluster-specific tracing label is set to true (or missing/invalid, defaulting to true)
 func (c TracingConfig) IsTracingEnabled(cluster *clusterv1.Cluster) bool {
-	return isClusterFeatureEnabled(c.Enabled, cluster, TracingLabel)
+	return isClusterFeatureEnabled(c.Enabled, cluster, TracingLabel, true)
 }

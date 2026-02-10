@@ -191,7 +191,7 @@ func parseFlags() (err error) {
 	pflag.DurationVar(&cfg.Monitoring.WALTruncateFrequency, flagMonitoringWALTruncateFrequency, 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
 	pflag.StringVar(&cfg.Monitoring.MetricsQueryURL, flagMonitoringMetricsQueryURL, "http://mimir-gateway.mimir.svc/prometheus",
-		"URL to query for cluster metrics")
+		"URL to query for cluster metrics (internal Mimir query endpoint)")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, false,
 		"Enable/disable network monitoring in Alloy logging configuration")
 

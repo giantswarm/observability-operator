@@ -62,7 +62,6 @@ func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	// Compute the number of shards based on the number of series.
 	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", service="%s"})by(pod))[6h:1h]))`, cluster.Name, apps.AlloyMetricsAppName)
-
 	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, a.Config.Monitoring.MetricsQueryURL)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to query head series")
