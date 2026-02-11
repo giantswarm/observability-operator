@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use `Chart.AppVersion` instead of `Chart.Version` for the image tag in the deployment template.
+- Change team annotation in `Chart.yaml` to OpenContainers format (`io.giantswarm.application.team`).
+
 ## [0.59.0] - 2026-02-10
 
 ### Added
