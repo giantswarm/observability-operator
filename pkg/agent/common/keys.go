@@ -34,8 +34,8 @@ const (
 	TempoUsernameKey = "tracing-username" // Username for Tempo authentication
 	TempoPasswordKey = "tracing-password" // Password for Tempo authentication
 
-	// TempoIngressURLFormat is the URL template for Tempo gateway ingress
-	TempoIngressURLFormat = "tempo-gateway.%s"
+	// TempoIngressURLFormat is the URL template for Tempo ingress
+	TempoIngressURLFormat = "tempo.%s"
 
 	// --- Mimir Configuration (Metrics) ---
 	// Used by metrics collector for metrics storage
