@@ -7,4 +7,3 @@ version: 0.59.1
 appVersion: 0.59.1
 annotations:
   io.giantswarm.application.team: "atlas"
-  config.giantswarm.io/version: 1.x.x
