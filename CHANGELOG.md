@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix the Tempo URL configured in alloy-events.
+
 ## [0.59.0] - 2026-02-10
 
 ### Added
