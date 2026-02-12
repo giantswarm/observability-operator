@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `Chart.AppVersion` instead of `Chart.Version` for the image tag in the deployment template.
 - Change team annotation in `Chart.yaml` to OpenContainers format (`io.giantswarm.application.team`).
 
+### Removed
+
+- Remove `alloy-logs` and `alloy-events` reconciliation flags as the migration is over and we do not need them anymore.
+
 ## [0.59.1] - 2026-02-12
 
 ### Fixed
@@ -63,10 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Add cluster controller RateLimiter to limit retries to 5mn
 - Change auth password hashing algorithm from bcrypt to sha1.
 - Allow alloy-metrics to go up to 12GB RAM requests
-
-### Removed
-
-- Remove `alloy-logs` and `alloy-events` reconciliation flags as the migration is over and we do not need them anymore.
 
 ## [0.56.0] - 2026-01-12
 
