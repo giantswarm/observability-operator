@@ -32,6 +32,12 @@ var helmReleaseGVK = schema.GroupVersionKind{
 	Kind:    "HelmRelease",
 }
 
+var ociRepositoryGVK = schema.GroupVersionKind{
+	Group:   "source.toolkit.fluxcd.io",
+	Version: "v1beta2",
+	Kind:    "OCIRepository",
+}
+
 type BundleConfigurationService struct {
 	client client.Client
 	config config.Config
@@ -294,7 +300,7 @@ func (s BundleConfigurationService) GetObservabilityBundleAppVersion(ctx context
 	// Try HelmRelease first
 	hr, err := s.getHelmRelease(ctx, bundleObjectKey)
 	if err == nil {
-		return getHelmReleaseVersion(hr)
+		return s.getHelmReleaseVersion(ctx, hr)
 	}
 	if !apierrors.IsNotFound(err) {
 		return version, fmt.Errorf("failed to get observability-bundle helmrelease: %w", err)
@@ -309,28 +315,48 @@ func (s BundleConfigurationService) GetObservabilityBundleAppVersion(ctx context
 	return semver.Parse(currentApp.Spec.Version)
 }
 
-// getHelmReleaseVersion extracts the chart version from an unstructured HelmRelease.
-// It reads spec.chart.spec.version.
-func getHelmReleaseVersion(hr *unstructured.Unstructured) (semver.Version, error) {
+// getHelmReleaseVersion extracts the chart version from a HelmRelease by following
+// its spec.chartRef to the referenced OCIRepository and reading spec.ref.tag.
+func (s BundleConfigurationService) getHelmReleaseVersion(ctx context.Context, hr *unstructured.Unstructured) (semver.Version, error) {
 	spec, ok := hr.Object["spec"].(map[string]interface{})
 	if !ok {
 		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec", hr.GetNamespace(), hr.GetName())
 	}
 
-	chart, ok := spec["chart"].(map[string]interface{})
+	chartRef, ok := spec["chartRef"].(map[string]interface{})
 	if !ok {
-		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec.chart (may be using chartRef)", hr.GetNamespace(), hr.GetName())
+		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec.chartRef", hr.GetNamespace(), hr.GetName())
 	}
 
-	chartSpec, ok := chart["spec"].(map[string]interface{})
-	if !ok {
-		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec.chart.spec", hr.GetNamespace(), hr.GetName())
+	name, _ := chartRef["name"].(string)
+	namespace, _ := chartRef["namespace"].(string)
+	if namespace == "" {
+		namespace = hr.GetNamespace()
 	}
 
-	versionStr, ok := chartSpec["version"].(string)
-	if !ok {
-		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec.chart.spec.version", hr.GetNamespace(), hr.GetName())
+	// Fetch the referenced OCIRepository
+	ociRepo := &unstructured.Unstructured{}
+	ociRepo.SetGroupVersionKind(ociRepositoryGVK)
+	err := s.client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, ociRepo)
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to get OCIRepository %s/%s: %w", namespace, name, err)
 	}
 
-	return semver.Parse(versionStr)
+	// Read spec.ref.tag
+	ociSpec, ok := ociRepo.Object["spec"].(map[string]interface{})
+	if !ok {
+		return semver.Version{}, fmt.Errorf("ocirepository %s/%s has no spec", namespace, name)
+	}
+
+	ref, ok := ociSpec["ref"].(map[string]interface{})
+	if !ok {
+		return semver.Version{}, fmt.Errorf("ocirepository %s/%s has no spec.ref", namespace, name)
+	}
+
+	tag, ok := ref["tag"].(string)
+	if !ok {
+		return semver.Version{}, fmt.Errorf("ocirepository %s/%s has no spec.ref.tag", namespace, name)
+	}
+
+	return semver.Parse(tag)
 }

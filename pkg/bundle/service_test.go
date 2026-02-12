@@ -27,20 +27,31 @@ func newTestCluster(name, namespace string) *clusterv1.Cluster {
 	}
 }
 
-func newTestHelmRelease(name, namespace, version string) *unstructured.Unstructured {
+func newTestHelmRelease(name, namespace, ociRepoName string) *unstructured.Unstructured {
 	hr := &unstructured.Unstructured{}
 	hr.SetGroupVersionKind(helmReleaseGVK)
 	hr.SetName(name)
 	hr.SetNamespace(namespace)
 	hr.Object["spec"] = map[string]interface{}{
-		"chart": map[string]interface{}{
-			"spec": map[string]interface{}{
-				"chart":   "observability-bundle",
-				"version": version,
-			},
+		"chartRef": map[string]interface{}{
+			"kind": "OCIRepository",
+			"name": ociRepoName,
 		},
 	}
 	return hr
+}
+
+func newTestOCIRepository(name, namespace, tag string) *unstructured.Unstructured {
+	repo := &unstructured.Unstructured{}
+	repo.SetGroupVersionKind(ociRepositoryGVK)
+	repo.SetName(name)
+	repo.SetNamespace(namespace)
+	repo.Object["spec"] = map[string]interface{}{
+		"ref": map[string]interface{}{
+			"tag": tag,
+		},
+	}
+	return repo
 }
 
 func newTestApp(name, namespace, version string) *appv1.App {
@@ -68,10 +79,11 @@ func TestConfigureBundle(t *testing.T) {
 		clusterName      = "test-cluster"
 		clusterNamespace = "test-ns"
 		bundleName       = "test-cluster-observability-bundle"
+		ociRepoName      = "observability-bundle"
 	)
 
 	t.Run("configures HelmRelease when present", func(t *testing.T) {
-		hr := newTestHelmRelease(bundleName, clusterNamespace, "1.2.3")
+		hr := newTestHelmRelease(bundleName, clusterNamespace, ociRepoName)
 		client := fake.NewClientBuilder().
 			WithScheme(newScheme()).
 			WithObjects(hr).
@@ -138,7 +150,7 @@ func TestConfigureBundle(t *testing.T) {
 	})
 
 	t.Run("configureHelmRelease is idempotent", func(t *testing.T) {
-		hr := newTestHelmRelease(bundleName, clusterNamespace, "1.2.3")
+		hr := newTestHelmRelease(bundleName, clusterNamespace, ociRepoName)
 		client := fake.NewClientBuilder().
 			WithScheme(newScheme()).
 			WithObjects(hr).
@@ -165,7 +177,7 @@ func TestConfigureBundle(t *testing.T) {
 	})
 
 	t.Run("preserves existing valuesFrom entries in HelmRelease", func(t *testing.T) {
-		hr := newTestHelmRelease(bundleName, clusterNamespace, "1.2.3")
+		hr := newTestHelmRelease(bundleName, clusterNamespace, ociRepoName)
 		spec := hr.Object["spec"].(map[string]interface{})
 		spec["valuesFrom"] = []interface{}{
 			map[string]interface{}{
@@ -213,13 +225,15 @@ func TestGetObservabilityBundleAppVersion(t *testing.T) {
 		clusterName      = "test-cluster"
 		clusterNamespace = "test-ns"
 		bundleName       = "test-cluster-observability-bundle"
+		ociRepoName      = "observability-bundle"
 	)
 
-	t.Run("returns version from HelmRelease", func(t *testing.T) {
-		hr := newTestHelmRelease(bundleName, clusterNamespace, "1.2.3")
+	t.Run("returns version from HelmRelease via OCIRepository", func(t *testing.T) {
+		hr := newTestHelmRelease(bundleName, clusterNamespace, ociRepoName)
+		ociRepo := newTestOCIRepository(ociRepoName, clusterNamespace, "1.2.3")
 		client := fake.NewClientBuilder().
 			WithScheme(newScheme()).
-			WithObjects(hr).
+			WithObjects(hr, ociRepo).
 			Build()
 
 		svc := NewBundleConfigurationService(client, config.Config{})
@@ -257,8 +271,23 @@ func TestGetObservabilityBundleAppVersion(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("returns error for invalid version in HelmRelease", func(t *testing.T) {
-		hr := newTestHelmRelease(bundleName, clusterNamespace, "not-a-version")
+	t.Run("returns error for invalid version in OCIRepository", func(t *testing.T) {
+		hr := newTestHelmRelease(bundleName, clusterNamespace, ociRepoName)
+		ociRepo := newTestOCIRepository(ociRepoName, clusterNamespace, "not-a-version")
+		client := fake.NewClientBuilder().
+			WithScheme(newScheme()).
+			WithObjects(hr, ociRepo).
+			Build()
+
+		svc := NewBundleConfigurationService(client, config.Config{})
+		cluster := newTestCluster(clusterName, clusterNamespace)
+
+		_, err := svc.GetObservabilityBundleAppVersion(context.Background(), cluster)
+		assert.Error(t, err)
+	})
+
+	t.Run("returns error when OCIRepository not found", func(t *testing.T) {
+		hr := newTestHelmRelease(bundleName, clusterNamespace, ociRepoName)
 		client := fake.NewClientBuilder().
 			WithScheme(newScheme()).
 			WithObjects(hr).
@@ -269,14 +298,16 @@ func TestGetObservabilityBundleAppVersion(t *testing.T) {
 
 		_, err := svc.GetObservabilityBundleAppVersion(context.Background(), cluster)
 		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get OCIRepository")
 	})
 
 	t.Run("prefers HelmRelease over App CR when both exist", func(t *testing.T) {
-		hr := newTestHelmRelease(bundleName, clusterNamespace, "3.0.0")
+		hr := newTestHelmRelease(bundleName, clusterNamespace, ociRepoName)
+		ociRepo := newTestOCIRepository(ociRepoName, clusterNamespace, "3.0.0")
 		app := newTestApp(bundleName, clusterNamespace, "2.0.0")
 		client := fake.NewClientBuilder().
 			WithScheme(newScheme()).
-			WithObjects(hr, app).
+			WithObjects(hr, ociRepo, app).
 			Build()
 
 		svc := NewBundleConfigurationService(client, config.Config{})

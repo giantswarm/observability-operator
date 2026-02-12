@@ -68,6 +68,12 @@ rules:
       - update
       - watch
   - apiGroups:
+      - source.toolkit.fluxcd.io
+    resources:
+      - ocirepositories
+    verbs:
+      - get
+  - apiGroups:
       - cluster.x-k8s.io
     resources:
       - clusters
