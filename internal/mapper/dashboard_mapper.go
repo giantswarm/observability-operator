@@ -5,12 +5,8 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/giantswarm/observability-operator/internal/labels"
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
-)
-
-const (
-	grafanaOrganizationLabel = "observability.giantswarm.io/organization"
-	grafanaFolderLabel       = "observability.giantswarm.io/grafana-folder"
 )
 
 // DashboardMapper handles conversion from Kubernetes resources to domain objects
@@ -23,7 +19,7 @@ func New() *DashboardMapper {
 
 // FromConfigMap converts a Kubernetes ConfigMap to domain Dashboard objects
 func (m *DashboardMapper) FromConfigMap(cm *v1.ConfigMap) []*dashboard.Dashboard {
-	org := m.ExtractOrganization(cm)
+	org := m.extractOrganization(cm)
 	folderPath := m.extractFolderPath(cm)
 
 	var dashboards []*dashboard.Dashboard
@@ -44,18 +40,16 @@ func (m *DashboardMapper) FromConfigMap(cm *v1.ConfigMap) []*dashboard.Dashboard
 	return dashboards
 }
 
-// ExtractOrganization returns the organization or empty string if not found.
-func (m *DashboardMapper) ExtractOrganization(cm *v1.ConfigMap) string {
-	// Try to look for an annotation first
+// extractOrganization returns the organization or empty string if not found.
+func (m *DashboardMapper) extractOrganization(cm *v1.ConfigMap) string {
 	annotations := cm.GetAnnotations()
-	if annotations != nil && annotations[grafanaOrganizationLabel] != "" {
-		return annotations[grafanaOrganizationLabel]
+	if annotations != nil && annotations[labels.GrafanaOrganizationAnnotation] != "" {
+		return annotations[labels.GrafanaOrganizationAnnotation]
 	}
 
-	// Then look for a label
-	labels := cm.GetLabels()
-	if labels != nil && labels[grafanaOrganizationLabel] != "" {
-		return labels[grafanaOrganizationLabel]
+	cmLabels := cm.GetLabels()
+	if cmLabels != nil && cmLabels[labels.GrafanaOrganizationAnnotation] != "" {
+		return cmLabels[labels.GrafanaOrganizationAnnotation]
 	}
 
 	return ""
@@ -65,13 +59,13 @@ func (m *DashboardMapper) ExtractOrganization(cm *v1.ConfigMap) string {
 // Follows the same annotation-first, label-fallback pattern as extractOrganization.
 func (m *DashboardMapper) extractFolderPath(cm *v1.ConfigMap) string {
 	annotations := cm.GetAnnotations()
-	if annotations != nil && annotations[grafanaFolderLabel] != "" {
-		return annotations[grafanaFolderLabel]
+	if annotations != nil && annotations[labels.GrafanaFolderAnnotation] != "" {
+		return annotations[labels.GrafanaFolderAnnotation]
 	}
 
-	labels := cm.GetLabels()
-	if labels != nil && labels[grafanaFolderLabel] != "" {
-		return labels[grafanaFolderLabel]
+	cmLabels := cm.GetLabels()
+	if cmLabels != nil && cmLabels[labels.GrafanaFolderAnnotation] != "" {
+		return cmLabels[labels.GrafanaFolderAnnotation]
 	}
 
 	return ""

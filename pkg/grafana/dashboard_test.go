@@ -11,7 +11,7 @@ func TestInjectManagedTag(t *testing.T) {
 			"title": "Test Dashboard",
 		}
 
-		InjectManagedTag(content)
+		injectManagedTag(content)
 
 		tags, ok := content["tags"].([]any)
 		if !ok {
@@ -20,8 +20,8 @@ func TestInjectManagedTag(t *testing.T) {
 		if len(tags) != 1 {
 			t.Fatalf("Expected 1 tag, got %d", len(tags))
 		}
-		if tags[0] != ManagedDashboardTag {
-			t.Errorf("Expected tag %q, got %q", ManagedDashboardTag, tags[0])
+		if tags[0] != managedDashboardTag {
+			t.Errorf("Expected tag %q, got %q", managedDashboardTag, tags[0])
 		}
 	})
 
@@ -32,7 +32,7 @@ func TestInjectManagedTag(t *testing.T) {
 			"tags":  []any{"existing-tag", "another-tag"},
 		}
 
-		InjectManagedTag(content)
+		injectManagedTag(content)
 
 		tags, ok := content["tags"].([]any)
 		if !ok {
@@ -41,8 +41,8 @@ func TestInjectManagedTag(t *testing.T) {
 		if len(tags) != 3 {
 			t.Fatalf("Expected 3 tags, got %d", len(tags))
 		}
-		if tags[2] != ManagedDashboardTag {
-			t.Errorf("Expected last tag %q, got %q", ManagedDashboardTag, tags[2])
+		if tags[2] != managedDashboardTag {
+			t.Errorf("Expected last tag %q, got %q", managedDashboardTag, tags[2])
 		}
 	})
 
@@ -53,8 +53,8 @@ func TestInjectManagedTag(t *testing.T) {
 			"tags":  []any{"existing-tag"},
 		}
 
-		InjectManagedTag(content)
-		InjectManagedTag(content) // Call twice
+		injectManagedTag(content)
+		injectManagedTag(content) // Call twice
 
 		tags, ok := content["tags"].([]any)
 		if !ok {
@@ -71,7 +71,7 @@ func TestInjectManagedTag(t *testing.T) {
 			"tags": nil,
 		}
 
-		InjectManagedTag(content)
+		injectManagedTag(content)
 
 		tags, ok := content["tags"].([]any)
 		if !ok {
@@ -88,7 +88,7 @@ func TestInjectManagedTag(t *testing.T) {
 			"tags": "not-an-array",
 		}
 
-		InjectManagedTag(content)
+		injectManagedTag(content)
 
 		tags, ok := content["tags"].([]any)
 		if !ok {

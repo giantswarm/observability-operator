@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	goruntime "github.com/go-openapi/runtime"
@@ -11,7 +12,8 @@ import (
 	"github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/stretchr/testify/mock"
 
-	folder "github.com/giantswarm/observability-operator/pkg/domain/folder"
+	"github.com/giantswarm/observability-operator/pkg/domain/folder"
+	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
 
@@ -25,7 +27,7 @@ func TestEnsureFolderHierarchy_EmptyPath(t *testing.T) {
 	mockClient := &mocks.MockGrafanaClient{}
 	svc := newTestService(mockClient)
 
-	uid, err := svc.EnsureFolderHierarchy(context.Background(), "")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -49,7 +51,7 @@ func TestEnsureFolderHierarchy_SingleFolder_AlreadyExists(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.EnsureFolderHierarchy(context.Background(), "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), "team-a")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -82,7 +84,7 @@ func TestEnsureFolderHierarchy_SingleFolder_DoesNotExist(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.EnsureFolderHierarchy(context.Background(), "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), "team-a")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -120,7 +122,7 @@ func TestEnsureFolderHierarchy_NestedPath(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.EnsureFolderHierarchy(context.Background(), "team-a/networking")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), "team-a/networking")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -151,7 +153,7 @@ func TestEnsureFolderHierarchy_Rename(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.EnsureFolderHierarchy(context.Background(), "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), "team-a")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -174,12 +176,9 @@ func TestEnsureFolderHierarchy_CreateFolderError(t *testing.T) {
 	mockFolders.On("CreateFolder", mock.Anything).Return(nil, errors.New("grafana unavailable"))
 
 	svc := newTestService(mockClient)
-	_, err := svc.EnsureFolderHierarchy(context.Background(), "team-a")
+	_, err := svc.ensureFolderHierarchy(context.Background(), "team-a")
 	if err == nil {
 		t.Fatal("expected error, got nil")
-	}
-	if !errors.Is(err, errors.Unwrap(err)) {
-		// Just check it wraps nicely
 	}
 }
 
@@ -212,7 +211,7 @@ func TestEnsureFolderHierarchy_ThreeLevel(t *testing.T) {
 	})).Return(&folders.CreateFolderOK{Payload: &models.Folder{UID: uid3}}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.EnsureFolderHierarchy(context.Background(), "a/b/c")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), "a/b/c")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -235,8 +234,230 @@ func TestEnsureFolderHierarchy_GetFolderNon404Error(t *testing.T) {
 		goruntime.NewAPIError("internal server error", nil, http.StatusInternalServerError))
 
 	svc := newTestService(mockClient)
-	_, err := svc.EnsureFolderHierarchy(context.Background(), "team-a")
+	_, err := svc.ensureFolderHierarchy(context.Background(), "team-a")
 	if err == nil {
 		t.Fatal("expected error for 500 response, got nil")
 	}
+}
+
+// testOrg returns an organization domain object for use in tests.
+func testOrg() *organization.Organization {
+	return organization.NewFromGrafana(1, "test-org")
+}
+
+// setupOrgContextMocks sets up the org context switching mocks for CleanupOrphanedFoldersForOrg tests.
+func setupOrgContextMocks(mockClient *mocks.MockGrafanaClient) {
+	mockClient.On("OrgID").Return(int64(0))
+	mockClient.On("WithOrgID", int64(1)).Return(mockClient)
+	mockClient.On("WithOrgID", int64(0)).Return(mockClient)
+}
+
+func TestCleanupOrphanedFoldersForOrg_DeletesEmptyOrphanedFolder(t *testing.T) {
+	mockClient := &mocks.MockGrafanaClient{}
+	mockFolders := &mocks.MockFoldersClient{}
+	setupOrgContextMocks(mockClient)
+	mockClient.On("Folders").Return(mockFolders)
+
+	orphanUID := folder.GenerateUID("old-team")
+
+	svc := newTestService(mockClient)
+
+	// GetFolders returns one operator-managed folder
+	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: "old-team"}},
+	}, nil)
+
+	// Folder is empty
+	mockFolders.On("GetFolderDescendantCounts", orphanUID).Return(&folders.GetFolderDescendantCountsOK{
+		Payload: map[string]int64{},
+	}, nil)
+
+	// DeleteFolder should be called
+	mockFolders.On("DeleteFolder", mock.MatchedBy(func(params *folders.DeleteFolderParams) bool {
+		return params.FolderUID == orphanUID
+	})).Return(&folders.DeleteFolderOK{}, nil)
+
+	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), map[string]struct{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	mockFolders.AssertExpectations(t)
+}
+
+func TestCleanupOrphanedFoldersForOrg_SkipsNonOperatorManagedFolders(t *testing.T) {
+	mockClient := &mocks.MockGrafanaClient{}
+	mockFolders := &mocks.MockFoldersClient{}
+	setupOrgContextMocks(mockClient)
+	mockClient.On("Folders").Return(mockFolders)
+
+	svc := newTestService(mockClient)
+
+	// GetFolders returns a user-created folder (no gs- prefix)
+	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+		Payload: []*models.FolderSearchHit{{UID: "user-folder-123", Title: "My Folder"}},
+	}, nil)
+
+	// GetFolderDescendantCounts and DeleteFolder should NOT be called
+	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), map[string]struct{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	mockFolders.AssertNotCalled(t, "GetFolderDescendantCounts", mock.Anything)
+	mockFolders.AssertNotCalled(t, "DeleteFolder", mock.Anything)
+}
+
+func TestCleanupOrphanedFoldersForOrg_NonEmptyFolderReturnsError(t *testing.T) {
+	mockClient := &mocks.MockGrafanaClient{}
+	mockFolders := &mocks.MockFoldersClient{}
+	setupOrgContextMocks(mockClient)
+	mockClient.On("Folders").Return(mockFolders)
+
+	orphanUID := folder.GenerateUID("old-team")
+
+	svc := newTestService(mockClient)
+
+	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: "old-team"}},
+	}, nil)
+
+	// Folder has descendants
+	mockFolders.On("GetFolderDescendantCounts", orphanUID).Return(&folders.GetFolderDescendantCountsOK{
+		Payload: map[string]int64{"dashboards": 3},
+	}, nil)
+
+	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), map[string]struct{}{})
+	if err == nil {
+		t.Fatal("expected error for non-empty orphaned folder, got nil")
+	}
+	if !strings.Contains(err.Error(), "not empty") {
+		t.Errorf("expected error to mention 'not empty', got: %v", err)
+	}
+
+	// DeleteFolder should NOT have been called
+	mockFolders.AssertNotCalled(t, "DeleteFolder", mock.Anything)
+}
+
+func TestCleanupOrphanedFoldersForOrg_DeleteErrorIsReturned(t *testing.T) {
+	mockClient := &mocks.MockGrafanaClient{}
+	mockFolders := &mocks.MockFoldersClient{}
+	setupOrgContextMocks(mockClient)
+	mockClient.On("Folders").Return(mockFolders)
+
+	orphanUID := folder.GenerateUID("old-team")
+
+	svc := newTestService(mockClient)
+
+	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: "old-team"}},
+	}, nil)
+
+	mockFolders.On("GetFolderDescendantCounts", orphanUID).Return(&folders.GetFolderDescendantCountsOK{
+		Payload: map[string]int64{},
+	}, nil)
+
+	mockFolders.On("DeleteFolder", mock.Anything).Return(nil, errors.New("permission denied"))
+
+	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), map[string]struct{}{})
+	if err == nil {
+		t.Fatal("expected error when delete fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to delete orphaned folder") {
+		t.Errorf("expected delete error message, got: %v", err)
+	}
+}
+
+func TestCleanupOrphanedFoldersForOrg_DescendantCountsErrorIsReturned(t *testing.T) {
+	mockClient := &mocks.MockGrafanaClient{}
+	mockFolders := &mocks.MockFoldersClient{}
+	setupOrgContextMocks(mockClient)
+	mockClient.On("Folders").Return(mockFolders)
+
+	orphanUID := folder.GenerateUID("old-team")
+
+	svc := newTestService(mockClient)
+
+	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: "old-team"}},
+	}, nil)
+
+	mockFolders.On("GetFolderDescendantCounts", orphanUID).Return(nil, errors.New("grafana error"))
+
+	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), map[string]struct{}{})
+	if err == nil {
+		t.Fatal("expected error when descendant counts fail, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to get descendant counts") {
+		t.Errorf("expected descendant counts error message, got: %v", err)
+	}
+}
+
+func TestCleanupOrphanedFoldersForOrg_AccumulatesMultipleErrors(t *testing.T) {
+	mockClient := &mocks.MockGrafanaClient{}
+	mockFolders := &mocks.MockFoldersClient{}
+	setupOrgContextMocks(mockClient)
+	mockClient.On("Folders").Return(mockFolders)
+
+	uid1 := folder.GenerateUID("folder-a")
+	uid2 := folder.GenerateUID("folder-b")
+
+	svc := newTestService(mockClient)
+
+	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+		Payload: []*models.FolderSearchHit{
+			{UID: uid1, Title: "folder-a"},
+			{UID: uid2, Title: "folder-b"},
+		},
+	}, nil)
+
+	// First folder: descendant counts fail
+	mockFolders.On("GetFolderDescendantCounts", uid1).Return(nil, errors.New("error-1"))
+
+	// Second folder: non-empty
+	mockFolders.On("GetFolderDescendantCounts", uid2).Return(&folders.GetFolderDescendantCountsOK{
+		Payload: map[string]int64{"dashboards": 1},
+	}, nil)
+
+	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), map[string]struct{}{})
+	if err == nil {
+		t.Fatal("expected errors, got nil")
+	}
+
+	errStr := err.Error()
+	if !strings.Contains(errStr, "failed to get descendant counts") {
+		t.Errorf("expected descendant counts error, got: %v", err)
+	}
+	if !strings.Contains(errStr, "not empty") {
+		t.Errorf("expected non-empty error, got: %v", err)
+	}
+}
+
+func TestCleanupOrphanedFoldersForOrg_SkipsReferencedFolders(t *testing.T) {
+	mockClient := &mocks.MockGrafanaClient{}
+	mockFolders := &mocks.MockFoldersClient{}
+	setupOrgContextMocks(mockClient)
+	mockClient.On("Folders").Return(mockFolders)
+
+	referencedUID := folder.GenerateUID("team-a")
+
+	svc := newTestService(mockClient)
+
+	// Pass the referenced UID in requiredUIDs
+	requiredUIDs := map[string]struct{}{
+		referencedUID: {},
+	}
+
+	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+		Payload: []*models.FolderSearchHit{{UID: referencedUID, Title: "team-a"}},
+	}, nil)
+
+	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), requiredUIDs)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should not attempt to check or delete a referenced folder
+	mockFolders.AssertNotCalled(t, "GetFolderDescendantCounts", mock.Anything)
+	mockFolders.AssertNotCalled(t, "DeleteFolder", mock.Anything)
 }

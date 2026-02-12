@@ -1,6 +1,7 @@
 package folder_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
@@ -270,6 +271,26 @@ func TestValidatePath(t *testing.T) {
 			name:    "leading and trailing slashes",
 			path:    "/team-a/",
 			wantErr: true,
+		},
+		{
+			name:    "segment exceeds max title length",
+			path:    "team-a/" + strings.Repeat("a", folder.MaxTitleLength+1),
+			wantErr: true,
+		},
+		{
+			name:    "segment at max title length is valid",
+			path:    strings.Repeat("a", folder.MaxTitleLength),
+			wantErr: false,
+		},
+		{
+			name:    "path exceeds max depth",
+			path:    "a/b/c/d/e",
+			wantErr: true,
+		},
+		{
+			name:    "path at max depth is valid",
+			path:    "a/b/c/d",
+			wantErr: false,
 		},
 	}
 

@@ -14,6 +14,12 @@ const (
 
 	// Description is set on operator-managed folders for human readability.
 	Description = "managed-by: observability-operator"
+
+	// MaxTitleLength is the maximum length of a Grafana folder title.
+	MaxTitleLength = 189
+
+	// MaxDepth is the maximum nesting depth for folder hierarchies.
+	MaxDepth = 4
 )
 
 // Folder represents a single Grafana folder managed by the operator.
@@ -86,9 +92,17 @@ func ValidatePath(path string) error {
 	}
 
 	segments := strings.Split(path, "/")
+
+	if len(segments) > MaxDepth {
+		return ErrFolderPathTooDeep
+	}
+
 	for _, segment := range segments {
 		if segment == "" {
 			return ErrInvalidFolderPath
+		}
+		if len(segment) > MaxTitleLength {
+			return ErrFolderNameTooLong
 		}
 	}
 

@@ -86,7 +86,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
-	grafanaService := grafana.NewService(r.Client, grafanaAPI, r.cfg)
+	grafanaService := grafana.NewService(grafanaAPI, r.cfg)
 
 	// Handle deleted grafana organizations
 	if !grafanaOrganization.DeletionTimestamp.IsZero() {
