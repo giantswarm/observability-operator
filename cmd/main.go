@@ -189,7 +189,7 @@ func parseFlags() (err error) {
 	pflag.DurationVar(&cfg.Monitoring.WALTruncateFrequency, flagMonitoringWALTruncateFrequency, 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
 	pflag.StringVar(&cfg.Monitoring.MetricsQueryURL, flagMonitoringMetricsQueryURL, "http://mimir-gateway.mimir.svc/prometheus",
-		"URL to query for cluster metrics")
+		"URL to query for cluster metrics (internal Mimir query endpoint)")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, false,
 		"Enable/disable network monitoring in Alloy logging configuration")
 
@@ -285,7 +285,8 @@ func setupApplication() error {
 	opts := zap.Options{
 		Development: false,
 	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	logger := zap.New(zap.UseFlagOptions(&opts))
+	ctrl.SetLogger(logger)
 
 	// Load environment variables
 	_, err := env.UnmarshalFromEnviron(&cfg.Environment)
@@ -360,7 +361,7 @@ func setupApplication() error {
 	// Create Grafana client generator for dependency injection
 	grafanaClientGen := &grafanaclient.DefaultGrafanaClientGenerator{}
 	// Setup controller for the Cluster resource.
-	err = controller.SetupClusterMonitoringReconciler(mgr, cfg)
+	err = controller.SetupClusterMonitoringReconciler(mgr, cfg, logger)
 	if err != nil {
 		return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
 	}
