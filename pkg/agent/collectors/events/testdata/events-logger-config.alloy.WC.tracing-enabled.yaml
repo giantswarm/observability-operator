@@ -127,7 +127,7 @@ alloy:
         otelcol.exporter.otlp "giantswarm" {
         	client {
         		auth     = otelcol.auth.basic.tracing_credentials.handler
-        		endpoint = "tempo-gateway.test.gigantic.io:443"
+        		endpoint = "tempo.test.gigantic.io:443"
         		tls {
         			insecure_skip_verify = false
         		}

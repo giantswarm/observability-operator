@@ -12,14 +12,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 )
 
-const (
-	mimirRulerAPIURLKey            = "mimirRulerAPIURL"
-	mimirRemoteWriteAPINameKey     = "mimirRemoteWriteAPIName"
-	mimirRemoteWriteAPIURLKey      = "mimirRemoteWriteAPIURL"
-	mimirRemoteWriteAPIUsernameKey = "mimirRemoteWriteAPIUsername"
-	mimirRemoteWriteAPIPasswordKey = "mimirRemoteWriteAPIPassword" // #nosec G101
-)
-
 func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string]string, error) {
 	remoteWriteUrl := fmt.Sprintf(common.MimirRemoteWriteEndpointURLFormat, a.Config.Cluster.BaseDomain)
 	password, err := a.AuthManager.GetClusterPassword(ctx, cluster)
@@ -28,14 +20,16 @@ func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 	}
 
 	mimirRulerUrl := fmt.Sprintf(common.MimirBaseURLFormat, a.Config.Cluster.BaseDomain)
+	mimirQueryUrl := fmt.Sprintf(common.MimirQueryEndpointURLFormat, a.Config.Cluster.BaseDomain)
 
 	// Build secret environment variables map
 	secrets := map[string]string{
-		mimirRulerAPIURLKey:            mimirRulerUrl,
-		mimirRemoteWriteAPIURLKey:      remoteWriteUrl,
-		mimirRemoteWriteAPINameKey:     common.MimirRemoteWriteName,
-		mimirRemoteWriteAPIUsernameKey: cluster.Name,
-		mimirRemoteWriteAPIPasswordKey: password,
+		common.MimirQueryAPIURLKey:            mimirQueryUrl,
+		common.MimirRulerAPIURLKey:            mimirRulerUrl,
+		common.MimirRemoteWriteAPIURLKey:      remoteWriteUrl,
+		common.MimirRemoteWriteAPINameKey:     common.MimirRemoteWriteName,
+		common.MimirRemoteWriteAPIUsernameKey: cluster.Name,
+		common.MimirRemoteWriteAPIPasswordKey: password,
 	}
 
 	return secrets, nil

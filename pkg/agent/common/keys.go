@@ -34,22 +34,24 @@ const (
 	TempoUsernameKey = "tracing-username" // Username for Tempo authentication
 	TempoPasswordKey = "tracing-password" // Password for Tempo authentication
 
-	// TempoIngressURLFormat is the URL template for Tempo gateway ingress
-	TempoIngressURLFormat = "tempo-gateway.%s"
+	// TempoIngressURLFormat is the URL template for Tempo ingress
+	TempoIngressURLFormat = "tempo.%s"
 
 	// --- Mimir Configuration (Metrics) ---
 	// Used by metrics collector for metrics storage
-
-	// Mimir secret keys for remote write configuration and authentication
-	MimirRulerAPIURLKey            = "mimirRulerAPIURL"            // URL for Mimir ruler API
-	MimirRemoteWriteAPIUsernameKey = "mimirRemoteWriteAPIUsername" // Username for remote write auth
-	MimirRemoteWriteAPIPasswordKey = "mimirRemoteWriteAPIPassword" // Password for remote write auth
-	MimirRemoteWriteAPIURLKey      = "mimirRemoteWriteAPIURL"      // URL for remote write endpoint
-	MimirRemoteWriteAPINameKey     = "mimirRemoteWriteAPIName"     // Name identifier for remote write
 
 	// Mimir default values and URL templates
 	MimirRemoteWriteName              = "mimir"                             // Default remote write name
 	MimirBaseURLFormat                = "https://mimir.%s"                  // Base URL template for Mimir
 	MimirRemoteWriteEndpointURLFormat = MimirBaseURLFormat + "/api/v1/push" // Full remote write endpoint URL
+	MimirQueryEndpointURLFormat       = MimirBaseURLFormat + "/prometheus"  // Prometheus-compatible query endpoint for KEDA
 	MimirRemoteWriteTimeout           = "60s"                               // Timeout for remote write operations
+
+	// Mimir secret keys for remote write configuration and authentication
+	MimirQueryAPIURLKey            = "mimirQueryAPIURL"            // URL for Mimir query endpoint
+	MimirRulerAPIURLKey            = "mimirRulerAPIURL"            // URL for Mimir ruler API
+	MimirRemoteWriteAPIUsernameKey = "mimirRemoteWriteAPIUsername" // Username for remote write auth
+	MimirRemoteWriteAPIPasswordKey = "mimirRemoteWriteAPIPassword" // Password for remote write auth
+	MimirRemoteWriteAPIURLKey      = "mimirRemoteWriteAPIURL"      // URL for remote write endpoint
+	MimirRemoteWriteAPINameKey     = "mimirRemoteWriteAPIName"     // Name identifier for remote write
 )
