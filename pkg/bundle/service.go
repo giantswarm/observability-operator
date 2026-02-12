@@ -9,7 +9,10 @@ import (
 	"github.com/blang/semver/v4"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,6 +25,12 @@ import (
 )
 
 const observabilityBundleAppName string = "observability-bundle"
+
+var helmReleaseGVK = schema.GroupVersionKind{
+	Group:   "helm.toolkit.fluxcd.io",
+	Version: "v2",
+	Kind:    "HelmRelease",
+}
 
 type BundleConfigurationService struct {
 	client client.Client
@@ -42,8 +51,16 @@ func getConfigMapObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 	}
 }
 
+func getBundleObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
+	return types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", cluster.Name, observabilityBundleAppName),
+		Namespace: cluster.Namespace,
+	}
+}
+
 // Configure creates or updates the observability-bundle configuration based on
-// cluster feature flags and links it to the bundle app via extraConfigs.
+// cluster feature flags and links it to the bundle CR (HelmRelease or App) via
+// valuesFrom or extraConfigs respectively.
 func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
 
@@ -56,13 +73,13 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 	}
 	logger.Info("observability-bundle configmap created or updated successfully")
 
-	logger.Info("configuring observability-bundle app")
-	err = s.configureApp(ctx, cluster)
+	logger.Info("configuring observability-bundle")
+	err = s.configureBundle(ctx, cluster)
 	if err != nil {
-		return fmt.Errorf("failed to configure observability-bundle app: %w", err)
+		return fmt.Errorf("failed to configure observability-bundle: %w", err)
 	}
 
-	logger.Info("observability-bundle app configured successfully")
+	logger.Info("observability-bundle configured successfully")
 
 	return nil
 }
@@ -125,14 +142,89 @@ func (s BundleConfigurationService) createOrUpdateConfigMap(ctx context.Context,
 	return nil
 }
 
-func (s BundleConfigurationService) configureApp(ctx context.Context, cluster *clusterv1.Cluster) error {
+// configureBundle detects whether the cluster uses a Flux HelmRelease or a
+// Giant Swarm App CR for the observability-bundle, and configures the
+// appropriate resource. It tries HelmRelease first, falling back to App CR.
+func (s BundleConfigurationService) configureBundle(ctx context.Context, cluster *clusterv1.Cluster) error {
+	bundleObjectKey := getBundleObjectKey(cluster)
+
+	// Try HelmRelease first
+	hr, err := s.getHelmRelease(ctx, bundleObjectKey)
+	if err == nil {
+		return s.configureHelmRelease(ctx, cluster, hr)
+	}
+	if !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get observability-bundle helmrelease: %w", err)
+	}
+
+	// Fall back to App CR
+	return s.configureApp(ctx, cluster)
+}
+
+// getHelmRelease fetches a HelmRelease as an unstructured object.
+func (s BundleConfigurationService) getHelmRelease(ctx context.Context, key types.NamespacedName) (*unstructured.Unstructured, error) {
+	hr := &unstructured.Unstructured{}
+	hr.SetGroupVersionKind(helmReleaseGVK)
+	err := s.client.Get(ctx, key, hr)
+	if err != nil {
+		return nil, err
+	}
+	return hr, nil
+}
+
+// configureHelmRelease updates the HelmRelease's spec.valuesFrom to reference
+// the observability-platform-configuration ConfigMap.
+func (s BundleConfigurationService) configureHelmRelease(ctx context.Context, cluster *clusterv1.Cluster, hr *unstructured.Unstructured) error {
 	configMapObjectKey := getConfigMapObjectKey(cluster)
 
-	// Get observability-bundle app metadata.
-	appObjectKey := types.NamespacedName{
-		Name:      fmt.Sprintf("%s-%s", cluster.Name, observabilityBundleAppName),
-		Namespace: cluster.Namespace,
+	desiredEntry := map[string]interface{}{
+		"kind":      "ConfigMap",
+		"name":      configMapObjectKey.Name,
+		"valuesKey": "values",
 	}
+
+	spec, ok := hr.Object["spec"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("helmrelease %s/%s has no spec", hr.GetNamespace(), hr.GetName())
+	}
+
+	// Get existing valuesFrom or initialize empty slice
+	var valuesFrom []interface{}
+	if existing, ok := spec["valuesFrom"].([]interface{}); ok {
+		valuesFrom = existing
+	}
+
+	// Find existing entry by kind+name match
+	foundIndex := slices.IndexFunc(valuesFrom, func(item interface{}) bool {
+		entry, ok := item.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		return entry["kind"] == desiredEntry["kind"] && entry["name"] == desiredEntry["name"]
+	})
+
+	if foundIndex == -1 {
+		valuesFrom = append(valuesFrom, desiredEntry)
+	} else {
+		if reflect.DeepEqual(valuesFrom[foundIndex], desiredEntry) {
+			return nil // Already up to date
+		}
+		valuesFrom[foundIndex] = desiredEntry
+	}
+
+	spec["valuesFrom"] = valuesFrom
+
+	err := s.client.Update(ctx, hr)
+	if err != nil {
+		return fmt.Errorf("failed to update observability-bundle helmrelease: %w", err)
+	}
+
+	return nil
+}
+
+func (s BundleConfigurationService) configureApp(ctx context.Context, cluster *clusterv1.Cluster) error {
+	configMapObjectKey := getConfigMapObjectKey(cluster)
+	appObjectKey := getBundleObjectKey(cluster)
 
 	var current appv1.App
 	err := s.client.Get(ctx, appObjectKey, &current)
@@ -193,20 +285,52 @@ func (s BundleConfigurationService) RemoveConfiguration(ctx context.Context, clu
 	return nil
 }
 
-// GetObservabilityBundleAppVersion retrieves the version of the observability-bundle app
-// installed in the cluster. It returns an error if the app is not found or if
-// the version cannot be parsed.
+// GetObservabilityBundleAppVersion retrieves the version of the observability-bundle
+// installed in the cluster. It supports both Flux HelmRelease and Giant Swarm App CRs,
+// trying HelmRelease first and falling back to App CR.
 func (s BundleConfigurationService) GetObservabilityBundleAppVersion(ctx context.Context, cluster *clusterv1.Cluster) (version semver.Version, err error) {
-	// Get observability-bundle app metadata.
-	appMeta := types.NamespacedName{
-		Name:      fmt.Sprintf("%s-%s", cluster.GetName(), observabilityBundleAppName),
-		Namespace: cluster.GetNamespace(),
+	bundleObjectKey := getBundleObjectKey(cluster)
+
+	// Try HelmRelease first
+	hr, err := s.getHelmRelease(ctx, bundleObjectKey)
+	if err == nil {
+		return getHelmReleaseVersion(hr)
 	}
-	// Retrieve the app.
+	if !apierrors.IsNotFound(err) {
+		return version, fmt.Errorf("failed to get observability-bundle helmrelease: %w", err)
+	}
+
+	// Fall back to App CR
 	var currentApp appv1.App
-	err = s.client.Get(ctx, appMeta, &currentApp)
+	err = s.client.Get(ctx, bundleObjectKey, &currentApp)
 	if err != nil {
 		return version, fmt.Errorf("failed to get observability-bundle app: %w", err)
 	}
 	return semver.Parse(currentApp.Spec.Version)
+}
+
+// getHelmReleaseVersion extracts the chart version from an unstructured HelmRelease.
+// It reads spec.chart.spec.version.
+func getHelmReleaseVersion(hr *unstructured.Unstructured) (semver.Version, error) {
+	spec, ok := hr.Object["spec"].(map[string]interface{})
+	if !ok {
+		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec", hr.GetNamespace(), hr.GetName())
+	}
+
+	chart, ok := spec["chart"].(map[string]interface{})
+	if !ok {
+		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec.chart (may be using chartRef)", hr.GetNamespace(), hr.GetName())
+	}
+
+	chartSpec, ok := chart["spec"].(map[string]interface{})
+	if !ok {
+		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec.chart.spec", hr.GetNamespace(), hr.GetName())
+	}
+
+	versionStr, ok := chartSpec["version"].(string)
+	if !ok {
+		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec.chart.spec.version", hr.GetNamespace(), hr.GetName())
+	}
+
+	return semver.Parse(versionStr)
 }
