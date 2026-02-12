@@ -11,22 +11,31 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 )
 
-// ConfigureDashboard configures a dashboard
+// ConfigureDashboard configures a dashboard, ensuring folder hierarchy exists and injecting managed tag
 func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
 	return s.withinOrganization(ctx, dashboard, func(ctx context.Context) error {
 		logger := log.FromContext(ctx)
+
+		// Ensure folder hierarchy exists and get the leaf folder UID
+		folderUID, err := s.EnsureFolderHierarchy(ctx, dashboard.FolderPath())
+		if err != nil {
+			return fmt.Errorf("failed to ensure folder hierarchy: %w", err)
+		}
 
 		dashboardContent := dashboard.Content()
 		// removes the "id" field from the content which can cause conflicts during dashboard creation/update
 		delete(dashboardContent, "id")
 
-		// Create or update dashboard
-		err := s.PublishDashboard(dashboardContent)
+		// Inject the managed tag so operator dashboards are distinguishable
+		InjectManagedTag(dashboardContent)
+
+		// Create or update dashboard in the target folder
+		err = s.PublishDashboard(dashboardContent, folderUID)
 		if err != nil {
 			return fmt.Errorf("failed to update dashboard: %w", err)
 		}
 
-		logger.Info("updated dashboard")
+		logger.Info("updated dashboard", "folderPath", dashboard.FolderPath(), "folderUID", folderUID)
 		return nil
 	})
 }
@@ -50,13 +59,14 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 	})
 }
 
-// PublishDashboard creates or updates a dashboard in Grafana
-func (s *Service) PublishDashboard(dashboard map[string]any) error {
+// PublishDashboard creates or updates a dashboard in Grafana.
+// folderUID specifies the target folder; empty string means the General folder.
+func (s *Service) PublishDashboard(dashboard map[string]any, folderUID string) error {
 	_, err := s.grafanaClient.Dashboards().PostDashboard(&models.SaveDashboardCommand{
 		Dashboard: any(dashboard),
+		FolderUID: folderUID,
 		Message:   "Added by observability-operator",
 		Overwrite: true, // allows dashboard to be updated by the same UID
-
 	})
 	if err != nil {
 		return fmt.Errorf("failed to publish dashboard: %w", err)

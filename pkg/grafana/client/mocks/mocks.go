@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/client/datasources"
+	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/client/orgs"
 	"github.com/grafana/grafana-openapi-client-go/client/sso_settings"
 	"github.com/stretchr/testify/mock"
@@ -45,6 +46,11 @@ func (m *MockGrafanaClient) Orgs() orgs.ClientService {
 func (m *MockGrafanaClient) Dashboards() dashboards.ClientService {
 	args := m.Called()
 	return args.Get(0).(dashboards.ClientService)
+}
+
+func (m *MockGrafanaClient) Folders() folders.ClientService {
+	args := m.Called()
+	return args.Get(0).(folders.ClientService)
 }
 
 func (m *MockGrafanaClient) SsoSettings() sso_settings.ClientService {

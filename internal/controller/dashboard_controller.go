@@ -202,6 +202,13 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 		return errors.Join(errs...)
 	}
 
+	// Cleanup orphaned folders after all dashboards are processed
+	if org := r.dashboardMapper.ExtractOrganization(dashboardConfigMap); org != "" {
+		if err := grafanaService.CleanupOrphanedFoldersForOrg(ctx, org); err != nil {
+			logger.Error(err, "failed to cleanup orphaned folders")
+		}
+	}
+
 	return nil
 }
 
@@ -246,6 +253,13 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 	// If any errors occurred, combine them and return
 	if len(errs) > 0 {
 		return errors.Join(errs...)
+	}
+
+	// Cleanup orphaned folders after all dashboards are deleted
+	if org := r.dashboardMapper.ExtractOrganization(dashboard); org != "" {
+		if err := grafanaService.CleanupOrphanedFoldersForOrg(ctx, org); err != nil {
+			logger.Error(err, "failed to cleanup orphaned folders")
+		}
 	}
 
 	// Finalizer handling needs to come last.
