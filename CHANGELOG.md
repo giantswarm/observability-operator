@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add support for organizing Grafana dashboards into folders and subfolders via the `observability.giantswarm.io/folder` annotation.
+
 ## [0.59.2] - 2026-02-12
 
 ### Changed

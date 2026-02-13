@@ -69,7 +69,7 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 	})
 }
 
-const managedDashboardTag = "managed-by: gitops"
+const managedDashboardTag = "managed-by: observability-operator"
 
 // injectManagedTag ensures the managed tag is present in the dashboard content's tags array.
 // This is idempotent - if the tag already exists, it does nothing.
