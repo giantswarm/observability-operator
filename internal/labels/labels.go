@@ -9,5 +9,5 @@ const (
 	GrafanaOrganizationAnnotation = "observability.giantswarm.io/organization"
 
 	// GrafanaFolderAnnotation is the annotation/label key for the Grafana folder path.
-	GrafanaFolderAnnotation = "observability.giantswarm.io/grafana-folder"
+	GrafanaFolderAnnotation = "observability.giantswarm.io/folder"
 )
