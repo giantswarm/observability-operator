@@ -37,7 +37,7 @@ workflows:
             only: /^v.*/
 
     # This job is used to validate the Alertmanager config.
-    # It requires the template-chart job to be run first because it needs 
+    # It requires the template-chart job to be run first because it needs
     # the chart to be a valid Helm chart to generate the Alertmanager config to validate.
     - validate-alertmanager-config:
         name: validate-alertmanager-config
@@ -104,73 +104,3 @@ workflows:
             - main
         requires:
         - push-to-app-catalog
-
-    - architect/push-to-app-collection:
-        context: architect
-        name: capa-app-collection
-        app_name: observability-operator
-        app_namespace: monitoring
-        app_collection_repo: capa-app-collection
-        requires:
-        - push-to-app-catalog
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v.*/
-
-    - architect/push-to-app-collection:
-        context: architect
-        name: capz-app-collection
-        app_name: observability-operator
-        app_namespace: monitoring
-        app_collection_repo: capz-app-collection
-        requires:
-        - push-to-app-catalog
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v.*/
-
-    - architect/push-to-app-collection:
-        context: architect
-        name: cloud-director-app-collection
-        app_name: observability-operator
-        app_namespace: monitoring
-        app_collection_repo: cloud-director-app-collection
-        requires:
-        - push-to-app-catalog
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v.*/
-
-    - architect/push-to-app-collection:
-        context: architect
-        name: vsphere-app-collection
-        app_name: observability-operator
-        app_namespace: monitoring
-        app_collection_repo: vsphere-app-collection
-        requires:
-        - push-to-app-catalog
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v.*/
-
-    - architect/push-to-app-collection:
-        context: architect
-        name: proxmox-app-collection
-        app_name: observability-operator
-        app_namespace: monitoring
-        app_collection_repo: proxmox-app-collection
-        requires:
-        - push-to-app-catalog
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v.*/
