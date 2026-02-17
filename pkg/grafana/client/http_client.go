@@ -27,12 +27,10 @@ func (g *grafanaHTTPClient) OrgID() int64 {
 	return g.api.OrgID()
 }
 
-// WithOrgID returns a new GrafanaClient scoped to the given organization ID.
-// The original client is not modified, making it safe for concurrent use.
+// WithOrgID sets the organization ID for subsequent requests and returns the client
 func (g *grafanaHTTPClient) WithOrgID(orgID int64) GrafanaClient {
-	return &grafanaHTTPClient{
-		api: g.api.WithOrgID(orgID),
-	}
+	g.api = g.api.WithOrgID(orgID)
+	return g
 }
 
 // Datasources returns the datasources client service

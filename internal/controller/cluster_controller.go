@@ -422,32 +422,42 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			errs = append(errs, fmt.Errorf("remove bundle configuration: %w", err))
 		}
 
-		// Unconditionally clean up all Alloy configs - the finalizer's presence means
-		// we may have created resources regardless of current config state.
-		err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy monitoring config")
-			errs = append(errs, fmt.Errorf("delete alloy metrics: %w", err))
-		}
-
-		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy logs config")
-			errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
-		}
-
-		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy events config")
-			errs = append(errs, fmt.Errorf("alloy events reconcile delete: %w", err))
-		}
-
-		// Unconditionally delete cluster auth for all observability backends
-		for authType, entry := range r.authManagers {
-			err = entry.authManager.DeleteClusterAuth(ctx, cluster)
+		// Metrics-specific: Delete Alloy monitoring configuration
+		if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
+			err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
-				logger.Error(err, fmt.Sprintf("failed to delete cluster auth for %s", authType))
-				errs = append(errs, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
+				logger.Error(err, "failed to delete alloy monitoring config")
+				errs = append(errs, fmt.Errorf("delete alloy metrics: %w", err))
+			}
+		}
+
+		// Logging-specific: Alloy logs configuration
+		if r.Config.Logging.IsLoggingEnabled(cluster) {
+			// Clean up any existing alloy logs configuration
+			// TODO make sure we can enable network monitoring separately from logging
+			err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
+			if err != nil {
+				logger.Error(err, "failed to delete alloy logs config")
+				errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
+			}
+
+			// Clean up any existing alloy events configuration
+			// TODO make sure we can enable tracing separately from logging
+			err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
+			if err != nil {
+				logger.Error(err, "failed to delete alloy events config")
+				errs = append(errs, fmt.Errorf("alloy events reconcile delete: %w", err))
+			}
+		}
+
+		// Delete cluster auth for all enabled observability backends
+		for authType, entry := range r.authManagers {
+			if entry.isEnabled(cluster) {
+				err = entry.authManager.DeleteClusterAuth(ctx, cluster)
+				if err != nil {
+					logger.Error(err, fmt.Sprintf("failed to delete cluster auth for %s", authType))
+					errs = append(errs, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
+				}
 			}
 		}
 		// TODO add deletion of rules in the Mimir ruler on cluster deletion

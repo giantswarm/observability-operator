@@ -43,7 +43,6 @@ func (src *GrafanaOrganization) ConvertTo(dstRaw conversion.Hub) error {
 			Name: ds.Name,
 		}
 	}
-	dst.Status.Conditions = src.Status.Conditions
 
 	return nil
 }
@@ -82,7 +81,6 @@ func (dst *GrafanaOrganization) ConvertFrom(srcRaw conversion.Hub) error {
 			Name: ds.Name,
 		}
 	}
-	dst.Status.Conditions = src.Status.Conditions
 
 	return nil
 }

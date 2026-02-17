@@ -93,12 +93,6 @@ type GrafanaOrganizationStatus struct {
 	// DataSources is a list of grafana data sources that are available to the Grafana organization.
 	// +optional
 	DataSources []DataSource `json:"dataSources"`
-
-	// Conditions represent the latest available observations of the GrafanaOrganization's state.
-	// +optional
-	// +listType=map
-	// +listMapKey=type
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // DataSource defines the name and id for data sources.
@@ -116,7 +110,6 @@ type DataSource struct {
 //+kubebuilder:storageversion
 //+kubebuilder:printcolumn:JSONPath=".spec.displayName",name=DisplayName,type=string
 //+kubebuilder:printcolumn:JSONPath=".status.orgID",name=OrgID,type=integer
-//+kubebuilder:printcolumn:JSONPath=".status.conditions[?(@.type==\"Ready\")].status",name=Ready,type=string
 
 // GrafanaOrganization is the Schema describing a Grafana organization. Its lifecycle is managed by the observability-operator.
 type GrafanaOrganization struct {
