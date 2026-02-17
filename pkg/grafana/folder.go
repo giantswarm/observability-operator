@@ -70,11 +70,11 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, path string) (strin
 // operator-managed folders that are no longer referenced by any dashboard.
 // requiredUIDs is the set of folder UIDs still needed by dashboard ConfigMaps.
 func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organization.Organization, requiredUIDs map[string]struct{}) error {
-	return s.withinOrganization(ctx, org, func(ctx context.Context) error {
+	return s.withinOrganization(ctx, org, func(ctx context.Context, scoped *Service) error {
 		logger := log.FromContext(ctx)
 
 		// List all folders in the current org
-		allFolders, err := s.grafanaClient.Folders().GetFolders(folders.NewGetFoldersParams())
+		allFolders, err := scoped.grafanaClient.Folders().GetFolders(folders.NewGetFoldersParams())
 		if err != nil {
 			return fmt.Errorf("failed to list folders: %w", err)
 		}
@@ -91,7 +91,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			}
 
 			// Check if folder is empty before deleting
-			counts, err := s.grafanaClient.Folders().GetFolderDescendantCounts(f.UID)
+			counts, err := scoped.grafanaClient.Folders().GetFolderDescendantCounts(f.UID)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("failed to get descendant counts for folder %q: %w", f.UID, err))
 				continue
@@ -111,7 +111,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			}
 
 			logger.Info("deleting orphaned folder", "uid", f.UID, "title", f.Title)
-			_, err = s.grafanaClient.Folders().DeleteFolder(folders.NewDeleteFolderParams().WithFolderUID(f.UID))
+			_, err = scoped.grafanaClient.Folders().DeleteFolder(folders.NewDeleteFolderParams().WithFolderUID(f.UID))
 			if err != nil {
 				errs = append(errs, fmt.Errorf("failed to delete orphaned folder %q: %w", f.UID, err))
 			}
