@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/prometheus/alertmanager/config"
 	v1 "k8s.io/api/core/v1"
@@ -31,6 +32,7 @@ const (
 
 type Service struct {
 	alertmanagerURL string
+	httpClient      *http.Client
 }
 
 // configRequest is the structure used to send the configuration to Alertmanager's API
@@ -41,11 +43,12 @@ type configRequest struct {
 }
 
 func New(cfg pkgconfig.Config) Service {
-	service := Service{
+	return Service{
 		alertmanagerURL: strings.TrimSuffix(cfg.Monitoring.AlertmanagerURL, "/"),
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 	}
-
-	return service
 }
 
 // ExtractAlertmanagerConfig extracts the raw config bytes.
@@ -141,14 +144,14 @@ func (s Service) Configure(ctx context.Context, alertmanagerConfigContent []byte
 	logger.WithValues("url", url, "data_size", dataLen, "config_size", len(alertmanagerConfigContent), "templates_count", len(templates)).Info("Alertmanager: sending configuration")
 
 	// Send request to Alertmanager's API
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set(common.OrgIDHeader, tenantID)
 	req.ContentLength = int64(dataLen)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}

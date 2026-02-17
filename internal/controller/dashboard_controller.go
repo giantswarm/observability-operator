@@ -110,6 +110,16 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return fmt.Errorf("failed to create label selector predicate: %w", err)
 	}
 
+	grafanaPodPredicate, err := predicate.LabelSelectorPredicate(
+		metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app.kubernetes.io/instance": "grafana",
+			},
+		})
+	if err != nil {
+		return fmt.Errorf("failed to create grafana pod label selector predicate: %w", err)
+	}
+
 	err = ctrl.NewControllerManagedBy(mgr).
 		Named("dashboard").
 		For(&v1.ConfigMap{}, builder.WithPredicates(labelSelectorPredicate)).
@@ -138,7 +148,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				}
 				return requests
 			}),
-			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
+			builder.WithPredicates(grafanaPodPredicate, predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
 	if err != nil {
@@ -204,7 +214,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 	// Cleanup orphaned folders after all dashboards are processed
 	if org != "" {
 		if err := r.cleanupOrphanedFolders(ctx, grafanaService, org); err != nil {
-			logger.Error(err, "failed to cleanup orphaned folders")
+			return fmt.Errorf("failed to cleanup orphaned folders: %w", err)
 		}
 	}
 
@@ -258,7 +268,7 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 	// Cleanup orphaned folders after all dashboards are deleted
 	if org != "" {
 		if err := r.cleanupOrphanedFolders(ctx, grafanaService, org); err != nil {
-			logger.Error(err, "failed to cleanup orphaned folders")
+			return fmt.Errorf("failed to cleanup orphaned folders: %w", err)
 		}
 	}
 
