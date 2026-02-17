@@ -15,76 +15,77 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
-// ConfigureDatasources ensures the datasources for the given organization are up to date.
+// ConfigureDatasource ensures the datasources for the given organization are up to date.
 // It creates, updates, or deletes datasources as necessary to match the desired state.
-func (s *Service) ConfigureDatasource(ctx context.Context, organization *organization.Organization) ([]Datasource, error) {
-	logger := log.FromContext(ctx)
+func (s *Service) ConfigureDatasource(ctx context.Context, org *organization.Organization) ([]Datasource, error) {
+	// Generate the desired datasources for the organization (config-only, no API calls)
+	desiredDatasources := s.generateDatasources(org)
 
-	// Generate the desired datasources for the organization
-	desiredDatasources := s.generateDatasources(organization)
+	var result []Datasource
+	err := s.withinOrganization(ctx, org, func(ctx context.Context, scoped *Service) error {
+		logger := log.FromContext(ctx)
 
-	// Configure Grafana client to use the correct organization
-	currentOrgID := s.grafanaClient.OrgID()
-	s.grafanaClient.WithOrgID(organization.ID())
-	defer s.grafanaClient.WithOrgID(currentOrgID)
+		// Fetch the currently configured datasources in Grafana
+		resp, err := scoped.grafanaClient.Datasources().GetDataSources()
+		if err != nil {
+			return fmt.Errorf("failed to get configured datasources: %w", err)
+		}
 
-	// Fetch the currently configured datasources in Grafana
-	resp, err := s.grafanaClient.Datasources().GetDataSources()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get configured datasources: %w", err)
-	}
+		// Update or delete existing datasources
+		for _, currentDatasource := range resp.GetPayload() {
+			// Check if the current datasource exists in the desired datasources
+			index := slices.IndexFunc(desiredDatasources, func(d Datasource) bool {
+				return d.UID == currentDatasource.UID
+			})
 
-	// Update or delete existing datasources
-	for _, currentDatasource := range resp.GetPayload() {
-		// Check if the current datasource exists in the desired datasources
-		index := slices.IndexFunc(desiredDatasources, func(d Datasource) bool {
-			return d.UID == currentDatasource.UID
-		})
+			if index >= 0 {
+				// Update the existing datasource
+				desiredDatasource := desiredDatasources[index]
 
-		if index >= 0 {
-			// Update the existing datasource
+				logger.Info("updating datasource", "datasource", desiredDatasource.UID)
+				desiredDatasource, err = scoped.updateDatasource(desiredDatasource)
+				if err != nil {
+					return err
+				}
+				// Set the ID of the updated datasource
+				desiredDatasources[index] = desiredDatasource
+				logger.Info("updated datasource", "datasource", desiredDatasource.UID)
+			} else {
+				if strings.HasPrefix(currentDatasource.UID, datasourceUIDPrefix) {
+					// Delete the datasource as it is no longer desired
+					logger.Info("deleting datasource", "datasource", currentDatasource.UID)
+					err := scoped.deleteDatasource(currentDatasource.UID)
+					if err != nil {
+						return err
+					}
+					logger.Info("deleted datasource", "datasource", currentDatasource.UID)
+				}
+			}
+		}
+
+		// Create any new datasources that do not exist yet
+		for index := range desiredDatasources {
 			desiredDatasource := desiredDatasources[index]
 
-			logger.Info("updating datasource", "datasource", desiredDatasource.UID)
-			desiredDatasource, err = s.updateDatasource(desiredDatasource)
-			if err != nil {
-				return nil, err
-			}
-			// Set the ID of the updated datasource
-			desiredDatasources[index] = desiredDatasource
-			logger.Info("updated datasource", "datasource", desiredDatasource.UID)
-		} else {
-			if strings.HasPrefix(currentDatasource.UID, datasourceUIDPrefix) {
-				// Delete the datasource as it is no longer desired
-				logger.Info("deleting datasource", "datasource", currentDatasource.UID)
-				err := s.deleteDatasource(currentDatasource.UID)
+			// If the datasource ID is 0, it means it does not exist yet and needs to be created
+			// We already took care of updating existing datasources ID in the previous loop
+			if desiredDatasource.ID == 0 {
+				logger.Info("creating datasource", "datasource", desiredDatasource.UID)
+				desiredDatasource, err = scoped.createDatasource(desiredDatasource)
 				if err != nil {
-					return nil, err
+					return err
 				}
-				logger.Info("deleted datasource", "datasource", currentDatasource.UID)
+				logger.Info("datasource created", "datasource", desiredDatasource.UID)
+				// Set the ID of the created datasource
+				desiredDatasources[index] = desiredDatasource
 			}
 		}
-	}
 
-	// Create any new datasources that do not exist yet
-	for index := range desiredDatasources {
-		desiredDatasource := desiredDatasources[index]
+		result = desiredDatasources
+		return nil
+	})
 
-		// If the datasource ID is 0, it means it does not exist yet and needs to be created
-		// We already took care of updating existing datasources ID in the previous loop
-		if desiredDatasource.ID == 0 {
-			logger.Info("creating datasource", "datasource", desiredDatasource.UID)
-			desiredDatasource, err = s.createDatasource(desiredDatasource)
-			if err != nil {
-				return nil, err
-			}
-			logger.Info("datasource created", "datasource", desiredDatasource.UID)
-			// Set the ID of the created datasource
-			desiredDatasources[index] = desiredDatasource
-		}
-	}
-
-	return desiredDatasources, nil
+	return result, err
 }
 
 // generateDatasources generates the list of datasources for a given organization.
