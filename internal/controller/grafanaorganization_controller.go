@@ -44,9 +44,9 @@ type GrafanaOrganizationReconciler struct {
 	cfg                config.Config
 	organizationMapper *mapper.OrganizationMapper
 
-	// ssoMu serializes SSO configuration updates to prevent concurrent reconciles
+	// ssoMutex serializes SSO configuration updates to prevent concurrent reconciles
 	// from clobbering each other's SSO org_mapping writes.
-	ssoMu sync.Mutex
+	ssoMutex sync.Mutex
 }
 
 func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
@@ -333,8 +333,8 @@ func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx conte
 // It uses a mutex to serialize concurrent SSO updates and prevent last-write-wins races
 // when multiple GrafanaOrganization reconciles happen in parallel.
 func (r *GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
-	r.ssoMu.Lock()
-	defer r.ssoMu.Unlock()
+	r.ssoMutex.Lock()
+	defer r.ssoMutex.Unlock()
 
 	allOrganizations, err := r.listActiveGrafanaOrganizations(ctx)
 	if err != nil {
