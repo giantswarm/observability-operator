@@ -46,7 +46,7 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 	}
 }
 
-func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, tracingEnabled bool, observabilityBundleVersion semver.Version) (map[string]string, error) {
+func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, observabilityBundleVersion semver.Version) (map[string]string, error) {
 	// Get list of tenants
 	tenants, err := a.TenantRepository.List(ctx)
 	if err != nil {
@@ -80,6 +80,7 @@ func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 		provider,
 		tempoURL,
 		tenants,
+		loggingEnabled,
 		tracingEnabled,
 		isWorkloadCluster,
 	)
@@ -88,7 +89,7 @@ func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	}
 
 	// Generate the values YAML that wraps the Alloy config
-	valuesYAML, err := a.generateEventsYAMLConfig(alloyConfig, tracingEnabled, isWorkloadCluster)
+	valuesYAML, err := a.generateEventsYAMLConfig(alloyConfig, loggingEnabled, tracingEnabled, isWorkloadCluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate events YAML config: %w", err)
 	}
@@ -105,6 +106,7 @@ func (a *Service) generateAlloyEventsConfig(
 	provider string,
 	tempoURL string,
 	tenants []string,
+	loggingEnabled bool,
 	tracingEnabled bool,
 	isWorkloadCluster bool,
 ) (string, error) {
@@ -133,6 +135,7 @@ func (a *Service) generateAlloyEventsConfig(
 		LoggingUsernameKey string
 		LoggingPasswordKey string
 		IsWorkloadCluster  bool
+		LoggingEnabled     bool
 		TracingEnabled     bool
 		TracingEndpoint    string
 		TracingUsernameKey string
@@ -154,6 +157,7 @@ func (a *Service) generateAlloyEventsConfig(
 		LoggingUsernameKey: common.LokiUsernameKey,
 		LoggingPasswordKey: common.LokiPasswordKey,
 		IsWorkloadCluster:  isWorkloadCluster,
+		LoggingEnabled:     loggingEnabled,
 		TracingEnabled:     tracingEnabled,
 		TracingEndpoint:    tracingEndpoint,
 		TracingUsernameKey: common.TempoUsernameKey,
@@ -168,15 +172,17 @@ func (a *Service) generateAlloyEventsConfig(
 	return buf.String(), nil
 }
 
-func (a *Service) generateEventsYAMLConfig(alloyConfig string, tracingEnabled bool, isWorkloadCluster bool) (string, error) {
+func (a *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bool, tracingEnabled bool, isWorkloadCluster bool) (string, error) {
 	var buf bytes.Buffer
 
 	data := struct {
 		AlloyConfig       string
+		LoggingEnabled    bool
 		TracingEnabled    bool
 		IsWorkloadCluster bool
 	}{
 		AlloyConfig:       alloyConfig,
+		LoggingEnabled:    loggingEnabled,
 		TracingEnabled:    tracingEnabled,
 		IsWorkloadCluster: isWorkloadCluster,
 	}
