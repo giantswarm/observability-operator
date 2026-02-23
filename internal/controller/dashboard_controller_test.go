@@ -114,7 +114,7 @@ var _ = Describe("Dashboard Controller", func() {
 						labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "Test Dashboard Organization",
+						labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 					},
 				},
 				Data: map[string]string{
@@ -704,7 +704,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName:    labels.DashboardSelectorLabelValue,
-							labels.GrafanaOrganizationAnnotation: "test-dashboard-org",
+							labels.GrafanaOrganizationKey: "test-dashboard-org",
 						},
 					},
 					Data: map[string]string{
@@ -800,7 +800,7 @@ var _ = Describe("Dashboard Controller", func() {
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationAnnotation: "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -867,7 +867,7 @@ var _ = Describe("Dashboard Controller", func() {
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationAnnotation: "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -942,7 +942,7 @@ var _ = Describe("Dashboard Controller", func() {
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationAnnotation: "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -1026,7 +1026,7 @@ var _ = Describe("Dashboard Controller", func() {
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationAnnotation: "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 						// Note: no organization annotation
 					},
@@ -1103,7 +1103,7 @@ var _ = Describe("Dashboard Controller", func() {
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationAnnotation: "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{

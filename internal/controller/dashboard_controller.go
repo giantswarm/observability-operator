@@ -279,7 +279,7 @@ func (r DashboardReconciler) cleanupOrphanedFolders(ctx context.Context, grafana
 		return fmt.Errorf("failed to find organization %q: %w", orgName, err)
 	}
 
-	requiredUIDs, err := r.collectRequiredFolderUIDs(ctx)
+	requiredUIDs, err := r.collectRequiredFolderUIDs(ctx, orgName)
 	if err != nil {
 		return fmt.Errorf("failed to collect required folder UIDs: %w", err)
 	}
@@ -287,8 +287,8 @@ func (r DashboardReconciler) cleanupOrphanedFolders(ctx context.Context, grafana
 	return grafanaService.CleanupOrphanedFoldersForOrg(ctx, org, requiredUIDs)
 }
 
-// collectRequiredFolderUIDs lists all dashboard ConfigMaps and computes the set of folder UIDs they reference.
-func (r DashboardReconciler) collectRequiredFolderUIDs(ctx context.Context) (map[string]struct{}, error) {
+// collectRequiredFolderUIDs lists all dashboard ConfigMaps for the given organization and computes the set of folder UIDs they reference.
+func (r DashboardReconciler) collectRequiredFolderUIDs(ctx context.Context, orgName string) (map[string]struct{}, error) {
 	var configMaps v1.ConfigMapList
 	err := r.List(ctx, &configMaps, client.MatchingLabels{
 		labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
@@ -301,6 +301,9 @@ func (r DashboardReconciler) collectRequiredFolderUIDs(ctx context.Context) (map
 	for i := range configMaps.Items {
 		dashboards := r.dashboardMapper.FromConfigMap(&configMaps.Items[i])
 		for _, dash := range dashboards {
+			if dash.Organization() != orgName {
+				continue
+			}
 			if dash.FolderPath() == "" {
 				continue
 			}
