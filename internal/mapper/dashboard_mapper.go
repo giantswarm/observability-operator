@@ -43,13 +43,13 @@ func (m *DashboardMapper) FromConfigMap(cm *v1.ConfigMap) []*dashboard.Dashboard
 // extractOrganization returns the organization or empty string if not found.
 func (m *DashboardMapper) extractOrganization(cm *v1.ConfigMap) string {
 	annotations := cm.GetAnnotations()
-	if annotations != nil && annotations[labels.GrafanaOrganizationAnnotation] != "" {
-		return annotations[labels.GrafanaOrganizationAnnotation]
+	if annotations != nil && annotations[labels.GrafanaOrganizationKey] != "" {
+		return annotations[labels.GrafanaOrganizationKey]
 	}
 
 	cmLabels := cm.GetLabels()
-	if cmLabels != nil && cmLabels[labels.GrafanaOrganizationAnnotation] != "" {
-		return cmLabels[labels.GrafanaOrganizationAnnotation]
+	if cmLabels != nil && cmLabels[labels.GrafanaOrganizationKey] != "" {
+		return cmLabels[labels.GrafanaOrganizationKey]
 	}
 
 	return ""
@@ -59,13 +59,13 @@ func (m *DashboardMapper) extractOrganization(cm *v1.ConfigMap) string {
 // Follows the same annotation-first, label-fallback pattern as extractOrganization.
 func (m *DashboardMapper) extractFolderPath(cm *v1.ConfigMap) string {
 	annotations := cm.GetAnnotations()
-	if annotations != nil && annotations[labels.GrafanaFolderAnnotation] != "" {
-		return annotations[labels.GrafanaFolderAnnotation]
+	if annotations != nil && annotations[labels.GrafanaFolderKey] != "" {
+		return annotations[labels.GrafanaFolderKey]
 	}
 
 	cmLabels := cm.GetLabels()
-	if cmLabels != nil && cmLabels[labels.GrafanaFolderAnnotation] != "" {
-		return cmLabels[labels.GrafanaFolderAnnotation]
+	if cmLabels != nil && cmLabels[labels.GrafanaFolderKey] != "" {
+		return cmLabels[labels.GrafanaFolderKey]
 	}
 
 	return ""

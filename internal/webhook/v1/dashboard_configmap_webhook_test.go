@@ -53,7 +53,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 				},
 				Annotations: map[string]string{
-					labels.GrafanaOrganizationAnnotation: "test-org",
+					labels.GrafanaOrganizationKey: "test-org",
 				},
 			},
 			Data: map[string]string{
@@ -215,7 +215,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "annotation-org",
+						labels.GrafanaOrganizationKey: "annotation-org",
 					},
 				},
 				Data: map[string]string{
@@ -238,8 +238,8 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "test-dashboard-label",
 					Namespace: "default",
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName:    "dashboard",
-						labels.GrafanaOrganizationAnnotation: "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 				},
 				Data: map[string]string{
@@ -262,11 +262,11 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "test-dashboard-both",
 					Namespace: "default",
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName:    "dashboard",
-						labels.GrafanaOrganizationAnnotation: "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "annotation-org",
+						labels.GrafanaOrganizationKey: "annotation-org",
 					},
 				},
 				Data: map[string]string{
@@ -292,7 +292,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -323,7 +323,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -380,7 +380,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{},
@@ -400,7 +400,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -506,11 +506,11 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "precedence-test",
 					Namespace: "default",
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName:    "dashboard",
-						labels.GrafanaOrganizationAnnotation: "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "annotation-org",
+						labels.GrafanaOrganizationKey: "annotation-org",
 					},
 				},
 				Data: map[string]string{
@@ -526,7 +526,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			By("Testing organization with special characters")
 			specialOrgConfigMap := obj.DeepCopy()
-			specialOrgConfigMap.Annotations[labels.GrafanaOrganizationAnnotation] = "org-with-dashes_and_underscores.and.dots"
+			specialOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "org-with-dashes_and_underscores.and.dots"
 
 			_, err = validator.ValidateCreate(ctx, specialOrgConfigMap)
 			Expect(err).NotTo(HaveOccurred()) // Special chars should be allowed
@@ -534,7 +534,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			By("Testing very long organization name")
 			longOrgConfigMap := obj.DeepCopy()
 			longOrgName := "very-long-organization-name-that-might-exceed-normal-limits-but-should-still-be-handled-gracefully-by-the-validation-system"
-			longOrgConfigMap.Annotations[labels.GrafanaOrganizationAnnotation] = longOrgName
+			longOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = longOrgName
 
 			_, err = validator.ValidateCreate(ctx, longOrgConfigMap)
 			Expect(err).NotTo(HaveOccurred()) // Long org names should be allowed
@@ -661,7 +661,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			It("Should handle Unicode characters in organization names", func() {
 				By("Testing organization with Unicode characters")
 				unicodeOrgConfigMap := obj.DeepCopy()
-				unicodeOrgConfigMap.Annotations[labels.GrafanaOrganizationAnnotation] = "组织-العربية-русский-🏢"
+				unicodeOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "组织-العربية-русский-🏢"
 
 				_, err := validator.ValidateCreate(ctx, unicodeOrgConfigMap)
 				Expect(err).NotTo(HaveOccurred()) // Unicode should be allowed
@@ -711,7 +711,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 				By("Testing organization with empty string")
 				emptyOrgConfigMap := obj.DeepCopy()
-				emptyOrgConfigMap.Annotations[labels.GrafanaOrganizationAnnotation] = ""
+				emptyOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = ""
 
 				_, err = validator.ValidateCreate(ctx, emptyOrgConfigMap)
 				Expect(err).To(HaveOccurred())

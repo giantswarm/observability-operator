@@ -15,10 +15,12 @@ const (
 	// Description is set on operator-managed folders for human readability.
 	Description = "managed-by: observability-operator"
 
-	// MaxTitleLength is the maximum length of a Grafana folder title.
-	MaxTitleLength = 189
+	// MaxTitleLength is the maximum length of a Grafana folder title (per segment).
+	// This matches Grafana's API limit of 255 characters.
+	MaxTitleLength = 255
 
 	// MaxDepth is the maximum nesting depth for folder hierarchies.
+	// This reflects Grafana's built-in folder nesting limit.
 	MaxDepth = 4
 )
 
@@ -46,7 +48,7 @@ func (f *Folder) ParentUID() string { return f.parentUID }
 func (f *Folder) FullPath() string  { return f.fullPath }
 
 // GenerateUID produces a deterministic UID from the full folder path.
-// Uses gs- prefix + first 12 hex chars of SHA256(fullPath).
+// Uses gs- prefix + first 6 bytes of SHA256(fullPath) encoded as 12 hex chars.
 func GenerateUID(fullPath string) string {
 	hash := sha256.Sum256([]byte(fullPath))
 	return fmt.Sprintf("%s%s", UIDPrefix, hex.EncodeToString(hash[:6]))
