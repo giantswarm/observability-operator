@@ -29,7 +29,7 @@ func TestFromConfigMap(t *testing.T) {
 					Name:      "test-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -45,7 +45,7 @@ func TestFromConfigMap(t *testing.T) {
 					Name:      "test-dashboard",
 					Namespace: "default",
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -61,7 +61,7 @@ func TestFromConfigMap(t *testing.T) {
 					Name:      "test-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -91,7 +91,7 @@ func TestFromConfigMap(t *testing.T) {
 					Name:      "test-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -107,7 +107,7 @@ func TestFromConfigMap(t *testing.T) {
 					Name:      "test-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						labels.GrafanaOrganizationAnnotation: "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -130,12 +130,12 @@ func TestFromConfigMap(t *testing.T) {
 			// Verify dashboard properties for successful cases with valid data
 			for i, dash := range dashboards {
 				// Only check organization for cases where we expect it to be set
-				if tt.configMap.Annotations != nil && tt.configMap.Annotations[labels.GrafanaOrganizationAnnotation] != "" {
-					if dash.Organization() != tt.configMap.Annotations[labels.GrafanaOrganizationAnnotation] {
+				if tt.configMap.Annotations != nil && tt.configMap.Annotations[labels.GrafanaOrganizationKey] != "" {
+					if dash.Organization() != tt.configMap.Annotations[labels.GrafanaOrganizationKey] {
 						t.Errorf("Dashboard %d: expected organization from annotation, got '%s'", i, dash.Organization())
 					}
-				} else if tt.configMap.Labels != nil && tt.configMap.Labels[labels.GrafanaOrganizationAnnotation] != "" {
-					if dash.Organization() != tt.configMap.Labels[labels.GrafanaOrganizationAnnotation] {
+				} else if tt.configMap.Labels != nil && tt.configMap.Labels[labels.GrafanaOrganizationKey] != "" {
+					if dash.Organization() != tt.configMap.Labels[labels.GrafanaOrganizationKey] {
 						t.Errorf("Dashboard %d: expected organization from label, got '%s'", i, dash.Organization())
 					}
 				}
@@ -151,7 +151,7 @@ func TestFromConfigMapEdgeCases(t *testing.T) {
 		cm := &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					labels.GrafanaOrganizationAnnotation: "test-org",
+					labels.GrafanaOrganizationKey: "test-org",
 				},
 			},
 			Data: map[string]string{},
@@ -167,10 +167,10 @@ func TestFromConfigMapEdgeCases(t *testing.T) {
 		cm := &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					labels.GrafanaOrganizationAnnotation: "label-org",
+					labels.GrafanaOrganizationKey: "label-org",
 				},
 				Annotations: map[string]string{
-					labels.GrafanaOrganizationAnnotation: "annotation-org",
+					labels.GrafanaOrganizationKey: "annotation-org",
 				},
 			},
 			Data: map[string]string{
