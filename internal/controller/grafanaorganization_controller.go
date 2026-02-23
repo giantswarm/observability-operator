@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha2"
@@ -107,17 +106,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	grafanaPodPredicate, err := predicate.LabelSelectorPredicate(
-		metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"app.kubernetes.io/instance": "grafana",
-			},
-		})
-	if err != nil {
-		return fmt.Errorf("failed to create grafana pod label selector predicate: %w", err)
-	}
-
-	err = ctrl.NewControllerManagedBy(mgr).
+	err := ctrl.NewControllerManagedBy(mgr).
 		Named("grafanaorganization").
 		For(&v1alpha2.GrafanaOrganization{}).
 		// Watch for grafana pod's status changes
@@ -159,7 +148,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 				}
 				return requests
 			}),
-			builder.WithPredicates(grafanaPodPredicate, predicates.GrafanaPodRecreatedPredicate{}),
+			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
 	if err != nil {
