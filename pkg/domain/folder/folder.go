@@ -49,7 +49,7 @@ func (f *Folder) FullPath() string  { return f.fullPath }
 // Uses gs- prefix + first 12 hex chars of SHA256(fullPath).
 func GenerateUID(fullPath string) string {
 	hash := sha256.Sum256([]byte(fullPath))
-	return fmt.Sprintf("%s%s", UIDPrefix, hex.EncodeToString(hash[:6]))
+	return fmt.Sprintf("%s%s", UIDPrefix, hex.EncodeToString(hash[:12]))
 }
 
 // IsOperatorManaged checks if a folder UID belongs to the operator.
