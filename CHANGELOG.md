@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.59.2] - 2026-02-12
+
 ### Changed
 
 - Use `Chart.AppVersion` instead of `Chart.Version` for the image tag in the deployment template.
@@ -907,7 +909,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.59.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.59.2...HEAD
+[0.59.2]: https://github.com/giantswarm/observability-operator/compare/v0.59.1...v0.59.2
 [0.59.1]: https://github.com/giantswarm/observability-operator/compare/v0.59.0...v0.59.1
 [0.59.0]: https://github.com/giantswarm/observability-operator/compare/v0.58.0...v0.59.0
 [0.58.0]: https://github.com/giantswarm/observability-operator/compare/v0.57.1...v0.58.0
