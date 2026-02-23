@@ -703,8 +703,8 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "dashboard-with-label-org",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							labels.DashboardSelectorLabelName:    labels.DashboardSelectorLabelValue,
-							labels.GrafanaOrganizationKey: "test-dashboard-org",
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
+							labels.GrafanaOrganizationKey:     "test-dashboard-org",
 						},
 					},
 					Data: map[string]string{

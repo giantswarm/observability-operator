@@ -238,8 +238,8 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "test-dashboard-label",
 					Namespace: "default",
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName:    "dashboard",
-						labels.GrafanaOrganizationKey: "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 				},
 				Data: map[string]string{
@@ -262,8 +262,8 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "test-dashboard-both",
 					Namespace: "default",
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName:    "dashboard",
-						labels.GrafanaOrganizationKey: "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 					Annotations: map[string]string{
 						labels.GrafanaOrganizationKey: "annotation-org",
@@ -506,8 +506,8 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "precedence-test",
 					Namespace: "default",
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName:    "dashboard",
-						labels.GrafanaOrganizationKey: "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 					Annotations: map[string]string{
 						labels.GrafanaOrganizationKey: "annotation-org",
