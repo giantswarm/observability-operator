@@ -58,6 +58,22 @@ rules:
       - update
       - watch
   - apiGroups:
+      - helm.toolkit.fluxcd.io
+    resources:
+      - helmreleases
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - source.toolkit.fluxcd.io
+    resources:
+      - ocirepositories
+    verbs:
+      - get
+  - apiGroups:
       - cluster.x-k8s.io
     resources:
       - clusters
