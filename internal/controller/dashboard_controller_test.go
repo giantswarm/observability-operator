@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
+	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/client/orgs"
 	"github.com/grafana/grafana-openapi-client-go/models"
 	. "github.com/onsi/ginkgo/v2"
@@ -19,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/internal/labels"
 	"github.com/giantswarm/observability-operator/internal/mapper"
 	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
@@ -109,10 +111,10 @@ var _ = Describe("Dashboard Controller", func() {
 					Name:      dashboardName,
 					Namespace: dashboardNamespace,
 					Labels: map[string]string{
-						DashboardSelectorLabelName: DashboardSelectorLabelValue,
+						labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "Test Dashboard Organization",
+						labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 					},
 				},
 				Data: map[string]string{
@@ -195,6 +197,13 @@ var _ = Describe("Dashboard Controller", func() {
 							UID: func() *string { s := "test-dashboard-uid"; return &s }(),
 						},
 					}, nil)
+
+				// Mock the Folders service for cleanup
+				mockFoldersClient := &mocks.MockFoldersClient{}
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+					Payload: []*models.FolderSearchHit{},
+				}, nil)
 			})
 
 			AfterEach(func() {
@@ -333,6 +342,13 @@ var _ = Describe("Dashboard Controller", func() {
 					}
 					return false
 				})).Return(dashboardResponse, nil)
+
+				// Mock the Folders service for cleanup
+				mockFoldersClient := &mocks.MockFoldersClient{}
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+					Payload: []*models.FolderSearchHit{},
+				}, nil)
 
 				By("Creating a dashboard ConfigMap")
 				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
@@ -554,6 +570,13 @@ var _ = Describe("Dashboard Controller", func() {
 				}
 				mockDashboardsClient.On("DeleteDashboardByUID", "test-dashboard-uid").Return(deleteResponse, nil)
 
+				// Mock the Folders service for cleanup
+				mockFoldersClient := &mocks.MockFoldersClient{}
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+					Payload: []*models.FolderSearchHit{},
+				}, nil)
+
 				By("Marking the dashboard ConfigMap for deletion")
 				createdConfigMap := &v1.ConfigMap{}
 				err := k8sClient.Get(ctx, namespacedName, createdConfigMap)
@@ -666,6 +689,13 @@ var _ = Describe("Dashboard Controller", func() {
 				}
 				mockDashboardsClient.On("PostDashboard", mock.Anything).Return(dashboardResponse, nil)
 
+				// Mock the Folders service for cleanup
+				mockFoldersClient := &mocks.MockFoldersClient{}
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+					Payload: []*models.FolderSearchHit{},
+				}, nil)
+
 				// Test ConfigMap with organization in labels instead of annotations
 				// Note: Using a valid Kubernetes label value (no spaces, alphanumeric + dashes/dots/underscores)
 				configMapWithLabelOrg := &v1.ConfigMap{
@@ -673,8 +703,8 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "dashboard-with-label-org",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName:                 DashboardSelectorLabelValue,
-							"observability.giantswarm.io/organization": "test-dashboard-org",
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
+							labels.GrafanaOrganizationKey:     "test-dashboard-org",
 						},
 					},
 					Data: map[string]string{
@@ -718,7 +748,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "dashboard-without-org",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 					},
 					Data: map[string]string{
@@ -767,10 +797,10 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "dashboard-without-uid",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -822,15 +852,22 @@ var _ = Describe("Dashboard Controller", func() {
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
 				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
 
+				// Mock the Folders service for cleanup
+				mockFoldersClient := &mocks.MockFoldersClient{}
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+					Payload: []*models.FolderSearchHit{},
+				}, nil)
+
 				configMapWithID := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "dashboard-with-id",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -902,10 +939,10 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "dashboard-invalid-json",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -959,6 +996,13 @@ var _ = Describe("Dashboard Controller", func() {
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
 				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
 
+				// Mock the Folders service for cleanup
+				mockFoldersClient := &mocks.MockFoldersClient{}
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+					Payload: []*models.FolderSearchHit{},
+				}, nil)
+
 				// Mock the organization lookup to succeed
 				orgResponse := &orgs.GetOrgByNameOK{
 					Payload: &models.OrgDetailsDTO{
@@ -979,10 +1023,10 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "multiple-dashboards",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 						// Note: no organization annotation
 					},
@@ -1056,10 +1100,10 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "invalid-dashboard",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -1106,7 +1150,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "invalid-org-dashboard",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						// No organization annotation
 					},
@@ -1177,8 +1221,8 @@ var _ = Describe("Dashboard Controller", func() {
 		It("should have correct constants defined", func() {
 			By("Verifying dashboard controller constants")
 			Expect(DashboardFinalizer).To(Equal("observability.giantswarm.io/grafanadashboard"))
-			Expect(DashboardSelectorLabelName).To(Equal("app.giantswarm.io/kind"))
-			Expect(DashboardSelectorLabelValue).To(Equal("dashboard"))
+			Expect(labels.DashboardSelectorLabelName).To(Equal("app.giantswarm.io/kind"))
+			Expect(labels.DashboardSelectorLabelValue).To(Equal("dashboard"))
 		})
 	})
 })

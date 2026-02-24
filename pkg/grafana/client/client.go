@@ -3,6 +3,7 @@ package client
 import (
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/client/datasources"
+	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/client/orgs"
 	"github.com/grafana/grafana-openapi-client-go/client/sso_settings"
 )
@@ -19,5 +20,6 @@ type GrafanaClient interface {
 	Datasources() datasources.ClientService
 	Orgs() orgs.ClientService
 	Dashboards() dashboards.ClientService
+	Folders() folders.ClientService
 	SsoSettings() sso_settings.ClientService
 }

@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/giantswarm/observability-operator/internal/labels"
 	"github.com/giantswarm/observability-operator/internal/mapper"
 )
 
@@ -120,8 +121,8 @@ func (v *DashboardConfigMapValidator) isDashboardConfigMap(configmap *corev1.Con
 	}
 
 	// Check for the specific label that identifies this as a dashboard ConfigMap
-	kind, hasKindLabel := configmap.Labels["app.giantswarm.io/kind"]
-	if !hasKindLabel || kind != "dashboard" {
+	kind, hasKindLabel := configmap.Labels[labels.DashboardSelectorLabelName]
+	if !hasKindLabel || kind != labels.DashboardSelectorLabelValue {
 		return false
 	}
 

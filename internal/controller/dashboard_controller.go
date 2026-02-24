@@ -20,9 +20,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/internal/labels"
 	"github.com/giantswarm/observability-operator/internal/mapper"
 	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
@@ -39,12 +41,7 @@ type DashboardReconciler struct {
 	cfg              config.Config
 }
 
-const (
-	DashboardFinalizer = "observability.giantswarm.io/grafanadashboard"
-	// TODO migrate to observability.giantswarm.io/kind
-	DashboardSelectorLabelName  = "app.giantswarm.io/kind"
-	DashboardSelectorLabelValue = "dashboard"
-)
+const DashboardFinalizer = "observability.giantswarm.io/grafanadashboard"
 
 func SetupDashboardReconciler(mgr manager.Manager, cfg config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &DashboardReconciler{
@@ -90,7 +87,7 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
-	grafanaService := grafana.NewService(r.Client, grafanaAPI, r.cfg)
+	grafanaService := grafana.NewService(grafanaAPI, r.cfg)
 
 	// Handle deleted grafana dashboards
 	if !dashboard.DeletionTimestamp.IsZero() {
@@ -106,7 +103,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	labelSelectorPredicate, err := predicate.LabelSelectorPredicate(
 		metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				DashboardSelectorLabelName: DashboardSelectorLabelValue,
+				labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 			},
 		})
 	if err != nil {
@@ -123,7 +120,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				logger := log.FromContext(ctx)
 				var dashboards v1.ConfigMapList
 
-				err := mgr.GetClient().List(ctx, &dashboards, client.MatchingLabels{DashboardSelectorLabelName: DashboardSelectorLabelValue})
+				err := mgr.GetClient().List(ctx, &dashboards, client.MatchingLabels{labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue})
 				if err != nil {
 					logger.Error(err, "failed to list grafana dashboard configmaps")
 					return []reconcile.Request{}
@@ -172,8 +169,10 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 	// Collect all errors to ensure all dashboards have a chance to be processed
 	var errs []error
 
+	org := ""
 	// Process each dashboard
 	for _, dashboard := range dashboards {
+		org = dashboard.Organization() // org is the same for all dashboards in the same configmap, so we can just take it from the first one
 		// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
 		if validationErrors := dashboard.Validate(); len(validationErrors) > 0 {
 			logger.Error(nil, "dashboard validate failed - webhook may have been bypassed",
@@ -202,6 +201,13 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 		return errors.Join(errs...)
 	}
 
+	// Cleanup orphaned folders after all dashboards are processed
+	if org != "" {
+		if err := r.cleanupOrphanedFolders(ctx, grafanaService, org); err != nil {
+			logger.Error(err, "failed to cleanup orphaned folders")
+		}
+	}
+
 	return nil
 }
 
@@ -218,9 +224,10 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 
 	// Collect all errors to ensure all dashboards have a chance to be processed
 	var errs []error
-
+	org := ""
 	// Process each dashboard: validate and delete in the same loop
 	for _, dash := range dashboards {
+		org = dash.Organization() // org is the same for all dashboards in the same configmap, so we can just take it from the first one
 		// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
 		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
 			logger.Error(nil, "Dashboard validation failed during reconciliation - webhook may have been bypassed",
@@ -248,6 +255,13 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 		return errors.Join(errs...)
 	}
 
+	// Cleanup orphaned folders after all dashboards are deleted
+	if org != "" {
+		if err := r.cleanupOrphanedFolders(ctx, grafanaService, org); err != nil {
+			logger.Error(err, "failed to cleanup orphaned folders")
+		}
+	}
+
 	// Finalizer handling needs to come last.
 	err := r.finalizerHelper.EnsureRemoved(ctx, dashboard)
 	if err != nil {
@@ -255,4 +269,50 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 	}
 
 	return nil
+}
+
+// cleanupOrphanedFolders resolves the organization, computes which folder UIDs are still
+// needed by dashboard ConfigMaps, and delegates deletion of orphans to the Grafana service.
+func (r DashboardReconciler) cleanupOrphanedFolders(ctx context.Context, grafanaService *grafana.Service, orgName string) error {
+	org, err := grafanaService.FindOrgByName(orgName)
+	if err != nil {
+		return fmt.Errorf("failed to find organization %q: %w", orgName, err)
+	}
+
+	requiredUIDs, err := r.collectRequiredFolderUIDs(ctx, orgName)
+	if err != nil {
+		return fmt.Errorf("failed to collect required folder UIDs: %w", err)
+	}
+
+	return grafanaService.CleanupOrphanedFoldersForOrg(ctx, org, requiredUIDs)
+}
+
+// collectRequiredFolderUIDs lists all dashboard ConfigMaps for the given organization and computes the set of folder UIDs they reference.
+func (r DashboardReconciler) collectRequiredFolderUIDs(ctx context.Context, orgName string) (map[string]struct{}, error) {
+	var configMaps v1.ConfigMapList
+	err := r.List(ctx, &configMaps, client.MatchingLabels{
+		labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list dashboard configmaps: %w", err)
+	}
+
+	requiredUIDs := make(map[string]struct{})
+	for i := range configMaps.Items {
+		dashboards := r.dashboardMapper.FromConfigMap(&configMaps.Items[i])
+		for _, dash := range dashboards {
+			if dash.Organization() != orgName {
+				continue
+			}
+			if dash.FolderPath() == "" {
+				continue
+			}
+			segments := folder.ParsePath(dash.FolderPath())
+			for _, seg := range segments {
+				requiredUIDs[seg.UID()] = struct{}{}
+			}
+		}
+	}
+
+	return requiredUIDs, nil
 }
