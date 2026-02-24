@@ -29,7 +29,8 @@ func (g *grafanaHTTPClient) OrgID() int64 {
 // NOTE: the upstream library's WithOrgID is not concurrent-safe until
 // https://github.com/grafana/grafana-openapi-client-go/pull/134 is merged.
 func (g *grafanaHTTPClient) WithOrgID(orgID int64) GrafanaClient {
-	return &grafanaHTTPClient{api: g.api.WithOrgID(orgID)}
+    g.api = g.api.WithOrgID(orgID)
+	return g
 }
 
 // Datasources returns the datasources client service
