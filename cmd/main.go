@@ -190,7 +190,7 @@ func parseFlags() (err error) {
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
 	pflag.StringVar(&cfg.Monitoring.MetricsQueryURL, flagMonitoringMetricsQueryURL, "http://mimir-gateway.mimir.svc/prometheus",
 		"URL to query for cluster metrics (internal Mimir query endpoint)")
-	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, false,
+	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
 		"Enable/disable network monitoring in Alloy logging configuration")
 
 	// Queue configuration flags for Alloy remote write
