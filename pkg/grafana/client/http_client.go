@@ -17,9 +17,7 @@ type grafanaHTTPClient struct {
 
 // NewGrafanaClient creates a new GrafanaClient implementation wrapping the provided GrafanaHTTPAPI
 func NewGrafanaClient(api *grafana.GrafanaHTTPAPI) GrafanaClient {
-	return &grafanaHTTPClient{
-		api: api,
-	}
+	return &grafanaHTTPClient{api: api}
 }
 
 // OrgID returns the current organization ID
@@ -28,6 +26,8 @@ func (g *grafanaHTTPClient) OrgID() int64 {
 }
 
 // WithOrgID sets the organization ID for subsequent requests and returns the client
+// NOTE: the upstream library's WithOrgID is not concurrent-safe until
+// https://github.com/grafana/grafana-openapi-client-go/pull/134 is merged.
 func (g *grafanaHTTPClient) WithOrgID(orgID int64) GrafanaClient {
 	g.api = g.api.WithOrgID(orgID)
 	return g

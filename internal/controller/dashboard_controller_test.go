@@ -174,7 +174,6 @@ var _ = Describe("Dashboard Controller", func() {
 					Return(mockGrafanaClient, nil)
 
 				// Setup mock client methods for successful operation
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(nil)
 
 				// Mock the Orgs service
@@ -297,7 +296,6 @@ var _ = Describe("Dashboard Controller", func() {
 				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(mockGrafanaClient, nil)
 
 				// Setup common mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 			})
 
@@ -517,7 +515,6 @@ var _ = Describe("Dashboard Controller", func() {
 				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(mockGrafanaClient, nil)
 
 				// Setup common mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 
 				// First create the dashboard with finalizer
@@ -663,7 +660,6 @@ var _ = Describe("Dashboard Controller", func() {
 
 			It("should handle organization specified in labels instead of annotations", func() {
 				// Set up mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 
 				// Mock the Orgs service
@@ -841,7 +837,6 @@ var _ = Describe("Dashboard Controller", func() {
 
 			It("should handle dashboard with existing ID that needs cleaning", func() {
 				// Set up mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 
 				// Mock the Orgs service
@@ -985,7 +980,6 @@ var _ = Describe("Dashboard Controller", func() {
 
 			It("should handle ConfigMap with multiple dashboards", func() {
 				// Set up mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 
 				// Mock the Orgs service

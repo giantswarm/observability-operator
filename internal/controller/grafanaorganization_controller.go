@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"sync"
 
 	v1 "k8s.io/api/core/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha2"
@@ -42,6 +43,10 @@ type GrafanaOrganizationReconciler struct {
 	grafanaClientGen   grafanaclient.GrafanaClientGenerator
 	cfg                config.Config
 	organizationMapper *mapper.OrganizationMapper
+
+	// ssoMutex serializes SSO configuration updates to prevent concurrent reconciles
+	// from clobbering each other's SSO org_mapping writes.
+	ssoMutex sync.Mutex
 }
 
 func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
@@ -101,17 +106,7 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	grafanaPodPredicate, err := predicate.LabelSelectorPredicate(
-		metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"app.kubernetes.io/instance": "grafana",
-			},
-		})
-	if err != nil {
-		return fmt.Errorf("failed to create grafana pod label selector predicate: %w", err)
-	}
-
-	err = ctrl.NewControllerManagedBy(mgr).
+	err := ctrl.NewControllerManagedBy(mgr).
 		Named("grafanaorganization").
 		For(&v1alpha2.GrafanaOrganization{}).
 		// Watch for grafana pod's status changes
@@ -153,7 +148,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 				}
 				return requests
 			}),
-			builder.WithPredicates(grafanaPodPredicate, predicates.GrafanaPodRecreatedPredicate{}),
+			builder.WithPredicates(predicates.GrafanaPodRecreatedPredicate{}),
 		).
 		Complete(r)
 	if err != nil {
@@ -168,7 +163,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 // - Adding the finalizer to the CR
 // - Updating the CR status field
 // - Renaming the Grafana Main Org.
-func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
+func (r *GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, grafanaOrganization)
 	if err != nil {
@@ -195,6 +190,18 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		// Set error status and update metric before returning
 		orgStatus = metrics.OrgStatusError
 		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
+
+		apimeta.SetStatusCondition(&grafanaOrganization.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			ObservedGeneration: grafanaOrganization.Generation,
+			Reason:             "ConfigureOrganizationFailed",
+			Message:            err.Error(),
+		})
+		if statusErr := r.Client.Status().Update(ctx, grafanaOrganization); statusErr != nil {
+			logger.Error(statusErr, "failed to update status conditions after ConfigureOrganization error")
+		}
+
 		return ctrl.Result{}, fmt.Errorf("failed to configure grafanaOrganization: %w", err)
 	}
 
@@ -259,7 +266,32 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	if len(errs) > 0 {
 		orgStatus = metrics.OrgStatusError
 		updateGrafanaOrganizationInfoMetric(grafanaOrganization.Name, grafanaOrganization.Spec.DisplayName, grafanaOrganization.Status.OrgID, orgStatus)
-		return ctrl.Result{}, errors.Join(errs...)
+
+		combinedErr := errors.Join(errs...)
+		apimeta.SetStatusCondition(&grafanaOrganization.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			ObservedGeneration: grafanaOrganization.Generation,
+			Reason:             "ReconciliationFailed",
+			Message:            combinedErr.Error(),
+		})
+		if statusErr := r.Client.Status().Update(ctx, grafanaOrganization); statusErr != nil {
+			logger.Error(statusErr, "failed to update status conditions after error")
+		}
+
+		return ctrl.Result{}, combinedErr
+	}
+
+	// Set Ready condition
+	apimeta.SetStatusCondition(&grafanaOrganization.Status.Conditions, metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionTrue,
+		ObservedGeneration: grafanaOrganization.Generation,
+		Reason:             "ReconciliationSucceeded",
+		Message:            "Grafana organization is fully configured",
+	})
+	if err := r.Client.Status().Update(ctx, grafanaOrganization); err != nil {
+		logger.Error(err, "failed to update Ready status condition")
 	}
 
 	// Set info metrics
@@ -297,8 +329,13 @@ func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx conte
 	return organizations, nil
 }
 
-// configureGrafanaSSOSettings configures Grafana SSO settings based on all active GrafanaOrganizations
-func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
+// configureGrafanaSSOSettings configures Grafana SSO settings based on all active GrafanaOrganizations.
+// It uses a mutex to serialize concurrent SSO updates and prevent last-write-wins races
+// when multiple GrafanaOrganization reconciles happen in parallel.
+func (r *GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
+	r.ssoMutex.Lock()
+	defer r.ssoMutex.Unlock()
+
 	allOrganizations, err := r.listActiveGrafanaOrganizations(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get all organizations for SSO configuration: %w", err)
@@ -312,7 +349,7 @@ func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.C
 }
 
 // reconcileDelete deletes the grafana organization.
-func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) error {
+func (r *GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
 	// We do not need to delete anything if there is no finalizer on the grafana organization

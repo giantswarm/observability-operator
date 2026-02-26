@@ -320,6 +320,16 @@ func setupApplication() error {
 		return fmt.Errorf("failed to parse label selector: %w", err)
 	}
 
+	grafanaPodSelector, err := labels.Parse("app.kubernetes.io/instance=grafana")
+	if err != nil {
+		return fmt.Errorf("failed to parse grafana pod label selector: %w", err)
+	}
+
+	mimirAlertmanagerPodSelector, err := labels.Parse("app.kubernetes.io/component=alertmanager,app.kubernetes.io/instance=mimir")
+	if err != nil {
+		return fmt.Errorf("failed to parse mimir alertmanager pod label selector: %w", err)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
@@ -347,6 +357,13 @@ func setupApplication() error {
 				&v1.Secret{}: {
 					// Do not cache any helm secrets to reduce memory usage.
 					Label: discardHelmSecretsSelector,
+				},
+				&v1.Pod{}: {
+					// Only cache Grafana and Mimir Alertmanager pods to reduce memory usage.
+					Namespaces: map[string]cache.Config{
+						"monitoring": {LabelSelector: grafanaPodSelector},
+						"mimir":      {LabelSelector: mimirAlertmanagerPodSelector},
+					},
 				},
 			},
 		},
