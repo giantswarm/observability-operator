@@ -204,8 +204,8 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			})).
 		WithOptions(controller.Options{
 			RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](
-				5*time.Minute, // base delay
-				5*time.Minute, // max delay (same as base for constant 5-minute retry)
+				1*time.Second, // base delay
+				5*time.Minute, // max delay
 			),
 		}).
 		Complete(r)
