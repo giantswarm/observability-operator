@@ -363,10 +363,9 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		}
 	}
 
-	// Logging-specific: Alloy logs configuration
-	if r.Config.Logging.IsLoggingEnabled(cluster) {
+	// Logging-specific: Alloy logs configuration (handles both logs and network monitoring)
+	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
 		// Create or update Alloy logs configuration
-		// TODO make sure we can enable network monitoring separately from logging
 		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy logs config")
@@ -374,7 +373,6 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		}
 	} else {
 		// Clean up any existing alloy logs configuration
-		// TODO make sure we can enable network monitoring separately from logging
 		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy logs config")
@@ -432,10 +430,9 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			}
 		}
 
-		// Logging-specific: Alloy logs configuration
-		if r.Config.Logging.IsLoggingEnabled(cluster) {
+		// Logging-specific: Alloy logs configuration (handles both logs and network monitoring)
+		if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
 			// Clean up any existing alloy logs configuration
-			// TODO make sure we can enable network monitoring separately from logging
 			err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy logs config")
@@ -444,7 +441,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 
 		// Events-specific: Alloy events configuration (handles both logs and traces)
-		if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
+		if !r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
 			// Clean up any existing alloy events configuration
 			err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
 			if err != nil {

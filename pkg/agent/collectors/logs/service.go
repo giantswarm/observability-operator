@@ -53,18 +53,19 @@ func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-logs-service - ensuring alloy logs is configured")
 
-	// Check if network monitoring should be enabled
+	// Check feature enablement
+	loggingEnabled := s.Config.Logging.IsLoggingEnabled(cluster)
 	// Network monitoring requires observability-bundle >= 2.3.0 and must be explicitly enabled
 	networkMonitoringEnabled := observabilityBundleVersion.GE(networkMonitoringMinVersion) && s.Config.Monitoring.IsNetworkMonitoringEnabled(cluster)
 
 	// Generate ConfigMap data
-	configMapData, err := s.GenerateAlloyLogsConfigMapData(ctx, cluster, observabilityBundleVersion, networkMonitoringEnabled)
+	configMapData, err := s.GenerateAlloyLogsConfigMapData(ctx, cluster, observabilityBundleVersion, loggingEnabled, networkMonitoringEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy logs configmap: %w", err)
 	}
 
 	// Generate Secret data
-	secretData, err := s.GenerateAlloyLogsSecretData(ctx, cluster)
+	secretData, err := s.GenerateAlloyLogsSecretData(ctx, cluster, loggingEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy logs secret: %w", err)
 	}
