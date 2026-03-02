@@ -7,10 +7,30 @@ const (
 	datasourceUIDPrefix       = "gs-"
 	datasourceProxyAccessMode = "proxy"
 
-	// traceIDRegex is a regular expression pattern that matches trace IDs in log lines.
-	// It matches variations like: traceId, trace_id, TraceID, TRACE_ID with either colon or equals separator.
-	// Example matches: traceId=abc123, trace_id:def456, TraceID="ghi789"
+	// traceIDRegex is a regular expression pattern that matches trace IDs in raw log lines.
+	// It handles all common field name conventions across languages and frameworks:
+	//   - snake_case:  trace_id  (Python, Ruby, OpenTelemetry default)
+	//   - camelCase:   traceId   (Java, JavaScript)
+	//   - PascalCase:  TraceId   (C#)
+	//   - Go acronym:  TraceID   (Go)
+	// Supports both colon (:) and equals (=) separators, with an optional quote
+	// before the separator to handle JSON key formatting ("trace_id":value).
+	// Used by Loki derivedFields (Loki → Tempo direction) and as the basis for
+	// traceToLogsQuery (Tempo → Loki direction).
 	traceIDRegex = "[tT]race_?[Ii][dD]\"?[:=](\\w+)"
+
+	// traceToLogsQuery is the LogQL query used for Tempo → Loki trace correlation.
+	// It uses | regexp with the same pattern as traceIDRegex (adapted with a named capture group)
+	// to extract the trace ID from raw log lines regardless of format (JSON, logfmt, plain text)
+	// and field name casing (trace_id, traceId, TraceId, TraceID, etc.).
+	//
+	// Using | regexp instead of | json + label filters is intentional:
+	//   - | json only works for JSON-formatted logs and only after JSON is parsed
+	//   - | regexp operates directly on raw log lines, making it format-agnostic
+	//   - It handles all field name variants covered by traceIDRegex in one pass
+	//   - Lines that do not contain a matching trace ID field are excluded naturally
+	//     (regexp extraction yields an empty label, which never equals the span trace ID)
+	traceToLogsQuery = `{${__tags}} | regexp ` + "`" + `[tT]race_?[Ii][dD]"?[:=](?P<extracted_trace_id>\w+)` + "`" + ` | extracted_trace_id="${__span.traceId}"`
 )
 
 var (
@@ -109,13 +129,16 @@ var (
 				},
 
 				// Traces to Logs correlation V2 - allows jumping from trace spans
-				// to related log entries in Loki for better debugging context
-				// Links to our specific Loki instance
+				// to related log entries in Loki for better debugging context.
+				// Links to our specific Loki instance.
+				// customQuery uses | regexp to match trace IDs across all log formats
+				// and field name conventions. See traceToLogsQuery for details.
 				"tracesToLogsV2": map[string]any{
 					"datasourceUid":      LokiDatasourceUID,
 					"spanStartTimeShift": "-10m",
 					"spanEndTimeShift":   "10m",
-					"filterByTraceID":    true,
+					"filterByTraceID":    false,
+					"customQuery":        traceToLogsQuery,
 				},
 
 				// Traces to Metrics correlation - allows jumping from trace spans
