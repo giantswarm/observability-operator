@@ -30,7 +30,7 @@ const (
 	//   - It handles all field name variants covered by traceIDRegex in one pass
 	//   - Lines that do not contain a matching trace ID field are excluded naturally
 	//     (regexp extraction yields an empty label, which never equals the span trace ID)
-	traceToLogsQuery = `{${__tags}} | regexp ` + "`" + `[tT]race_?[Ii][dD]"?[:=](?P<extracted_trace_id>\w+)` + "`" + ` | extracted_trace_id="${__span.traceId}"`
+	traceToLogsQuery = `{${__tags}} | regexp ` + "`" + `[tT]race_?[Ii][dD]"?[:=](?P<trace_id>\w+)` + "`" + ` | trace_id="${__span.traceId}"`
 )
 
 var (
