@@ -90,8 +90,6 @@ const (
 
 	// Logging configuration flag names
 	flagLoggingEnabled                     = "logging-enabled"
-	flagLoggingEnableAlloyLogs             = "logging-enable-alloy-logs-reconciliation"
-	flagLoggingEnableAlloyEvents           = "logging-enable-alloy-events-reconciliation"
 	flagLoggingDefaultNamespaces           = "logging-default-namespaces"
 	flagLoggingEnableNodeFiltering         = "logging-enable-node-filtering"
 	flagLoggingIncludeEventsFromNamespaces = "logging-include-events-from-namespaces"
@@ -192,7 +190,7 @@ func parseFlags() (err error) {
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
 	pflag.StringVar(&cfg.Monitoring.MetricsQueryURL, flagMonitoringMetricsQueryURL, "http://mimir-gateway.mimir.svc/prometheus",
 		"URL to query for cluster metrics (internal Mimir query endpoint)")
-	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, false,
+	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
 		"Enable/disable network monitoring in Alloy logging configuration")
 
 	// Queue configuration flags for Alloy remote write
@@ -226,10 +224,6 @@ func parseFlags() (err error) {
 	// Logging configuration flags
 	pflag.BoolVar(&cfg.Logging.Enabled, flagLoggingEnabled, false,
 		"Enable logging at the installation level.")
-	pflag.BoolVar(&cfg.Logging.EnableAlloyLogsReconciliation, flagLoggingEnableAlloyLogs, false,
-		"Enable Alloy logs reconciliation at the installation level.")
-	pflag.BoolVar(&cfg.Logging.EnableAlloyEventsReconciliation, flagLoggingEnableAlloyEvents, false,
-		"Enable Alloy events reconciliation at the installation level.")
 	pflag.StringSliceVar(&cfg.Logging.DefaultNamespaces, flagLoggingDefaultNamespaces, []string{},
 		"Comma-separated list of namespaces to collect logs from by default on workload clusters")
 	pflag.BoolVar(&cfg.Logging.EnableNodeFiltering, flagLoggingEnableNodeFiltering, false,

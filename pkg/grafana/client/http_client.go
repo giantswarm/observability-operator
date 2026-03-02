@@ -4,6 +4,7 @@ import (
 	grafana "github.com/grafana/grafana-openapi-client-go/client"
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/client/datasources"
+	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/client/orgs"
 	"github.com/grafana/grafana-openapi-client-go/client/sso_settings"
 )
@@ -45,6 +46,11 @@ func (g *grafanaHTTPClient) Orgs() orgs.ClientService {
 // Dashboards returns the dashboards client service
 func (g *grafanaHTTPClient) Dashboards() dashboards.ClientService {
 	return g.api.Dashboards
+}
+
+// Folders returns the folders client service
+func (g *grafanaHTTPClient) Folders() folders.ClientService {
+	return g.api.Folders
 }
 
 // SsoSettings returns the SSO settings client service

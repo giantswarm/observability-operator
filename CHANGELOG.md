@@ -7,12 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add support for organizing Grafana dashboards into folders and subfolders via the `observability.giantswarm.io/folder` annotation.
+
+## [0.60.0] - 2026-02-24
+
+### Changed
+
+- Enable network monitoring by default
+
 ## [0.59.2] - 2026-02-12
 
 ### Changed
 
 - Use `Chart.AppVersion` instead of `Chart.Version` for the image tag in the deployment template.
 - Change team annotation in `Chart.yaml` to OpenContainers format (`io.giantswarm.application.team`).
+
+### Removed
+
+- Remove `alloy-logs` and `alloy-events` reconciliation flags as the migration is over and we do not need them anymore.
 
 ## [0.59.1] - 2026-02-12
 
@@ -906,7 +920,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.59.2...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.60.0...HEAD
+[0.60.0]: https://github.com/giantswarm/observability-operator/compare/v0.59.2...v0.60.0
 [0.59.2]: https://github.com/giantswarm/observability-operator/compare/v0.59.1...v0.59.2
 [0.59.1]: https://github.com/giantswarm/observability-operator/compare/v0.59.0...v0.59.1
 [0.59.0]: https://github.com/giantswarm/observability-operator/compare/v0.58.0...v0.59.0
