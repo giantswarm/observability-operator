@@ -24,7 +24,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
-const observabilityBundleAppName string = "observability-bundle"
+const observabilityBundleName string = "observability-bundle"
 
 var helmReleaseGVK = schema.GroupVersionKind{
 	Group:   "helm.toolkit.fluxcd.io",
@@ -59,7 +59,7 @@ func getConfigMapObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 
 func getBundleObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 	return types.NamespacedName{
-		Name:      fmt.Sprintf("%s-%s", cluster.Name, observabilityBundleAppName),
+		Name:      fmt.Sprintf("%s-%s", cluster.Name, observabilityBundleName),
 		Namespace: cluster.Namespace,
 	}
 }
@@ -127,7 +127,7 @@ func (s BundleConfigurationService) createOrUpdateConfigMap(ctx context.Context,
 
 	_, err := controllerutil.CreateOrUpdate(ctx, s.client, configMap, func() error {
 		configMap.Labels = map[string]string{
-			"app.kubernetes.io/name":       observabilityBundleAppName,
+			"app.kubernetes.io/name":       observabilityBundleName,
 			"app.kubernetes.io/managed-by": "observability-operator",
 			"app.kubernetes.io/part-of":    "observability-platform",
 		}
