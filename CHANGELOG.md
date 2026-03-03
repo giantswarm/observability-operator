@@ -14,6 +14,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enable independent configuration of logging and network monitoring features. Log collection now works when logging is enabled, and network monitoring collection can be enabled separately from logging for flexible per-cluster observability configurations.
 - Move metrics, logs and events collectors from `pkg/monitoring/alloy` and `pkg/logging/alloy/{logs,events}` to `pkg/agent/collectors/{metrics,logs,events}` to consolidate agent-related code under a unified package structure.
 
+## [0.62.0] - 2026-03-02
+
+### Changed
+
+- Use regexp-based customQuery for trace-to-log correlation
+
+## [0.61.0] - 2026-03-02
+
+### Added
+
+- Add support for organizing Grafana dashboards into folders and subfolders via the `observability.giantswarm.io/folder` annotation.
+
+## [0.60.0] - 2026-02-24
+
+### Changed
+
+- Enable network monitoring by default
+
+## [0.59.2] - 2026-02-12
+
+### Changed
+
+- Use `Chart.AppVersion` instead of `Chart.Version` for the image tag in the deployment template.
+- Change team annotation in `Chart.yaml` to OpenContainers format (`io.giantswarm.application.team`).
+
+### Removed
+
+- Remove `alloy-logs` and `alloy-events` reconciliation flags as the migration is over and we do not need them anymore.
+
+## [0.59.1] - 2026-02-12
+
+### Fixed
+
+- Fix the Tempo URL configured in alloy-events.
+
+## [0.59.0] - 2026-02-10
+
+### Added
+
+- Add KEDA `ClusterTriggerAuthentication` support for Mimir authentication. When the `giantswarm.io/keda-authentication: "true"` label is set on a cluster, a `giantswarm-mimir-auth` `ClusterTriggerAuthentication` and its backing credentials `Secret` are created in the KEDA operator namespace (defaults to `keda`, configurable via `giantswarm.io/keda-namespace` annotation). This enables KEDA `ScaledObjects` to query Mimir metrics with authentication.
+- Add `mimirQueryAPIURL` key to the `alloy-metrics` secret, providing a Prometheus-compatible Mimir query endpoint for use by KEDA.
+- Add generic `ExtraSecretObjects` pass-through in the agent configuration and shared secret template, allowing collectors to inject arbitrary Helm `extraObjects` YAML into the secret values.
+
+### Changed
+
+- Refactor `isClusterFeatureEnabled` to support both opt-in and opt-out models via a `defaultWhenMissing` parameter. Network monitoring and KEDA authentication use opt-in (disabled by default), while monitoring, logging, and tracing remain opt-out (enabled by default).
+- Move Mimir secret key constants from the metrics collector to `pkg/agent/common/keys.go` for reuse across packages.
+
+## [0.58.0] - 2026-02-04
+
+### Added
+
+- Add `ConfigurationRepository` interface in `pkg/agent` for managing agent (Alloy) configuration persistence with Kubernetes-based implementation. The repository now uses the shared secret template for generating agent secrets.
+- Add shared secret template infrastructure in `pkg/agent/common` to consolidate duplicate secret templates across metrics, logs, and events agents.
+
+### Fixed
+
+- Make Cronitor configuration optional since we don't set it for ephemeral MCs
+
 ## [0.57.1] - 2026-01-21
 
 ### Fixed
@@ -174,7 +233,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add GitHub webhook receivers for team-based alert routing to create GitHub issues for alerts with severity "ticket"
- 
+
 ### Fixed
 
 - Fixed pagerdutyToken config
@@ -874,7 +933,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.57.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.62.0...HEAD
+[0.62.0]: https://github.com/giantswarm/observability-operator/compare/v0.61.0...v0.62.0
+[0.61.0]: https://github.com/giantswarm/observability-operator/compare/v0.60.0...v0.61.0
+[0.60.0]: https://github.com/giantswarm/observability-operator/compare/v0.59.2...v0.60.0
+[0.59.2]: https://github.com/giantswarm/observability-operator/compare/v0.59.1...v0.59.2
+[0.59.1]: https://github.com/giantswarm/observability-operator/compare/v0.59.0...v0.59.1
+[0.59.0]: https://github.com/giantswarm/observability-operator/compare/v0.58.0...v0.59.0
+[0.58.0]: https://github.com/giantswarm/observability-operator/compare/v0.57.1...v0.58.0
 [0.57.1]: https://github.com/giantswarm/observability-operator/compare/v0.57.0...v0.57.1
 [0.57.0]: https://github.com/giantswarm/observability-operator/compare/v0.56.0...v0.57.0
 [0.56.0]: https://github.com/giantswarm/observability-operator/compare/v0.55.0...v0.56.0

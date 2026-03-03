@@ -8,8 +8,12 @@ import (
 // A feature is enabled when all conditions are met:
 //   - feature is enabled at the installation level (global flag)
 //   - cluster is not being deleted
-//   - cluster-specific feature label is set to true (or missing/invalid, defaulting to true)
-func isClusterFeatureEnabled(globalEnabled bool, cluster *clusterv1.Cluster, labelKey string) bool {
+//   - cluster-specific feature label matches the expected value
+//
+// The defaultWhenMissing parameter controls the behavior when the label is missing:
+//   - true: feature is enabled by default (opt-out model)
+//   - false: feature is disabled by default (opt-in model)
+func isClusterFeatureEnabled(globalEnabled bool, cluster *clusterv1.Cluster, labelKey string, defaultWhenMissing bool) bool {
 	// Check global flag
 	if !globalEnabled {
 		return false
@@ -24,14 +28,19 @@ func isClusterFeatureEnabled(globalEnabled bool, cluster *clusterv1.Cluster, lab
 	// Check cluster-specific label
 	labels := cluster.GetLabels()
 	if labels == nil {
-		return true // default to enabled when no labels
+		return defaultWhenMissing
 	}
 
 	labelValue, ok := labels[labelKey]
 	if !ok {
-		return true // default to enabled when label not set
+		return defaultWhenMissing
 	}
 
-	// If label is set to "false", feature is disabled
-	return labelValue != "false"
+	// Check if label explicitly enables or disables the feature
+	if defaultWhenMissing {
+		// Opt-out model: disabled only if explicitly set to "false"
+		return labelValue != "false"
+	}
+	// Opt-in model: enabled only if explicitly set to "true"
+	return labelValue == "true"
 }

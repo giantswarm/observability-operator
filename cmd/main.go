@@ -90,8 +90,6 @@ const (
 
 	// Logging configuration flag names
 	flagLoggingEnabled                     = "logging-enabled"
-	flagLoggingEnableAlloyLogs             = "logging-enable-alloy-logs-reconciliation"
-	flagLoggingEnableAlloyEvents           = "logging-enable-alloy-events-reconciliation"
 	flagLoggingDefaultNamespaces           = "logging-default-namespaces"
 	flagLoggingEnableNodeFiltering         = "logging-enable-node-filtering"
 	flagLoggingIncludeEventsFromNamespaces = "logging-include-events-from-namespaces"
@@ -191,8 +189,8 @@ func parseFlags() (err error) {
 	pflag.DurationVar(&cfg.Monitoring.WALTruncateFrequency, flagMonitoringWALTruncateFrequency, 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
 	pflag.StringVar(&cfg.Monitoring.MetricsQueryURL, flagMonitoringMetricsQueryURL, "http://mimir-gateway.mimir.svc/prometheus",
-		"URL to query for cluster metrics")
-	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, false,
+		"URL to query for cluster metrics (internal Mimir query endpoint)")
+	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
 		"Enable/disable network monitoring in Alloy logging configuration")
 
 	// Queue configuration flags for Alloy remote write
@@ -226,10 +224,6 @@ func parseFlags() (err error) {
 	// Logging configuration flags
 	pflag.BoolVar(&cfg.Logging.Enabled, flagLoggingEnabled, false,
 		"Enable logging at the installation level.")
-	pflag.BoolVar(&cfg.Logging.EnableAlloyLogsReconciliation, flagLoggingEnableAlloyLogs, false,
-		"Enable Alloy logs reconciliation at the installation level.")
-	pflag.BoolVar(&cfg.Logging.EnableAlloyEventsReconciliation, flagLoggingEnableAlloyEvents, false,
-		"Enable Alloy events reconciliation at the installation level.")
 	pflag.StringSliceVar(&cfg.Logging.DefaultNamespaces, flagLoggingDefaultNamespaces, []string{},
 		"Comma-separated list of namespaces to collect logs from by default on workload clusters")
 	pflag.BoolVar(&cfg.Logging.EnableNodeFiltering, flagLoggingEnableNodeFiltering, false,
@@ -291,7 +285,8 @@ func setupApplication() error {
 	opts := zap.Options{
 		Development: false,
 	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	logger := zap.New(zap.UseFlagOptions(&opts))
+	ctrl.SetLogger(logger)
 
 	// Load environment variables
 	_, err := env.UnmarshalFromEnviron(&cfg.Environment)
@@ -366,7 +361,7 @@ func setupApplication() error {
 	// Create Grafana client generator for dependency injection
 	grafanaClientGen := &grafanaclient.DefaultGrafanaClientGenerator{}
 	// Setup controller for the Cluster resource.
-	err = controller.SetupClusterMonitoringReconciler(mgr, cfg)
+	err = controller.SetupClusterMonitoringReconciler(mgr, cfg, logger)
 	if err != nil {
 		return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
 	}

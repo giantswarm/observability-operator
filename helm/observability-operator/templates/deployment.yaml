@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: {{ include "name" . }}
-        image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ default .Chart.Version .Values.image.tag }}"
+        image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ default .Chart.AppVersion .Values.image.tag }}"
         args:
         - --leader-elect
         - --management-cluster-base-domain={{ $.Values.managementCluster.baseDomain }}
@@ -78,12 +78,6 @@ spec:
         # Logging configuration
         {{ with .Values.logging }}
         - --logging-enabled={{ .enabled }}
-        {{- if .enableAlloyLogsReconciliation }}
-        - --logging-enable-alloy-logs-reconciliation=true
-        {{- end }}
-        {{- if .enableAlloyEventsReconciliation }}
-        - --logging-enable-alloy-events-reconciliation=true
-        {{- end }}
         {{- if .enableNodeFiltering }}
         - --logging-enable-node-filtering=true
         {{- end }}

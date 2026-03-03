@@ -43,7 +43,7 @@ func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clus
 		secrets[common.LokiUsernameKey] = cluster.Name
 		secrets[common.LokiPasswordKey] = logsPassword
 		secrets[common.LokiRulerAPIURLKey] = lokiRulerAPIURL
-  }
+	}
 
 	return secrets, nil
 }

@@ -3,6 +3,7 @@ package organization
 import (
 	"errors"
 	"slices"
+	"strconv"
 )
 
 const GiantSwarmDefaultTenant = "giantswarm"
@@ -90,5 +91,5 @@ func (o *Organization) SetID(id int64) {
 
 // String provides a string representation for debugging
 func (o *Organization) String() string {
-	return "Organization{id: " + string(rune(o.id)) + ", name: " + o.name + "}"
+	return "Organization{id: " + strconv.FormatInt(o.id, 10) + ", name: " + o.name + "}"
 }

@@ -15,6 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/pkg/agent"
+	"github.com/giantswarm/observability-operator/pkg/agent/collectors/events"
+	"github.com/giantswarm/observability-operator/pkg/agent/collectors/logs"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
 	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
@@ -102,6 +104,29 @@ var _ = Describe("Cluster Controller", func() {
 				),
 			)
 
+			lokiAuthManager := auth.NewAuthManager(
+				k8sClient,
+				auth.NewConfig(
+					auth.AuthTypeLogs,
+					"loki",
+					"loki-gateway-ingress-auth",
+					"loki-gateway-httproute-auth",
+				),
+			)
+
+			tempoAuthManager := auth.NewAuthManager(
+				k8sClient,
+				auth.NewConfig(
+					auth.AuthTypeTraces,
+					"tempo",
+					"tempo-gateway-ingress-auth",
+					"tempo-gateway-httproute-auth",
+				),
+			)
+
+			// Create agent configuration repository
+			agentConfigurationRepository := agent.NewConfigurationRepository(k8sClient)
+
 			alloyMetricsService := metrics.Service{
 				Config: config.Config{
 					Cluster: config.ClusterConfig{
@@ -114,10 +139,50 @@ var _ = Describe("Cluster Controller", func() {
 						Enabled: true,
 					},
 				},
-				ConfigurationRepository: agent.NewConfigurationRepository(k8sClient),
+				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
 				AuthManager:             mimirAuthManager,
+			}
+
+			alloyLogsService := logs.Service{
+				Config: config.Config{
+					Cluster: config.ClusterConfig{
+						Name:     "management-cluster",
+						Pipeline: "testing",
+						Region:   "eu-west-1",
+						Customer: "giantswarm",
+					},
+					Logging: config.LoggingConfig{
+						Enabled: true,
+					},
+				},
+				ConfigurationRepository: agentConfigurationRepository,
+				OrganizationRepository:  organizationRepository,
+				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
+				LogsAuthManager:         lokiAuthManager,
+			}
+
+			alloyEventsService := events.Service{
+				Config: config.Config{
+					Cluster: config.ClusterConfig{
+						Name:     "management-cluster",
+						Pipeline: "testing",
+						Region:   "eu-west-1",
+						Customer: "giantswarm",
+					},
+					Logging: config.LoggingConfig{
+						Enabled: true,
+					},
+					Tracing: config.TracingConfig{
+						Enabled: true,
+					},
+				},
+				ConfigurationRepository: agentConfigurationRepository,
+				OrganizationRepository:  organizationRepository,
+				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
+				LogsAuthManager:         lokiAuthManager,
+				TracesAuthManager:       tempoAuthManager,
 			}
 
 			// Create auth managers map for the reconciler
@@ -126,6 +191,18 @@ var _ = Describe("Cluster Controller", func() {
 					authManager: mimirAuthManager,
 					isEnabled: func(c *clusterv1.Cluster) bool {
 						return config.Config{Monitoring: config.MonitoringConfig{Enabled: true}}.Monitoring.IsMonitoringEnabled(c)
+					},
+				},
+				auth.AuthTypeLogs: {
+					authManager: lokiAuthManager,
+					isEnabled: func(c *clusterv1.Cluster) bool {
+						return config.Config{Logging: config.LoggingConfig{Enabled: true}}.Logging.IsLoggingEnabled(c)
+					},
+				},
+				auth.AuthTypeTraces: {
+					authManager: tempoAuthManager,
+					isEnabled: func(c *clusterv1.Cluster) bool {
+						return config.Config{Tracing: config.TracingConfig{Enabled: true}}.Tracing.IsTracingEnabled(c)
 					},
 				},
 			}
@@ -145,6 +222,8 @@ var _ = Describe("Cluster Controller", func() {
 				},
 				BundleConfigurationService: bundleService,
 				AlloyMetricsService:        alloyMetricsService,
+				AlloyLogsService:           alloyLogsService,
+				AlloyEventsService:         alloyEventsService,
 				authManagers:               authManagers,
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
 			}

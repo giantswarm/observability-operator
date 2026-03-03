@@ -3,17 +3,20 @@ package dashboard
 import (
 	"fmt"
 	"maps"
+
+	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 )
 
 // Dashboard represents a Grafana dashboard domain object
 type Dashboard struct {
 	uid          string
 	organization string
+	folderPath   string
 	content      map[string]any
 }
 
 // New creates a new Dashboard domain object, extracting the UID from the content
-func New(organization string, content map[string]any) *Dashboard {
+func New(organization string, folderPath string, content map[string]any) *Dashboard {
 	// Extract UID from content
 	uid := ""
 	if content != nil {
@@ -25,6 +28,7 @@ func New(organization string, content map[string]any) *Dashboard {
 	return &Dashboard{
 		uid:          uid,
 		organization: organization,
+		folderPath:   folderPath,
 		content:      content,
 	}
 }
@@ -32,6 +36,7 @@ func New(organization string, content map[string]any) *Dashboard {
 // Getters (pure accessors)
 func (d *Dashboard) UID() string          { return d.uid }
 func (d *Dashboard) Organization() string { return d.organization }
+func (d *Dashboard) FolderPath() string   { return d.folderPath }
 
 // Content returns a copy of the content to prevent external mutation
 func (d *Dashboard) Content() map[string]any {
@@ -57,6 +62,11 @@ func (d *Dashboard) Validate() []error {
 	// Validate content is not nil (though empty content might be valid)
 	if d.content == nil {
 		errors = append(errors, ErrInvalidJSON)
+	}
+
+	// Validate folder path if present
+	if err := folder.ValidatePath(d.folderPath); err != nil {
+		errors = append(errors, err)
 	}
 
 	return errors

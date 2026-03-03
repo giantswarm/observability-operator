@@ -14,6 +14,12 @@ const MonitoringLabel = "giantswarm.io/monitoring"
 // TODO rename to observability.giantswarm.io/network-monitoring
 const NetworkMonitoringLabel = "giantswarm.io/network-monitoring"
 
+// TODO rename to observability.giantswarm.io/keda-authentication
+const KEDAAuthenticationLabel = "giantswarm.io/keda-authentication"
+
+// TODO rename to observability.giantswarm.io/keda-namespace
+const KEDANamespaceAnnotation = "giantswarm.io/keda-namespace"
+
 // QueueConfig represents the configuration for the remote write queue.
 type QueueConfig struct {
 	BatchSendDeadline *string
@@ -53,44 +59,37 @@ func (c MonitoringConfig) Validate() error {
 	return nil
 }
 
-// Monitoring is enabled when all conditions are met:
-//   - monitoring is enabled at the installation level (global flag)
-//   - cluster is not being deleted
-//   - cluster-specific monitoring label is set to true (or missing/invalid, defaulting to true)
+// IsMonitoringEnabled checks if monitoring is enabled for a cluster.
+// Uses opt-out model: enabled by default unless explicitly disabled.
 func (c MonitoringConfig) IsMonitoringEnabled(cluster *clusterv1.Cluster) bool {
-	return isClusterFeatureEnabled(c.Enabled, cluster, MonitoringLabel)
+	return isClusterFeatureEnabled(c.Enabled, cluster, MonitoringLabel, true)
 }
 
-// Network monitoring is enabled when all conditions are met:
-//   - network monitoring is enabled at the installation level (global flag)
-//   - cluster is not being deleted
-//   - cluster-specific network monitoring label is set to "true" (defaults to false if missing/invalid)
-//
-// We need this special logic because network monitoring must be explicitly enabled per cluster for now.
+// IsNetworkMonitoringEnabled checks if network monitoring is enabled for a cluster.
+// Uses opt-in model: disabled by default, must be explicitly enabled.
 // TODO revisit this logic in the future when network monitoring is more widely adopted.
 func (c MonitoringConfig) IsNetworkMonitoringEnabled(cluster *clusterv1.Cluster) bool {
-	// Check global flag
-	if !c.NetworkEnabled {
-		return false
-	}
+	return isClusterFeatureEnabled(c.NetworkEnabled, cluster, NetworkMonitoringLabel, false)
+}
 
-	// If the cluster is being deleted, always return false
-	deletionTimestamp := cluster.GetDeletionTimestamp()
-	if deletionTimestamp != nil && !deletionTimestamp.IsZero() {
-		return false
-	}
+const KEDADefaultNamespace = "keda"
 
-	// Check cluster-specific label - must be explicitly set to "true" (defaults to false)
-	labels := cluster.GetLabels()
-	if labels == nil {
-		return false // default to disabled when no labels
+// GetKEDANamespace returns the KEDA operator namespace configured for a cluster via annotation.
+// Defaults to "keda" if the annotation is not set.
+func GetKEDANamespace(cluster *clusterv1.Cluster) string {
+	annotations := cluster.GetAnnotations()
+	if annotations != nil {
+		if ns, ok := annotations[KEDANamespaceAnnotation]; ok && ns != "" {
+			return ns
+		}
 	}
+	return KEDADefaultNamespace
+}
 
-	labelValue, ok := labels[NetworkMonitoringLabel]
-	if !ok {
-		return false // default to disabled when label not set
-	}
-
-	// Only enabled if explicitly set to "true"
-	return labelValue == "true"
+// IsKEDAAuthenticationEnabled checks if KEDA authentication is enabled for a cluster.
+// Uses opt-in model: disabled by default, must be explicitly enabled.
+// When enabled, creates a ClusterTriggerAuthentication resource for KEDA ScaledObjects
+// to authenticate with Mimir for querying metrics.
+func (c MonitoringConfig) IsKEDAAuthenticationEnabled(cluster *clusterv1.Cluster) bool {
+	return isClusterFeatureEnabled(c.Enabled, cluster, KEDAAuthenticationLabel, false)
 }

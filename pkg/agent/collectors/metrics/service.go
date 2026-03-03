@@ -52,15 +52,26 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 		return fmt.Errorf("failed to generate alloy monitoring secret: %w", err)
 	}
 
+	// Generate KEDA extra objects if KEDA authentication is enabled
+	var extraSecretObjects string
+	if a.Config.Monitoring.IsKEDAAuthenticationEnabled(cluster) {
+		kedaNamespace := config.GetKEDANamespace(cluster)
+		extraSecretObjects, err = generateKEDAExtraObjects(kedaNamespace, secretData)
+		if err != nil {
+			return fmt.Errorf("failed to generate KEDA extra objects: %w", err)
+		}
+	}
+
 	// Save configuration via repository
 	err = a.ConfigurationRepository.Save(ctx, &agent.AgentConfiguration{
-		ClusterName:      cluster.Name,
-		ClusterNamespace: cluster.Namespace,
-		ConfigMapName:    fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
-		SecretName:       fmt.Sprintf("%s-%s", cluster.Name, SecretName),
-		ConfigMapData:    configMapData,
-		SecretData:       secretData,
-		Labels:           labels.Common,
+		ClusterName:        cluster.Name,
+		ClusterNamespace:   cluster.Namespace,
+		ConfigMapName:      fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
+		SecretName:         fmt.Sprintf("%s-%s", cluster.Name, SecretName),
+		ConfigMapData:      configMapData,
+		SecretData:         secretData,
+		ExtraSecretObjects: extraSecretObjects,
+		Labels:             labels.Common,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to save alloy monitoring configuration: %w", err)

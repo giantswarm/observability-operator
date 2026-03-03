@@ -4,6 +4,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/client/datasources"
+	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/client/orgs"
 	"github.com/grafana/grafana-openapi-client-go/client/sso_settings"
 	"github.com/grafana/grafana-openapi-client-go/models"
@@ -541,3 +542,106 @@ func (m *MockSsoSettingsClient) RemoveProviderSettingsWithParams(params *sso_set
 }
 
 func (m *MockSsoSettingsClient) SetTransport(transport runtime.ClientTransport) {}
+
+// MockFoldersClient is a mock for the folders client service
+type MockFoldersClient struct {
+	mock.Mock
+}
+
+func (m *MockFoldersClient) CreateFolder(body *models.CreateFolderCommand, opts ...folders.ClientOption) (*folders.CreateFolderOK, error) {
+	args := m.Called(body)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*folders.CreateFolderOK), args.Error(1)
+}
+
+func (m *MockFoldersClient) CreateFolderWithParams(params *folders.CreateFolderParams, opts ...folders.ClientOption) (*folders.CreateFolderOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) DeleteFolder(params *folders.DeleteFolderParams, opts ...folders.ClientOption) (*folders.DeleteFolderOK, error) {
+	args := m.Called(params)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*folders.DeleteFolderOK), args.Error(1)
+}
+
+func (m *MockFoldersClient) GetFolderByID(folderID int64, opts ...folders.ClientOption) (*folders.GetFolderByIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) GetFolderByIDWithParams(params *folders.GetFolderByIDParams, opts ...folders.ClientOption) (*folders.GetFolderByIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) GetFolderByUID(folderUID string, opts ...folders.ClientOption) (*folders.GetFolderByUIDOK, error) {
+	args := m.Called(folderUID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*folders.GetFolderByUIDOK), args.Error(1)
+}
+
+func (m *MockFoldersClient) GetFolderByUIDWithParams(params *folders.GetFolderByUIDParams, opts ...folders.ClientOption) (*folders.GetFolderByUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) GetFolderDescendantCounts(folderUID string, opts ...folders.ClientOption) (*folders.GetFolderDescendantCountsOK, error) {
+	args := m.Called(folderUID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*folders.GetFolderDescendantCountsOK), args.Error(1)
+}
+
+func (m *MockFoldersClient) GetFolderDescendantCountsWithParams(params *folders.GetFolderDescendantCountsParams, opts ...folders.ClientOption) (*folders.GetFolderDescendantCountsOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) GetFolderPermissionList(folderUID string, opts ...folders.ClientOption) (*folders.GetFolderPermissionListOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) GetFolderPermissionListWithParams(params *folders.GetFolderPermissionListParams, opts ...folders.ClientOption) (*folders.GetFolderPermissionListOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) GetFolders(params *folders.GetFoldersParams, opts ...folders.ClientOption) (*folders.GetFoldersOK, error) {
+	args := m.Called(params)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*folders.GetFoldersOK), args.Error(1)
+}
+
+func (m *MockFoldersClient) MoveFolder(folderUID string, body *models.MoveFolderCommand, opts ...folders.ClientOption) (*folders.MoveFolderOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) MoveFolderWithParams(params *folders.MoveFolderParams, opts ...folders.ClientOption) (*folders.MoveFolderOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) UpdateFolder(folderUID string, body *models.UpdateFolderCommand, opts ...folders.ClientOption) (*folders.UpdateFolderOK, error) {
+	args := m.Called(folderUID, body)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*folders.UpdateFolderOK), args.Error(1)
+}
+
+func (m *MockFoldersClient) UpdateFolderWithParams(params *folders.UpdateFolderParams, opts ...folders.ClientOption) (*folders.UpdateFolderOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) UpdateFolderPermissions(folderUID string, body *models.UpdateDashboardACLCommand, opts ...folders.ClientOption) (*folders.UpdateFolderPermissionsOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) UpdateFolderPermissionsWithParams(params *folders.UpdateFolderPermissionsParams, opts ...folders.ClientOption) (*folders.UpdateFolderPermissionsOK, error) {
+	return nil, nil
+}
+
+func (m *MockFoldersClient) SetTransport(transport runtime.ClientTransport) {}

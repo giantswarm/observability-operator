@@ -28,6 +28,10 @@ type AgentConfiguration struct {
 	ConfigMapData map[string]string
 	SecretData    map[string]string // Environment variables for the secret
 
+	// ExtraSecretObjects is optional pre-rendered YAML content to include as Helm
+	// extraObjects in the secret values (e.g. KEDA ClusterTriggerAuthentication).
+	ExtraSecretObjects string
+
 	// Labels to apply to resources
 	Labels map[string]string
 }
@@ -85,7 +89,7 @@ func (r *k8sConfigurationRepository) Save(ctx context.Context, config *AgentConf
 
 	_, err = controllerutil.CreateOrUpdate(ctx, r.client, secret, func() error {
 		// Generate secret data using the shared template
-		secretData, err := common.GenerateSecretData(config.SecretData)
+		secretData, err := common.GenerateSecretData(config.SecretData, config.ExtraSecretObjects)
 		if err != nil {
 			return fmt.Errorf("failed to generate secret data: %w", err)
 		}
