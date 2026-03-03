@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/giantswarm/observability-operator/internal/labels"
 	"github.com/giantswarm/observability-operator/internal/mapper"
 )
 
@@ -49,10 +50,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 				Name:      "test-dashboard",
 				Namespace: "default",
 				Labels: map[string]string{
-					"app.giantswarm.io/kind": "dashboard",
+					labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 				},
 				Annotations: map[string]string{
-					"observability.giantswarm.io/organization": "test-org",
+					labels.GrafanaOrganizationKey: "test-org",
 				},
 			},
 			Data: map[string]string{
@@ -95,7 +96,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "configmap-wrong-kind",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "not-dashboard",
+						labels.DashboardSelectorLabelName: "not-dashboard",
 					},
 				},
 			}
@@ -182,7 +183,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			By("Creating ConfigMap without organization label or annotation")
 			invalidConfigMap := obj.DeepCopy()
 			invalidConfigMap.Labels = map[string]string{
-				"app.giantswarm.io/kind": "dashboard",
+				labels.DashboardSelectorLabelName: "dashboard",
 			}
 			invalidConfigMap.Annotations = nil
 			_, err := validator.ValidateCreate(ctx, invalidConfigMap)
@@ -211,10 +212,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "test-dashboard-annotation",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "dashboard",
+						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "annotation-org",
+						labels.GrafanaOrganizationKey: "annotation-org",
 					},
 				},
 				Data: map[string]string{
@@ -237,8 +238,8 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "test-dashboard-label",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind":                   "dashboard",
-						"observability.giantswarm.io/organization": "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 				},
 				Data: map[string]string{
@@ -261,11 +262,11 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "test-dashboard-both",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind":                   "dashboard",
-						"observability.giantswarm.io/organization": "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "annotation-org",
+						labels.GrafanaOrganizationKey: "annotation-org",
 					},
 				},
 				Data: map[string]string{
@@ -288,10 +289,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "multi-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "dashboard",
+						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -319,10 +320,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "mixed-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "dashboard",
+						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -376,10 +377,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "empty-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "dashboard",
+						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{},
@@ -396,10 +397,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "non-json-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "dashboard",
+						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -505,11 +506,11 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "precedence-test",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind":                   "dashboard",
-						"observability.giantswarm.io/organization": "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "annotation-org",
+						labels.GrafanaOrganizationKey: "annotation-org",
 					},
 				},
 				Data: map[string]string{
@@ -525,7 +526,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			By("Testing organization with special characters")
 			specialOrgConfigMap := obj.DeepCopy()
-			specialOrgConfigMap.Annotations["observability.giantswarm.io/organization"] = "org-with-dashes_and_underscores.and.dots"
+			specialOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "org-with-dashes_and_underscores.and.dots"
 
 			_, err = validator.ValidateCreate(ctx, specialOrgConfigMap)
 			Expect(err).NotTo(HaveOccurred()) // Special chars should be allowed
@@ -533,7 +534,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			By("Testing very long organization name")
 			longOrgConfigMap := obj.DeepCopy()
 			longOrgName := "very-long-organization-name-that-might-exceed-normal-limits-but-should-still-be-handled-gracefully-by-the-validation-system"
-			longOrgConfigMap.Annotations["observability.giantswarm.io/organization"] = longOrgName
+			longOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = longOrgName
 
 			_, err = validator.ValidateCreate(ctx, longOrgConfigMap)
 			Expect(err).NotTo(HaveOccurred()) // Long org names should be allowed
@@ -582,7 +583,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			By("Testing error aggregation for multiple validation failures")
 			multiErrorConfigMap := obj.DeepCopy()
 			multiErrorConfigMap.Labels = map[string]string{
-				"app.giantswarm.io/kind": "dashboard",
+				labels.DashboardSelectorLabelName: "dashboard",
 			}
 			multiErrorConfigMap.Annotations = nil // Remove organization
 			multiErrorConfigMap.Data["dashboard.json"] = `{
@@ -660,7 +661,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			It("Should handle Unicode characters in organization names", func() {
 				By("Testing organization with Unicode characters")
 				unicodeOrgConfigMap := obj.DeepCopy()
-				unicodeOrgConfigMap.Annotations["observability.giantswarm.io/organization"] = "组织-العربية-русский-🏢"
+				unicodeOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "组织-العربية-русский-🏢"
 
 				_, err := validator.ValidateCreate(ctx, unicodeOrgConfigMap)
 				Expect(err).NotTo(HaveOccurred()) // Unicode should be allowed
@@ -710,7 +711,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 				By("Testing organization with empty string")
 				emptyOrgConfigMap := obj.DeepCopy()
-				emptyOrgConfigMap.Annotations["observability.giantswarm.io/organization"] = ""
+				emptyOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = ""
 
 				_, err = validator.ValidateCreate(ctx, emptyOrgConfigMap)
 				Expect(err).To(HaveOccurred())

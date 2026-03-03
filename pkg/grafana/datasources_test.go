@@ -39,7 +39,8 @@ func TestDatasourceTempo(t *testing.T) {
 						"datasourceUid":      LokiDatasourceUID,
 						"spanStartTimeShift": "-10m",
 						"spanEndTimeShift":   "10m",
-						"filterByTraceID":    true,
+						"filterByTraceID":    false,
+						"customQuery":        traceToLogsQuery,
 					},
 					"tracesToMetrics": map[string]any{
 						"datasourceUid": MimirDatasourceUID,
