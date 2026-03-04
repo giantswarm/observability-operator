@@ -431,7 +431,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 
 		// Logging-specific: Alloy logs configuration - daemonset that collects data from each node
-    if !(r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster)) {
+    if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
 			// Clean up any existing alloy logs configuration
 			err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
