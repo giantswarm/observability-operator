@@ -382,7 +382,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		}
 	}
 
-	// Events-specific: Alloy events configuration (handles both logs and traces)
+	// Events-specific: Alloy events configuration - replicaset that handles both kube event logs and traces
 	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
 		// Create or update Alloy events configuration
 		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
