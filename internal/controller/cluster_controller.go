@@ -443,7 +443,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			}
 		}
 
-		// Events-specific: Alloy events configuration - replicaset that handles both kube event logs and traces
+		// Events-specific: Alloy events configuration - deployment that handles both kube event logs and traces
 		if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
 			// Clean up any existing alloy events configuration
 			err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
