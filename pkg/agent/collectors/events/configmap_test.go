@@ -217,7 +217,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
+			tenants: []string{"giantswarm"},
 			// goldenPath omitted - this should return an error
 			observabilityBundleVersion: semver.MustParse("1.11.0"),
 			loggingEnabled:             false,
@@ -263,7 +263,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
+			tenants: []string{"giantswarm"},
 			// goldenPath omitted - this should return an error
 			observabilityBundleVersion: semver.MustParse("1.11.0"),
 			loggingEnabled:             false,

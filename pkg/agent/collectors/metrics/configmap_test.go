@@ -49,6 +49,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		tenants                    []string
 		goldenPath                 string
 		observabilityBundleVersion semver.Version
+		monitoringEnabled          bool
 	}{
 		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
@@ -67,6 +68,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{"tenant1", "tenant2"},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.200.wc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
 		},
 		{
 			name: "TwoTenantsInMC_v200",
@@ -84,6 +86,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{"tenant1", "tenant2"},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.200.mc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
 		},
 		{
 			name: "SingleTenantInWC_v200",
@@ -101,6 +104,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{"tenant1"},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.200.wc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
 		},
 		{
 			name: "SingleTenantInMC_v200",
@@ -118,6 +122,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{"tenant1"},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.200.mc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
 		},
 		{
 			name: "DefaultTenantInWC_v200",
@@ -135,6 +140,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.200.wc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
 		},
 		{
 			name: "DefaultTenantInMC_v200",
@@ -152,6 +158,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.200.mc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
 		},
 
 		// Version 2.2.0+ tests (with extra query matchers and scrape configs)
@@ -171,6 +178,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{"tenant1", "tenant2"},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.220.wc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
 		},
 		{
 			name: "TwoTenantsInMC_v220",
@@ -188,6 +196,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{"tenant1", "tenant2"},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
 		},
 		{
 			name: "SingleTenantInWC_v220",
@@ -205,6 +214,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{"tenant1"},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.220.wc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
 		},
 		{
 			name: "SingleTenantInMC_v220",
@@ -222,6 +232,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{"tenant1"},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
 		},
 		{
 			name: "DefaultTenantInWC_v220",
@@ -239,6 +250,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.220.wc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
 		},
 		{
 			name: "DefaultTenantInMC_v220",
@@ -256,6 +268,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
 		},
 		{
 			name: "MonitoringDisabled",
@@ -263,10 +276,6 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
 					Namespace: "default",
-					Labels: map[string]string{
-						// Add label to disable monitoring
-						config.MonitoringLabel: "false",
-					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: &corev1.ObjectReference{
@@ -277,9 +286,9 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants: []string{"tenant1"},
 			// goldenPath omitted - this should return an error
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          false,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -297,7 +306,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 						Region:     "dummy-region",
 					},
 					Monitoring: config.MonitoringConfig{
-						Enabled:              true,
+						Enabled:              tt.monitoringEnabled,
 						WALTruncateFrequency: time.Minute,
 						QueueConfig: config.QueueConfig{
 							Capacity:          &[]int{30000}[0],
