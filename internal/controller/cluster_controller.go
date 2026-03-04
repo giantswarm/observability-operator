@@ -363,7 +363,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		}
 	}
 
-	// Logging-specific: Alloy logs configuration (handles both logs and network monitoring)
+	// Logging-specific: Alloy logs configuration - daemonset that collects data from each node
 	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
 		// Create or update Alloy logs configuration
 		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
@@ -380,7 +380,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		}
 	}
 
-	// Events-specific: Alloy events configuration (handles both logs and traces)
+	// Events-specific: Alloy events configuration - deployment that handles both kube event logs and traces
 	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
 		// Create or update Alloy events configuration
 		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
@@ -430,8 +430,8 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			}
 		}
 
-		// Logging-specific: Alloy logs configuration (handles both logs and network monitoring)
-		if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
+		// Logging-specific: Alloy logs configuration - daemonset that collects data from each node
+    if !(r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster)) {
 			// Clean up any existing alloy logs configuration
 			err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
@@ -440,8 +440,8 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			}
 		}
 
-		// Events-specific: Alloy events configuration (handles both logs and traces)
-		if !r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
+		// Events-specific: Alloy events configuration - deployment that handles both kube event logs and traces
+    if !(r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster)) {
 			// Clean up any existing alloy events configuration
 			err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
 			if err != nil {

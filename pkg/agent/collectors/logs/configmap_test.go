@@ -33,9 +33,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 		defaultNamespaces          []string
 		goldenPath                 string
 		observabilityBundleVersion semver.Version
-		enableNodeFiltering        bool
-		enableLogging              bool
-		enableNetworkMonitoring    bool
+		loggingEnabled             bool
+		nodeFilteringEnabled       bool
+		networkMonitoringEnabled   bool
 	}{
 		{
 			name: "ManagementCluster_Basic",
@@ -58,9 +58,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			defaultNamespaces:          []string{"test-selector"},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170_MC.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			enableNodeFiltering:        false,
-			enableLogging:              true,
-			enableNetworkMonitoring:    false,
+			loggingEnabled:             true,
+			nodeFilteringEnabled:       false,
+			networkMonitoringEnabled:   false,
 		},
 		{
 			name: "WorkloadCluster_Basic",
@@ -83,9 +83,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			defaultNamespaces:          []string{"test-selector"},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170_WC.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			enableNodeFiltering:        false,
-			enableLogging:              true,
-			enableNetworkMonitoring:    false,
+			loggingEnabled:             true,
+			nodeFilteringEnabled:       false,
+			networkMonitoringEnabled:   false,
 		},
 		{
 			name: "WorkloadCluster_DefaultNamespacesNil",
@@ -108,9 +108,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			defaultNamespaces:          nil,
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170_WC_default_namespaces_nil.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			enableNodeFiltering:        false,
-			enableLogging:              true,
-			enableNetworkMonitoring:    false,
+			loggingEnabled:             true,
+			nodeFilteringEnabled:       false,
+			networkMonitoringEnabled:   false,
 		},
 		{
 			name: "WorkloadCluster_DefaultNamespacesEmpty",
@@ -133,9 +133,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			defaultNamespaces:          []string{""},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170_WC_default_namespaces_empty.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			enableNodeFiltering:        false,
-			enableLogging:              true,
-			enableNetworkMonitoring:    false,
+			loggingEnabled:             true,
+			nodeFilteringEnabled:       false,
+			networkMonitoringEnabled:   false,
 		},
 		{
 			name: "WorkloadCluster_CustomTenants",
@@ -158,9 +158,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			defaultNamespaces:          []string{""},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170_WC_custom_tenants.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			enableNodeFiltering:        false,
-			enableLogging:              true,
-			enableNetworkMonitoring:    false,
+			loggingEnabled:             true,
+			nodeFilteringEnabled:       false,
+			networkMonitoringEnabled:   false,
 		},
 		{
 			name: "ManagementCluster_NodeFiltering",
@@ -183,9 +183,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			defaultNamespaces:          []string{"test-selector"},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170_MC_node_filtering.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			enableNodeFiltering:        true,
-			enableLogging:              true,
-			enableNetworkMonitoring:    false,
+			loggingEnabled:             true,
+			nodeFilteringEnabled:       true,
+			networkMonitoringEnabled:   false,
 		},
 		{
 			name: "WorkloadCluster_NodeFiltering",
@@ -208,9 +208,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			defaultNamespaces:          []string{"test-selector"},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170_WC_node_filtering.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			enableNodeFiltering:        true,
-			enableLogging:              true,
-			enableNetworkMonitoring:    false,
+			loggingEnabled:             true,
+			nodeFilteringEnabled:       true,
+			networkMonitoringEnabled:   false,
 		},
 		{
 			name: "WorkloadCluster_NodeFiltering_v240",
@@ -233,9 +233,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			defaultNamespaces:          []string{"test-selector"},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.240_WC_node_filtering.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.4.0"),
-			enableNodeFiltering:        true,
-			enableLogging:              true,
-			enableNetworkMonitoring:    false,
+			loggingEnabled:             true,
+			nodeFilteringEnabled:       true,
+			networkMonitoringEnabled:   false,
 		},
 		{
 			name: "ManagementCluster_NetworkMonitoring",
@@ -258,9 +258,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			defaultNamespaces:          []string{"test-selector"},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.230_MC_network_monitoring.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.3.0"),
-			enableNodeFiltering:        false,
-			enableLogging:              true,
-			enableNetworkMonitoring:    true,
+			loggingEnabled:             true,
+			nodeFilteringEnabled:       false,
+			networkMonitoringEnabled:   true,
 		},
 		{
 			name: "WorkloadCluster_NetworkMonitoring",
@@ -402,12 +402,12 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 					Name:       managementClusterName,
 				},
 				Logging: config.LoggingConfig{
-					Enabled:             tt.enableLogging,
+					Enabled:             tt.loggingEnabled,
 					DefaultNamespaces:   tt.defaultNamespaces,
-					EnableNodeFiltering: tt.enableNodeFiltering,
+					EnableNodeFiltering: tt.nodeFilteringEnabled,
 				},
 				Monitoring: config.MonitoringConfig{
-					NetworkEnabled: tt.enableNetworkMonitoring,
+					NetworkEnabled: tt.networkMonitoringEnabled,
 				},
 			}
 
@@ -423,9 +423,20 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 				ctx,
 				tt.cluster,
 				tt.observabilityBundleVersion,
-				tt.enableLogging,
-				tt.enableNetworkMonitoring,
+				tt.loggingEnabled,
+				tt.networkMonitoringEnabled,
 			)
+
+			// Check if this is a "neither enabled" test case (no golden path)
+			if tt.goldenPath == "" {
+				// Should return an error when neither feature is enabled
+				if err == nil {
+					t.Errorf("GenerateAlloyLogsConfigMapData() expected error when neither logging nor network monitoring enabled, got nil")
+				}
+				return
+			}
+
+			// For valid test cases, no error should occur
 			if err != nil {
 				t.Fatalf("GenerateAlloyLogsConfigMapData() failed: %v", err)
 			}

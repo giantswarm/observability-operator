@@ -47,6 +47,12 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 }
 
 func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, observabilityBundleVersion semver.Version) (map[string]string, error) {
+	// Defensive validation: This method should only be called when logging or tracing is enabled.
+	// The controller ensures this, but we validate here to catch potential bugs.
+	if !loggingEnabled && !tracingEnabled {
+		return nil, fmt.Errorf("cannot generate alloy events config: neither logging nor tracing is enabled")
+	}
+
 	// Get list of tenants
 	tenants, err := a.TenantRepository.List(ctx)
 	if err != nil {

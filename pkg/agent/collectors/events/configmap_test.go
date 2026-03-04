@@ -217,8 +217,8 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.neither-enabled.yaml"),
+			tenants: []string{"giantswarm"},
+			// goldenPath omitted - this should return an error
 			observabilityBundleVersion: semver.MustParse("1.11.0"),
 			loggingEnabled:             false,
 			tracingEnabled:             false,
@@ -263,8 +263,8 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.neither-enabled.yaml"),
+			tenants: []string{"giantswarm"},
+			// goldenPath omitted - this should return an error
 			observabilityBundleVersion: semver.MustParse("1.11.0"),
 			loggingEnabled:             false,
 			tracingEnabled:             false,
@@ -323,6 +323,17 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				tt.tracingEnabled,
 				tt.observabilityBundleVersion,
 			)
+
+			// Check if this is a "neither enabled" test case (no golden path)
+			if tt.goldenPath == "" {
+				// Should return an error when neither feature is enabled
+				if err == nil {
+					t.Errorf("GenerateAlloyEventsConfigMapData() expected error when neither logging nor tracing enabled, got nil")
+				}
+				return
+			}
+
+			// For valid test cases, no error should occur
 			if err != nil {
 				t.Fatalf("GenerateAlloyEventsConfigMapData() failed: %v", err)
 			}
