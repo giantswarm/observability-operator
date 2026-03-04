@@ -300,6 +300,32 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			enableNodeFiltering:        true,
 			enableNetworkMonitoring:    true,
 		},
+		{
+			name: "WorkloadCluster_NeitherEnabled",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "default",
+					Labels: map[string]string{
+						"giantswarm.io/cluster":     "test-cluster",
+						"cluster.x-k8s.io/provider": "aws",
+						// Add label to disable logging
+						config.LoggingLabel: "false",
+					},
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"giantswarm"},
+			defaultNamespaces:          []string{"test-selector"},
+			// goldenPath omitted - this should return an error
+			observabilityBundleVersion: semver.MustParse("2.3.0"),
+			enableNodeFiltering:        false,
+			enableNetworkMonitoring:    false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -340,10 +366,18 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 					Name:       managementClusterName,
 				},
 				Logging: config.LoggingConfig{
+					Enabled:             true, // Enable logging at installation level
 					DefaultNamespaces:   tt.defaultNamespaces,
 					EnableNodeFiltering: tt.enableNodeFiltering,
 				},
-				Monitoring: config.MonitoringConfig{
+				Monitoring: config.MonitoringC// Check if this is a "neither enabled" test case (no golden path)
+			if tt.goldenPath == "" {
+				// Should return an error when neither feature is enabled
+				if err == nil {
+					t.Errorf("GenerateAlloyLogsConfigMapData() expected error when neither logging nor network monitoring enabled, got nil")
+				}
+				return
+			}onfig{
 					NetworkEnabled: tt.enableNetworkMonitoring,
 				},
 			}
@@ -362,6 +396,17 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 				tt.observabilityBundleVersion,
 				tt.enableNetworkMonitoring,
 			)
+
+			// Check if this is a "neither enabled" test case (no golden path)
+			if tt.goldenPath == "" {
+				// Should return an error when neither feature is enabled
+				if err == nil {
+					t.Errorf("GenerateAlloyLogsConfigMapData() expected error when neither logging nor network monitoring enabled, got nil")
+				}
+				return
+			}
+
+			// For valid test cases, no error should occur
 			if err != nil {
 				t.Fatalf("GenerateAlloyLogsConfigMapData() failed: %v", err)
 			}

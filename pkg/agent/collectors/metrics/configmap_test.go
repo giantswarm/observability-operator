@@ -257,6 +257,27 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 		},
+		{
+			name: "MonitoringDisabled",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "default",
+					Labels: map[string]string{
+						// Add label to disable monitoring
+						config.MonitoringLabel: "false",
+					},
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants: []string{"tenant1"},
+			// goldenPath omitted - this should return an error
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -295,6 +316,17 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				tt.tenants,
 				tt.observabilityBundleVersion,
 			)
+
+			// Check if this is a "monitoring disabled" test case (no golden path)
+			if tt.goldenPath == "" {
+				// Should return an error when monitoring is disabled
+				if err == nil {
+					t.Errorf("GenerateAlloyMonitoringConfigMapData() expected error when monitoring disabled, got nil")
+				}
+				return
+			}
+
+			// For valid test cases, no error should occur
 			if err != nil {
 				t.Fatalf("GenerateAlloyMonitoringConfigMapData() failed: %v", err)
 			}

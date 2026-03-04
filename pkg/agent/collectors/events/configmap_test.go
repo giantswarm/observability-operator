@@ -56,7 +56,9 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"), loggingEnabled: true, tracingEnabled: false,
+			observabilityBundleVersion: semver.MustParse("1.7.0"),
+			loggingEnabled:             true,
+			tracingEnabled:             false,
 		},
 		{
 			name: "WorkloadCluster_NoTracing",
@@ -77,7 +79,9 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"), loggingEnabled: true, tracingEnabled: false,
+			observabilityBundleVersion: semver.MustParse("1.7.0"),
+			loggingEnabled:             true,
+			tracingEnabled:             false,
 		},
 		{
 			name: "WorkloadCluster_IncludeNamespaces",
@@ -98,8 +102,10 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.include-namespaces.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"), loggingEnabled: true, tracingEnabled: false,
-			includeNamespaces: []string{"namespace1", "namespace2"},
+			observabilityBundleVersion: semver.MustParse("1.7.0"),
+			loggingEnabled:             true,
+			tracingEnabled:             false,
+			includeNamespaces:          []string{"namespace1", "namespace2"},
 		},
 		{
 			name: "WorkloadCluster_ExcludeNamespaces",
@@ -120,8 +126,10 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.exclude-namespaces.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"), loggingEnabled: true, tracingEnabled: false,
-			excludeNamespaces: []string{"namespace1", "namespace2"},
+			observabilityBundleVersion: semver.MustParse("1.7.0"),
+			loggingEnabled:             true,
+			tracingEnabled:             false,
+			excludeNamespaces:          []string{"namespace1", "namespace2"},
 		},
 		{
 			name: "ManagementCluster_TracingEnabled",
@@ -142,7 +150,9 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.tracing-enabled.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"), loggingEnabled: true, tracingEnabled: true,
+			observabilityBundleVersion: semver.MustParse("1.11.0"),
+			loggingEnabled:             true,
+			tracingEnabled:             true,
 		},
 		{
 			name: "WorkloadCluster_TracingEnabled",
@@ -163,7 +173,9 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants:                    []string{"giantswarm"},
 			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.tracing-enabled.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"), loggingEnabled: true, tracingEnabled: true,
+			observabilityBundleVersion: semver.MustParse("1.11.0"),
+			loggingEnabled:             true,
+			tracingEnabled:             true,
 		},
 		{
 			name: "WorkloadCluster_TracingOnly",
@@ -206,7 +218,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.neither-enabled.yaml"),
+			// goldenPath omitted - this should return an error
 			observabilityBundleVersion: semver.MustParse("1.11.0"),
 			loggingEnabled:             false,
 			tracingEnabled:             false,
@@ -252,7 +264,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.neither-enabled.yaml"),
+			// goldenPath omitted - this should return an error
 			observabilityBundleVersion: semver.MustParse("1.11.0"),
 			loggingEnabled:             false,
 			tracingEnabled:             false,
@@ -311,6 +323,17 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				tt.tracingEnabled,
 				tt.observabilityBundleVersion,
 			)
+
+			// Check if this is a "neither enabled" test case (no golden path)
+			if tt.goldenPath == "" {
+				// Should return an error when neither feature is enabled
+				if err == nil {
+					t.Errorf("GenerateAlloyEventsConfigMapData() expected error when neither logging nor tracing enabled, got nil")
+				}
+				return
+			}
+
+			// For valid test cases, no error should occur
 			if err != nil {
 				t.Fatalf("GenerateAlloyEventsConfigMapData() failed: %v", err)
 			}
