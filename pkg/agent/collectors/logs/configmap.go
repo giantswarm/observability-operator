@@ -50,6 +50,10 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 }
 
 func (s *Service) GenerateAlloyLogsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, loggingEnabled bool, networkMonitoringEnabled bool) (map[string]string, error) {
+	if !loggingEnabled && !networkMonitoringEnabled {
+		return nil, fmt.Errorf("neither logging nor network monitoring is enabled")
+	}
+
 	// Get tenant IDs
 	tenants, err := s.TenantRepository.List(ctx)
 	if err != nil {
