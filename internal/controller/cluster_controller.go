@@ -363,7 +363,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		}
 	}
 
-	// Logging-specific: Alloy logs configuration
+	// Logging-specific: Alloy logs configuration - daemonset that collects data from each node
 	if r.Config.Logging.IsLoggingEnabled(cluster) {
 		// Create or update Alloy logs configuration
 		// TODO make sure we can enable network monitoring separately from logging
