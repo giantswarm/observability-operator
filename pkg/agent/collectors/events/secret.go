@@ -24,23 +24,25 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, tracingEnabled bool) (map[string]string, error) {
-	lokiURL := fmt.Sprintf(common.LokiPushURLFormat, a.Config.Cluster.BaseDomain)
-	lokiRulerURL := fmt.Sprintf(common.LokiBaseURLFormat, a.Config.Cluster.BaseDomain)
+func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool) (map[string]string, error) {
+	secrets := map[string]string{}
 
-	// Get Loki auth credentials
-	logsPassword, err := a.LogsAuthManager.GetClusterPassword(ctx, cluster)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
-	}
+	// Add Loki credentials if logging is enabled
+	if loggingEnabled {
+		lokiURL := fmt.Sprintf(common.LokiPushURLFormat, a.Config.Cluster.BaseDomain)
+		lokiRulerURL := fmt.Sprintf(common.LokiBaseURLFormat, a.Config.Cluster.BaseDomain)
 
-	// Build secret environment variables map
-	secrets := map[string]string{
-		common.LokiURLKey:         lokiURL,
-		common.LokiTenantIDKey:    organization.GiantSwarmDefaultTenant,
-		common.LokiUsernameKey:    cluster.Name,
-		common.LokiPasswordKey:    logsPassword,
-		common.LokiRulerAPIURLKey: lokiRulerURL,
+		// Get Loki auth credentials
+		logsPassword, err := a.LogsAuthManager.GetClusterPassword(ctx, cluster)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
+		}
+
+		secrets[common.LokiURLKey] = lokiURL
+		secrets[common.LokiTenantIDKey] = organization.GiantSwarmDefaultTenant
+		secrets[common.LokiUsernameKey] = cluster.Name
+		secrets[common.LokiPasswordKey] = logsPassword
+		secrets[common.LokiRulerAPIURLKey] = lokiRulerURL
 	}
 
 	// Add tracing credentials if tracing is enabled
