@@ -1,10 +1,18 @@
 package alertmanager
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/prometheus/alertmanager/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
+
+	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
 )
 
 func TestCountRoutes(t *testing.T) {
@@ -84,6 +92,149 @@ func TestCountRoutes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := countRoutes(tt.route)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestConfigureFromSecret(t *testing.T) {
+	validConfig := []byte("route:\n  receiver: noop\nreceivers:\n- name: noop\n")
+
+	tests := []struct {
+		name           string
+		secretData     map[string][]byte
+		responseStatus int
+		wantErr        bool
+		errContains    string
+	}{
+		{
+			name: "valid config with 201 Created succeeds",
+			secretData: map[string][]byte{
+				AlertmanagerConfigKey: validConfig,
+			},
+			responseStatus: http.StatusCreated,
+			wantErr:        false,
+		},
+		{
+			name:        "missing alertmanager.yaml key returns error",
+			secretData:  map[string][]byte{},
+			wantErr:     true,
+			errContains: "missing alertmanager.yaml",
+		},
+		{
+			name: "invalid alertmanager config returns parse error",
+			secretData: map[string][]byte{
+				AlertmanagerConfigKey: []byte("not: valid: yaml: config:"),
+			},
+			wantErr:     true,
+			errContains: "failed to load alertmanager configuration",
+		},
+		{
+			name: "server error returns error",
+			secretData: map[string][]byte{
+				AlertmanagerConfigKey: validConfig,
+			},
+			responseStatus: http.StatusInternalServerError,
+			wantErr:        true,
+			errContains:    "failed to send configuration",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var receivedMethod, receivedPath, receivedTenant string
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				receivedMethod = r.Method
+				receivedPath = r.URL.Path
+				receivedTenant = r.Header.Get(common.OrgIDHeader)
+				w.WriteHeader(tt.responseStatus)
+			}))
+			defer srv.Close()
+
+			svc := New(pkgconfig.Config{
+				Monitoring: pkgconfig.MonitoringConfig{
+					AlertmanagerURL: srv.URL,
+				},
+			})
+
+			secret := &v1.Secret{Data: tt.secretData}
+			err := svc.ConfigureFromSecret(context.Background(), secret, "test-tenant")
+
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, http.MethodPost, receivedMethod)
+			assert.Equal(t, alertmanagerAPIPath, receivedPath)
+			assert.Equal(t, "test-tenant", receivedTenant)
+		})
+	}
+}
+
+func TestDeleteForTenant(t *testing.T) {
+	tests := []struct {
+		name           string
+		responseStatus int
+		wantErr        bool
+		errContains    string
+	}{
+		{
+			name:           "200 OK returns nil",
+			responseStatus: http.StatusOK,
+			wantErr:        false,
+		},
+		{
+			name:           "404 Not Found is treated as success (idempotent)",
+			responseStatus: http.StatusNotFound,
+			wantErr:        false,
+		},
+		{
+			name:           "500 Internal Server Error returns error",
+			responseStatus: http.StatusInternalServerError,
+			wantErr:        true,
+			errContains:    "failed to delete configuration",
+		},
+		{
+			name:           "400 Bad Request returns error",
+			responseStatus: http.StatusBadRequest,
+			wantErr:        true,
+			errContains:    "failed to delete configuration",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var receivedMethod, receivedPath, receivedTenant string
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				receivedMethod = r.Method
+				receivedPath = r.URL.Path
+				receivedTenant = r.Header.Get(common.OrgIDHeader)
+				w.WriteHeader(tt.responseStatus)
+			}))
+			defer srv.Close()
+
+			svc := New(pkgconfig.Config{
+				Monitoring: pkgconfig.MonitoringConfig{
+					AlertmanagerURL: srv.URL,
+				},
+			})
+
+			err := svc.DeleteForTenant(context.Background(), "test-tenant")
+
+			assert.Equal(t, http.MethodDelete, receivedMethod)
+			assert.Equal(t, alertmanagerAPIPath, receivedPath)
+			assert.Equal(t, "test-tenant", receivedTenant)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

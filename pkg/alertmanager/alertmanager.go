@@ -21,18 +21,25 @@ import (
 )
 
 const (
-	// Those values are used to retrieve the Alertmanager configuration from the secret named after conf.Monitoring.AlertmanagerSecretName
-	// AlertmanagerConfigKey is the key to the alertmanager configuration in the secret
+	// AlertmanagerConfigKey is the key to the alertmanager configuration in the secret.
 	AlertmanagerConfigKey = "alertmanager.yaml"
-	// TemplatesSuffix is the suffix used to identify the templates in the secret
+	// TemplatesSuffix is the suffix used to identify the templates in the secret.
 	TemplatesSuffix = ".tmpl"
+
+	// AlertmanagerConfigFinalizer is the finalizer added to Alertmanager config secrets.
+	// It ensures the config is deleted from Mimir before the secret is garbage collected.
+	AlertmanagerConfigFinalizer = "observability.giantswarm.io/alertmanager-config"
 
 	alertmanagerAPIPath = "/api/v1/alerts"
 )
 
 // Service is the interface for configuring Alertmanager.
 type Service interface {
+	// ConfigureFromSecret pushes the Alertmanager configuration stored in secret to Mimir for the given tenant.
 	ConfigureFromSecret(ctx context.Context, secret *v1.Secret, tenantID string) error
+	// DeleteForTenant removes the Alertmanager configuration for the given tenant from Mimir.
+	// It is idempotent: if no configuration exists, it returns nil.
+	DeleteForTenant(ctx context.Context, tenantID string) error
 }
 
 // service is the concrete implementation of Service.
@@ -41,8 +48,8 @@ type service struct {
 	httpClient      *http.Client
 }
 
-// configRequest is the structure used to send the configuration to Alertmanager's API
-// json tags also applies yaml field names
+// configRequest is the structure used to send the configuration to Alertmanager's API.
+// json tags also apply as yaml field names.
 type configRequest struct {
 	TemplateFiles      map[string]string `json:"template_files"`
 	AlertmanagerConfig string            `json:"alertmanager_config"`
@@ -59,7 +66,6 @@ func New(cfg pkgconfig.Config) Service {
 
 // ExtractAlertmanagerConfig extracts the raw config bytes.
 func ExtractAlertmanagerConfig(secret *v1.Secret) ([]byte, error) {
-	// Check that the secret contains an Alertmanager configuration file.
 	alertmanagerConfig, found := secret.Data[AlertmanagerConfigKey]
 	if !found {
 		return nil, fmt.Errorf("missing %s in alertmanager secret", AlertmanagerConfigKey)
@@ -75,13 +81,12 @@ func (s *service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, te
 		return fmt.Errorf("alertmanager secret is nil")
 	}
 
-	// Extract alertmanager configuration from secret
 	alertmanagerConfig, err := ExtractAlertmanagerConfig(secret)
 	if err != nil {
 		return fmt.Errorf("failed to extract alertmanager config: %w", err)
 	}
 
-	// Parse and validate the configuration
+	// Parse and validate the configuration.
 	// The returned config is used only for metrics and not sent to alertmanager
 	// as transforming it via String() would produce an invalid configuration
 	// with all secrets replaced with <redacted>.
@@ -90,12 +95,10 @@ func (s *service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, te
 		return fmt.Errorf("failed to load alertmanager configuration: %w", err)
 	}
 
-	// Count routes and update metrics
 	routeCount := countRoutes(amConfig.Route)
 	metrics.AlertmanagerRoutes.WithLabelValues(tenantID).Set(float64(routeCount))
 	logger.WithValues("tenant", tenantID, "routes", routeCount).Info("Updated Alertmanager routes metric")
 
-	// Retrieve all alertmanager templates from secret
 	templates := extractTemplates(secret)
 
 	err = s.Configure(ctx, alertmanagerConfig, templates, tenantID)
@@ -105,6 +108,45 @@ func (s *service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, te
 
 	logger.Info("configured alertmanager")
 	return nil
+}
+
+// DeleteForTenant removes the Alertmanager configuration for the given tenant from Mimir.
+// https://grafana.com/docs/mimir/latest/references/http-api/#delete-alertmanager-configuration
+func (s *service) DeleteForTenant(ctx context.Context, tenantID string) error {
+	logger := log.FromContext(ctx)
+
+	url := s.alertmanagerURL + alertmanagerAPIPath
+	logger.WithValues("url", url, "tenant", tenantID).Info("Alertmanager: deleting configuration")
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create delete request: %w", err)
+	}
+	req.Header.Set(common.OrgIDHeader, tenantID)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send delete request: %w", err)
+	}
+	defer resp.Body.Close() // nolint: errcheck
+
+	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: delete response received")
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		// Successfully deleted.
+		return nil
+	case http.StatusNotFound:
+		// No configuration existed for this tenant — treat as success (idempotent).
+		logger.Info("Alertmanager: no configuration found for tenant, treating as already deleted", "tenant", tenantID)
+		return nil
+	default:
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("unexpected status %d and failed to read response body: %w", resp.StatusCode, err)
+		}
+		return fmt.Errorf("failed to delete configuration: %w", APIError{Code: resp.StatusCode, Message: string(respBody)})
+	}
 }
 
 func ParseAlertmanagerConfig(alertmanagerConfig []byte) (*config.Config, error) {
@@ -129,13 +171,13 @@ func extractTemplates(secret *v1.Secret) map[string]string {
 	return templates
 }
 
-// Configure sends the configuration and templates to Mimir Alertmanager's API
-// It is the caller responsibility to make sure templates names are valid (do not contain any path), and that templates are referenced in the configuration.
+// Configure sends the configuration and templates to Mimir Alertmanager's API.
+// It is the caller's responsibility to ensure template names are valid (no path separators)
+// and that templates are referenced in the configuration.
 // https://grafana.com/docs/mimir/latest/references/http-api/#set-alertmanager-configuration
 func (s *service) Configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
 	logger := log.FromContext(ctx)
 
-	// Prepare request for Alertmanager API
 	requestData := configRequest{
 		AlertmanagerConfig: string(alertmanagerConfigContent),
 		TemplateFiles:      templates,
@@ -149,7 +191,6 @@ func (s *service) Configure(ctx context.Context, alertmanagerConfigContent []byt
 	url := s.alertmanagerURL + alertmanagerAPIPath
 	logger.WithValues("url", url, "data_size", dataLen, "config_size", len(alertmanagerConfigContent), "templates_count", len(templates)).Info("Alertmanager: sending configuration")
 
-	// Send request to Alertmanager's API
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -170,32 +211,21 @@ func (s *service) Configure(ctx context.Context, alertmanagerConfigContent []byt
 		if err != nil {
 			return fmt.Errorf("failed to read response: %w", err)
 		}
-
-		e := APIError{
-			Code:    resp.StatusCode,
-			Message: string(respBody),
-		}
-
-		return fmt.Errorf("failed to send configuration: %w", e)
+		return fmt.Errorf("failed to send configuration: %w", APIError{Code: resp.StatusCode, Message: string(respBody)})
 	}
 
 	return nil
 }
 
 // countRoutes recursively counts the number of routes in an Alertmanager configuration.
-// It counts the root route plus all sub-routes in the route tree.
 func countRoutes(route *config.Route) int {
 	if route == nil {
 		return 0
 	}
 
-	// Count the current route
 	count := 1
-
-	// Recursively count sub-routes
 	for _, subRoute := range route.Routes {
 		count += countRoutes(subRoute)
 	}
-
 	return count
 }
