@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.63.0] - 2026-03-05
+
 ### Added
 
 - Support for Flux `HelmRelease` CRs alongside `App` CRs for the `observability-bundle`. The operator auto-detects per-cluster which CR type exists (tries `HelmRelease` first, falls back to `App`).
@@ -931,7 +933,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.62.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.63.0...HEAD
+[0.63.0]: https://github.com/giantswarm/observability-operator/compare/v0.62.0...v0.63.0
 [0.62.0]: https://github.com/giantswarm/observability-operator/compare/v0.61.0...v0.62.0
 [0.61.0]: https://github.com/giantswarm/observability-operator/compare/v0.60.0...v0.61.0
 [0.60.0]: https://github.com/giantswarm/observability-operator/compare/v0.59.2...v0.60.0
