@@ -50,6 +50,12 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 }
 
 func (s *Service) GenerateAlloyLogsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, networkMonitoringEnabled bool) (map[string]string, error) {
+	// Defensive validation: This method should only be called when logging or network monitoring is enabled.
+	// The controller ensures this, but we validate here to catch potential bugs.
+	if !s.Config.Logging.IsLoggingEnabled(cluster) && !networkMonitoringEnabled {
+		return nil, fmt.Errorf("cannot generate alloy logs config: neither logging nor network monitoring is enabled for cluster %s", cluster.Name)
+	}
+
 	// Get tenant IDs
 	tenants, err := s.TenantRepository.List(ctx)
 	if err != nil {
