@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
-
 ### Added
 
 - Enable exemplar forwarding in the Alloy remote write pipeline (`monitoring.exemplars.enabled`, default `true`). Exemplars link metric data points to traces in Tempo, enabling trace-to-metrics and metrics-to-traces drill-downs in Grafana. Requires Mimir to have exemplar storage enabled (`max_global_exemplars_per_user > 0`).
