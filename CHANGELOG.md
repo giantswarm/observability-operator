@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Remove unnecessary `delete` verb from `coordination.k8s.io/leases` RBAC — controller-runtime leader election only requires `create;get;update;patch` on leases, never `delete`.
+
 ### Added
 
 - Support for Flux `HelmRelease` CRs alongside `App` CRs for the `observability-bundle`. The operator auto-detects per-cluster which CR type exists (tries `HelmRelease` first, falls back to `App`).
