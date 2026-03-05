@@ -379,8 +379,9 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:           []string{"giantswarm"},
+			defaultNamespaces: []string{"test-selector"},
+			// goldenPath omitted - this should return an error
 			observabilityBundleVersion: semver.MustParse("2.3.0"),
 			loggingEnabled:             false,
 			nodeFilteringEnabled:       false,
