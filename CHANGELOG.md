@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
+
 ### Added
 
 - Support for Flux `HelmRelease` CRs alongside `App` CRs for the `observability-bundle`. The operator auto-detects per-cluster which CR type exists (tries `HelmRelease` first, falls back to `App`).
