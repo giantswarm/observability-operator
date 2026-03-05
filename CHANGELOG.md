@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Fix alertmanager controller RBAC marker: reduce secrets verbs to `get;list;watch` only and remove unused `secrets/finalizers` marker — the controller only reads the secret, it never writes to it or sets a finalizer.
+
 ### Added
 
 - Support for Flux `HelmRelease` CRs alongside `App` CRs for the `observability-bundle`. The operator auto-detects per-cluster which CR type exists (tries `HelmRelease` first, falls back to `App`).
