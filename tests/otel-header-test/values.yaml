@@ -1,0 +1,8 @@
+# Tenant sent via X-Scope-OrgID header — this should win over the pod label
+tenant: "giantswarm"
+
+# Tenant set on the pod label — intentionally different to verify header takes precedence
+labelTenant: "test"
+
+# OTLP HTTP endpoint of Alloy / OTLP gateway in the cluster
+alloyEndpoint: "http://otlp-gateway.kube-system.svc.cluster.local:4318"

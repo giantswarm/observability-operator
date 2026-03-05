@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-header-test
+  labels:
+    app: otel-header-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-header-test
+  template:
+    metadata:
+      labels:
+        app: otel-header-test
+        # Label-based tenant — set to a different value than .Values.tenant
+        # to verify the header takes precedence in Alloy's routing logic
+        observability.giantswarm.io/tenant: {{ .Values.labelTenant | quote }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        # Sidecar collector: receives OTLP from telemetrygen and forwards with header
+        - name: otelcol
+          image: otel/opentelemetry-collector-contrib:0.120.0
+          args: ["--config=/conf/config.yaml"]
+          ports:
+            - containerPort: 4317  # gRPC
+            - containerPort: 4318  # HTTP
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+
+        # Generates traces continuously and sends them to the local collector
+        - name: telemetrygen-traces
+          image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.120.0
+          args:
+            - traces
+            - --otlp-endpoint=localhost:4317
+            - --otlp-insecure
+            - --rate=1
+            - --duration=24h
+            - '--otlp-header=X-Scope-OrgID="{{ .Values.tenant }}"'
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+
+        # Generates logs continuously and sends them to the local collector
+        - name: telemetrygen-logs
+          image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.120.0
+          args:
+            - logs
+            - --otlp-endpoint=localhost:4317
+            - --otlp-insecure
+            - --rate=1
+            - --duration=24h
+            - '--otlp-header=X-Scope-OrgID="{{ .Values.tenant }}"'
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+
+        # Generates metrics continuously and sends them to the local collector
+        - name: telemetrygen-metrics
+          image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.120.0
+          args:
+            - metrics
+            - --otlp-endpoint=localhost:4317
+            - --otlp-insecure
+            - --rate=1
+            - --duration=24h
+            - '--otlp-header=X-Scope-OrgID="{{ .Values.tenant }}"'
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+
+      volumes:
+        - name: config
+          configMap:
+            name: otel-header-test-config
