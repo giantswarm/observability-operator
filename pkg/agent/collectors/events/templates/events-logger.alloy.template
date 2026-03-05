@@ -8,6 +8,8 @@ remote.kubernetes.secret "credentials" {
 	name = "{{ .SecretName }}"
 }
 
+{{- if .LoggingEnabled }}
+// Kubernetes events source for Loki
 loki.source.kubernetes_events "local" {
 	{{- if and .IsWorkloadCluster .IncludeNamespaces }}
 	namespaces = ["{{ join "\", \"" .IncludeNamespaces }}"]
@@ -23,7 +25,7 @@ loki.source.kubernetes_events "local" {
 }
 
 {{- if and .IsWorkloadCluster .ExcludeNamespaces }}
-// exclude configured namespaces
+// Exclude configured namespaces from event logs
 loki.process "default" {
 	forward_to = [loki.write.default.receiver]
 
@@ -63,8 +65,10 @@ loki.write "default" {
 		scrape_job       = "kubernetes-events",
 	}
 }
+{{- end }}
 
 {{- if .TracingEnabled }}
+// Basic authentication for tracing
 otelcol.auth.basic "tracing_credentials" {
 	username = nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TracingUsernameKey }}"])
 	password = remote.kubernetes.secret.credentials.data["{{ .TracingPasswordKey }}"]
@@ -84,6 +88,7 @@ otelcol.receiver.otlp "traces" {
 	}
 }
 
+// Add Kubernetes metadata to traces
 otelcol.processor.k8sattributes "default" {
 	extract {
 		metadata = [
@@ -103,6 +108,7 @@ otelcol.processor.k8sattributes "default" {
 	}
 }
 
+// Add cluster metadata to traces
 otelcol.processor.transform "default" {
 	error_mode = "ignore"
 
@@ -125,7 +131,7 @@ otelcol.processor.transform "default" {
 	}
 }
 
-// one OTLP gRPC exporter for traces per tenant
+// Filter traces by tenant
 {{- range .Tenants }}
 otelcol.processor.filter "{{ . }}" {
 	traces {
@@ -138,7 +144,7 @@ otelcol.processor.filter "{{ . }}" {
 	}
 }
 
-// one OTLP gRPC exporter for traces per tenant
+// OTLP gRPC exporter for tenant {{ . }}
 otelcol.exporter.otlp "{{ . }}" {
 	client {
 		{{- if $.IsWorkloadCluster }}
