@@ -364,7 +364,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		}
 	}
 
-	// Logging-specific: Alloy logs configuration
+	// Logging-specific: Alloy logs configuration - daemonset that collects data from each node
 	if r.Config.Logging.IsLoggingEnabled(cluster) {
 		// Create or update Alloy logs configuration
 		// TODO make sure we can enable network monitoring separately from logging
@@ -372,14 +372,6 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy logs config")
 			errs = append(errs, fmt.Errorf("alloy logs reconcile create: %w", err))
-		}
-
-		// Create or update Alloy events configuration
-		// TODO make sure we can enable tracing separately from logging
-		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
-		if err != nil {
-			logger.Error(err, "failed to create or update alloy events config")
-			errs = append(errs, fmt.Errorf("alloy events reconcile create: %w", err))
 		}
 	} else {
 		// Clean up any existing alloy logs configuration
@@ -389,9 +381,18 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 			logger.Error(err, "failed to delete alloy logs config")
 			errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
 		}
+	}
 
+	// Events-specific: Alloy events configuration - deployment that handles both kube event logs and traces
+	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
+		// Create or update Alloy events configuration
+		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		if err != nil {
+			logger.Error(err, "failed to create or update alloy events config")
+			errs = append(errs, fmt.Errorf("alloy events reconcile create: %w", err))
+		}
+	} else {
 		// Clean up any existing alloy events configuration
-		// TODO make sure we can enable tracing separately from logging
 		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "failed to delete alloy events config")
@@ -441,9 +442,11 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 				logger.Error(err, "failed to delete alloy logs config")
 				errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
 			}
+		}
 
+		// Events-specific: Alloy events configuration - deployment that handles both kube event logs and traces
+		if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
 			// Clean up any existing alloy events configuration
-			// TODO make sure we can enable tracing separately from logging
 			err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
 			if err != nil {
 				logger.Error(err, "failed to delete alloy events config")
