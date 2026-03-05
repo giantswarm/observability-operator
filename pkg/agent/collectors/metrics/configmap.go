@@ -46,6 +46,12 @@ func init() {
 func (a *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, currentState *v1.ConfigMap, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version) (map[string]string, error) {
 	logger := log.FromContext(ctx)
 
+	// Defensive validation: This method should only be called when monitoring is enabled.
+	// The controller ensures this, but we validate here to catch potential bugs.
+	if !a.Config.Monitoring.IsMonitoringEnabled(cluster) {
+		return nil, fmt.Errorf("cannot generate alloy monitoring config: monitoring is not enabled for cluster %s", cluster.Name)
+	}
+
 	// Get current number of shards from Alloy's config.
 	// Shards here is equivalent to replicas in the Alloy controller deployment.
 	var currentShards = sharding.DefaultShards
