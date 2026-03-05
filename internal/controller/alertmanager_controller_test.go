@@ -52,12 +52,12 @@ var _ = Describe("Alertmanager Controller", func() {
 	)
 
 	var (
-		testCtx         context.Context
-		secret          *v1.Secret
-		grafanaOrg      *observabilityv1alpha1.GrafanaOrganization
-		namespacedName  types.NamespacedName
-		svc             *mockAlertmanagerService
-		reconciler      AlertmanagerReconciler
+		testCtx        context.Context
+		secret         *v1.Secret
+		grafanaOrg     *observabilityv1alpha1.GrafanaOrganization
+		namespacedName types.NamespacedName
+		svc            *mockAlertmanagerService
+		reconciler     AlertmanagerReconciler
 	)
 
 	newSecret := func(withFinalizer bool) *v1.Secret {
