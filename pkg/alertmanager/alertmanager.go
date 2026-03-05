@@ -30,7 +30,13 @@ const (
 	alertmanagerAPIPath = "/api/v1/alerts"
 )
 
-type Service struct {
+// Service is the interface for configuring Alertmanager.
+type Service interface {
+	ConfigureFromSecret(ctx context.Context, secret *v1.Secret, tenantID string) error
+}
+
+// service is the concrete implementation of Service.
+type service struct {
 	alertmanagerURL string
 	httpClient      *http.Client
 }
@@ -43,7 +49,7 @@ type configRequest struct {
 }
 
 func New(cfg pkgconfig.Config) Service {
-	return Service{
+	return &service{
 		alertmanagerURL: strings.TrimSuffix(cfg.Monitoring.AlertmanagerURL, "/"),
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -61,7 +67,7 @@ func ExtractAlertmanagerConfig(secret *v1.Secret) ([]byte, error) {
 	return alertmanagerConfig, nil
 }
 
-func (s Service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, tenantID string) error {
+func (s *service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, tenantID string) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("configuring alertmanager")
@@ -126,7 +132,7 @@ func extractTemplates(secret *v1.Secret) map[string]string {
 // Configure sends the configuration and templates to Mimir Alertmanager's API
 // It is the caller responsibility to make sure templates names are valid (do not contain any path), and that templates are referenced in the configuration.
 // https://grafana.com/docs/mimir/latest/references/http-api/#set-alertmanager-configuration
-func (s Service) Configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
+func (s *service) Configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
 	logger := log.FromContext(ctx)
 
 	// Prepare request for Alertmanager API
