@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
+
+## [0.63.0] - 2026-03-05
+
+### Added
+
+- Support for Flux `HelmRelease` CRs alongside `App` CRs for the `observability-bundle`. The operator auto-detects per-cluster which CR type exists (tries `HelmRelease` first, falls back to `App`).
+
 ## [0.62.0] - 2026-03-02
 
 ### Changed
@@ -78,8 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Refactor tenant listing functionality into a repository interface pattern (`TenantRepository`) with Kubernetes implementation for better separation of concerns and testability.
 - Update monitoring alloy secret template to use map-based structure matching the events and logs secret patterns.
+- Move metrics, logs and events collectors from `pkg/monitoring/alloy` and `pkg/logging/alloy/{logs,events}` to `pkg/agent/collectors/{metrics,logs,events}` to consolidate agent-related code under a unified package structure.
 - Update Cronitor heartbeat API integration to use POST for monitor creation and PUT for updates, matching current API specification. Enhance error logging to include full request details (method, URL, request/response bodies) for better debugging.
-- Move logs and events collectors from `pkg/monitoring/alloy` and `pkg/logging/alloy/{logs,events}` to `pkg/agent/collectors/{metrics,logs,events}` to consolidate agent-related code under a unified package structure.
 - Improve controller error handling to ensure independent reconciliation tasks run even when some fail.
   - Return joined reconciliation errors instead of failing fast on the first error.
   - Moved Alloy reconciliation into reconcileAlloyService
@@ -927,7 +937,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.62.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.63.0...HEAD
+[0.63.0]: https://github.com/giantswarm/observability-operator/compare/v0.62.0...v0.63.0
 [0.62.0]: https://github.com/giantswarm/observability-operator/compare/v0.61.0...v0.62.0
 [0.61.0]: https://github.com/giantswarm/observability-operator/compare/v0.60.0...v0.61.0
 [0.60.0]: https://github.com/giantswarm/observability-operator/compare/v0.59.2...v0.60.0
