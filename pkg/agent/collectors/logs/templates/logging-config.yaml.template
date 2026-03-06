@@ -36,7 +36,7 @@ networkPolicy:
     # Allow access to Kubernetes API server for cluster operations
     - toEntities:
       - kube-apiserver
-      {{- if .IsWorkloadCluster }}
+      {{- if and .IsWorkloadCluster .LoggingEnabled }}
       # Allow workload clusters to reach external endpoints (Loki and Tempo in management cluster)
       - world
       {{- end }}
