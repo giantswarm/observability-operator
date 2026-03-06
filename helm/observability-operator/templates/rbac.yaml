@@ -103,7 +103,6 @@ rules:
       - leases
     verbs:
       - create
-      - delete
       - get
       - list
       - patch
