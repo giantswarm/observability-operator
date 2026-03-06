@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
 
+### Changed
+
+- Remove unnecessary `create` and `delete` verbs from `cluster.x-k8s.io/clusters` RBAC — the operator only reconciles existing clusters, never creates or deletes them.
+
 ## [0.63.0] - 2026-03-05
 
 ### Added
