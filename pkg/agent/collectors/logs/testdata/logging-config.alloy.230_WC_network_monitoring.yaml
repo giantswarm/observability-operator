@@ -54,6 +54,9 @@ alloy:
         remote.kubernetes.secret "credentials" {
         	namespace = "kube-system"
         	name = "alloy-logs"
+        remote.kubernetes.secret "credentials" {
+        namespace = "kube-system"
+        name = "alloy-logs"
         }
         beyla.ebpf "default" {
         	attributes {

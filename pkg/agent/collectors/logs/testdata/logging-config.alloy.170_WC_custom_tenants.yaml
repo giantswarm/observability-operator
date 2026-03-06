@@ -62,6 +62,9 @@ alloy:
         remote.kubernetes.secret "credentials" {
         	namespace = "kube-system"
         	name = "alloy-logs"
+        remote.kubernetes.secret "credentials" {
+        namespace = "kube-system"
+        name = "alloy-logs"
         }
         // load rules for tenant test-tenant-a
         loki.rules.kubernetes "test-tenant-a" {

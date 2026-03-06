@@ -14,8 +14,6 @@ networkPolicy:
     # Allow access to Kubernetes API server for cluster operations
     - toEntities:
       - kube-apiserver
-      # Allow workload clusters to reach external endpoints (Loki and Tempo in management cluster)
-      - world
     # Allow DNS resolution
     - toEndpoints:
       - matchLabels:
@@ -52,7 +50,6 @@ alloy:
         remote.kubernetes.secret "credentials" {
         	namespace = "kube-system"
         	name = "alloy-logs"
-        }
         beyla.ebpf "default" {
         	attributes {
         		kubernetes {
