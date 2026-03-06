@@ -78,8 +78,6 @@ rules:
     resources:
       - clusters
     verbs:
-      - create
-      - delete
       - get
       - list
       - patch
