@@ -49,10 +49,10 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 	}
 }
 
-func (s *Service) GenerateAlloyLogsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, networkMonitoringEnabled bool) (map[string]string, error) {
+func (s *Service) GenerateAlloyLogsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, loggingEnabled bool, networkMonitoringEnabled bool) (map[string]string, error) {
 	// Defensive validation: This method should only be called when logging or network monitoring is enabled.
 	// The controller ensures this, but we validate here to catch potential bugs.
-	if !s.Config.Logging.IsLoggingEnabled(cluster) && !networkMonitoringEnabled {
+	if !loggingEnabled && !networkMonitoringEnabled {
 		return nil, fmt.Errorf("cannot generate alloy logs config: neither logging nor network monitoring is enabled for cluster %s", cluster.Name)
 	}
 
@@ -90,6 +90,7 @@ func (s *Service) GenerateAlloyLogsConfigMapData(ctx context.Context, cluster *c
 		provider,
 		s.Config.Cluster.InsecureCA,
 		enableNodeFiltering,
+		loggingEnabled,
 		networkMonitoringEnabled,
 		s.Config.Cluster,
 	)
@@ -112,11 +113,12 @@ func generateAlloyLoggingConfig(
 	provider string,
 	insecureCA bool,
 	enableNodeFiltering bool,
+	enableLogging bool,
 	enableNetworkMonitoring bool,
 	clusterConfig config.ClusterConfig,
 ) (string, error) {
 	// Generate River configuration
-	alloyConfig, err := generateAlloyConfig(tenants, cluster, org, provider, insecureCA, enableNodeFiltering, enableNetworkMonitoring, clusterConfig)
+	alloyConfig, err := generateAlloyConfig(tenants, cluster, org, provider, insecureCA, enableNodeFiltering, enableLogging, enableNetworkMonitoring, clusterConfig)
 	if err != nil {
 		return "", err
 	}
@@ -129,6 +131,7 @@ func generateAlloyLoggingConfig(
 		AlloyImageTag                    *string
 		DefaultWorkloadClusterNamespaces []string
 		DefaultWriteTenant               string
+		LoggingEnabled                   bool
 		NetworkMonitoringEnabled         bool
 		NodeFilteringEnabled             bool
 		IsWorkloadCluster                bool
@@ -137,6 +140,7 @@ func generateAlloyLoggingConfig(
 		AlloyConfig:                      alloyConfig,
 		DefaultWorkloadClusterNamespaces: defaultWorkloadClusterNamespaces,
 		DefaultWriteTenant:               organization.GiantSwarmDefaultTenant,
+		LoggingEnabled:                   enableLogging,
 		NetworkMonitoringEnabled:         enableNetworkMonitoring,
 		NodeFilteringEnabled:             enableNodeFiltering,
 		IsWorkloadCluster:                isWorkloadCluster,
@@ -167,6 +171,7 @@ func generateAlloyConfig(
 	provider string,
 	insecureCA bool,
 	enableNodeFiltering bool,
+	enableLogging bool,
 	enableNetworkMonitoring bool,
 	clusterConfig config.ClusterConfig,
 ) (string, error) {
@@ -188,6 +193,7 @@ func generateAlloyConfig(
 		RemoteTimeout            string
 		IsWorkloadCluster        bool
 		NodeFilteringEnabled     bool
+		LoggingEnabled           bool
 		NetworkMonitoringEnabled bool
 		InsecureSkipVerify       bool
 		SecretName               string
@@ -207,6 +213,7 @@ func generateAlloyConfig(
 		RemoteTimeout:            common.LokiRemoteTimeout,
 		IsWorkloadCluster:        isWorkloadCluster,
 		NodeFilteringEnabled:     enableNodeFiltering,
+		LoggingEnabled:           enableLogging,
 		NetworkMonitoringEnabled: enableNetworkMonitoring,
 		InsecureSkipVerify:       insecureCA,
 		SecretName:               apps.AlloyLogsAppName,
