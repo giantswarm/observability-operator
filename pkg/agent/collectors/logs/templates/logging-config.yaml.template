@@ -82,7 +82,7 @@ networkPolicy:
         - port: "3100"
           protocol: TCP
     {{- end }}
-    {{- if not .NodeFilteringEnabled }}
+    {{- if and .LoggingEnabled (not .NodeFilteringEnabled) }}
     # Allow Alloy clustering for distributed log collection coordination
     - toEndpoints:
       - matchLabels:
