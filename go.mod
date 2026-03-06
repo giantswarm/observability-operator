@@ -2,7 +2,7 @@ module github.com/giantswarm/observability-operator
 
 go 1.25.0
 
-toolchain go1.26.0
+toolchain go1.26.1
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -25,7 +25,7 @@ require (
 	k8s.io/apimachinery v0.35.2
 	k8s.io/client-go v0.35.2
 	sigs.k8s.io/cluster-api v1.12.3
-	sigs.k8s.io/controller-runtime v0.23.2
+	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/yaml v1.6.0
 )
 
