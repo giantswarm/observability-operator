@@ -6,7 +6,12 @@ logging {
 remote.kubernetes.secret "credentials" {
 	namespace = "kube-system"
 	name = "{{ .SecretName }}"
+{{- if .LoggingEnabled }}
+remote.kubernetes.secret "credentials" {
+namespace = "kube-system"
+name = "{{ .SecretName }}"
 }
+{{- end}}
 
 {{- if .NetworkMonitoringEnabled }}
 beyla.ebpf "default" {
