@@ -78,8 +78,6 @@ rules:
     resources:
       - clusters
     verbs:
-      - create
-      - delete
       - get
       - list
       - patch
@@ -105,7 +103,6 @@ rules:
       - leases
     verbs:
       - create
-      - delete
       - get
       - list
       - patch
