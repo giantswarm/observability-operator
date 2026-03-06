@@ -76,8 +76,7 @@ func podEventHandler(cfg config.Config) handler.EventHandler {
 	})
 }
 
-//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=core,resources=secrets/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=list;watch
 
 // Reconcile main logic
