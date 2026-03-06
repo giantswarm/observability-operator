@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Fix alertmanager controller RBAC marker: reduce secrets verbs to `get;list;watch` only and remove unused `secrets/finalizers` marker — the controller only reads the secret, it never writes to it or sets a finalizer.
+- Remove unnecessary `create` and `delete` verbs from `cluster.x-k8s.io/clusters` RBAC — the operator only reconciles existing clusters, never creates or deletes them.
 
 ## [0.63.0] - 2026-03-05
 
