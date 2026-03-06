@@ -216,7 +216,7 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-//+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch
@@ -364,7 +364,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		}
 	}
 
-	// alloy-logs specific: daemonset alloy config, that collects data from each node (not only logs) - TODO rename alloy-logs to alloy-daemonset
+	// alloy-logs specific: daemonset alloy config, that collects data from each node (not only logs) - TODO rename alloy-logs to alloy-node
 	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
 		// Create or update Alloy logs configuration
 		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
@@ -381,7 +381,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		}
 	}
 
-	// Events-specific: Alloy events configuration - deployment that handles both kube event logs and traces
+	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs and traces - TODO rename alloy-events to alloy-cluster
 	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
 		// Create or update Alloy events configuration
 		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
