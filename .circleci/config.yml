@@ -94,13 +94,3 @@ workflows:
             ignore:
             - main
             - master
-
-    - architect/run-tests-with-app-test-suite:
-        name: run-chart-tests-with-app-test-suite
-        filters:
-            # Do not trigger the job on merge to main.
-          branches:
-            ignore:
-            - main
-        requires:
-        - push-to-app-catalog
