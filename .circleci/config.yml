@@ -95,8 +95,8 @@ workflows:
             - main
             - master
 
-    - architect/run-tests-with-ats:
-        name: run-chart-tests-with-ats
+    - architect/run-tests-with-app-test-suite:
+        name: run-chart-tests-with-app-test-suite
         filters:
             # Do not trigger the job on merge to main.
           branches:
