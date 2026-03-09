@@ -27,6 +27,10 @@ alerting:
 
 monitoring:
   enabled: false
+
+  # -- Enable network monitoring in Alloy configuration
+  enableNetworkMonitoring: false
+
   sharding:
     scaleUpSeriesCount: 1000000
     scaleDownPercentage: 0.20
@@ -56,7 +60,7 @@ logging:
   # -- Enable node filtering
   enableNodeFiltering: false
 
-  # -- Enable network monitoring (TODO this needs to be moved to a different section as it's not logging-specific)
+  # -- Deprecated: use monitoring.enableNetworkMonitoring instead
   enableNetworkMonitoring: false
 
   # -- Default namespaces to collect logs from

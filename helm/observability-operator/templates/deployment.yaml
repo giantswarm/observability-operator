@@ -81,9 +81,6 @@ spec:
         {{- if .enableNodeFiltering }}
         - --logging-enable-node-filtering=true
         {{- end }}
-        {{- if .enableNetworkMonitoring }}
-        - --logging-enable-network-monitoring=true
-        {{- end }}
         {{- if .defaultNamespaces }}
         - --logging-default-namespaces={{ .defaultNamespaces | join "," }}
         {{- end }}
@@ -93,6 +90,10 @@ spec:
         {{- if .excludeEventsFromNamespaces }}
         - --logging-exclude-events-from-namespaces={{ .excludeEventsFromNamespaces | join "," }}
         {{- end }}
+        {{- end }}
+        # Network monitoring configuration (logging.enableNetworkMonitoring is deprecated, use monitoring.enableNetworkMonitoring)
+        {{- if or .Values.monitoring.enableNetworkMonitoring .Values.logging.enableNetworkMonitoring }}
+        - --monitoring-enable-network-monitoring=true
         {{- end }}
         env:
         - name: ENABLE_WEBHOOKS

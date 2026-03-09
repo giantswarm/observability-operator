@@ -67,12 +67,11 @@ const (
 	flagAlertmanagerSecretName                = "alertmanager-secret-name"
 	flagAlertmanagerURL                       = "alertmanager-url"
 	flagMonitoringEnabled                     = "monitoring-enabled"
+	flagMonitoringNetworkEnabled              = "monitoring-enable-network-monitoring"
 	flagMonitoringShardingScaleUpSeriesCount  = "monitoring-sharding-scale-up-series-count"
 	flagMonitoringShardingScaleDownPercentage = "monitoring-sharding-scale-down-percentage"
 	flagMonitoringWALTruncateFrequency        = "monitoring-wal-truncate-frequency"
 	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
-	// TODO Rename the flag with the monitoring prefix when migration is done
-	flagMonitoringNetworkEnabled = "logging-enable-network-monitoring"
 
 	// Queue configuration flag names
 	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
@@ -191,7 +190,7 @@ func parseFlags() (err error) {
 	pflag.StringVar(&cfg.Monitoring.MetricsQueryURL, flagMonitoringMetricsQueryURL, "http://mimir-gateway.mimir.svc/prometheus",
 		"URL to query for cluster metrics (internal Mimir query endpoint)")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
-		"Enable/disable network monitoring in Alloy logging configuration")
+		"Enable/disable network monitoring in Alloy configuration")
 
 	// Queue configuration flags for Alloy remote write
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string
