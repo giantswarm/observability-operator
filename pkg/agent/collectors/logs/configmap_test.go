@@ -313,6 +313,56 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			networkMonitoringEnabled:   true,
 		},
 		{
+			name: "ManagementCluster_NetworkMonitoringOnly",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+					Labels: map[string]string{
+						"giantswarm.io/cluster":     managementClusterName,
+						"cluster.x-k8s.io/provider": "aws",
+					},
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"giantswarm"},
+			defaultNamespaces:          []string{"test-selector"},
+			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.230_MC_network_monitoring_only.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.3.0"),
+			loggingEnabled:             false,
+			nodeFilteringEnabled:       false,
+			networkMonitoringEnabled:   true,
+		},
+		{
+			name: "WorkloadCluster_NetworkMonitoringOnly",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "default",
+					Labels: map[string]string{
+						"giantswarm.io/cluster":     "test-cluster",
+						"cluster.x-k8s.io/provider": "aws",
+					},
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"giantswarm"},
+			defaultNamespaces:          []string{"test-selector"},
+			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.230_WC_network_monitoring_only.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.3.0"),
+			loggingEnabled:             false,
+			nodeFilteringEnabled:       false,
+			networkMonitoringEnabled:   true,
+		},
+		{
 			name: "WorkloadCluster_NeitherEnabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -398,6 +448,7 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 				ctx,
 				tt.cluster,
 				tt.observabilityBundleVersion,
+				tt.loggingEnabled,
 				tt.networkMonitoringEnabled,
 			)
 

@@ -6,7 +6,12 @@ logging {
 remote.kubernetes.secret "credentials" {
 	namespace = "kube-system"
 	name = "{{ .SecretName }}"
+{{- if .LoggingEnabled }}
+remote.kubernetes.secret "credentials" {
+namespace = "kube-system"
+name = "{{ .SecretName }}"
 }
+{{- end}}
 
 {{- if .NetworkMonitoringEnabled }}
 beyla.ebpf "default" {
@@ -54,10 +59,11 @@ beyla.ebpf "default" {
 }
 {{- end }}
 
+{{- if .LoggingEnabled }}
 {{- range .Tenants }}
 // load rules for tenant {{ . }}
 loki.rules.kubernetes "{{ . }}" {
-	{{- if or $.IsWorkloadCluster $.NetworkMonitoringEnabled }}
+	{{- if $.IsWorkloadCluster }}
 	address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LokiRulerAPIURLKey }}"])
 	basic_auth {
 		username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LoggingUsernameKey }}"])
@@ -316,7 +322,7 @@ loki.source.file "kubernetes_audit" {
 // Loki target configuration
 loki.write "default" {
 	endpoint {
-		{{- if or .IsWorkloadCluster .NetworkMonitoringEnabled }}
+		{{- if .IsWorkloadCluster }}
 		basic_auth {
 			username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
 			password = remote.kubernetes.secret.credentials.data["{{ .LoggingPasswordKey }}"]
@@ -340,3 +346,4 @@ loki.write "default" {
 		provider         = "{{ .Provider }}",
 	}
 }
+{{- end }}
