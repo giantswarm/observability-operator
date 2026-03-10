@@ -73,6 +73,7 @@ const (
 	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
 	// TODO Rename the flag with the monitoring prefix when migration is done
 	flagMonitoringNetworkEnabled = "logging-enable-network-monitoring"
+	flagMonitoringOTLPEnabled    = "monitoring-otlp-enabled"
 
 	// Queue configuration flag names
 	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
@@ -192,6 +193,8 @@ func parseFlags() (err error) {
 		"URL to query for cluster metrics (internal Mimir query endpoint)")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
 		"Enable/disable network monitoring in Alloy logging configuration")
+	pflag.BoolVar(&cfg.Monitoring.OTLPEnabled, flagMonitoringOTLPEnabled, true,
+		"Enable OTLP metrics ingestion via the events collector (requires monitoring-enabled=true)")
 
 	// Queue configuration flags for Alloy remote write
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string

@@ -41,6 +41,9 @@ spec:
         # Monitoring configuration
         {{ with .Values.monitoring }}
         - --monitoring-enabled={{ .enabled }}
+        {{- if .otlp.enabled }}
+        - --monitoring-otlp-enabled=true
+        {{- end }}
         - --monitoring-sharding-scale-up-series-count={{ .sharding.scaleUpSeriesCount }}
         - --monitoring-sharding-scale-down-percentage={{ .sharding.scaleDownPercentage }}
         - --monitoring-wal-truncate-frequency={{ .wal.truncateFrequency }}

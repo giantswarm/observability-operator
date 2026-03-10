@@ -27,6 +27,9 @@ alerting:
 
 monitoring:
   enabled: false
+  otlp:
+    # -- Enable OTLP metrics ingestion via the events collector (requires monitoring.enabled=true)
+    enabled: true
   sharding:
     scaleUpSeriesCount: 1000000
     scaleDownPercentage: 0.20
