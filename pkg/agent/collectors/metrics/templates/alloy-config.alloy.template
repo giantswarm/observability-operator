@@ -12,9 +12,9 @@ remote.kubernetes.secret "credentials" {
 // load rules for tenant {{ . }}
 mimir.rules.kubernetes "{{ . }}" {
   {{- if $.IsWorkloadCluster }}
-  address = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRulerAPIURLKey }}"])
+  address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRulerAPIURLKey }}"])
   basic_auth {
-    username = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIUsernameKey }}"])
+    username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIUsernameKey }}"])
     password = remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIPasswordKey }}"]
   }
   extra_query_matchers {
@@ -201,14 +201,14 @@ prometheus.operator.scrapeconfigs "{{ . }}" {
 // remote write pipeline configuration for tenant {{ . }}
 prometheus.remote_write "{{ . }}" {
   endpoint {
-    name           = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPINameKey }}"])
+    name           = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPINameKey }}"])
     enable_http2   = false
     remote_timeout = "{{ $.MimirRemoteWriteTimeout }}"
 
     {{- if $.IsWorkloadCluster }}
-    url = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIURLKey }}"])
+    url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIURLKey }}"])
     basic_auth {
-      username = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIUsernameKey }}"])
+      username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIUsernameKey }}"])
       password = remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIPasswordKey }}"]
     }
     {{- else }}
