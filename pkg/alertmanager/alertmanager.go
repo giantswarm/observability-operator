@@ -147,7 +147,7 @@ func (s *service) DeleteForTenant(ctx context.Context, tenantID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to send delete request: %w", err)
 	}
-	defer resp.Body.Close() // nolint: errcheck
+	defer resp.Body.Close() //nolint: errcheck
 
 	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: delete response received")
 
@@ -234,7 +234,7 @@ func (s *service) Configure(ctx context.Context, alertmanagerConfigContent []byt
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close() // nolint: errcheck
+	defer resp.Body.Close() //nolint:errcheck
 
 	logger.WithValues("status_code", resp.StatusCode).Info("Alertmanager: configuration sent")
 
