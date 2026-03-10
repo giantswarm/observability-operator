@@ -15,6 +15,128 @@ import (
 	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
 )
 
+func TestValidate(t *testing.T) {
+	validConfig := []byte("route:\n  receiver: noop\nreceivers:\n- name: noop\n")
+	validTemplate := []byte("{{ define \"myalert\" }}fired{{ end }}")
+
+	tests := []struct {
+		name        string
+		data        map[string][]byte
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:    "valid config, no templates",
+			data:    map[string][]byte{AlertmanagerConfigKey: validConfig},
+			wantErr: false,
+		},
+		{
+			name: "valid config with valid template",
+			data: map[string][]byte{
+				AlertmanagerConfigKey: validConfig,
+				"alert.tmpl":         validTemplate,
+			},
+			wantErr: false,
+		},
+		{
+			name:        "missing alertmanager.yaml",
+			data:        map[string][]byte{},
+			wantErr:     true,
+			errContains: "missing alertmanager.yaml",
+		},
+		{
+			name:    "invalid alertmanager config",
+			data:    map[string][]byte{AlertmanagerConfigKey: []byte("not: valid: yaml: config:")},
+			wantErr: true,
+		},
+		{
+			name: "invalid template syntax",
+			data: map[string][]byte{
+				AlertmanagerConfigKey: validConfig,
+				"bad.tmpl":           []byte("{{ define \"broken\" }}{{ if }}{{ end }}{{ end }}"),
+			},
+			wantErr:     true,
+			errContains: "invalid template",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			secret := &v1.Secret{Data: tt.data}
+			err := Validate(secret)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestExtractTemplates(t *testing.T) {
+	tests := []struct {
+		name        string
+		data        map[string][]byte
+		wantKeys    []string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:     "no template entries",
+			data:     map[string][]byte{AlertmanagerConfigKey: []byte("config")},
+			wantKeys: []string{},
+		},
+		{
+			name: "single valid template",
+			data: map[string][]byte{
+				"alert.tmpl": []byte(`{{ define "myalert" }}fired{{ end }}`),
+			},
+			wantKeys: []string{"alert.tmpl"},
+		},
+		{
+			name: "path prefix is stripped to base name",
+			data: map[string][]byte{
+				"/etc/alertmanager/alert.tmpl": []byte(`{{ define "myalert" }}fired{{ end }}`),
+			},
+			wantKeys: []string{"alert.tmpl"},
+		},
+		{
+			name: "non-template keys are ignored",
+			data: map[string][]byte{
+				AlertmanagerConfigKey: []byte("config"),
+				"alert.tmpl":         []byte(`{{ define "myalert" }}fired{{ end }}`),
+			},
+			wantKeys: []string{"alert.tmpl"},
+		},
+		{
+			name: "invalid template syntax returns error",
+			data: map[string][]byte{
+				"bad.tmpl": []byte("{{ define \"broken\" }}{{ if }}{{ end }}{{ end }}"),
+			},
+			wantErr:     true,
+			errContains: "invalid template",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			secret := &v1.Secret{Data: tt.data}
+			got, err := extractTemplates(secret)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+				return
+			}
+			require.NoError(t, err)
+			for _, k := range tt.wantKeys {
+				assert.Contains(t, got, k)
+			}
+			assert.Len(t, got, len(tt.wantKeys))
+		})
+	}
+}
+
 func TestCountRoutes(t *testing.T) {
 	tests := []struct {
 		name     string

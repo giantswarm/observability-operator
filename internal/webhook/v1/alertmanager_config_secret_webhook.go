@@ -166,13 +166,7 @@ func (v *AlertmanagerConfigSecretValidator) isAlertmanagerConfigSecret(secret *c
 }
 
 func validateAlertmanagerConfig(secret *corev1.Secret) error {
-	content, err := alertmanager.ExtractAlertmanagerConfig(secret)
-	if err != nil {
-		return fmt.Errorf("alertmanager configuration validation failed: %w. Note: If you're using a newer Alertmanager feature, it might not be supported yet by the Grafana fork (grafana/prometheus-alertmanager) used by Mimir", err)
-	}
-
-	_, err = alertmanager.ParseAlertmanagerConfig(content)
-	if err != nil {
+	if err := alertmanager.Validate(secret); err != nil {
 		return fmt.Errorf("alertmanager configuration validation failed: %w. Note: If you're using a newer Alertmanager feature, it might not be supported yet by the Grafana fork (grafana/prometheus-alertmanager) used by Mimir", err)
 	}
 
