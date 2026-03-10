@@ -14,8 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation overhaul: rewrote README with architecture tables and feature flags; added CONTRIBUTING.md with dev setup, coding conventions, and testing guide; added per-feature docs (alertmanager.md, dashboards.md, grafana-organization.md, cluster.md, configuration.md, metrics.md); consolidated operator metrics into a single reference page.
 - Added CLAUDE.md with AI agent context: key file map, pkg/ package descriptions, and coding conventions loaded at session start; improved PR template with detailed per-area checklists.
 
+### Fixed
+
+- Replace deprecated `nonsensitive()` builtin with `convert.nonsensitive()` in Alloy metrics and events templates (deprecated since Alloy v1.4 / PR#1516).
+- Fix `remote.kubernetes.secret "credentials"` block in logging Alloy template that was missing its closing brace when `LoggingEnabled` is true, causing an unclosed block and a duplicate inner block to be emitted instead.
+
 ### Changed
 
+- Support Gateway API TLS certificate for Grafana client: the operator now tries `gateway-giantswarm-default-https-tls` in `envoy-gateway-system` first, falling back to the legacy `grafana-tls` secret in `monitoring`.
 - Fix alertmanager controller RBAC marker: reduce secrets verbs to `get;list;watch` only and remove unused `secrets/finalizers` marker — the controller only reads the secret, it never writes to it or sets a finalizer.
 - Remove unnecessary `create` and `delete` verbs from `cluster.x-k8s.io/clusters` RBAC — the operator only reconciles existing clusters, never creates or deletes them.
 - Remove unnecessary `delete` verb from `coordination.k8s.io/leases` RBAC — controller-runtime leader election only requires `create;get;update;patch` on leases, never `delete`.
