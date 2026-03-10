@@ -8,6 +8,7 @@ import (
 
 	grafana "github.com/grafana/grafana-openapi-client-go/client"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -21,7 +22,13 @@ const (
 	grafanaAdminSecretUserKey     = "admin-user"
 	grafanaAdminSecretPasswordKey = "admin-password"
 
-	grafanaTLSSecretName    = "grafana-tls"
+	// Ingress TLS secret (legacy - replaced by gatewayTLSSecretName) - TODO: remove once ingress is gone
+	grafanaTLSSecretName = "grafana-tls"
+
+	// Gateway API TLS secret: lives in the envoy-gateway-system namespace
+	gatewayTLSSecretNamespace = "envoy-gateway-system"
+	gatewayTLSSecretName      = "gateway-giantswarm-default-https-tls"
+
 	grafanaTLSSecretCertKey = "tls.crt"
 	grafanaTLSSecretKeyKey  = "tls.key"
 )
@@ -60,13 +67,20 @@ func (g *DefaultGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Contex
 		return nil, fmt.Errorf("GrafanaAdminPassword is empty in secret %q", grafanaAdminSecretName)
 	}
 
-	// Get Grafana TLS configuration from secret, if it exists
+	// Get Grafana TLS configuration — try the Gateway API secret first,
+	// fall back to the legacy ingress secret if not found.
 	var clientTLSConfig *tls.Config
 	tlsSecret := &corev1.Secret{}
-	tlsSecretKey := client.ObjectKey{Namespace: grafanaNamespace, Name: grafanaTLSSecretName}
-	err := k8sClient.Get(ctx, tlsSecretKey, tlsSecret)
+	tlsSecretNamespace := gatewayTLSSecretNamespace
+	tlsSecretName := gatewayTLSSecretName
+	err := k8sClient.Get(ctx, client.ObjectKey{Namespace: gatewayTLSSecretNamespace, Name: gatewayTLSSecretName}, tlsSecret)
+	if apierrors.IsNotFound(err) {
+		tlsSecretNamespace = grafanaNamespace
+		tlsSecretName = grafanaTLSSecretName
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: grafanaNamespace, Name: grafanaTLSSecretName}, tlsSecret)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Grafana TLS secret %q in namespace %q: %w", grafanaTLSSecretName, grafanaNamespace, err)
+		return nil, fmt.Errorf("failed to get Grafana TLS secret %q in namespace %q: %w", tlsSecretName, tlsSecretNamespace, err)
 	}
 
 	// TLS Secret found, try to load cert and key
@@ -74,10 +88,10 @@ func (g *DefaultGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Contex
 	tlsKeyBytes, keyOk := tlsSecret.Data[grafanaTLSSecretKeyKey]
 
 	if !certOk || len(tlsCertBytes) == 0 {
-		return nil, fmt.Errorf("key %q not found or empty in Grafana TLS secret %q", grafanaTLSSecretCertKey, grafanaTLSSecretName)
+		return nil, fmt.Errorf("key %q not found or empty in Grafana TLS secret %q", grafanaTLSSecretCertKey, tlsSecretName)
 	}
 	if !keyOk || len(tlsKeyBytes) == 0 {
-		return nil, fmt.Errorf("key %q not found or empty in Grafana TLS secret %q", grafanaTLSSecretKeyKey, grafanaTLSSecretName)
+		return nil, fmt.Errorf("key %q not found or empty in Grafana TLS secret %q", grafanaTLSSecretKeyKey, tlsSecretName)
 	}
 
 	// tlsConfigInput is our local struct type from ./tls.go
@@ -88,7 +102,7 @@ func (g *DefaultGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Contex
 	// clientTLSConfig is the *tls.Config for the Grafana client
 	clientTLSConfig, err = tlsConfigInput.toTLSConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build TLS config from secret %q: %w", grafanaTLSSecretName, err)
+		return nil, fmt.Errorf("failed to build TLS config from secret %q: %w", tlsSecretName, err)
 	}
 
 	cfg := &grafana.TransportConfig{
