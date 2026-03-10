@@ -37,6 +37,13 @@ const (
 	// TempoIngressURLFormat is the URL template for Tempo ingress
 	TempoIngressURLFormat = "tempo.%s"
 
+	// --- OTLP Batch Processor Configuration ---
+	// Controls the otelcol.processor.batch block shared by all OTLP pipelines (traces, metrics, logs).
+	// Tune here if an installation shows export latency or oversized payloads; do not expose via Helm
+	// values since these are internal Alloy pipeline knobs, not user-facing behaviour toggles.
+	OTLPBatchSendBatchSize = 8192   // Target number of spans/data-points/log records per batch
+	OTLPBatchTimeout       = "200ms" // Maximum wait before flushing an incomplete batch
+
 	// --- Mimir Configuration (Metrics) ---
 	// Used by metrics collector for metrics storage
 

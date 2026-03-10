@@ -140,13 +140,15 @@ func (a *Service) generateAlloyEventsConfig(
 		LoggingTenantIDKey string
 		LoggingUsernameKey string
 		LoggingPasswordKey string
-		IsWorkloadCluster  bool
-		LoggingEnabled     bool
-		TracingEnabled     bool
-		TracingEndpoint    string
-		TracingUsernameKey string
-		TracingPasswordKey string
-		Tenants            []string
+		IsWorkloadCluster      bool
+		LoggingEnabled         bool
+		TracingEnabled         bool
+		TracingEndpoint        string
+		TracingUsernameKey     string
+		TracingPasswordKey     string
+		OTLPBatchSendBatchSize int
+		OTLPBatchTimeout       string
+		Tenants                []string
 	}{
 		ClusterID:          clusterID,
 		ClusterType:        clusterType,
@@ -165,10 +167,12 @@ func (a *Service) generateAlloyEventsConfig(
 		IsWorkloadCluster:  isWorkloadCluster,
 		LoggingEnabled:     loggingEnabled,
 		TracingEnabled:     tracingEnabled,
-		TracingEndpoint:    tracingEndpoint,
-		TracingUsernameKey: common.TempoUsernameKey,
-		TracingPasswordKey: common.TempoPasswordKey,
-		Tenants:            tenants,
+		TracingEndpoint:        tracingEndpoint,
+		TracingUsernameKey:     common.TempoUsernameKey,
+		TracingPasswordKey:     common.TempoPasswordKey,
+		OTLPBatchSendBatchSize: common.OTLPBatchSendBatchSize,
+		OTLPBatchTimeout:       common.OTLPBatchTimeout,
+		Tenants:                tenants,
 	}
 
 	if err := alloyEventsConfigTemplate.Execute(&buf, data); err != nil {
