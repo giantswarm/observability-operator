@@ -70,7 +70,7 @@ loki.write "default" {
 {{- if .TracingEnabled }}
 // Basic authentication for tracing
 otelcol.auth.basic "tracing_credentials" {
-	username = nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TracingUsernameKey }}"])
+	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TracingUsernameKey }}"])
 	password = remote.kubernetes.secret.credentials.data["{{ .TracingPasswordKey }}"]
 }
 
