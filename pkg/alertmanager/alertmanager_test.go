@@ -34,7 +34,7 @@ func TestValidate(t *testing.T) {
 			name: "valid config with valid template",
 			data: map[string][]byte{
 				AlertmanagerConfigKey: validConfig,
-				"alert.tmpl":         validTemplate,
+				"alert.tmpl":          validTemplate,
 			},
 			wantErr: false,
 		},
@@ -53,7 +53,7 @@ func TestValidate(t *testing.T) {
 			name: "invalid template syntax",
 			data: map[string][]byte{
 				AlertmanagerConfigKey: validConfig,
-				"bad.tmpl":           []byte("{{ define \"broken\" }}{{ if }}{{ end }}{{ end }}"),
+				"bad.tmpl":            []byte("{{ define \"broken\" }}{{ if }}{{ end }}{{ end }}"),
 			},
 			wantErr:     true,
 			errContains: "invalid template",
@@ -105,7 +105,7 @@ func TestExtractTemplates(t *testing.T) {
 			name: "non-template keys are ignored",
 			data: map[string][]byte{
 				AlertmanagerConfigKey: []byte("config"),
-				"alert.tmpl":         []byte(`{{ define "myalert" }}fired{{ end }}`),
+				"alert.tmpl":          []byte(`{{ define "myalert" }}fired{{ end }}`),
 			},
 			wantKeys: []string{"alert.tmpl"},
 		},
