@@ -67,4 +67,8 @@ const (
 
 	MimirOTLPBaseURLFormat  = MimirBaseURLFormat + "/otlp" // Base URL for Mimir OTLP — exporter appends /v1/metrics
 	MimirOTLPWriteAPIURLKey = "mimirOTLPWriteAPIURL"       // Secret key: base URL for Mimir OTLP write (WC only)
+
+	// Loki OTLP configuration
+	LokiOTLPBaseURLFormat = LokiBaseURLFormat + "/otlp" // Base URL for Loki OTLP — exporter appends /v1/logs
+	LokiOTLPURLKey        = "logging-otlp-url"          // Secret key: base URL for Loki OTLP write (WC only)
 )
