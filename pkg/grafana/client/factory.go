@@ -22,7 +22,7 @@ const (
 	grafanaAdminSecretUserKey     = "admin-user"
 	grafanaAdminSecretPasswordKey = "admin-password"
 
-	// Ingress TLS secret (legacy)
+	// Ingress TLS secret (legacy - replaced by gatewayTLSSecretName) - TODO: remove once ingress is gone
 	grafanaTLSSecretName = "grafana-tls"
 
 	// Gateway API TLS secret: lives in the envoy-gateway-system namespace
