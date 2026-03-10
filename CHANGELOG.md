@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support Gateway API TLS certificate for Grafana client: the operator now tries `gateway-giantswarm-default-https-tls` in `envoy-gateway-system` first, falling back to the legacy `grafana-tls` secret in `monitoring`.
 - Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
+- Expand alertmanager controller RBAC: add `patch` on secrets and `update` on `secrets/finalizers` to support finalizer management.
 - Remove unnecessary `create` and `delete` verbs from `cluster.x-k8s.io/clusters` RBAC — the operator only reconciles existing clusters, never creates or deletes them.
 - Remove unnecessary `delete` verb from `coordination.k8s.io/leases` RBAC — controller-runtime leader election only requires `create;get;update;patch` on leases, never `delete`.
 
