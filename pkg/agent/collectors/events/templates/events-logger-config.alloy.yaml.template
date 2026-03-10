@@ -7,11 +7,13 @@
 # It configures Alloy for tracing.
 {{- else if .OTLPMetricsEnabled }}
 # It configures Alloy for OTLP metrics ingestion.
+{{- else if .OTLPLogsEnabled }}
+# It configures Alloy for OTLP logs ingestion.
 {{- end }}
 # - configMap is generated from events-logger.alloy.template and passed as a string
 #   here and will be created by Alloy's chart.
 # - Alloy runs as a deployment, with only 1 replica.
-{{- if or .TracingEnabled .OTLPMetricsEnabled (and .LoggingEnabled (not .IsWorkloadCluster)) }}
+{{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled (and .LoggingEnabled (not .IsWorkloadCluster)) }}
 networkPolicy:
   cilium:
     {{- if not .IsWorkloadCluster }}
@@ -33,7 +35,7 @@ networkPolicy:
         rules:
           dns:
             - matchPattern: '*'
-    {{- if .LoggingEnabled }}
+    {{- if or .LoggingEnabled .OTLPLogsEnabled }}
     # Allow direct access to loki-gateway
     - toEndpoints:
       - matchLabels:
@@ -71,7 +73,7 @@ networkPolicy:
           protocol: TCP
     {{- end }}
     {{- end }}
-    {{- if or .TracingEnabled .OTLPMetricsEnabled }}
+    {{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled }}
     ingress:
     - toPorts:
       - ports:
@@ -119,9 +121,9 @@ alloy:
   crds:
     create: false
 
-  {{- if or .TracingEnabled .OTLPMetricsEnabled }}
+  {{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled }}
   extraObjects:
-  # OTLP gateway service for traces and metrics
+  # OTLP gateway service for traces, metrics and logs
   - apiVersion: v1
     kind: Service
     metadata:

@@ -84,6 +84,9 @@ spec:
         # Logging configuration
         {{ with .Values.logging }}
         - --logging-enabled={{ .enabled }}
+        {{- if .otlp.enabled }}
+        - --logging-otlp-enabled=true
+        {{- end }}
         {{- if .enableNodeFiltering }}
         - --logging-enable-node-filtering=true
         {{- end }}
