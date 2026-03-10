@@ -25,7 +25,7 @@ const (
 	// Ingress TLS secret (legacy)
 	grafanaTLSSecretName = "grafana-tls"
 
-	// Gateway API TLS secret (new): lives in the envoy-gateway-system namespace
+	// Gateway API TLS secret: lives in the envoy-gateway-system namespace
 	gatewayTLSSecretNamespace = "envoy-gateway-system"
 	gatewayTLSSecretName      = "gateway-giantswarm-default-https-tls"
 
