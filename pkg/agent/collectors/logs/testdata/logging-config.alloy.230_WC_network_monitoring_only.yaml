@@ -47,9 +47,6 @@ alloy:
         	level  = "warn"
         	format = "logfmt"
         }
-        remote.kubernetes.secret "credentials" {
-        	namespace = "kube-system"
-        	name = "alloy-logs"
         beyla.ebpf "default" {
         	attributes {
         		kubernetes {
