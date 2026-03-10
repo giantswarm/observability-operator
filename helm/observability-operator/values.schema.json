@@ -238,6 +238,15 @@
                     "type": "boolean",
                     "description": "Enable or disable logging support"
                 },
+                "otlp": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                },
                 "enableNodeFiltering": {
                     "type": "boolean",
                     "description": "Enable node filtering in Alloy logging configuration"

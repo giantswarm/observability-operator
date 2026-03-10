@@ -67,7 +67,7 @@ loki.write "default" {
 }
 {{- end }}
 
-{{- if or .TracingEnabled .OTLPMetricsEnabled }}
+{{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled }}
 {{- if .TracingEnabled }}
 // Basic authentication for Tempo
 otelcol.auth.basic "tempo_credentials" {
@@ -80,6 +80,13 @@ otelcol.auth.basic "tempo_credentials" {
 otelcol.auth.basic "mimir_credentials" {
 	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirOTLPUsernameKey }}"])
 	password = remote.kubernetes.secret.credentials.data["{{ .MimirOTLPPasswordKey }}"]
+}
+{{- end }}
+{{- if and .OTLPLogsEnabled .IsWorkloadCluster }}
+// Basic authentication for Loki
+otelcol.auth.basic "loki_credentials" {
+	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LokiOTLPUsernameKey }}"])
+	password = remote.kubernetes.secret.credentials.data["{{ .LokiOTLPPasswordKey }}"]
 }
 {{- end }}
 
@@ -98,6 +105,9 @@ otelcol.receiver.otlp "default" {
 		{{- end }}
 		{{- if .OTLPMetricsEnabled }}
 		metrics = [otelcol.processor.k8sattributes.default.input]
+		{{- end }}
+		{{- if .OTLPLogsEnabled }}
+		logs    = [otelcol.processor.k8sattributes.default.input]
 		{{- end }}
 	}
 }
@@ -123,6 +133,9 @@ otelcol.processor.k8sattributes "default" {
 		{{- end }}
 		{{- if .OTLPMetricsEnabled }}
 		metrics = [otelcol.processor.transform.default.input]
+		{{- end }}
+		{{- if .OTLPLogsEnabled }}
+		logs    = [otelcol.processor.transform.default.input]
 		{{- end }}
 	}
 }
@@ -153,6 +166,17 @@ otelcol.processor.transform "default" {
 		]
 	}
 	{{- end }}
+	{{- if .OTLPLogsEnabled }}
+	log_statements {
+		context = "resource"
+		statements = [
+			`set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
+			`set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
+			`set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
+			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+		]
+	}
+	{{- end }}
 
 	output {
 		{{- if .TracingEnabled }}
@@ -160,6 +184,9 @@ otelcol.processor.transform "default" {
 		{{- end }}
 		{{- if .OTLPMetricsEnabled }}
 		metrics = [otelcol.processor.batch.default.input]
+		{{- end }}
+		{{- if .OTLPLogsEnabled }}
+		logs    = [otelcol.processor.batch.default.input]
 		{{- end }}
 	}
 }
@@ -185,6 +212,13 @@ otelcol.processor.batch "default" {
 			{{- end }}
 		]
 		{{- end }}
+		{{- if .OTLPLogsEnabled }}
+		logs = [
+			{{- range .Tenants }}
+			otelcol.processor.filter.{{ . }}.input,
+			{{- end }}
+		]
+		{{- end }}
 	}
 }
 
@@ -201,12 +235,22 @@ otelcol.processor.filter "{{ . }}" {
 		datapoint = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
 	}
 	{{- end }}
+	{{- if $.OTLPLogsEnabled }}
+	logs {
+		log_record = [
+			`resource.attributes["giantswarm.tenant"] != "{{ . }}"`,
+		]
+	}
+	{{- end }}
 	output {
 		{{- if $.TracingEnabled }}
 		traces  = [otelcol.exporter.otlp.{{ . }}.input]
 		{{- end }}
 		{{- if $.OTLPMetricsEnabled }}
 		metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
+		{{- end }}
+		{{- if $.OTLPLogsEnabled }}
+		logs    = [otelcol.exporter.otlphttp.{{ . }}_loki.input]
 		{{- end }}
 	}
 }
@@ -248,6 +292,30 @@ otelcol.exporter.otlphttp "{{ . }}_mimir" {
 		}
 		{{- else }}
 		endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
+		tls {
+			insecure = true
+		}
+		{{- end }}
+
+		headers = {
+			"X-Scope-OrgID" = "{{ . }}",
+		}
+	}
+}
+{{- end }}
+
+{{- if $.OTLPLogsEnabled }}
+// OTLP HTTP exporter for logs — tenant {{ . }} → Loki
+otelcol.exporter.otlphttp "{{ . }}_loki" {
+	client {
+		{{- if $.IsWorkloadCluster }}
+		auth     = otelcol.auth.basic.loki_credentials.handler
+		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LokiOTLPURLKey }}"])
+		tls {
+			insecure_skip_verify = false
+		}
+		{{- else }}
+		endpoint = "http://loki-gateway.loki.svc:80/otlp"
 		tls {
 			insecure = true
 		}
