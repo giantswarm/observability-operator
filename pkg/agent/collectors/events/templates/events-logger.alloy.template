@@ -324,7 +324,6 @@ otelcol.processor.batch "default" {
   timeout             = "{{ .OTLPBatchTimeout }}"
 
   output {
-    {{- if .TracingEnabled }}
     traces = [
       {{- range .Tenants }}
       otelcol.processor.filter.{{ . }}.input,
@@ -352,27 +351,6 @@ otelcol.processor.batch "default" {
 {{- range .Tenants }}
 otelcol.processor.filter "{{ . }}" {
   {{- if $.TracingEnabled }}
-  traces {
-    span = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
-  }
-  {{- end }}
-  {{- if $.OTLPMetricsEnabled }}
-  metrics {
-    datapoint = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
-  }
-  {{- end }}
-  {{- if $.OTLPLogsEnabled }}
-  logs {
-    log_record = [
-      `resource.attributes["giantswarm.tenant"] != "{{ . }}"`,
-    ]
-  }
-  {{- end }}
-  output {
-    {{- if $.TracingEnabled }}
-    traces = [otelcol.exporter.otlp.{{ . }}_tempo.input]
-    {{- end }}
-    {{- if $.OTLPMetricsEnabled }}
     metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
     {{- end }}
     {{- if $.OTLPLogsEnabled }}
