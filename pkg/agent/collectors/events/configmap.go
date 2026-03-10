@@ -130,35 +130,35 @@ func (a *Service) generateAlloyEventsConfig(
 
 	// Template data structure
 	data := struct {
-		ClusterID              string
-		ClusterType            string
-		Organization           string
-		Provider               string
-		InsecureSkipVerify     string
-		MaxBackoffPeriod       string
-		RemoteTimeout          string
-		IncludeNamespaces      []string
-		ExcludeNamespaces      []string
-		SecretName             string
-		LoggingURLKey          string
-		LoggingTenantIDKey     string
-		LoggingUsernameKey     string
-		LoggingPasswordKey     string
-		IsWorkloadCluster      bool
-		LoggingEnabled         bool
-		TracingEnabled         bool
-		TracingEndpoint        string
-		TracingUsernameKey     string
-		TracingPasswordKey     string
-		OTLPMetricsEnabled     bool
-		MimirOTLPURLKey        string
-		MimirOTLPUsernameKey   string
-		MimirOTLPPasswordKey   string
-		OTLPLogsEnabled        bool
-		LokiOTLPURLKey         string
-		LokiOTLPUsernameKey    string
-		LokiOTLPPasswordKey    string
-		Tenants                []string
+		ClusterID            string
+		ClusterType          string
+		Organization         string
+		Provider             string
+		InsecureSkipVerify   string
+		MaxBackoffPeriod     string
+		RemoteTimeout        string
+		IncludeNamespaces    []string
+		ExcludeNamespaces    []string
+		SecretName           string
+		LoggingURLKey        string
+		LoggingTenantIDKey   string
+		LoggingUsernameKey   string
+		LoggingPasswordKey   string
+		IsWorkloadCluster    bool
+		LoggingEnabled       bool
+		TracingEnabled       bool
+		TracingEndpoint      string
+		TracingUsernameKey   string
+		TracingPasswordKey   string
+		OTLPMetricsEnabled   bool
+		MimirOTLPURLKey      string
+		MimirOTLPUsernameKey string
+		MimirOTLPPasswordKey string
+		OTLPLogsEnabled      bool
+		LokiOTLPURLKey       string
+		LokiOTLPUsernameKey  string
+		LokiOTLPPasswordKey  string
+		Tenants              []string
 	}{
 		ClusterID:            clusterID,
 		ClusterType:          clusterType,
