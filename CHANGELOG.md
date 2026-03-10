@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Extend the events collector (alloy-events) to act as a unified OTLP gateway for all three signal types. A single `otlp-gateway` Service on ports 4317 (gRPC) and 4318 (HTTP) now receives traces, metrics, and logs, routing each to Tempo, Mimir, and Loki respectively via per-tenant filtering and batching. OTLP metrics ingestion is controlled by `monitoring.otlp.enabled` and OTLP log ingestion by `logging.otlp.enabled` (both default to `false` and require the parent feature to be enabled).
+- Add `otelcol.processor.batch` to all OTLP pipelines (traces, metrics, logs) for efficient export (`send_batch_size=8192`, `timeout=200ms`).
 - Enable independent configuration of logging and network monitoring features. Log collection now works when logging is enabled, and network monitoring collection can be enabled separately from logging for flexible per-cluster observability configurations.
 - Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
 

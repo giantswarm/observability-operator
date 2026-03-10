@@ -11,10 +11,10 @@ networkPolicy:
         # Alloy UI and API
         - port: "12345"
           protocol: TCP
-        # OTLP GRPC receiver for traces
+        # OTLP gRPC receiver
         - port: "4317"
           protocol: "TCP"
-        # OTLP HTTP receiver for traces
+        # OTLP HTTP receiver
         - port: "4318"
           protocol: "TCP"
 
@@ -61,11 +61,11 @@ alloy:
         }
         // Basic authentication for tracing
         otelcol.auth.basic "tracing_credentials" {
-        	username = nonsensitive(remote.kubernetes.secret.credentials.data["tracing-username"])
+        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-username"])
         	password = remote.kubernetes.secret.credentials.data["tracing-password"]
         }
-        // OTLP receiver for traces
-        otelcol.receiver.otlp "traces" {
+        // OTLP receiver — accepts traces, metrics, and logs from cluster workloads
+        otelcol.receiver.otlp "default" {
         	grpc {
         		endpoint = "0.0.0.0:4317"
         	}
@@ -73,10 +73,10 @@ alloy:
         		endpoint = "0.0.0.0:4318"
         	}
         	output {
-        		traces = [otelcol.processor.k8sattributes.default.input]
+        		traces  = [otelcol.processor.k8sattributes.default.input]
         	}
         }
-        // Add Kubernetes metadata to traces
+        // Add Kubernetes metadata to all OTLP signals
         otelcol.processor.k8sattributes "default" {
         	extract {
         		metadata = [
@@ -91,10 +91,10 @@ alloy:
         		otel_annotations = true
         	}
         	output {
-        		traces = [otelcol.processor.transform.default.input]
+        		traces  = [otelcol.processor.transform.default.input]
         	}
         }
-        // Add cluster metadata to traces
+        // Add cluster metadata to all OTLP signals
         otelcol.processor.transform "default" {
         	error_mode = "ignore"
         	trace_statements {
@@ -107,12 +107,20 @@ alloy:
         		]
         	}
         	output {
-        		traces = [
+        		traces  = [otelcol.processor.batch.default.input]
+        	}
+        }
+        // Batch processor for efficient export
+        otelcol.processor.batch "default" {
+        	send_batch_size = 8192
+        	timeout         = "200ms"
+        	output {
+        		traces  = [
         			otelcol.processor.filter.giantswarm.input,
         		]
         	}
         }
-        // Filter traces by tenant
+        // Per-tenant routing
         otelcol.processor.filter "giantswarm" {
         	traces {
         		span = [
@@ -120,10 +128,10 @@ alloy:
         		]
         	}
         	output {
-        		traces = [otelcol.exporter.otlp.giantswarm.input]
+        		traces  = [otelcol.exporter.otlp.giantswarm.input]
         	}
         }
-        // OTLP gRPC exporter for tenant giantswarm
+        // OTLP gRPC exporter for traces — tenant giantswarm
         otelcol.exporter.otlp "giantswarm" {
         	client {
         		auth     = otelcol.auth.basic.tracing_credentials.handler
@@ -162,7 +170,7 @@ alloy:
   crds:
     create: false
   extraObjects:
-  # OTLP gateway service to receive traces
+  # OTLP gateway service — single endpoint for all OTLP signals (traces, metrics, logs)
   - apiVersion: v1
     kind: Service
     metadata:

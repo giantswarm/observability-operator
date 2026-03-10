@@ -31,6 +31,7 @@ type Service struct {
 	OrganizationRepository  organization.OrganizationRepository
 	TenantRepository        tenancy.TenantRepository
 	LogsAuthManager         auth.AuthManager
+	MetricsAuthManager      auth.AuthManager
 	TracesAuthManager       auth.AuthManager
 }
 
@@ -38,18 +39,23 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is configured")
 
-	// Determine if logging and tracing are enabled for this cluster
+	// Determine if logging, tracing, and OTLP signals are enabled for this cluster.
+	// OTLP features require the same minimum bundle version as tracing since they use the same otelcol receiver.
+	// OTLP metrics requires both monitoring and the OTLP flag to be enabled.
+	// OTLP logs requires both logging and the OTLP flag to be enabled.
 	loggingEnabled := a.Config.Logging.IsLoggingEnabled(cluster)
 	tracingEnabled := a.Config.Tracing.IsTracingEnabled(cluster) && observabilityBundleVersion.GE(minimumTracingSupportVersion)
+	otlpMetricsEnabled := a.Config.Monitoring.IsMonitoringEnabled(cluster) && a.Config.Monitoring.OTLPEnabled && observabilityBundleVersion.GE(minimumTracingSupportVersion)
+	otlpLogsEnabled := a.Config.Logging.IsLoggingEnabled(cluster) && a.Config.Logging.OTLPEnabled && observabilityBundleVersion.GE(minimumTracingSupportVersion)
 
 	// Generate ConfigMap data
-	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, observabilityBundleVersion)
+	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled, observabilityBundleVersion)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 	}
 
 	// Generate Secret data
-	secretData, err := a.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled)
+	secretData, err := a.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events secret: %w", err)
 	}

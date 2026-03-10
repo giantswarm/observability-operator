@@ -46,11 +46,11 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 	}
 }
 
-func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, observabilityBundleVersion semver.Version) (map[string]string, error) {
-	// Defensive validation: This method should only be called when logging or tracing is enabled.
+func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool, observabilityBundleVersion semver.Version) (map[string]string, error) {
+	// Defensive validation: This method should only be called when at least one signal type is enabled.
 	// The controller ensures this, but we validate here to catch potential bugs.
-	if !loggingEnabled && !tracingEnabled {
-		return nil, fmt.Errorf("cannot generate alloy events config: neither logging nor tracing is enabled")
+	if !loggingEnabled && !tracingEnabled && !otlpMetricsEnabled && !otlpLogsEnabled {
+		return nil, fmt.Errorf("cannot generate alloy events config: no signal type is enabled")
 	}
 
 	// Get list of tenants
@@ -88,6 +88,8 @@ func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 		tenants,
 		loggingEnabled,
 		tracingEnabled,
+		otlpMetricsEnabled,
+		otlpLogsEnabled,
 		isWorkloadCluster,
 	)
 	if err != nil {
@@ -95,7 +97,7 @@ func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	}
 
 	// Generate the values YAML that wraps the Alloy config
-	valuesYAML, err := a.generateEventsYAMLConfig(alloyConfig, loggingEnabled, tracingEnabled, isWorkloadCluster)
+	valuesYAML, err := a.generateEventsYAMLConfig(alloyConfig, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled, isWorkloadCluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate events YAML config: %w", err)
 	}
@@ -114,6 +116,8 @@ func (a *Service) generateAlloyEventsConfig(
 	tenants []string,
 	loggingEnabled bool,
 	tracingEnabled bool,
+	otlpMetricsEnabled bool,
+	otlpLogsEnabled bool,
 	isWorkloadCluster bool,
 ) (string, error) {
 	var buf bytes.Buffer
@@ -126,49 +130,65 @@ func (a *Service) generateAlloyEventsConfig(
 
 	// Template data structure
 	data := struct {
-		ClusterID          string
-		ClusterType        string
-		Organization       string
-		Provider           string
-		InsecureSkipVerify string
-		MaxBackoffPeriod   string
-		RemoteTimeout      string
-		IncludeNamespaces  []string
-		ExcludeNamespaces  []string
-		SecretName         string
-		LoggingURLKey      string
-		LoggingTenantIDKey string
-		LoggingUsernameKey string
-		LoggingPasswordKey string
-		IsWorkloadCluster  bool
-		LoggingEnabled     bool
-		TracingEnabled     bool
-		TracingEndpoint    string
-		TracingUsernameKey string
-		TracingPasswordKey string
-		Tenants            []string
+		ClusterID              string
+		ClusterType            string
+		Organization           string
+		Provider               string
+		InsecureSkipVerify     string
+		MaxBackoffPeriod       string
+		RemoteTimeout          string
+		IncludeNamespaces      []string
+		ExcludeNamespaces      []string
+		SecretName             string
+		LoggingURLKey          string
+		LoggingTenantIDKey     string
+		LoggingUsernameKey     string
+		LoggingPasswordKey     string
+		IsWorkloadCluster      bool
+		LoggingEnabled         bool
+		TracingEnabled         bool
+		TracingEndpoint        string
+		TracingUsernameKey     string
+		TracingPasswordKey     string
+		OTLPMetricsEnabled     bool
+		MimirOTLPURLKey        string
+		MimirOTLPUsernameKey   string
+		MimirOTLPPasswordKey   string
+		OTLPLogsEnabled        bool
+		LokiOTLPURLKey         string
+		LokiOTLPUsernameKey    string
+		LokiOTLPPasswordKey    string
+		Tenants                []string
 	}{
-		ClusterID:          clusterID,
-		ClusterType:        clusterType,
-		Organization:       organization,
-		Provider:           provider,
-		InsecureSkipVerify: fmt.Sprintf("%t", a.Config.Cluster.InsecureCA),
-		MaxBackoffPeriod:   common.LokiMaxBackoffPeriod,
-		RemoteTimeout:      common.LokiRemoteTimeout,
-		IncludeNamespaces:  a.Config.Logging.IncludeEventsNamespaces,
-		ExcludeNamespaces:  a.Config.Logging.ExcludeEventsNamespaces,
-		SecretName:         apps.AlloyEventsAppName,
-		LoggingURLKey:      common.LokiURLKey,
-		LoggingTenantIDKey: common.LokiTenantIDKey,
-		LoggingUsernameKey: common.LokiUsernameKey,
-		LoggingPasswordKey: common.LokiPasswordKey,
-		IsWorkloadCluster:  isWorkloadCluster,
-		LoggingEnabled:     loggingEnabled,
-		TracingEnabled:     tracingEnabled,
-		TracingEndpoint:    tracingEndpoint,
-		TracingUsernameKey: common.TempoUsernameKey,
-		TracingPasswordKey: common.TempoPasswordKey,
-		Tenants:            tenants,
+		ClusterID:            clusterID,
+		ClusterType:          clusterType,
+		Organization:         organization,
+		Provider:             provider,
+		InsecureSkipVerify:   fmt.Sprintf("%t", a.Config.Cluster.InsecureCA),
+		MaxBackoffPeriod:     common.LokiMaxBackoffPeriod,
+		RemoteTimeout:        common.LokiRemoteTimeout,
+		IncludeNamespaces:    a.Config.Logging.IncludeEventsNamespaces,
+		ExcludeNamespaces:    a.Config.Logging.ExcludeEventsNamespaces,
+		SecretName:           apps.AlloyEventsAppName,
+		LoggingURLKey:        common.LokiURLKey,
+		LoggingTenantIDKey:   common.LokiTenantIDKey,
+		LoggingUsernameKey:   common.LokiUsernameKey,
+		LoggingPasswordKey:   common.LokiPasswordKey,
+		IsWorkloadCluster:    isWorkloadCluster,
+		LoggingEnabled:       loggingEnabled,
+		TracingEnabled:       tracingEnabled,
+		TracingEndpoint:      tracingEndpoint,
+		TracingUsernameKey:   common.TempoUsernameKey,
+		TracingPasswordKey:   common.TempoPasswordKey,
+		OTLPMetricsEnabled:   otlpMetricsEnabled,
+		MimirOTLPURLKey:      common.MimirOTLPWriteAPIURLKey,
+		MimirOTLPUsernameKey: common.MimirRemoteWriteAPIUsernameKey,
+		MimirOTLPPasswordKey: common.MimirRemoteWriteAPIPasswordKey,
+		OTLPLogsEnabled:      otlpLogsEnabled,
+		LokiOTLPURLKey:       common.LokiOTLPURLKey,
+		LokiOTLPUsernameKey:  common.LokiUsernameKey,
+		LokiOTLPPasswordKey:  common.LokiPasswordKey,
+		Tenants:              tenants,
 	}
 
 	if err := alloyEventsConfigTemplate.Execute(&buf, data); err != nil {
@@ -178,19 +198,23 @@ func (a *Service) generateAlloyEventsConfig(
 	return buf.String(), nil
 }
 
-func (a *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bool, tracingEnabled bool, isWorkloadCluster bool) (string, error) {
+func (a *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool, isWorkloadCluster bool) (string, error) {
 	var buf bytes.Buffer
 
 	data := struct {
-		AlloyConfig       string
-		LoggingEnabled    bool
-		TracingEnabled    bool
-		IsWorkloadCluster bool
+		AlloyConfig        string
+		LoggingEnabled     bool
+		TracingEnabled     bool
+		OTLPMetricsEnabled bool
+		OTLPLogsEnabled    bool
+		IsWorkloadCluster  bool
 	}{
-		AlloyConfig:       alloyConfig,
-		LoggingEnabled:    loggingEnabled,
-		TracingEnabled:    tracingEnabled,
-		IsWorkloadCluster: isWorkloadCluster,
+		AlloyConfig:        alloyConfig,
+		LoggingEnabled:     loggingEnabled,
+		TracingEnabled:     tracingEnabled,
+		OTLPMetricsEnabled: otlpMetricsEnabled,
+		OTLPLogsEnabled:    otlpLogsEnabled,
+		IsWorkloadCluster:  isWorkloadCluster,
 	}
 
 	if err := alloyEventsYAMLConfigTemplate.Execute(&buf, data); err != nil {

@@ -5,11 +5,18 @@
 # It configures Alloy for events logging.
 {{- else if .TracingEnabled }}
 # It configures Alloy for tracing.
+{{- else if and .OTLPMetricsEnabled .OTLPLogsEnabled }}
+# It configures Alloy for OTLP metrics and logs ingestion.
+{{- else if .OTLPMetricsEnabled }}
+# It configures Alloy for OTLP metrics ingestion.
+{{- else if .OTLPLogsEnabled }}
+# It configures Alloy for OTLP logs ingestion.
 {{- end }}
 # - configMap is generated from events-logger.alloy.template and passed as a string
 #   here and will be created by Alloy's chart.
 # - Alloy runs as a deployment, with only 1 replica.
-{{- if or .TracingEnabled (and .LoggingEnabled (not .IsWorkloadCluster)) }}
+{{- $otlpEnabled := or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled }}
+{{- if or $otlpEnabled (and .LoggingEnabled (not .IsWorkloadCluster)) }}
 networkPolicy:
   cilium:
     {{- if not .IsWorkloadCluster }}
@@ -56,18 +63,44 @@ networkPolicy:
         - port: "4318"
           protocol: TCP
     {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    # Allow direct access to mimir-gateway for OTLP metrics
+    - toEndpoints:
+      - matchLabels:
+          app.kubernetes.io/component: gateway
+          app.kubernetes.io/name: mimir
+          io.kubernetes.pod.namespace: mimir
+      toPorts:
+      - ports:
+        - port: "8080"
+          protocol: TCP
     {{- end }}
-    {{- if .TracingEnabled }}
+    {{- if .OTLPLogsEnabled }}
+    # Allow direct access to loki-gateway for OTLP logs (if not already added for native logging)
+    {{- if not .LoggingEnabled }}
+    - toEndpoints:
+      - matchLabels:
+          app.kubernetes.io/component: gateway
+          app.kubernetes.io/name: loki
+          io.kubernetes.pod.namespace: loki
+      toPorts:
+      - ports:
+        - port: "8080"
+          protocol: TCP
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- if $otlpEnabled }}
     ingress:
     - toPorts:
       - ports:
         # Alloy UI and API
         - port: "12345"
           protocol: TCP
-        # OTLP GRPC receiver for traces
+        # OTLP gRPC receiver
         - port: "4317"
           protocol: "TCP"
-        # OTLP HTTP receiver for traces
+        # OTLP HTTP receiver
         - port: "4318"
           protocol: "TCP"
     {{- end }}
@@ -105,9 +138,9 @@ alloy:
   crds:
     create: false
 
-  {{- if .TracingEnabled }}
+  {{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled }}
   extraObjects:
-  # OTLP gateway service to receive traces
+  # OTLP gateway service — single endpoint for all OTLP signals (traces, metrics, logs)
   - apiVersion: v1
     kind: Service
     metadata:

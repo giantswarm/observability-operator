@@ -1,306 +1,324 @@
 {
-    "$schema": "http://json-schema.org/schema#",
-    "type": "object",
-    "properties": {
-        "alerting": {
-            "type": "object",
-            "properties": {
-                "alertmanagerURL": {
-                    "type": "string"
-                },
-                "enabled": {
-                    "type": "boolean"
-                },
-                "grafanaAddress": {
-                    "type": "string"
-                },
-                "slackAPIToken": {
-                    "type": "string"
-                }
-            }
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "alerting": {
+      "type": "object",
+      "properties": {
+        "alertmanagerURL": {
+          "type": "string"
         },
-        "image": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "registry": {
-                    "type": "string"
-                },
-                "tag": {
-                    "type": "string"
-                }
-            }
+        "enabled": {
+          "type": "boolean"
         },
-        "managementCluster": {
-            "type": "object",
-            "properties": {
-                "baseDomain": {
-                    "type": "string"
-                },
-                "clusterIssuer": {
-                    "type": "string"
-                },
-                "customer": {
-                    "type": "string"
-                },
-                "insecureCA": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "pipeline": {
-                    "type": "string"
-                },
-                "region": {
-                    "type": "string"
-                }
-            }
+        "grafanaAddress": {
+          "type": "string"
         },
-        "monitoring": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
-                "sharding": {
-                    "type": "object",
-                    "properties": {
-                        "scaleDownPercentage": {
-                            "type": "number"
-                        },
-                        "scaleUpSeriesCount": {
-                            "type": "integer"
-                        }
-                    }
-                },
-                "wal": {
-                    "type": "object",
-                    "properties": {
-                        "truncateFrequency": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "queueConfig": {
-                    "type": "object",
-                    "description": "Queue configuration for remote write",
-                    "properties": {
-                        "batchSendDeadline": {
-                            "type": "string",
-                            "description": "Maximum time samples wait in the buffer before sending (e.g., '5s')"
-                        },
-                        "capacity": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "description": "Number of samples to buffer per shard"
-                        },
-                        "maxBackoff": {
-                            "type": "string",
-                            "description": "Maximum retry delay (e.g., '5s')"
-                        },
-                        "maxSamplesPerSend": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "description": "Maximum number of samples per send"
-                        },
-                        "maxShards": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "description": "Maximum number of concurrent shards"
-                        },
-                        "minBackoff": {
-                            "type": "string",
-                            "description": "Initial retry delay (e.g., '30ms')"
-                        },
-                        "minShards": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "description": "Minimum number of concurrent shards"
-                        },
-                        "retryOnHttp429": {
-                            "type": "boolean",
-                            "description": "Retry when an HTTP 429 status code is received"
-                        },
-                        "sampleAgeLimit": {
-                            "type": "string",
-                            "description": "Maximum age of samples to send (e.g., '30m')"
-                        }
-                    }
-                }
-            }
-        },
-        "operator": {
-            "type": "object",
-            "properties": {
-                "containerSecurityContext": {
-                    "type": "object",
-                    "properties": {
-                        "allowPrivilegeEscalation": {
-                            "type": "boolean"
-                        },
-                        "capabilities": {
-                            "type": "object",
-                            "properties": {
-                                "drop": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        },
-                        "readOnlyRootFilesystem": {
-                            "type": "boolean"
-                        },
-                        "seccompProfile": {
-                            "type": "object",
-                            "properties": {
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                },
-                "podSecurityContext": {
-                    "type": "object",
-                    "properties": {
-                        "runAsNonRoot": {
-                            "type": "boolean"
-                        },
-                        "runAsUser": {
-                            "type": "integer"
-                        },
-                        "seccompProfile": {
-                            "type": "object",
-                            "properties": {
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                },
-                "resources": {
-                    "type": "object",
-                    "properties": {
-                        "limits": {
-                            "type": "object",
-                            "properties": {
-                                "cpu": {
-                                    "type": "string"
-                                },
-                                "memory": {
-                                    "type": "string"
-                                }
-                            }
-                        },
-                        "requests": {
-                            "type": "object",
-                            "properties": {
-                                "cpu": {
-                                    "type": "string"
-                                },
-                                "memory": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "tracing": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean",
-                    "description": "Enable or disable distributed tracing support"
-                }
-            }
-        },
-        "logging": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean",
-                    "description": "Enable or disable logging support"
-                },
-                "enableNodeFiltering": {
-                    "type": "boolean",
-                    "description": "Enable node filtering in Alloy logging configuration"
-                },
-                "enableNetworkMonitoring": {
-                    "type": "boolean",
-                    "description": "Enable network monitoring in Alloy logging configuration"
-                },
-                "defaultNamespaces": {
-                    "type": "array",
-                    "description": "Default namespaces to collect logs from",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "includeEventsFromNamespaces": {
-                    "type": "array",
-                    "description": "Namespaces to include/exclude for events",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "excludeEventsFromNamespaces": {
-                    "type": "array",
-                    "description": "Namespaces to exclude from event collection",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "webhook": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean",
-                    "description": "Enable or disable webhook validation"
-                },
-                "validatingWebhooks": {
-                    "type": "object",
-                    "description": "Configure individual webhooks",
-                    "properties": {
-                        "alertmanagerConfig": {
-                            "type": "object",
-                            "description": "Enable AlertManager config secret validation webhook",
-                            "properties": {
-                                "enabled": {
-                                    "type": "boolean"
-                                }
-                            }
-                        },
-                        "dashboardConfigMap": {
-                            "type": "object",
-                            "description": "Enable dashboard ConfigMap validation webhook",
-                            "properties": {
-                                "enabled": {
-                                    "type": "boolean"
-                                }
-                            }
-                        },
-                        "grafanaOrganization": {
-                            "type": "object",
-                            "description": "Enable GrafanaOrganization validation webhook",
-                            "properties": {
-                                "enabled": {
-                                    "type": "boolean"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        "slackAPIToken": {
+          "type": "string"
         }
+      }
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "registry": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        }
+      }
+    },
+    "managementCluster": {
+      "type": "object",
+      "properties": {
+        "baseDomain": {
+          "type": "string"
+        },
+        "clusterIssuer": {
+          "type": "string"
+        },
+        "customer": {
+          "type": "string"
+        },
+        "insecureCA": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pipeline": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "sharding": {
+          "type": "object",
+          "properties": {
+            "scaleDownPercentage": {
+              "type": "number"
+            },
+            "scaleUpSeriesCount": {
+              "type": "integer"
+            }
+          }
+        },
+        "wal": {
+          "type": "object",
+          "properties": {
+            "truncateFrequency": {
+              "type": "string"
+            }
+          }
+        },
+        "queueConfig": {
+          "type": "object",
+          "description": "Queue configuration for remote write",
+          "properties": {
+            "batchSendDeadline": {
+              "type": "string",
+              "description": "Maximum time samples wait in the buffer before sending (e.g., '5s')"
+            },
+            "capacity": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of samples to buffer per shard"
+            },
+            "maxBackoff": {
+              "type": "string",
+              "description": "Maximum retry delay (e.g., '5s')"
+            },
+            "maxSamplesPerSend": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of samples per send"
+            },
+            "maxShards": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of concurrent shards"
+            },
+            "minBackoff": {
+              "type": "string",
+              "description": "Initial retry delay (e.g., '30ms')"
+            },
+            "minShards": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Minimum number of concurrent shards"
+            },
+            "retryOnHttp429": {
+              "type": "boolean",
+              "description": "Retry when an HTTP 429 status code is received"
+            },
+            "sampleAgeLimit": {
+              "type": "string",
+              "description": "Maximum age of samples to send (e.g., '30m')"
+            }
+          }
+        },
+        "otlp": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "operator": {
+      "type": "object",
+      "properties": {
+        "containerSecurityContext": {
+          "type": "object",
+          "properties": {
+            "allowPrivilegeEscalation": {
+              "type": "boolean"
+            },
+            "capabilities": {
+              "type": "object",
+              "properties": {
+                "drop": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "readOnlyRootFilesystem": {
+              "type": "boolean"
+            },
+            "seccompProfile": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "podSecurityContext": {
+          "type": "object",
+          "properties": {
+            "runAsNonRoot": {
+              "type": "boolean"
+            },
+            "runAsUser": {
+              "type": "integer"
+            },
+            "seccompProfile": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tracing": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable or disable distributed tracing support"
+        }
+      }
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable or disable logging support"
+        },
+        "enableNodeFiltering": {
+          "type": "boolean",
+          "description": "Enable node filtering in Alloy logging configuration"
+        },
+        "enableNetworkMonitoring": {
+          "type": "boolean",
+          "description": "Enable network monitoring in Alloy logging configuration"
+        },
+        "defaultNamespaces": {
+          "type": "array",
+          "description": "Default namespaces to collect logs from",
+          "items": {
+            "type": "string"
+          }
+        },
+        "includeEventsFromNamespaces": {
+          "type": "array",
+          "description": "Namespaces to include/exclude for events",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludeEventsFromNamespaces": {
+          "type": "array",
+          "description": "Namespaces to exclude from event collection",
+          "items": {
+            "type": "string"
+          }
+        },
+        "otlp": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "webhook": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable or disable webhook validation"
+        },
+        "validatingWebhooks": {
+          "type": "object",
+          "description": "Configure individual webhooks",
+          "properties": {
+            "alertmanagerConfig": {
+              "type": "object",
+              "description": "Enable AlertManager config secret validation webhook",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "dashboardConfigMap": {
+              "type": "object",
+              "description": "Enable dashboard ConfigMap validation webhook",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "grafanaOrganization": {
+              "type": "object",
+              "description": "Enable GrafanaOrganization validation webhook",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
     }
+  }
 }

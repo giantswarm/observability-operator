@@ -14,6 +14,9 @@ type LoggingConfig struct {
 	// Enabled controls logging at the installation level
 	Enabled bool
 
+	// OTLPEnabled controls whether OTLP log ingestion is enabled via the events collector
+	OTLPEnabled bool
+
 	// EnableNodeFiltering enables node filtering in Alloy logging configuration
 	EnableNodeFiltering bool
 

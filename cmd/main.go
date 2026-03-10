@@ -73,6 +73,7 @@ const (
 	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
 	// TODO Rename the flag with the monitoring prefix when migration is done
 	flagMonitoringNetworkEnabled = "logging-enable-network-monitoring"
+	flagMonitoringOTLPEnabled    = "monitoring-otlp-enabled"
 
 	// Queue configuration flag names
 	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
@@ -90,6 +91,7 @@ const (
 
 	// Logging configuration flag names
 	flagLoggingEnabled                     = "logging-enabled"
+	flagLoggingOTLPEnabled                 = "logging-otlp-enabled"
 	flagLoggingDefaultNamespaces           = "logging-default-namespaces"
 	flagLoggingEnableNodeFiltering         = "logging-enable-node-filtering"
 	flagLoggingIncludeEventsFromNamespaces = "logging-include-events-from-namespaces"
@@ -192,6 +194,8 @@ func parseFlags() (err error) {
 		"URL to query for cluster metrics (internal Mimir query endpoint)")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
 		"Enable/disable network monitoring in Alloy logging configuration")
+	pflag.BoolVar(&cfg.Monitoring.OTLPEnabled, flagMonitoringOTLPEnabled, false,
+		"Enable OTLP metrics ingestion via the events collector (requires monitoring-enabled=true)")
 
 	// Queue configuration flags for Alloy remote write
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string
@@ -224,6 +228,8 @@ func parseFlags() (err error) {
 	// Logging configuration flags
 	pflag.BoolVar(&cfg.Logging.Enabled, flagLoggingEnabled, false,
 		"Enable logging at the installation level.")
+	pflag.BoolVar(&cfg.Logging.OTLPEnabled, flagLoggingOTLPEnabled, false,
+		"Enable OTLP log ingestion via the events collector (requires logging-enabled=true)")
 	pflag.StringSliceVar(&cfg.Logging.DefaultNamespaces, flagLoggingDefaultNamespaces, []string{},
 		"Comma-separated list of namespaces to collect logs from by default on workload clusters")
 	pflag.BoolVar(&cfg.Logging.EnableNodeFiltering, flagLoggingEnableNodeFiltering, false,

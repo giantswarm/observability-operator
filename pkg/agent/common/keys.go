@@ -44,6 +44,7 @@ const (
 	MimirRemoteWriteName              = "mimir"                             // Default remote write name
 	MimirBaseURLFormat                = "https://mimir.%s"                  // Base URL template for Mimir
 	MimirRemoteWriteEndpointURLFormat = MimirBaseURLFormat + "/api/v1/push" // Full remote write endpoint URL
+	MimirOTLPEndpointURLFormat        = MimirBaseURLFormat + "/otlp"        // OTLP write base URL for Mimir
 	MimirQueryEndpointURLFormat       = MimirBaseURLFormat + "/prometheus"  // Prometheus-compatible query endpoint for KEDA
 	MimirRemoteWriteTimeout           = "60s"                               // Timeout for remote write operations
 
@@ -54,4 +55,9 @@ const (
 	MimirRemoteWriteAPIPasswordKey = "mimirRemoteWriteAPIPassword" // Password for remote write auth
 	MimirRemoteWriteAPIURLKey      = "mimirRemoteWriteAPIURL"      // URL for remote write endpoint
 	MimirRemoteWriteAPINameKey     = "mimirRemoteWriteAPIName"     // Name identifier for remote write
+	MimirOTLPWriteAPIURLKey        = "mimirOTLPWriteAPIURL"        // Base URL for Mimir OTLP write (WC only)
+
+	// Loki OTLP configuration
+	LokiOTLPURLFormat = LokiBaseURLFormat + "/otlp" // OTLP base URL for Loki
+	LokiOTLPURLKey    = "logging-otlp-url"          // Base URL for Loki OTLP write (WC only)
 )
