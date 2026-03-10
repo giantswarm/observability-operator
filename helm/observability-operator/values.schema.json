@@ -69,6 +69,15 @@
                     "type": "boolean",
                     "description": "Enable network monitoring in Alloy configuration"
                 },
+                "otlp": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                },
                 "sharding": {
                     "type": "object",
                     "properties": {
