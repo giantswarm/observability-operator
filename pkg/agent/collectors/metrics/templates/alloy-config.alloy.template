@@ -204,6 +204,7 @@ prometheus.remote_write "{{ . }}" {
     name           = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPINameKey }}"])
     enable_http2   = false
     remote_timeout = "{{ $.MimirRemoteWriteTimeout }}"
+    send_exemplars = {{ $.ExemplarsEnabled }}
 
     {{- if $.IsWorkloadCluster }}
     url = nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIURLKey }}"])

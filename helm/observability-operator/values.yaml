@@ -44,6 +44,10 @@ monitoring:
     # minShards: 1
     # retryOnHttp429: true
     sampleAgeLimit: "30m"
+  exemplars:
+    # -- Enable exemplar forwarding in the remote write pipeline.
+    # Requires Mimir to have exemplar storage enabled (max_global_exemplars_per_user > 0).
+    enabled: true
 
 tracing:
   # -- Enable or disable distributed tracing support

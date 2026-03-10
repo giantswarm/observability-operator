@@ -73,6 +73,9 @@ spec:
         - --monitoring-queue-config-sample-age-limit={{ .sampleAgeLimit }}
         {{- end }}
         {{- end }}
+        {{- with .exemplars }}
+        - --monitoring-exemplars-enabled={{ .enabled }}
+        {{- end }}
         {{- end }}
         - --tracing-enabled={{ $.Values.tracing.enabled }}
         # Logging configuration

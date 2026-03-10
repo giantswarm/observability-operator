@@ -307,6 +307,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					},
 					Monitoring: config.MonitoringConfig{
 						Enabled:              tt.monitoringEnabled,
+						ExemplarsEnabled:     true,
 						WALTruncateFrequency: time.Minute,
 						QueueConfig: config.QueueConfig{
 							Capacity:          &[]int{30000}[0],
