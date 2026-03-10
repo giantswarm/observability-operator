@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enable independent configuration of logging and network monitoring features. Log collection now works when logging is enabled, and network monitoring collection can be enabled separately from logging for flexible per-cluster observability configurations.
 - Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
 - Add `otelcol.processor.batch` to the OTLP traces pipeline (`send_batch_size=8192`, `timeout=200ms`) for efficient export to Tempo.
+- Add OTLP metrics ingestion to the events collector (`monitoring.otlp.enabled`, default `false`). When enabled alongside `monitoring.enabled`, the alloy-events collector accepts OTLP metrics on the existing otlp-gateway Service (ports 4317/4318) and routes them per-tenant to Mimir via `/otlp/v1/metrics`. Requires observability-bundle ≥ 1.11.0. External gateway routes (Mimir HTTPRoute `/otlp/v1/metrics`) must be updated before enabling on workload clusters.
 
 ### Fixed
 

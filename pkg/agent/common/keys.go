@@ -55,8 +55,6 @@ const (
 	MimirRemoteWriteTimeout           = "60s"                               // Timeout for remote write operations
 
 	// Mimir secret keys for remote write configuration and authentication.
-	// All keys follow the kebab-case signal-purpose convention used by Loki (logging-*)
-	// and Tempo (tracing-*) keys.
 	MimirQueryAPIURLKey            = "metrics-query-url"         // URL for Mimir query endpoint
 	MimirRulerAPIURLKey            = "metrics-ruler-url"         // URL for Mimir ruler API
 	MimirRemoteWriteAPIUsernameKey = "metrics-username"          // Username for remote write / OTLP auth
