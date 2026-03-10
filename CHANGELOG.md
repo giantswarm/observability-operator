@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
 - Alertmanager config secrets now receive a finalizer (`observability.giantswarm.io/alertmanager-config`) so the corresponding Mimir Alertmanager configuration is deleted when the secret is removed. Previously, deleting a secret left orphaned config in Mimir.
 
+### Fixed
+
+- Replace deprecated `nonsensitive()` builtin with `convert.nonsensitive()` in Alloy metrics and events templates (deprecated since Alloy v1.4 / PR#1516).
+- Fix `remote.kubernetes.secret "credentials"` block in logging Alloy template that was missing its closing brace when `LoggingEnabled` is true, causing an unclosed block and a duplicate inner block to be emitted instead.
+
 ### Changed
 
 - Support Gateway API TLS certificate for Grafana client: the operator now tries `gateway-giantswarm-default-https-tls` in `envoy-gateway-system` first, falling back to the legacy `grafana-tls` secret in `monitoring`.
