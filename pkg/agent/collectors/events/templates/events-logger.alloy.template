@@ -276,6 +276,17 @@ otelcol.processor.transform "default" {
 		{{ template "resource_statements" . }}
 	}
 	{{- end }}
+	{{- if .OTLPLogsEnabled }}
+	log_statements {
+		context = "resource"
+		statements = [
+			`set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
+			`set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
+			`set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
+			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+		]
+	}
+	{{- end }}
 
 	output {
 		{{- if .TracingEnabled }}
