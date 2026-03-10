@@ -33,7 +33,7 @@ alloy:
         }
         // Basic authentication for tracing
         otelcol.auth.basic "tracing_credentials" {
-        	username = nonsensitive(remote.kubernetes.secret.credentials.data["tracing-username"])
+        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-username"])
         	password = remote.kubernetes.secret.credentials.data["tracing-password"]
         }
         // OTLP receiver for traces
