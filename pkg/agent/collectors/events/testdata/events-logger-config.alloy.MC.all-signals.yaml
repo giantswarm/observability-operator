@@ -259,6 +259,15 @@ alloy:
         			`delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
         		]
         	}
+        	log_statements {
+        		context = "resource"
+        		statements = [
+        			`set(attributes["giantswarm.cluster.id"], "test-installation")`,
+        			`set(attributes["giantswarm.cluster.type"], "management_cluster")`,
+        			`set(attributes["giantswarm.cluster.organization"], "test-organization")`,
+        			`set(attributes["giantswarm.cluster.provider"], "capa")`,
+        		]
+        	}
         	output {
         		traces = [otelcol.processor.batch.default.input]
         		metrics = [otelcol.processor.batch.default.input]
