@@ -21,7 +21,7 @@ const (
 	LokiTenantIDKey    = "logging-tenant-id" // Tenant ID for multi-tenancy
 	LokiUsernameKey    = "logging-username"  // Username for basic auth
 	LokiPasswordKey    = "logging-password"  // Password for basic auth
-	LokiRulerAPIURLKey = "ruler-api-url"     // URL for Loki ruler API
+	LokiRulerAPIURLKey = "logging-ruler-api-url"     // URL for Loki ruler API
 	// Loki OTLP configuration
 	LokiOTLPBaseURLFormat = LokiBaseURLFormat + "/otlp" // Base URL for Loki OTLP — exporter appends /v1/logs
 	LokiOTLPURLKey        = "logging-otlp-url"          // Secret key: base URL for Loki OTLP write (WC only)
