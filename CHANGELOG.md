@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
 - Support Gateway API TLS certificate for Grafana client: the operator now tries `gateway-giantswarm-default-https-tls` in `envoy-gateway-system` first, falling back to the legacy `grafana-tls` secret in `monitoring`.
 - Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
 - Expand alertmanager controller RBAC: add `patch` on secrets and `update` on `secrets/finalizers` to support finalizer management.
