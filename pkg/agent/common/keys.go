@@ -44,7 +44,16 @@ const (
 	// Controls the otelcol.processor.batch block shared by all OTLP pipelines (traces, metrics, logs).
 	// Tune here if an installation shows export latency or oversized payloads; do not expose via Helm
 	// values since these are internal Alloy pipeline knobs, not user-facing behaviour toggles.
-	OTLPBatchSendBatchSize = 8192    // Target number of spans/data-points/log records per batch
+	//
+	// Both send_batch_size and send_batch_max_size are set to 512 to prevent batches from exceeding
+	// the gRPC server's default 4 MB decompressed message limit (4,194,304 bytes).
+	// Observed burst: 2652 items = 4 MB → ~1.6 KB/item average.
+	// OTLP items (k8s events, spans, metrics) can reach ~8 KB for detailed payloads;
+	// at 512 items × 8 KB = 4 MB — the theoretical ceiling.
+	// At observed average sizes: 512 × 1.6 KB = 0.8 MB — 5× safety margin.
+	// send_batch_max_size must be ≥ send_batch_size (otelcol validates this at startup).
+	OTLPBatchSendBatchSize = 512     // Flush when this many items queued (must be ≤ OTLPBatchMaxSize)
+	OTLPBatchMaxSize       = 512     // Hard cap: prevents batches that exceed the 4 MB gRPC server limit
 	OTLPBatchTimeout       = "200ms" // Maximum wait before flushing an incomplete batch
 
 	// --- Mimir Configuration (Metrics) ---

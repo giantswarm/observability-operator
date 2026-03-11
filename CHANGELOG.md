@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - logs collector: avoid mutating the caller's tenant slice when appending the default tenant in `generateAlloyConfig`
+- events collector: cap OTLP batch processor at 512 items (`send_batch_size` and `send_batch_max_size`) to prevent batches from exceeding the gRPC server's 4 MB decompressed message limit. Previously `send_batch_max_size = 0` (unlimited) allowed bursts to accumulate into oversized batches that caused permanent `ResourceExhausted` drops.
 
 ### Fixed
 
