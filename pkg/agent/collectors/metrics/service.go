@@ -30,31 +30,31 @@ type Service struct {
 	AuthManager             auth.AuthManager
 }
 
-func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
+func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
 	logger := log.FromContext(ctx)
-	logger.Info("alloy-service - ensuring alloy is configured")
+	logger.Info("alloy-metrics-service - ensuring alloy metrics is configured")
 
 	// Get list of tenants
-	tenants, err := a.TenantRepository.List(ctx)
+	tenants, err := s.TenantRepository.List(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}
 
 	// Generate ConfigMap data
-	configMapData, err := a.GenerateAlloyMonitoringConfigMapData(ctx, nil, cluster, tenants, observabilityBundleVersion)
+	configMapData, err := s.GenerateAlloyMonitoringConfigMapData(ctx, nil, cluster, tenants, observabilityBundleVersion)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy monitoring configmap: %w", err)
 	}
 
 	// Generate Secret data
-	secretData, err := a.GenerateAlloyMonitoringSecretData(ctx, cluster)
+	secretData, err := s.GenerateAlloyMonitoringSecretData(ctx, cluster)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy monitoring secret: %w", err)
 	}
 
 	// Generate KEDA extra objects if KEDA authentication is enabled
 	var extraSecretObjects string
-	if a.Config.Monitoring.IsKEDAAuthenticationEnabled(cluster) {
+	if s.Config.Monitoring.IsKEDAAuthenticationEnabled(cluster) {
 		kedaNamespace := config.GetKEDANamespace(cluster)
 		extraSecretObjects, err = generateKEDAExtraObjects(kedaNamespace, secretData)
 		if err != nil {
@@ -63,7 +63,7 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	}
 
 	// Save configuration via repository
-	err = a.ConfigurationRepository.Save(ctx, &agent.AgentConfiguration{
+	err = s.ConfigurationRepository.Save(ctx, &agent.AgentConfiguration{
 		ClusterName:        cluster.Name,
 		ClusterNamespace:   cluster.Namespace,
 		ConfigMapName:      fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
@@ -77,16 +77,16 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 		return fmt.Errorf("failed to save alloy monitoring configuration: %w", err)
 	}
 
-	logger.Info("alloy-service - ensured alloy is configured")
+	logger.Info("alloy-metrics-service - ensured alloy metrics is configured")
 
 	return nil
 }
 
-func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (s *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
-	logger.Info("alloy-service - ensuring alloy is removed")
+	logger.Info("alloy-metrics-service - ensuring alloy metrics is removed")
 
-	err := a.ConfigurationRepository.Delete(
+	err := s.ConfigurationRepository.Delete(
 		ctx,
 		cluster.Name,
 		cluster.Namespace,
@@ -97,7 +97,7 @@ func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluste
 		return fmt.Errorf("failed to delete alloy monitoring configuration: %w", err)
 	}
 
-	logger.Info("alloy-service - ensured alloy is removed")
+	logger.Info("alloy-metrics-service - ensured alloy metrics is removed")
 
 	return nil
 }
