@@ -22,9 +22,6 @@ const (
 	SecretName    = "events-logger-secret"
 )
 
-// minimumTracingSupportVersion is the minimum observability bundle version that supports tracing
-var minimumTracingSupportVersion = semver.MustParse("1.11.0")
-
 type Service struct {
 	Config                  config.Config
 	ConfigurationRepository agent.ConfigurationRepository
@@ -39,14 +36,14 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is configured")
 
-	// Determine if logging, tracing, and OTLP metrics are enabled for this cluster
+	// Determine if logging, tracing, and OTLP signals are enabled for this cluster
 	loggingEnabled := a.Config.Logging.IsLoggingEnabled(cluster)
-	tracingEnabled := a.Config.Tracing.IsTracingEnabled(cluster) && observabilityBundleVersion.GE(minimumTracingSupportVersion)
-	otlpMetricsEnabled := a.Config.Monitoring.IsMonitoringEnabled(cluster) && a.Config.Monitoring.OTLPEnabled && observabilityBundleVersion.GE(minimumTracingSupportVersion)
-	otlpLogsEnabled := a.Config.Logging.IsLoggingEnabled(cluster) && a.Config.Logging.OTLPEnabled && observabilityBundleVersion.GE(minimumTracingSupportVersion)
+	tracingEnabled := a.Config.Tracing.IsTracingEnabled(cluster)
+	otlpMetricsEnabled := a.Config.Monitoring.IsMonitoringEnabled(cluster) && a.Config.Monitoring.OTLPEnabled
+	otlpLogsEnabled := a.Config.Logging.IsLoggingEnabled(cluster) && a.Config.Logging.OTLPEnabled
 
 	// Generate ConfigMap data
-	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled, observabilityBundleVersion)
+	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 	}
