@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- logs collector: avoid mutating the caller's tenant slice when appending the default tenant in `generateAlloyConfig`
+
 ### Fixed
 
 - Fix alloy-logs on management clusters with network monitoring enabled: when `hostNetwork: true` is set (required for Beyla eBPF), internal Kubernetes service DNS names (`loki-gateway.loki.svc`, `loki-backend.loki.svc`) are unreachable from the host network namespace. The Alloy config now uses external URLs from the credentials secret and the Cilium network policy uses `world` instead of `toEndpoints` rules in this configuration.

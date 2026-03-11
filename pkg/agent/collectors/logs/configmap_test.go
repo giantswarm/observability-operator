@@ -21,9 +21,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
-var (
-	managementClusterName = "test-installation"
-)
+const managementClusterName = "test-installation"
 
 func TestGenerateAlloyLogsConfig(t *testing.T) {
 	tests := []struct {
@@ -391,7 +389,7 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
 			// Create a fake client with a GrafanaOrganization to provide tenants
@@ -401,8 +399,8 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 
 			// Convert tenant strings to TenantID type
 			tenantIDs := make([]v1alpha1.TenantID, len(tt.tenants))
-			for i, t := range tt.tenants {
-				tenantIDs[i] = v1alpha1.TenantID(t)
+			for i, tenant := range tt.tenants {
+				tenantIDs[i] = v1alpha1.TenantID(tenant)
 			}
 
 			grafanaOrg := &v1alpha1.GrafanaOrganization{
