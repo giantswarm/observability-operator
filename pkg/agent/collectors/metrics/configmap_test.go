@@ -53,7 +53,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 	}{
 		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
-			name: "TwoTenantsInWC_v200",
+			name: "WorkloadCluster_TwoTenants_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
@@ -66,12 +66,12 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.200.wc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.200.WC.multi-tenants.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 		},
 		{
-			name: "TwoTenantsInMC_v200",
+			name: "ManagementCluster_TwoTenants_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -84,12 +84,12 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.200.mc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.200.MC.multi-tenants.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 		},
 		{
-			name: "SingleTenantInWC_v200",
+			name: "WorkloadCluster_SingleTenant_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "single-tenant-cluster",
@@ -102,12 +102,12 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.200.wc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.200.WC.single-tenant.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 		},
 		{
-			name: "SingleTenantInMC_v200",
+			name: "ManagementCluster_SingleTenant_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -120,12 +120,12 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.200.mc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.200.MC.single-tenant.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 		},
 		{
-			name: "DefaultTenantInWC_v200",
+			name: "WorkloadCluster_DefaultTenant_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "default-tenant-cluster",
@@ -138,12 +138,12 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.200.wc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.200.WC.default-tenant.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 		},
 		{
-			name: "DefaultTenantInMC_v200",
+			name: "ManagementCluster_DefaultTenant_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -156,14 +156,14 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.200.mc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.200.MC.default-tenant.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 		},
 
 		// Version 2.2.0+ tests (with extra query matchers and scrape configs)
 		{
-			name: "TwoTenantsInWC_v220",
+			name: "WorkloadCluster_TwoTenants_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
@@ -176,12 +176,12 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.220.wc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.220.WC.multi-tenants.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 		},
 		{
-			name: "TwoTenantsInMC_v220",
+			name: "ManagementCluster_TwoTenants_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -194,12 +194,12 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1", "tenant2"},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.220.mc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.220.MC.multi-tenants.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 		},
 		{
-			name: "SingleTenantInWC_v220",
+			name: "WorkloadCluster_SingleTenant_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "single-tenant-cluster",
@@ -212,12 +212,12 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.220.wc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.220.WC.single-tenant.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 		},
 		{
-			name: "SingleTenantInMC_v220",
+			name: "ManagementCluster_SingleTenant_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -230,12 +230,12 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{"tenant1"},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.220.mc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.220.MC.single-tenant.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 		},
 		{
-			name: "DefaultTenantInWC_v220",
+			name: "WorkloadCluster_DefaultTenant_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "default-tenant-cluster",
@@ -248,12 +248,12 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.220.wc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.220.WC.default-tenant.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 		},
 		{
-			name: "DefaultTenantInMC_v220",
+			name: "ManagementCluster_DefaultTenant_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -266,7 +266,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				},
 			},
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
-			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.220.mc.yaml"),
+			goldenPath:                 filepath.Join("testdata", "monitoring_config.220.MC.default-tenant.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 		},

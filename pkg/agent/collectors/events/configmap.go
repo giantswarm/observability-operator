@@ -25,14 +25,14 @@ var (
 	alloyEventsConfig         string
 	alloyEventsConfigTemplate *template.Template
 
-	//go:embed templates/events-logger-config.alloy.yaml.template
+	//go:embed templates/events-logger-config.yaml.template
 	alloyEventsYAMLConfig         string
 	alloyEventsYAMLConfigTemplate *template.Template
 )
 
 func init() {
 	alloyEventsConfigTemplate = template.Must(template.New("events-logger.alloy").Funcs(sprig.FuncMap()).Parse(alloyEventsConfig))
-	alloyEventsYAMLConfigTemplate = template.Must(template.New("events-logger-config.alloy.yaml").Funcs(sprig.FuncMap()).Parse(alloyEventsYAMLConfig))
+	alloyEventsYAMLConfigTemplate = template.Must(template.New("events-logger-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyEventsYAMLConfig))
 }
 
 func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {

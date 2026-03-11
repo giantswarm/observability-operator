@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	//go:embed templates/alloy-config.alloy.template
+	//go:embed templates/metrics.alloy.template
 	alloyConfig         string
 	alloyConfigTemplate *template.Template
 
