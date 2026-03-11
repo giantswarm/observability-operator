@@ -253,10 +253,6 @@ alloy:
         	send_batch_size     = 1024
         	send_batch_max_size = 1024
         	timeout             = "500ms"
-        	send_batch_size     = 8192
-        	send_batch_max_size = 0
-        	timeout             = "200ms"
->>>>>>> 0ab6051 (test(otlp): update golden files after rebase on feat/otlp-2-metrics)
         	output {
         		traces = [
         			otelcol.processor.filter.giantswarm.input,
