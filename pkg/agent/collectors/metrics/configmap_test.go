@@ -50,6 +50,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		goldenPath                 string
 		observabilityBundleVersion semver.Version
 		monitoringEnabled          bool
+		exemplarsEnabled           bool
 	}{
 		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
@@ -69,6 +70,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.200.wc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 		{
 			name: "TwoTenantsInMC_v200",
@@ -87,6 +89,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.200.mc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 		{
 			name: "SingleTenantInWC_v200",
@@ -105,6 +108,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.200.wc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 		{
 			name: "SingleTenantInMC_v200",
@@ -123,6 +127,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.200.mc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 		{
 			name: "DefaultTenantInWC_v200",
@@ -141,6 +146,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.200.wc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 		{
 			name: "DefaultTenantInMC_v200",
@@ -159,6 +165,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.200.mc.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 
 		// Version 2.2.0+ tests (with extra query matchers and scrape configs)
@@ -179,6 +186,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.220.wc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 		{
 			name: "TwoTenantsInMC_v220",
@@ -197,6 +205,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_multitenants.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 		{
 			name: "SingleTenantInWC_v220",
@@ -215,6 +224,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.220.wc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 		{
 			name: "SingleTenantInMC_v220",
@@ -233,6 +243,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 		{
 			name: "DefaultTenantInWC_v220",
@@ -251,6 +262,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.220.wc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
 		},
 		{
 			name: "DefaultTenantInMC_v220",
@@ -269,6 +281,26 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			goldenPath:                 filepath.Join("testdata", "monitoring_config_defaulttenant.220.mc.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ExemplarsDisabledInMC_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "monitoring_config_singletenant.200.mc.exemplars-disabled.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
+			exemplarsEnabled:           false,
 		},
 		{
 			name: "MonitoringDisabled",
@@ -307,7 +339,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					},
 					Monitoring: config.MonitoringConfig{
 						Enabled:              tt.monitoringEnabled,
-						ExemplarsEnabled:     true,
+						ExemplarsEnabled:     tt.exemplarsEnabled,
 						WALTruncateFrequency: time.Minute,
 						QueueConfig: config.QueueConfig{
 							Capacity:          &[]int{30000}[0],
