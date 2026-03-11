@@ -144,8 +144,8 @@ func (a *Service) generateAlloyEventsConfig(
 		LoggingEnabled         bool
 		TracingEnabled         bool
 		TracingEndpoint        string
-		TracingUsernameKey     string
-		TracingPasswordKey     string
+		TempoUsernameKey       string
+		TempoPasswordKey       string
 		OTLPBatchSendBatchSize int
 		OTLPBatchTimeout       string
 		Tenants                []string
@@ -168,8 +168,8 @@ func (a *Service) generateAlloyEventsConfig(
 		LoggingEnabled:         loggingEnabled,
 		TracingEnabled:         tracingEnabled,
 		TracingEndpoint:        tracingEndpoint,
-		TracingUsernameKey:     common.TempoUsernameKey,
-		TracingPasswordKey:     common.TempoPasswordKey,
+		TempoUsernameKey:       common.TempoUsernameKey,
+		TempoPasswordKey:       common.TempoPasswordKey,
 		OTLPBatchSendBatchSize: common.OTLPBatchSendBatchSize,
 		OTLPBatchTimeout:       common.OTLPBatchTimeout,
 		Tenants:                tenants,
