@@ -62,6 +62,6 @@ const (
 	MimirRemoteWriteAPIURLKey      = "mimirRemoteWriteAPIURL"      // URL for remote write endpoint
 	MimirRemoteWriteAPINameKey     = "mimirRemoteWriteAPIName"     // Name identifier for remote write
 
-	MimirOTLPBaseURLFormat  = MimirBaseURLFormat + "/otlp"         // Base URL for Mimir OTLP — exporter appends /v1/metrics
-	MimirOTLPWriteAPIURLKey = "mimirOTLPWriteAPIURL"               // Secret key: base URL for Mimir OTLP write (WC only)
+	MimirOTLPBaseURLFormat  = MimirBaseURLFormat + "/otlp" // Base URL for Mimir OTLP — exporter appends /v1/metrics
+	MimirOTLPWriteAPIURLKey = "mimirOTLPWriteAPIURL"       // Secret key: base URL for Mimir OTLP write (WC only)
 )
