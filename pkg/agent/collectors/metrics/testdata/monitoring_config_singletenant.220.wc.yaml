@@ -175,7 +175,10 @@ alloy:
             name           = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-name"])
             enable_http2   = false
             remote_timeout = "60s"
+<<<<<<< HEAD
             send_exemplars = true
+=======
+>>>>>>> 24c74ec (test(metrics): regenerate golden files after rebase onto PR4)
             url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-url"])
             basic_auth {
               username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
