@@ -199,7 +199,7 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		IsWorkloadCluster:         s.Config.Cluster.IsWorkloadCluster(cluster),
 		IsSupportingScrapeConfigs: observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
-		ExemplarsEnabled:          a.Config.Monitoring.ExemplarsEnabled,
+		ExemplarsEnabled:          s.Config.Monitoring.ExemplarsEnabled,
 	}
 
 	err = alloyConfigTemplate.Execute(&values, data)
