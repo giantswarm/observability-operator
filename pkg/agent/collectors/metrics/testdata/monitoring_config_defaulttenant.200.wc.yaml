@@ -61,9 +61,9 @@ alloy:
         }
         // load rules for tenant giantswarm
         mimir.rules.kubernetes "giantswarm" {
-          address = nonsensitive(remote.kubernetes.secret.credentials.data["metrics-ruler-url"])
+          address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-ruler-url"])
           basic_auth {
-            username = nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+            username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
             password = remote.kubernetes.secret.credentials.data["metrics-password"]
           }
           extra_query_matchers {
@@ -225,12 +225,12 @@ alloy:
         // remote write pipeline configuration for tenant giantswarm
         prometheus.remote_write "giantswarm" {
           endpoint {
-            name           = nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-name"])
+            name           = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-name"])
             enable_http2   = false
             remote_timeout = "60s"
-            url = nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-url"])
+            url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-url"])
             basic_auth {
-              username = nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+              username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
               password = remote.kubernetes.secret.credentials.data["metrics-password"]
             }
         
