@@ -10,7 +10,7 @@ remote.kubernetes.secret "credentials" {
 
 {{- if .LoggingEnabled }}
 // Kubernetes events source for Loki
-loki.source.kubernetes_events "local" {
+loki.source.kubernetes_events "default" {
 	{{- if and .IsWorkloadCluster .IncludeNamespaces }}
 	namespaces = ["{{ join "\", \"" .IncludeNamespaces }}"]
 	{{- else }}
@@ -90,13 +90,17 @@ otelcol.auth.basic "loki_credentials" {
 }
 {{- end }}
 
-// OTLP receiver — accepts traces, metrics and logs from cluster workloads.
+// OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
+// include_metadata = true propagates HTTP headers and gRPC metadata to downstream
+// processors, enabling the X-Scope-OrgID header to be used for tenant routing.
 otelcol.receiver.otlp "default" {
 	grpc {
-		endpoint = "0.0.0.0:4317"
+		endpoint         = "0.0.0.0:4317"
+		include_metadata = true
 	}
 	http {
-		endpoint = "0.0.0.0:4318"
+		endpoint         = "0.0.0.0:4318"
+		include_metadata = true
 	}
 
 	output {
@@ -113,6 +117,9 @@ otelcol.receiver.otlp "default" {
 }
 
 // Add Kubernetes metadata to all OTLP signals.
+// The tenant pod label is extracted to giantswarm.tenant.from-label (a temporary
+// attribute) rather than directly to giantswarm.tenant; validation and final
+// assignment happen in the transform processor below.
 otelcol.processor.k8sattributes "default" {
 	extract {
 		metadata = [
@@ -121,15 +128,38 @@ otelcol.processor.k8sattributes "default" {
 			"k8s.container.name",
 		]
 		label {
-			key = "observability.giantswarm.io/tenant"
-			tag_name = "giantswarm.tenant"
+			key      = "observability.giantswarm.io/tenant"
+			tag_name = "giantswarm.tenant.from-label"
 		}
 		otel_annotations = true
 	}
 
 	output {
 		{{- if .TracingEnabled }}
-		traces = [otelcol.processor.transform.default.input]
+		traces  = [otelcol.processor.attributes.extract_tenant_header.input]
+		{{- end }}
+		{{- if .OTLPMetricsEnabled }}
+		metrics = [otelcol.processor.attributes.extract_tenant_header.input]
+		{{- end }}
+		{{- if .OTLPLogsEnabled }}
+		logs    = [otelcol.processor.attributes.extract_tenant_header.input]
+		{{- end }}
+	}
+}
+
+// Extract the X-Scope-OrgID request header into a temporary resource attribute
+// giantswarm.tenant.from-header. The header value is validated against the accepted
+// tenant list in the transform processor; invalid or absent values are ignored.
+otelcol.processor.attributes "extract_tenant_header" {
+	action {
+		key          = "giantswarm.tenant.from-header"
+		action       = "insert"
+		from_context = "metadata.x-scope-orgid"
+	}
+
+	output {
+		{{- if .TracingEnabled }}
+		traces  = [otelcol.processor.transform.default.input]
 		{{- end }}
 		{{- if .OTLPMetricsEnabled }}
 		metrics = [otelcol.processor.transform.default.input]
@@ -140,7 +170,20 @@ otelcol.processor.k8sattributes "default" {
 	}
 }
 
-// Add cluster metadata to traces, metrics and logs
+// Add cluster metadata and resolve giantswarm.tenant for all OTLP signals.
+//
+// Tenant resolution (applied identically to traces, metrics, and logs):
+//   1. Label promotion  — giantswarm.tenant.from-label (set by k8sattributes from
+//      the pod label observability.giantswarm.io/tenant) is promoted to
+//      giantswarm.tenant only if the value matches an accepted tenant.
+//   2. Header promotion — giantswarm.tenant.from-header (set by the attributes
+//      processor from the X-Scope-OrgID request header) is promoted to
+//      giantswarm.tenant only if the value matches an accepted tenant, overriding
+//      any label-derived value.
+//   3. Cleanup — both temporary attributes are removed.
+//
+// Invalid, empty, or absent values from either source are never promoted, so signals
+// whose tenant cannot be resolved are dropped by the per-tenant filter processors.
 otelcol.processor.transform "default" {
 	error_mode = "ignore"
 
@@ -148,10 +191,22 @@ otelcol.processor.transform "default" {
 	trace_statements {
 		context = "resource"
 		statements = [
+			// Cluster metadata
 			`set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
 			`set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
 			`set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
 			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+			// Tenant resolution — step 1: promote valid pod-label value
+			{{- range .Tenants }}
+			`set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
+			{{- end }}
+			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+			{{- range .Tenants }}
+			`set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
+			{{- end }}
+			// Tenant resolution — step 3: clean up temporary attributes
+			`delete_key(attributes, "giantswarm.tenant.from-label")`,
+			`delete_key(attributes, "giantswarm.tenant.from-header")`,
 		]
 	}
 	{{- end }}
@@ -159,10 +214,22 @@ otelcol.processor.transform "default" {
 	metric_statements {
 		context = "resource"
 		statements = [
+			// Cluster metadata
 			`set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
 			`set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
 			`set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
 			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+			// Tenant resolution — step 1: promote valid pod-label value
+			{{- range .Tenants }}
+			`set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
+			{{- end }}
+			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+			{{- range .Tenants }}
+			`set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
+			{{- end }}
+			// Tenant resolution — step 3: clean up temporary attributes
+			`delete_key(attributes, "giantswarm.tenant.from-label")`,
+			`delete_key(attributes, "giantswarm.tenant.from-header")`,
 		]
 	}
 	{{- end }}
@@ -170,10 +237,22 @@ otelcol.processor.transform "default" {
 	log_statements {
 		context = "resource"
 		statements = [
+			// Cluster metadata
 			`set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
 			`set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
 			`set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
 			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+			// Tenant resolution — step 1: promote valid pod-label value
+			{{- range .Tenants }}
+			`set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
+			{{- end }}
+			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+			{{- range .Tenants }}
+			`set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
+			{{- end }}
+			// Tenant resolution — step 3: clean up temporary attributes
+			`delete_key(attributes, "giantswarm.tenant.from-label")`,
+			`delete_key(attributes, "giantswarm.tenant.from-header")`,
 		]
 	}
 	{{- end }}
