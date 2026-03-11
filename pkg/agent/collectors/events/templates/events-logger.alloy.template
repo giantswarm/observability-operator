@@ -1,28 +1,28 @@
 {{- /*
-	resource_statements renders the OTTL statements block shared by all three signal
-	types (traces, metrics, logs) inside otelcol.processor.transform "default".
-	It must be called with the top-level template data as its argument (dot).
+  resource_statements renders the OTTL statements block shared by all three signal
+  types (traces, metrics, logs) inside otelcol.processor.transform "default".
+  It must be called with the top-level template data as its argument (dot).
 */ -}}
 {{- define "resource_statements" -}}
-		context = "resource"
-		statements = [
-			// Cluster metadata
-			`set(resource.attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
-			`set(resource.attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
-			`set(resource.attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
-			`set(resource.attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
-			// Tenant resolution — step 1: promote valid pod-label value
-			{{- range .Tenants }}
-			`set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
-			{{- end }}
-			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
-			{{- range .Tenants }}
-			`set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
-			{{- end }}
-			// Tenant resolution — step 3: clean up temporary attributes
-			`delete_key(resource.attributes, "giantswarm.tenant.from-label")`,
-			`delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
-		]
+    context = "resource"
+    statements = [
+      // Cluster metadata
+      `set(resource.attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
+      `set(resource.attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
+      `set(resource.attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
+      `set(resource.attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+      // Tenant resolution — step 1: promote valid pod-label value
+      {{- range .Tenants }}
+      `set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
+      {{- end }}
+      // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+      {{- range .Tenants }}
+      `set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
+      {{- end }}
+      // Tenant resolution — step 3: clean up temporary attributes
+      `delete_key(resource.attributes, "giantswarm.tenant.from-label")`,
+      `delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
+    ]
 {{- end }}
 
 logging {
@@ -161,17 +161,17 @@ otelcol.processor.k8sattributes "default" {
     otel_annotations = true
   }
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [otelcol.processor.attributes.extract_tenant_header.input]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [otelcol.processor.attributes.extract_tenant_header.input]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs    = [otelcol.processor.attributes.extract_tenant_header.input]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [otelcol.processor.attributes.extract_tenant_header.input]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [otelcol.processor.attributes.extract_tenant_header.input]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs    = [otelcol.processor.attributes.extract_tenant_header.input]
+    {{- end }}
+  }
 }
 
 // Extract the X-Scope-OrgID request header into signal attributes.
@@ -183,64 +183,64 @@ otelcol.processor.attributes "extract_tenant_header" {
     from_context = "metadata.x-scope-orgid"
   }
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [otelcol.processor.transform.promote_header_to_resource.input]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [otelcol.processor.transform.promote_header_to_resource.input]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs    = [otelcol.processor.transform.promote_header_to_resource.input]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [otelcol.processor.transform.promote_header_to_resource.input]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [otelcol.processor.transform.promote_header_to_resource.input]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs    = [otelcol.processor.transform.promote_header_to_resource.input]
+    {{- end }}
+  }
 }
 
 // Promote signal-level header attribute to resource attributes.
 // The attributes processor adds giantswarm.tenant.from-header at the signal level (span/log/metric).
 // This transform copies it to resource.attributes where tenant resolution can access it.
 otelcol.processor.transform "promote_header_to_resource" {
-	error_mode = "ignore"
+  error_mode = "ignore"
 
-	{{- if .TracingEnabled }}
-	trace_statements {
-		context = "span"
-		statements = [
-			`set(resource.attributes["giantswarm.tenant.from-header"], span.attributes["giantswarm.tenant.from-header"]) where span.attributes["giantswarm.tenant.from-header"] != ""`,
-			`delete_key(span.attributes, "giantswarm.tenant.from-header")`,
-		]
-	}
-	{{- end }}
-	{{- if .OTLPMetricsEnabled }}
-	metric_statements {
-		context = "datapoint"
-		statements = [
-			`set(resource.attributes["giantswarm.tenant.from-header"], datapoint.attributes["giantswarm.tenant.from-header"]) where datapoint.attributes["giantswarm.tenant.from-header"] != ""`,
-			`delete_key(datapoint.attributes, "giantswarm.tenant.from-header")`,
-		]
-	}
-	{{- end }}
-	{{- if .OTLPLogsEnabled }}
-	log_statements {
-		context = "log"
-		statements = [
-			`set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
-			`delete_key(log.attributes, "giantswarm.tenant.from-header")`,
-		]
-	}
-	{{- end }}
+  {{- if .TracingEnabled }}
+  trace_statements {
+    context = "span"
+    statements = [
+      `set(resource.attributes["giantswarm.tenant.from-header"], span.attributes["giantswarm.tenant.from-header"]) where span.attributes["giantswarm.tenant.from-header"] != ""`,
+      `delete_key(span.attributes, "giantswarm.tenant.from-header")`,
+    ]
+  }
+  {{- end }}
+  {{- if .OTLPMetricsEnabled }}
+  metric_statements {
+    context = "datapoint"
+    statements = [
+      `set(resource.attributes["giantswarm.tenant.from-header"], datapoint.attributes["giantswarm.tenant.from-header"]) where datapoint.attributes["giantswarm.tenant.from-header"] != ""`,
+      `delete_key(datapoint.attributes, "giantswarm.tenant.from-header")`,
+    ]
+  }
+  {{- end }}
+  {{- if .OTLPLogsEnabled }}
+  log_statements {
+    context = "log"
+    statements = [
+      `set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
+      `delete_key(log.attributes, "giantswarm.tenant.from-header")`,
+    ]
+  }
+  {{- end }}
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [otelcol.processor.transform.default.input]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [otelcol.processor.transform.default.input]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs    = [otelcol.processor.transform.default.input]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [otelcol.processor.transform.default.input]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [otelcol.processor.transform.default.input]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs    = [otelcol.processor.transform.default.input]
+    {{- end }}
+  }
 }
 
 // Add cluster metadata and resolve giantswarm.tenant for all OTLP signals.
@@ -261,56 +261,56 @@ otelcol.processor.transform "promote_header_to_resource" {
 otelcol.processor.transform "default" {
   error_mode = "ignore"
 
-	{{- if .TracingEnabled }}
-	trace_statements {
-		{{ template "resource_statements" . }}
-	}
-	{{- end }}
-	{{- if .OTLPMetricsEnabled }}
-	metric_statements {
-		{{ template "resource_statements" . }}
-	}
-	{{- end }}
-	{{- if .OTLPLogsEnabled }}
-	log_statements {
-		{{ template "resource_statements" . }}
-	}
-	{{- end }}
-	{{- if .OTLPLogsEnabled }}
-	log_statements {
-		context = "resource"
-		statements = [
-			// Cluster metadata
-			`set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
-			`set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
-			`set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
-			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
-			// Tenant resolution — step 1: promote valid pod-label value
-			{{- range .Tenants }}
-			`set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
-			{{- end }}
-			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
-			{{- range .Tenants }}
-			`set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
-			{{- end }}
-			// Tenant resolution — step 3: clean up temporary attributes
-			`delete_key(attributes, "giantswarm.tenant.from-label")`,
-			`delete_key(attributes, "giantswarm.tenant.from-header")`,
-		]
-	}
-	{{- end }}
+  {{- if .TracingEnabled }}
+  trace_statements {
+    {{ template "resource_statements" . }}
+  }
+  {{- end }}
+  {{- if .OTLPMetricsEnabled }}
+  metric_statements {
+    {{ template "resource_statements" . }}
+  }
+  {{- end }}
+  {{- if .OTLPLogsEnabled }}
+  log_statements {
+    {{ template "resource_statements" . }}
+  }
+  {{- end }}
+  {{- if .OTLPLogsEnabled }}
+  log_statements {
+    context = "resource"
+    statements = [
+      // Cluster metadata
+      `set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
+      `set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
+      `set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
+      `set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+      // Tenant resolution — step 1: promote valid pod-label value
+      {{- range .Tenants }}
+      `set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
+      {{- end }}
+      // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+      {{- range .Tenants }}
+      `set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
+      {{- end }}
+      // Tenant resolution — step 3: clean up temporary attributes
+      `delete_key(attributes, "giantswarm.tenant.from-label")`,
+      `delete_key(attributes, "giantswarm.tenant.from-header")`,
+    ]
+  }
+  {{- end }}
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [otelcol.processor.batch.default.input]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [otelcol.processor.batch.default.input]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs    = [otelcol.processor.batch.default.input]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [otelcol.processor.batch.default.input]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [otelcol.processor.batch.default.input]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs    = [otelcol.processor.batch.default.input]
+    {{- end }}
+  }
 }
 
 // Batch processor for efficient export.
@@ -319,85 +319,85 @@ otelcol.processor.transform "default" {
 // Both size fields are set to the same value so batch semantics are simple and predictable:
 // flush when send_batch_max_size items are queued, or when timeout elapses.
 otelcol.processor.batch "default" {
-	send_batch_size     = {{ .OTLPBatchSendBatchSize }}
-	send_batch_max_size = {{ .OTLPBatchMaxSize }}
-	timeout             = "{{ .OTLPBatchTimeout }}"
+  send_batch_size     = {{ .OTLPBatchSendBatchSize }}
+  send_batch_max_size = {{ .OTLPBatchMaxSize }}
+  timeout             = "{{ .OTLPBatchTimeout }}"
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [
-			{{- range .Tenants }}
-			otelcol.processor.filter.{{ . }}.input,
-			{{- end }}
-		]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [
-			{{- range .Tenants }}
-			otelcol.processor.filter.{{ . }}.input,
-			{{- end }}
-		]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs = [
-			{{- range .Tenants }}
-			otelcol.processor.filter.{{ . }}.input,
-			{{- end }}
-		]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [
+      {{- range .Tenants }}
+      otelcol.processor.filter.{{ . }}.input,
+      {{- end }}
+    ]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [
+      {{- range .Tenants }}
+      otelcol.processor.filter.{{ . }}.input,
+      {{- end }}
+    ]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs = [
+      {{- range .Tenants }}
+      otelcol.processor.filter.{{ . }}.input,
+      {{- end }}
+    ]
+    {{- end }}
+  }
 }
 
 // Per-tenant routing
 {{- range .Tenants }}
 otelcol.processor.filter "{{ . }}" {
-	{{- if $.TracingEnabled }}
-	traces {
-		span = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
-	}
-	{{- end }}
-	{{- if $.OTLPMetricsEnabled }}
-	metrics {
-		datapoint = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
-	}
-	{{- end }}
-	{{- if $.OTLPLogsEnabled }}
-	logs {
-		log_record = [
-			`resource.attributes["giantswarm.tenant"] != "{{ . }}"`,
-		]
-	}
-	{{- end }}
-	output {
-		{{- if $.TracingEnabled }}
-		traces = [otelcol.exporter.otlp.{{ . }}_tempo.input]
-		{{- end }}
-		{{- if $.OTLPMetricsEnabled }}
-		metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
-		{{- end }}
-		{{- if $.OTLPLogsEnabled }}
-		logs    = [otelcol.exporter.otlphttp.{{ . }}_loki.input]
-		{{- end }}
-	}
+  {{- if $.TracingEnabled }}
+  traces {
+    span = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
+  }
+  {{- end }}
+  {{- if $.OTLPMetricsEnabled }}
+  metrics {
+    datapoint = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
+  }
+  {{- end }}
+  {{- if $.OTLPLogsEnabled }}
+  logs {
+    log_record = [
+      `resource.attributes["giantswarm.tenant"] != "{{ . }}"`,
+    ]
+  }
+  {{- end }}
+  output {
+    {{- if $.TracingEnabled }}
+    traces = [otelcol.exporter.otlp.{{ . }}_tempo.input]
+    {{- end }}
+    {{- if $.OTLPMetricsEnabled }}
+    metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
+    {{- end }}
+    {{- if $.OTLPLogsEnabled }}
+    logs    = [otelcol.exporter.otlphttp.{{ . }}_loki.input]
+    {{- end }}
+  }
 }
 
 {{- if $.TracingEnabled }}
 // OTLP gRPC exporter for traces — tenant {{ . }}
 otelcol.exporter.otlp "{{ . }}_tempo" {
-	client {
-		{{- if $.IsWorkloadCluster }}
-		auth     = otelcol.auth.basic.tempo_credentials.handler
-		endpoint = "{{ $.TracingEndpoint }}"
-		tls {
-			insecure_skip_verify = false
-		}
-		{{- else }}
-		tls {
-			// Use insecure connection since this exporter uses a (direct) internal Tempo endpoint which is not behind a TLS reverse proxy.
-			insecure = true
-		}
-		endpoint = "tempo-distributor.tempo.svc:4317"
-		{{- end }}
+  client {
+    {{- if $.IsWorkloadCluster }}
+    auth     = otelcol.auth.basic.tempo_credentials.handler
+    endpoint = "{{ $.TracingEndpoint }}"
+    tls {
+      insecure_skip_verify = false
+    }
+    {{- else }}
+    tls {
+      // Use insecure connection since this exporter uses a (direct) internal Tempo endpoint which is not behind a TLS reverse proxy.
+      insecure = true
+    }
+    endpoint = "tempo-distributor.tempo.svc:4317"
+    {{- end }}
 
     headers = {
       "X-Scope-OrgID" = "{{ . }}",
