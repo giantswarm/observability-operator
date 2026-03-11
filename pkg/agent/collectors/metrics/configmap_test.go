@@ -42,6 +42,34 @@ func (m *mockAuthManager) DeleteGatewaySecrets(ctx context.Context) error {
 
 var _ auth.AuthManager = &mockAuthManager{}
 
+func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
+	return &Service{
+		OrganizationRepository: mocks.NewMockOrganizationRepository("dummy-org"),
+		AuthManager:            &mockAuthManager{},
+		Config: config.Config{
+			Cluster: config.ClusterConfig{
+				BaseDomain: "test.gigantic.io",
+				InsecureCA: false,
+				Customer:   "dummy-customer",
+				Name:       managementClusterName,
+				Pipeline:   "dummy-pipeline",
+				Region:     "dummy-region",
+			},
+			Monitoring: config.MonitoringConfig{
+				Enabled:              monitoringEnabled,
+				ExemplarsEnabled:     exemplarsEnabled,
+				WALTruncateFrequency: time.Minute,
+				QueueConfig: config.QueueConfig{
+					Capacity:          &[]int{30000}[0],
+					MaxShards:         &[]int{10}[0],
+					MaxSamplesPerSend: &[]int{150000}[0],
+					SampleAgeLimit:    &[]string{"30m"}[0],
+				},
+			},
+		},
+	}
+}
+
 func TestGenerateMonitoringConfig(t *testing.T) {
 	tests := []struct {
 		name                       string
@@ -325,31 +353,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			service := &Service{
-				OrganizationRepository: mocks.NewMockOrganizationRepository("dummy-org"),
-				AuthManager:            &mockAuthManager{},
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						BaseDomain: "test.gigantic.io",
-						InsecureCA: false,
-						Customer:   "dummy-customer",
-						Name:       managementClusterName,
-						Pipeline:   "dummy-pipeline",
-						Region:     "dummy-region",
-					},
-					Monitoring: config.MonitoringConfig{
-						Enabled:              tt.monitoringEnabled,
-						ExemplarsEnabled:     tt.exemplarsEnabled,
-						WALTruncateFrequency: time.Minute,
-						QueueConfig: config.QueueConfig{
-							Capacity:          &[]int{30000}[0],
-							MaxShards:         &[]int{10}[0],
-							MaxSamplesPerSend: &[]int{150000}[0],
-							SampleAgeLimit:    &[]string{"30m"}[0],
-						},
-					},
-				},
-			}
+			service := newTestService(tt.monitoringEnabled, tt.exemplarsEnabled)
 
 			resultMap, err := service.GenerateAlloyMonitoringConfigMapData(
 				ctx,
