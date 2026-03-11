@@ -33,8 +33,8 @@ alloy:
         }
         // Basic authentication for Mimir
         otelcol.auth.basic "mimir_credentials" {
-        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-        	password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+        	password = remote.kubernetes.secret.credentials.data["metrics-password"]
         }
         // OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
@@ -147,7 +147,7 @@ alloy:
         otelcol.exporter.otlphttp "giantswarm_mimir" {
         	client {
         		auth     = otelcol.auth.basic.mimir_credentials.handler
-        		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirOTLPWriteAPIURL"])
+        		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-otlp-url"])
         		tls {
         			insecure_skip_verify = false
         		}

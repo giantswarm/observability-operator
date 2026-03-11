@@ -66,8 +66,8 @@ alloy:
         }
         // Basic authentication for Mimir
         otelcol.auth.basic "mimir_credentials" {
-        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-        	password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+        	password = remote.kubernetes.secret.credentials.data["metrics-password"]
         }
         // Basic authentication for Loki
         otelcol.auth.basic "loki_credentials" {
@@ -256,7 +256,7 @@ alloy:
         otelcol.exporter.otlphttp "giantswarm_mimir" {
         	client {
         		auth     = otelcol.auth.basic.mimir_credentials.handler
-        		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirOTLPWriteAPIURL"])
+        		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-otlp-url"])
         		tls {
         			insecure_skip_verify = false
         		}
