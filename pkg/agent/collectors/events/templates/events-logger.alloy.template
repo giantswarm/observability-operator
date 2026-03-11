@@ -129,8 +129,9 @@ otelcol.processor.transform "default" {
 
 // Batch processor for efficient export
 otelcol.processor.batch "default" {
-	send_batch_size = {{ .OTLPBatchSendBatchSize }}
-	timeout         = "{{ .OTLPBatchTimeout }}"
+	send_batch_size     = {{ .OTLPBatchSendBatchSize }}
+	send_batch_max_size = 0
+	timeout             = "{{ .OTLPBatchTimeout }}"
 
 	output {
 		traces = [
