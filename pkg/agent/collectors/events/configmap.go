@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"fmt"
 	"net"
+	"slices"
 	"text/template"
 
 	v1 "k8s.io/api/core/v1"
@@ -14,8 +15,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/Masterminds/sprig/v3"
-
-	"slices"
 
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
@@ -66,7 +65,7 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	}
 
 	// Get cluster metadata
-	organization, err := s.OrganizationRepository.Read(ctx, cluster)
+	org, err := s.OrganizationRepository.Read(ctx, cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get organization: %w", err)
 	}
@@ -88,7 +87,7 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	alloyConfig, err := s.generateAlloyEventsConfig(
 		cluster.Name,
 		s.Config.Cluster.GetClusterType(cluster),
-		organization,
+		org,
 		provider,
 		tempoURL,
 		tenants,
