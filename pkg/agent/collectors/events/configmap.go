@@ -185,7 +185,7 @@ func (a *Service) generateAlloyEventsConfig(
 		OTLPBatchTimeout:       common.OTLPBatchTimeout,
 		Tenants:                tenants,
 		OTLPMetricsEnabled:     otlpMetricsEnabled,
-		MimirOTLPURLKey:        common.MimirOTLPWriteAPIURLKey,
+		MimirOTLPURLKey:        common.MimirOTLPURLKey,
 		MimirOTLPUsernameKey:   common.MimirRemoteWriteAPIUsernameKey,
 		MimirOTLPPasswordKey:   common.MimirRemoteWriteAPIPasswordKey,
 		OTLPLogsEnabled:        otlpLogsEnabled,
