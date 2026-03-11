@@ -60,11 +60,11 @@ const (
 	// Mimir secret keys for remote write configuration and authentication.
 	// All keys follow the kebab-case signal-purpose convention used by Loki (logging-*)
 	// and Tempo (tracing-*) keys.
-	MimirQueryAPIURLKey            = "metrics-query-url"        // URL for Mimir query endpoint
-	MimirRulerAPIURLKey            = "metrics-ruler-url"        // URL for Mimir ruler API
-	MimirRemoteWriteAPIUsernameKey = "metrics-username"         // Username for remote write / OTLP auth
-	MimirRemoteWriteAPIPasswordKey = "metrics-password"         // Password for remote write / OTLP auth
-	MimirRemoteWriteAPIURLKey      = "metrics-remote-write-url" // URL for remote write endpoint
+	MimirQueryAPIURLKey            = "metrics-query-url"         // URL for Mimir query endpoint
+	MimirRulerAPIURLKey            = "metrics-ruler-url"         // URL for Mimir ruler API
+	MimirRemoteWriteAPIUsernameKey = "metrics-username"          // Username for remote write / OTLP auth
+	MimirRemoteWriteAPIPasswordKey = "metrics-password"          // Password for remote write / OTLP auth
+	MimirRemoteWriteAPIURLKey      = "metrics-remote-write-url"  // URL for remote write endpoint
 	MimirRemoteWriteAPINameKey     = "metrics-remote-write-name" // Name identifier for remote write
 
 	MimirOTLPBaseURLFormat  = MimirBaseURLFormat + "/otlp" // Base URL for Mimir OTLP — exporter appends /v1/metrics
