@@ -33,7 +33,7 @@ networkPolicy:
           protocol: UDP
         - port: "53"
           protocol: TCP
-    # Allow direct access to Loki gateway for log ingestion
+    # Allow direct access to Loki gateway for log ingestion (management cluster without host network)
     - toEndpoints:
       - matchLabels:
           app.kubernetes.io/component: gateway
@@ -45,7 +45,7 @@ networkPolicy:
           protocol: TCP
         - port: "8080"
           protocol: TCP
-    # Allow direct access to Loki backend for Loading rules
+    # Allow direct access to Loki backend for Loading rules (management cluster without host network)
     - toEndpoints:
       - matchLabels:
           app.kubernetes.io/component: backend
