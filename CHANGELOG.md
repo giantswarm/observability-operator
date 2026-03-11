@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.64.0] - 2026-03-11
+
 ### Added
 
 - Enable exemplar forwarding in the Alloy remote write pipeline (`monitoring.exemplars.enabled`, default `true`). Exemplars link metric data points to traces in Tempo, enabling trace-to-metrics and metrics-to-traces drill-downs in Grafana. Requires Mimir to have exemplar storage enabled (`max_global_exemplars_per_user > 0`).
@@ -951,7 +953,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.63.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.64.0...HEAD
+[0.64.0]: https://github.com/giantswarm/observability-operator/compare/v0.63.0...v0.64.0
 [0.63.0]: https://github.com/giantswarm/observability-operator/compare/v0.62.0...v0.63.0
 [0.62.0]: https://github.com/giantswarm/observability-operator/compare/v0.61.0...v0.62.0
 [0.61.0]: https://github.com/giantswarm/observability-operator/compare/v0.60.0...v0.61.0
