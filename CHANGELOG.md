@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix `otelcol.processor.transform` OTTL statements in events collector to use explicit `resource.attributes[...]` context prefix instead of bare `attributes[...]`. Alloy auto-corrected these at startup with a warning; this silences those warnings and makes the intent explicit.
+
 ## [0.64.0] - 2026-03-11
 
 ### Added

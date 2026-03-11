@@ -7,21 +7,21 @@
     context = "resource"
     statements = [
       // Cluster metadata
-      `set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
-      `set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
-      `set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
-      `set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+      `set(resource.attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
+      `set(resource.attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
+      `set(resource.attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
+      `set(resource.attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
       // Tenant resolution — step 1: promote valid pod-label value
       {{- range .Tenants }}
-      `set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
+      `set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
       {{- end }}
       // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
       {{- range .Tenants }}
-      `set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
+      `set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
       {{- end }}
       // Tenant resolution — step 3: clean up temporary attributes
-      `delete_key(attributes, "giantswarm.tenant.from-label")`,
-      `delete_key(attributes, "giantswarm.tenant.from-header")`,
+      `delete_key(resource.attributes, "giantswarm.tenant.from-label")`,
+      `delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
     ]
 {{- end }}
 
