@@ -201,8 +201,6 @@ alloy:
     create: false
   extraObjects:
   # OTLP gateway service for traces, metrics and logs
-  # OTLP gateway service for traces/metrics/logs
->>>>>>> 314d97a (style: apply gofmt formatting)
   - apiVersion: v1
     kind: Service
     metadata:
