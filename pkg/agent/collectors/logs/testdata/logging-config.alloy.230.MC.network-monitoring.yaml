@@ -99,7 +99,7 @@ alloy:
         }
         // load rules for tenant giantswarm
         loki.rules.kubernetes "giantswarm" {
-          address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ruler-api-url"])
+          address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-ruler-api-url"])
           basic_auth {
             username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
             password = remote.kubernetes.secret.credentials.data["logging-password"]
