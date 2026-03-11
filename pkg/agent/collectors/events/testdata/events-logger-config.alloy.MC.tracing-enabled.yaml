@@ -204,7 +204,7 @@ alloy:
   crds:
     create: false
   extraObjects:
-  # OTLP gateway service for traces/metrics
+  # OTLP gateway service for traces/metrics/logs
   - apiVersion: v1
     kind: Service
     metadata:
