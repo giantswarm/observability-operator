@@ -276,29 +276,6 @@ otelcol.processor.transform "default" {
 		{{ template "resource_statements" . }}
 	}
 	{{- end }}
-	{{- if .OTLPLogsEnabled }}
-	log_statements {
-		context = "resource"
-		statements = [
-			// Cluster metadata
-			`set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
-			`set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
-			`set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
-			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
-			// Tenant resolution — step 1: promote valid pod-label value
-			{{- range .Tenants }}
-			`set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
-			{{- end }}
-			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
-			{{- range .Tenants }}
-			`set(attributes["giantswarm.tenant"], "{{ . }}") where attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
-			{{- end }}
-			// Tenant resolution — step 3: clean up temporary attributes
-			`delete_key(attributes, "giantswarm.tenant.from-label")`,
-			`delete_key(attributes, "giantswarm.tenant.from-header")`,
-		]
-	}
-	{{- end }}
 
 	output {
 		{{- if .TracingEnabled }}
