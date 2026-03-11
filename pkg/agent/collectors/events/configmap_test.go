@@ -475,6 +475,30 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			otlpMetricsEnabled: true,
 			otlpLogsEnabled:    true,
 		},
+		{
+			name: "ManagementCluster_AllSignals",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+					Labels: map[string]string{
+						"giantswarm.io/cluster":     managementClusterName,
+						"cluster.x-k8s.io/provider": "aws",
+					},
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:            []string{"giantswarm"},
+			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.MC.all-signals.yaml"),
+			loggingEnabled:     true,
+			tracingEnabled:     true,
+			otlpMetricsEnabled: true,
+			otlpLogsEnabled:    true,
+		},
 	}
 
 	for _, tt := range tests {
