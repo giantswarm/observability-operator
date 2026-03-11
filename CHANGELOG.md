@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.64.0] - 2026-03-11
+
 ### Added
 
 - Enable independent configuration of logging and network monitoring features. Log collection now works when logging is enabled, and network monitoring collection can be enabled separately from logging for flexible per-cluster observability configurations.
@@ -951,7 +953,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.63.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.64.0...HEAD
+[0.64.0]: https://github.com/giantswarm/observability-operator/compare/v0.63.0...v0.64.0
 [0.63.0]: https://github.com/giantswarm/observability-operator/compare/v0.62.0...v0.63.0
 [0.62.0]: https://github.com/giantswarm/observability-operator/compare/v0.61.0...v0.62.0
 [0.61.0]: https://github.com/giantswarm/observability-operator/compare/v0.60.0...v0.61.0
