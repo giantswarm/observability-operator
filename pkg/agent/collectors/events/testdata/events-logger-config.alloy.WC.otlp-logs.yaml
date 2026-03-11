@@ -112,8 +112,9 @@ alloy:
         }
         // Batch processor for efficient export
         otelcol.processor.batch "default" {
-        	send_batch_size = 8192
-        	timeout         = "200ms"
+        	send_batch_size     = 8192
+        	send_batch_max_size = 0
+        	timeout             = "200ms"
         	output {
         		logs = [
         			otelcol.processor.filter.giantswarm.input,
