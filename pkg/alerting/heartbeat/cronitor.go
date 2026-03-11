@@ -21,6 +21,12 @@ import (
 const (
 	cronitorAPIBaseURL = "https://cronitor.io/api/monitors"
 	cronitorPingURL    = "https://cronitor.link/p"
+
+	monitorGraceSeconds    = 1800
+	monitorSchedule        = "every 30 minutes"
+	monitorRealertInterval = "every 24 hours"
+	monitorTeamTag         = "team:atlas"
+	monitorManagedByTag    = "managed-by:observability-operator"
 )
 
 var (
@@ -33,14 +39,25 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// cronitorConfig holds the minimal set of configuration values needed by the
+// CronitorHeartbeatRepository. It is extracted from config.Config at construction
+// time to avoid coupling the adapter to the full configuration graph.
+type cronitorConfig struct {
+	clusterName   string
+	pipeline      string
+	managementKey string
+	pingKey       string
+}
+
 // CronitorHeartbeatRepository is a repository for managing heartbeats in Cronitor.
 type CronitorHeartbeatRepository struct {
-	config.Config
+	cfg        cronitorConfig
 	httpClient HTTPClient
 }
 
-// CronitorMonitor represents a Cronitor heartbeat monitor configuration.
-type CronitorMonitor struct {
+// cronitorMonitor represents a Cronitor heartbeat monitor configuration.
+// It is an internal type used only for JSON serialization with the Cronitor API.
+type cronitorMonitor struct {
 	Type             string   `json:"type"`
 	Key              string   `json:"key"`
 	Name             string   `json:"name"`
@@ -54,7 +71,7 @@ type CronitorMonitor struct {
 }
 
 // NewCronitorHeartbeatRepository creates a new CronitorHeartbeatRepository.
-func NewCronitorHeartbeatRepository(cfg config.Config, httpClient HTTPClient) (HeartbeatRepository, error) {
+func NewCronitorHeartbeatRepository(cfg config.Config, httpClient HTTPClient) HeartbeatRepository {
 	if httpClient == nil {
 		httpClient = &http.Client{
 			Timeout: 30 * time.Second,
@@ -67,38 +84,43 @@ func NewCronitorHeartbeatRepository(cfg config.Config, httpClient HTTPClient) (H
 		}
 	}
 	return &CronitorHeartbeatRepository{
-		Config:     cfg,
+		cfg: cronitorConfig{
+			clusterName:   cfg.Cluster.Name,
+			pipeline:      cfg.Cluster.Pipeline,
+			managementKey: cfg.Environment.CronitorHeartbeatManagementKey,
+			pingKey:       cfg.Environment.CronitorHeartbeatPingKey,
+		},
 		httpClient: httpClient,
-	}, nil
+	}
 }
 
 // monitorKey returns the unique key for this cluster's monitor.
 func (r *CronitorHeartbeatRepository) monitorKey() string {
-	return fmt.Sprintf("mimir-%s", r.Config.Cluster.Name)
+	return fmt.Sprintf("mimir-%s", r.cfg.clusterName)
 }
 
 // makeMonitor creates a Cronitor monitor configuration for the management cluster.
-func (r *CronitorHeartbeatRepository) makeMonitor() *CronitorMonitor {
+func (r *CronitorHeartbeatRepository) makeMonitor() *cronitorMonitor {
 	tags := []string{
-		"team:atlas",
-		"managed-by:observability-operator",
-		fmt.Sprintf("installation:%s", r.Config.Cluster.Name),
-		fmt.Sprintf("pipeline:%s", r.Config.Cluster.Pipeline),
+		monitorTeamTag,
+		monitorManagedByTag,
+		fmt.Sprintf("installation:%s", r.cfg.clusterName),
+		fmt.Sprintf("pipeline:%s", r.cfg.pipeline),
 	}
 	// Tags need to be sorted alphabetically to avoid unnecessary heartbeat updates
 	sort.Strings(tags)
 
 	key := r.monitorKey()
-	return &CronitorMonitor{
+	return &cronitorMonitor{
 		Type:            "heartbeat",
 		Key:             key,
 		Name:            key,
-		GraceSeconds:    1800, // 30 minutes
-		Schedule:        "every 30 minutes",
-		Notify:          []string{r.Config.Cluster.Pipeline},
+		GraceSeconds:    monitorGraceSeconds,
+		Schedule:        monitorSchedule,
+		Notify:          []string{r.cfg.pipeline},
 		Tags:            tags,
 		Note:            "📗 Runbook: https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/heartbeat-expired/",
-		RealertInterval: "every 24 hours", // Re-alert every 24 hours if the issue persists
+		RealertInterval: monitorRealertInterval,
 	}
 }
 
@@ -141,7 +163,7 @@ func (r *CronitorHeartbeatRepository) CreateOrUpdate(ctx context.Context) error 
 	if needsPing {
 		logger.Info("sending ping to associate monitor with environment",
 			"is_new", isNewMonitor,
-			"pipeline", r.Config.Cluster.Pipeline)
+			"pipeline", r.cfg.pipeline)
 		if err := r.pingMonitor(ctx, monitor.Key); err != nil {
 			logger.Error(err, "failed to ping monitor, monitor created but not associated with environment")
 			// Don't fail the whole operation if ping fails
@@ -179,7 +201,7 @@ func (r *CronitorHeartbeatRepository) Delete(ctx context.Context) error {
 }
 
 // getMonitor retrieves an existing monitor from Cronitor.
-func (r *CronitorHeartbeatRepository) getMonitor(ctx context.Context, key string) (*CronitorMonitor, error) {
+func (r *CronitorHeartbeatRepository) getMonitor(ctx context.Context, key string) (*cronitorMonitor, error) {
 	url := fmt.Sprintf("%s/%s", cronitorAPIBaseURL, key)
 	resp, err := r.doAuthenticatedRequest(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -195,7 +217,7 @@ func (r *CronitorHeartbeatRepository) getMonitor(ctx context.Context, key string
 		return nil, r.handleErrorResponse(ctx, resp, "GET", url, nil, "failed to get monitor")
 	}
 
-	var monitor CronitorMonitor
+	var monitor cronitorMonitor
 	if err := json.NewDecoder(resp.Body).Decode(&monitor); err != nil {
 		return nil, fmt.Errorf("failed to decode monitor response: %w", err)
 	}
@@ -206,7 +228,7 @@ func (r *CronitorHeartbeatRepository) getMonitor(ctx context.Context, key string
 // createMonitor creates a new monitor in Cronitor using POST.
 // Note: Environments are never sent via API - they are automatically associated
 // when telemetry (pings) are sent to that environment.
-func (r *CronitorHeartbeatRepository) createMonitor(ctx context.Context, monitor *CronitorMonitor) error {
+func (r *CronitorHeartbeatRepository) createMonitor(ctx context.Context, monitor *cronitorMonitor) error {
 	logger := log.FromContext(ctx)
 
 	body, err := json.Marshal(monitor)
@@ -231,7 +253,7 @@ func (r *CronitorHeartbeatRepository) createMonitor(ctx context.Context, monitor
 // updateMonitor updates an existing monitor in Cronitor using PUT.
 // Note: Environments are never sent via API - they are automatically associated
 // when telemetry (pings) are sent to that environment.
-func (r *CronitorHeartbeatRepository) updateMonitor(ctx context.Context, monitor *CronitorMonitor) error {
+func (r *CronitorHeartbeatRepository) updateMonitor(ctx context.Context, monitor *cronitorMonitor) error {
 	logger := log.FromContext(ctx)
 
 	body, err := json.Marshal(monitor)
@@ -255,17 +277,18 @@ func (r *CronitorHeartbeatRepository) updateMonitor(ctx context.Context, monitor
 }
 
 // hasChanged compares the existing monitor with the desired configuration.
-func (r *CronitorHeartbeatRepository) hasChanged(existing, desired *CronitorMonitor) bool {
+func (r *CronitorHeartbeatRepository) hasChanged(existing, desired *cronitorMonitor) bool {
 	return existing.GraceSeconds != desired.GraceSeconds ||
 		existing.Schedule != desired.Schedule ||
 		existing.Note != desired.Note ||
 		existing.RealertInterval != desired.RealertInterval ||
-		!slices.Equal(existing.Tags, desired.Tags)
+		!slices.Equal(existing.Tags, desired.Tags) ||
+		!slices.Equal(existing.Notify, desired.Notify)
 }
 
 // pipelineChanged checks if the pipeline (environment) changed by comparing pipeline tags.
-func (r *CronitorHeartbeatRepository) pipelineChanged(existing *CronitorMonitor) bool {
-	desiredPipelineTag := fmt.Sprintf("pipeline:%s", r.Config.Cluster.Pipeline)
+func (r *CronitorHeartbeatRepository) pipelineChanged(existing *cronitorMonitor) bool {
+	desiredPipelineTag := fmt.Sprintf("pipeline:%s", r.cfg.pipeline)
 	var existingPipelineTag string
 	for _, tag := range existing.Tags {
 		if strings.HasPrefix(tag, "pipeline:") {
@@ -282,7 +305,7 @@ func (r *CronitorHeartbeatRepository) pipelineChanged(existing *CronitorMonitor)
 
 // pingMonitor sends a ping to the Cronitor telemetry API to associate the monitor with an environment.
 func (r *CronitorHeartbeatRepository) pingMonitor(ctx context.Context, monitorKey string) error {
-	url := fmt.Sprintf("%s/%s/%s?env=%s", cronitorPingURL, r.Config.Environment.CronitorHeartbeatPingKey, monitorKey, r.Config.Cluster.Pipeline)
+	url := fmt.Sprintf("%s/%s/%s?env=%s", cronitorPingURL, r.cfg.pingKey, monitorKey, r.cfg.pipeline)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create ping request: %w", err)
@@ -318,7 +341,7 @@ func (r *CronitorHeartbeatRepository) doAuthenticatedRequest(ctx context.Context
 	// Set headers for all requests
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.SetBasicAuth(r.Config.Environment.CronitorHeartbeatManagementKey, "")
+	req.SetBasicAuth(r.cfg.managementKey, "")
 
 	resp, err := r.httpClient.Do(req)
 	if err != nil {

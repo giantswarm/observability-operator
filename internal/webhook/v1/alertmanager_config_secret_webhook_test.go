@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
-	"github.com/giantswarm/observability-operator/pkg/alertmanager"
+	"github.com/giantswarm/observability-operator/pkg/alerting/alertmanager"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 )
 
