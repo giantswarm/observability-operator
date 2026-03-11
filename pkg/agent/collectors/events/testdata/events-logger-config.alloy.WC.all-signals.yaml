@@ -272,18 +272,6 @@ alloy:
               otelcol.processor.filter.giantswarm.input,
             ]
           }
-        	output {
-        		traces = [
-        			otelcol.processor.filter.giantswarm.input,
-        		]
-        		metrics = [
-        			otelcol.processor.filter.giantswarm.input,
-        		]
-        		logs = [
-        			otelcol.processor.filter.giantswarm.input,
-        		]
-        	}
->>>>>>> 11c871c (test(otlp): update golden files after rebase on feat/otlp-2-metrics)
         }
         // Per-tenant routing
         otelcol.processor.filter "giantswarm" {
