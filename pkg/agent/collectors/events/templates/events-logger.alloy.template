@@ -105,8 +105,8 @@ otelcol.auth.basic "tempo_credentials" {
 {{- if and .OTLPMetricsEnabled .IsWorkloadCluster }}
 // Basic authentication for Mimir
 otelcol.auth.basic "mimir_credentials" {
-  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirRemoteWriteUsernameKey }}"])
-  password = remote.kubernetes.secret.credentials.data["{{ .MimirRemoteWritePasswordKey }}"]
+  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirOTLPUsernameKey }}"])
+  password = remote.kubernetes.secret.credentials.data["{{ .MimirOTLPPasswordKey }}"]
 }
 {{- end }}
 {{- if and .OTLPLogsEnabled .IsWorkloadCluster }}
@@ -350,7 +350,7 @@ otelcol.processor.filter "{{ . }}" {
     traces  = [otelcol.exporter.otlp.{{ . }}.input]
     {{- end }}
     {{- if $.OTLPMetricsEnabled }}
-    metrics = [otelcol.exporter.prometheusremotewrite.{{ . }}_mimir.input]
+    metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
     {{- end }}
     {{- if $.OTLPLogsEnabled }}
     logs    = [otelcol.exporter.otlphttp.{{ . }}_loki.input]
@@ -384,29 +384,27 @@ otelcol.exporter.otlp "{{ . }}" {
 {{- end }}
 
 {{- if $.OTLPMetricsEnabled }}
-// Prometheus Remote Write exporter for metrics — tenant {{ . }} → Mimir
-// resource_to_telemetry_conversion = true promotes resource attributes (cluster metadata) to
-// metric labels, making them queryable in Prometheus/Mimir. This is necessary because OTLP's
-// resource attributes are not exported as labels by default.
-otelcol.exporter.prometheusremotewrite "{{ . }}_mimir" {
-  resource_to_telemetry_conversion {
-    enabled = true
-  }
-  {{- if $.IsWorkloadCluster }}
-  auth = otelcol.auth.basic.mimir_credentials.handler
-  url  = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIURLKey }}"])
-  tls {
-    insecure_skip_verify = false
-  }
-  {{- else }}
-  url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
-  tls {
-    insecure = true
-  }
-  {{- end }}
+// OTLP HTTP exporter for metrics — tenant {{ . }} → Mimir
+// Mimir's distributor is configured with -distributor.otel-promote-resource-attributes
+// to automatically promote resource attributes (cluster metadata) to metric labels.
+otelcol.exporter.otlphttp "{{ . }}_mimir" {
+  client {
+    {{- if $.IsWorkloadCluster }}
+    auth     = otelcol.auth.basic.mimir_credentials.handler
+    endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirOTLPURLKey }}"])
+    tls {
+      insecure_skip_verify = false
+    }
+    {{- else }}
+    endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
+    tls {
+      insecure = true
+    }
+    {{- end }}
 
-  headers = {
-    "X-Scope-OrgID" = "{{ . }}",
+    headers = {
+      "X-Scope-OrgID" = "{{ . }}",
+    }
   }
 }
 {{- end }}

@@ -306,7 +306,7 @@ alloy:
           }
           output {
             traces  = [otelcol.exporter.otlp.giantswarm.input]
-            metrics = [otelcol.exporter.prometheusremotewrite.giantswarm_mimir.input]
+            metrics = [otelcol.exporter.otlphttp.giantswarm_mimir.input]
             logs    = [otelcol.exporter.otlphttp.giantswarm_loki.input]
           }
         }
@@ -323,20 +323,18 @@ alloy:
             }
           }
         }
-        // Prometheus Remote Write exporter for metrics — tenant giantswarm → Mimir
-        // resource_to_telemetry_conversion = true promotes resource attributes (cluster metadata) to
-        // metric labels, making them queryable in Prometheus/Mimir. This is necessary because OTLP's
-        // resource attributes are not exported as labels by default.
-        otelcol.exporter.prometheusremotewrite "giantswarm_mimir" {
-          resource_to_telemetry_conversion {
-            enabled = true
-          }
-          url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
-          tls {
-            insecure = true
-          }
-          headers = {
-            "X-Scope-OrgID" = "giantswarm",
+        // OTLP HTTP exporter for metrics — tenant giantswarm → Mimir
+        // Mimir's distributor is configured with -distributor.otel-promote-resource-attributes
+        // to automatically promote resource attributes (cluster metadata) to metric labels.
+        otelcol.exporter.otlphttp "giantswarm_mimir" {
+          client {
+            endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
+            tls {
+              insecure = true
+            }
+            headers = {
+              "X-Scope-OrgID" = "giantswarm",
+            }
           }
         }
         // OTLP HTTP exporter for logs — tenant giantswarm → Loki

@@ -63,6 +63,7 @@ const (
 	// Mimir default values and URL templates
 	MimirRemoteWriteName              = "mimir"                             // Default remote write name
 	MimirBaseURLFormat                = "https://mimir.%s"                  // Base URL template for Mimir
+	MimirOTLPBaseURLFormat            = MimirBaseURLFormat + "/otlp"        // Base URL for Mimir OTLP — exporter appends /v1/metrics
 	MimirRemoteWriteEndpointURLFormat = MimirBaseURLFormat + "/api/v1/push" // Full remote write endpoint URL
 	MimirQueryEndpointURLFormat       = MimirBaseURLFormat + "/prometheus"  // Prometheus-compatible query endpoint for KEDA
 	MimirRemoteWriteTimeout           = "60s"                               // Timeout for remote write operations
@@ -70,6 +71,9 @@ const (
 	// Mimir secret keys for remote write configuration and authentication.
 	// All keys follow the kebab-case signal-purpose convention used by Loki (logging-*)
 	// and Tempo (tracing-*) keys.
+	MimirOTLPURLKey                = "metrics-otlp-url"          // Secret key: base URL for Mimir OTLP write (WC only)
+	MimirOTLPUsernameKey           = "metrics-username"          // Username for OTLP auth
+	MimirOTLPPasswordKey           = "metrics-password"          // Password for OTLP auth
 	MimirQueryAPIURLKey            = "metrics-query-url"         // URL for Mimir query endpoint
 	MimirRulerAPIURLKey            = "metrics-ruler-url"         // URL for Mimir ruler API
 	MimirRemoteWriteAPIUsernameKey = "metrics-username"          // Username for remote write / OTLP auth
