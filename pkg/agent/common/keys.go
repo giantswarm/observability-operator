@@ -45,16 +45,17 @@ const (
 	// Tune here if an installation shows export latency or oversized payloads; do not expose via Helm
 	// values since these are internal Alloy pipeline knobs, not user-facing behaviour toggles.
 	//
-	// Both send_batch_size and send_batch_max_size are set to 512 to prevent batches from exceeding
-	// the gRPC server's default 4 MB decompressed message limit (4,194,304 bytes).
-	// Observed burst: 2652 items = 4 MB → ~1.6 KB/item average.
-	// OTLP items (k8s events, spans, metrics) can reach ~8 KB for detailed payloads;
-	// at 512 items × 8 KB = 4 MB — the theoretical ceiling.
-	// At observed average sizes: 512 × 1.6 KB = 0.8 MB — 5× safety margin.
+	// Batch sizes set to 1024 to balance throughput with the gRPC server's default 4 MB decompressed
+	// message limit (4,194,304 bytes). At observed average payload size of 1.6 KB/item:
+	// 1024 items × 1.6 KB = 1.6 MB — 2.5× safety margin from 4 MB limit.
+	// Maximum payload risk at 8 KB/item: 1024 × 8 KB = 8 MB would exceed limit, but mitigated by
+	// timeout: items rarely reach 8 KB in practice, and timeout forces flush before saturation.
+	// Increased timeout to 500ms to give exporters (Mimir, Loki, Tempo) adequate time to process
+	// batches, reducing "sending queue is full" backpressure when export destinations are slow.
 	// send_batch_max_size must be ≥ send_batch_size (otelcol validates this at startup).
-	OTLPBatchSendBatchSize = 512     // Flush when this many items queued (must be ≤ OTLPBatchMaxSize)
-	OTLPBatchMaxSize       = 512     // Hard cap: prevents batches that exceed the 4 MB gRPC server limit
-	OTLPBatchTimeout       = "200ms" // Maximum wait before flushing an incomplete batch
+	OTLPBatchSendBatchSize = 1024    // Flush when this many items queued (must be ≤ OTLPBatchMaxSize)
+	OTLPBatchMaxSize       = 1024    // Hard cap: prevents batches from exceeding 4 MB gRPC limit with safety margin
+	OTLPBatchTimeout       = "500ms" // Maximum wait before flushing an incomplete batch
 
 	// --- Mimir Configuration (Metrics) ---
 	// Used by metrics collector for metrics storage

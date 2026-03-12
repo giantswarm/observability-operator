@@ -120,14 +120,28 @@ alloy:
             logs    = [otelcol.processor.attributes.extract_tenant_header.input]
           }
         }
-        // Extract the X-Scope-OrgID request header into a temporary resource attribute
-        // giantswarm.tenant.from-header. The header value is validated against the accepted
-        // tenant list in the transform processor; invalid or absent values are ignored.
+        // Extract the X-Scope-OrgID request header into signal attributes.
+        // The header is normalized by the receiver to metadata.x-scope-orgid.
         otelcol.processor.attributes "extract_tenant_header" {
           action {
             key          = "giantswarm.tenant.from-header"
             action       = "insert"
             from_context = "metadata.x-scope-orgid"
+          }
+          output {
+            logs    = [otelcol.processor.transform.promote_header_to_resource.input]
+          }
+        }
+        // Promote signal-level header attribute to resource attributes.
+        // The attributes processor adds giantswarm.tenant.from-header at the signal level (span/log/metric).
+        // This transform copies it to resource.attributes where tenant resolution can access it.
+        otelcol.processor.transform "promote_header_to_resource" {
+          error_mode = "ignore"
+          log_statements {
+            context = "log"
+            statements = [
+              `set(resource.attributes["giantswarm.tenant.from-header"], attributes["giantswarm.tenant.from-header"]) where attributes["giantswarm.tenant.from-header"] != ""`,
+            ]
           }
           output {
             logs    = [otelcol.processor.transform.default.input]
@@ -136,14 +150,15 @@ alloy:
         // Add cluster metadata and resolve giantswarm.tenant for all OTLP signals.
         //
         // Tenant resolution (applied identically to traces, metrics, and logs):
-        //   1. Label promotion  — giantswarm.tenant.from-label (set by k8sattributes from
-        //      the pod label observability.giantswarm.io/tenant) is promoted to
-        //      giantswarm.tenant only if the value matches an accepted tenant.
-        //   2. Header promotion — giantswarm.tenant.from-header (set by the attributes
-        //      processor from the X-Scope-OrgID request header) is promoted to
-        //      giantswarm.tenant only if the value matches an accepted tenant, overriding
-        //      any label-derived value.
-        //   3. Cleanup — both temporary attributes are removed.
+        //   1. Label extraction  — giantswarm.tenant.from-label (set by k8sattributes from
+        //      the pod label observability.giantswarm.io/tenant) is already in resource attributes
+        //   2. Header extraction — giantswarm.tenant.from-header (promoted from signal attributes by
+        //      the promote_header_to_resource transform) is in resource attributes
+        //   3. Header promotion  — giantswarm.tenant.from-header is promoted to giantswarm.tenant
+        //      only if the value matches an accepted tenant, overriding any label-derived value.
+        //   4. Label promotion   — giantswarm.tenant.from-label is promoted to giantswarm.tenant
+        //      only if the value matches an accepted tenant (and header was not matched).
+        //   5. Cleanup — both temporary attributes are removed.
         //
         // Invalid, empty, or absent values from either source are never promoted, so signals
         // whose tenant cannot be resolved are dropped by the per-tenant filter processors.
@@ -176,9 +191,9 @@ alloy:
         // Both size fields are set to the same value so batch semantics are simple and predictable:
         // flush when send_batch_max_size items are queued, or when timeout elapses.
         otelcol.processor.batch "default" {
-          send_batch_size     = 512
-          send_batch_max_size = 512
-          timeout             = "200ms"
+          send_batch_size     = 1024
+          send_batch_max_size = 1024
+          timeout             = "500ms"
           output {
             logs = [
               otelcol.processor.filter.giantswarm.input,
