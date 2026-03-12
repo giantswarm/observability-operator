@@ -60,7 +60,7 @@ beyla.ebpf "default" {
 {{- range .Tenants }}
 // load rules for tenant {{ . }}
 loki.rules.kubernetes "{{ . }}" {
-  {{- if $.IsWorkloadCluster }}
+  {{- if or $.IsWorkloadCluster $.NetworkMonitoringEnabled }}
   address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LokiRulerAPIURLKey }}"])
   basic_auth {
     username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LoggingUsernameKey }}"])
@@ -319,7 +319,7 @@ loki.source.file "kubernetes_audit" {
 // Loki target configuration
 loki.write "default" {
   endpoint {
-    {{- if .IsWorkloadCluster }}
+    {{- if or .IsWorkloadCluster .NetworkMonitoringEnabled }}
     basic_auth {
       username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
       password = remote.kubernetes.secret.credentials.data["{{ .LoggingPasswordKey }}"]

@@ -36,8 +36,9 @@ networkPolicy:
     # Allow access to Kubernetes API server for cluster operations
     - toEntities:
       - kube-apiserver
-      {{- if and .IsWorkloadCluster .LoggingEnabled }}
-      # Allow workload clusters to reach external endpoints (Loki and Tempo in management cluster)
+      {{- if and .LoggingEnabled (or .IsWorkloadCluster .NetworkMonitoringEnabled) }}
+      # Allow reaching external Loki endpoints (workload clusters always go external;
+      # management clusters go external when hostNetwork=true due to network monitoring)
       - world
       {{- end }}
     # Allow DNS resolution
@@ -58,8 +59,8 @@ networkPolicy:
           protocol: UDP
         - port: "53"
           protocol: TCP
-    {{- if and .LoggingEnabled (not .IsWorkloadCluster) }}
-    # Allow direct access to Loki gateway for log ingestion
+    {{- if and .LoggingEnabled (not .IsWorkloadCluster) (not .NetworkMonitoringEnabled) }}
+    # Allow direct access to Loki gateway for log ingestion (management cluster without host network)
     - toEndpoints:
       - matchLabels:
           app.kubernetes.io/component: gateway
@@ -71,7 +72,7 @@ networkPolicy:
           protocol: TCP
         - port: "8080"
           protocol: TCP
-    # Allow direct access to Loki backend for Loading rules
+    # Allow direct access to Loki backend for Loading rules (management cluster without host network)
     - toEndpoints:
       - matchLabels:
           app.kubernetes.io/component: backend

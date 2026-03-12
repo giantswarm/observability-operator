@@ -16,6 +16,9 @@ networkPolicy:
     # Allow access to Kubernetes API server for cluster operations
     - toEntities:
       - kube-apiserver
+      # Allow reaching external Loki endpoints (workload clusters always go external;
+      # management clusters go external when hostNetwork=true due to network monitoring)
+      - world
     # Allow DNS resolution
     - toEndpoints:
       - matchLabels:
@@ -33,28 +36,6 @@ networkPolicy:
         - port: "53"
           protocol: UDP
         - port: "53"
-          protocol: TCP
-    # Allow direct access to Loki gateway for log ingestion
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/component: gateway
-          app.kubernetes.io/name: loki
-          io.kubernetes.pod.namespace: loki
-      toPorts:
-      - ports:
-        - port: "80"
-          protocol: TCP
-        - port: "8080"
-          protocol: TCP
-    # Allow direct access to Loki backend for Loading rules
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/component: backend
-          app.kubernetes.io/name: loki
-          io.kubernetes.pod.namespace: loki
-      toPorts:
-      - ports:
-        - port: "3100"
           protocol: TCP
   # Apply network policy to alloy-logs pods
   endpointSelector:
@@ -118,7 +99,11 @@ alloy:
         }
         // load rules for tenant giantswarm
         loki.rules.kubernetes "giantswarm" {
-          address = "http://loki-backend.loki.svc:3100/"
+          address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ruler-api-url"])
+          basic_auth {
+            username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
+            password = remote.kubernetes.secret.credentials.data["logging-password"]
+          }
           loki_namespace_prefix = "test-installation"
           tenant_id = "giantswarm"
           rule_selector {
@@ -325,7 +310,11 @@ alloy:
         // Loki target configuration
         loki.write "default" {
           endpoint {
-            url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
+            basic_auth {
+              username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
+              password = remote.kubernetes.secret.credentials.data["logging-password"]
+            }
+            url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-url"])
             max_backoff_period = "10m"
             remote_timeout     = "60s"
             tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])

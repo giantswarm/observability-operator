@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix alloy-logs on management clusters with network monitoring enabled: when `hostNetwork: true` is set (required for Beyla eBPF), internal Kubernetes service DNS names (`loki-gateway.loki.svc`, `loki-backend.loki.svc`) are unreachable from the host network namespace. The Alloy config now uses external URLs from the credentials secret and the Cilium network policy uses `world` instead of `toEndpoints` rules in this configuration.
 - Fix `otelcol.processor.transform` OTTL statements in events collector to use explicit `resource.attributes[...]` context prefix instead of bare `attributes[...]`. Alloy auto-corrected these at startup with a warning; this silences those warnings and makes the intent explicit.
 
 ## [0.64.0] - 2026-03-11
