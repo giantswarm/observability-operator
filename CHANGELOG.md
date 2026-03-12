@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed 
+
+- Migrated cluster feature toggle labels from `giantswarm.io/*` to `observability.giantswarm.io/*` namespace while maintaining full compatibility
+  - `giantswarm.io/monitoring` → `observability.giantswarm.io/monitoring`
+  - `giantswarm.io/network-monitoring` → `observability.giantswarm.io/network-monitoring`
+  - `giantswarm.io/keda-authentication` → `observability.giantswarm.io/keda-authentication`
+  - `giantswarm.io/keda-namespace` → `observability.giantswarm.io/keda-namespace`
+  - `giantswarm.io/logging` → `observability.giantswarm.io/logging`
+  - `giantswarm.io/tracing` → `observability.giantswarm.io/tracing`
+
 ## [0.64.0] - 2026-03-11
 
 ### Added
