@@ -67,7 +67,7 @@ loki.write "default" {
 }
 {{- end }}
 
-{{- if or .TracingEnabled .OTLPMetricsEnabled }}
+{{- if and .IsWorkloadCluster (or .TracingEnabled .OTLPMetricsEnabled) }}
 {{- if .TracingEnabled }}
 // Basic authentication for Tempo
 otelcol.auth.basic "tempo_credentials" {
@@ -75,7 +75,7 @@ otelcol.auth.basic "tempo_credentials" {
 	password = remote.kubernetes.secret.credentials.data["{{ .TempoPasswordKey }}"]
 }
 {{- end }}
-{{- if and .OTLPMetricsEnabled .IsWorkloadCluster }}
+{{- if .OTLPMetricsEnabled }}
 // Basic authentication for Mimir
 otelcol.auth.basic "mimir_credentials" {
 	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirOTLPUsernameKey }}"])
@@ -83,7 +83,7 @@ otelcol.auth.basic "mimir_credentials" {
 }
 {{- end }}
 
-// OTLP receiver for traces
+// OTLP receiver — accepts traces and metrics from cluster workloads.
 otelcol.receiver.otlp "default" {
 	grpc {
 		endpoint = "0.0.0.0:4317"
@@ -102,7 +102,7 @@ otelcol.receiver.otlp "default" {
 	}
 }
 
-// Add Kubernetes metadata to traces
+// Add Kubernetes metadata to all OTLP signals.
 otelcol.processor.k8sattributes "default" {
 	extract {
 		metadata = [
@@ -127,7 +127,7 @@ otelcol.processor.k8sattributes "default" {
 	}
 }
 
-// Add cluster metadata to traces/metrics
+// Add cluster metadata to traces and metrics
 otelcol.processor.transform "default" {
 	error_mode = "ignore"
 
@@ -203,7 +203,7 @@ otelcol.processor.filter "{{ . }}" {
 	{{- end }}
 	output {
 		{{- if $.TracingEnabled }}
-		traces  = [otelcol.exporter.otlp.{{ . }}.input]
+		traces  = [otelcol.exporter.otlp.{{ . }}_tempo.input]
 		{{- end }}
 		{{- if $.OTLPMetricsEnabled }}
 		metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
@@ -213,7 +213,7 @@ otelcol.processor.filter "{{ . }}" {
 
 {{- if $.TracingEnabled }}
 // OTLP gRPC exporter for traces — tenant {{ . }}
-otelcol.exporter.otlp "{{ . }}" {
+otelcol.exporter.otlp "{{ . }}_tempo" {
 	client {
 		{{- if $.IsWorkloadCluster }}
 		auth     = otelcol.auth.basic.tempo_credentials.handler

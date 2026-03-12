@@ -36,7 +36,7 @@ alloy:
         	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
         	password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
         }
-        // OTLP receiver for traces
+        // OTLP receiver — accepts traces and metrics from cluster workloads.
         otelcol.receiver.otlp "default" {
         	grpc {
         		endpoint = "0.0.0.0:4317"
@@ -48,7 +48,7 @@ alloy:
         		metrics = [otelcol.processor.k8sattributes.default.input]
         	}
         }
-        // Add Kubernetes metadata to traces
+        // Add Kubernetes metadata to all OTLP signals.
         otelcol.processor.k8sattributes "default" {
         	extract {
         		metadata = [
@@ -66,7 +66,7 @@ alloy:
         		metrics = [otelcol.processor.transform.default.input]
         	}
         }
-        // Add cluster metadata to traces/metrics
+        // Add cluster metadata to traces and metrics
         otelcol.processor.transform "default" {
         	error_mode = "ignore"
         	metric_statements {
@@ -141,7 +141,7 @@ alloy:
   crds:
     create: false
   extraObjects:
-  # OTLP gateway service for traces/metrics
+  # OTLP gateway service for traces and metrics
   - apiVersion: v1
     kind: Service
     metadata:
