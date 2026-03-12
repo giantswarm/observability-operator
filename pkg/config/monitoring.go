@@ -50,6 +50,9 @@ type MonitoringConfig struct {
 	WALTruncateFrequency time.Duration
 	MetricsQueryURL      string
 	QueueConfig          QueueConfig
+	// ExemplarsEnabled controls whether exemplars are forwarded in the remote write pipeline.
+	// Uses opt-out model: enabled by default.
+	ExemplarsEnabled bool
 }
 
 // Validate validates the monitoring configuration

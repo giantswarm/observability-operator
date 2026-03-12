@@ -126,49 +126,53 @@ func (a *Service) generateAlloyEventsConfig(
 
 	// Template data structure
 	data := struct {
-		ClusterID          string
-		ClusterType        string
-		Organization       string
-		Provider           string
-		InsecureSkipVerify string
-		MaxBackoffPeriod   string
-		RemoteTimeout      string
-		IncludeNamespaces  []string
-		ExcludeNamespaces  []string
-		SecretName         string
-		LoggingURLKey      string
-		LoggingTenantIDKey string
-		LoggingUsernameKey string
-		LoggingPasswordKey string
-		IsWorkloadCluster  bool
-		LoggingEnabled     bool
-		TracingEnabled     bool
-		TracingEndpoint    string
-		TracingUsernameKey string
-		TracingPasswordKey string
-		Tenants            []string
+		ClusterID              string
+		ClusterType            string
+		Organization           string
+		Provider               string
+		InsecureSkipVerify     string
+		MaxBackoffPeriod       string
+		RemoteTimeout          string
+		IncludeNamespaces      []string
+		ExcludeNamespaces      []string
+		SecretName             string
+		LoggingURLKey          string
+		LoggingTenantIDKey     string
+		LoggingUsernameKey     string
+		LoggingPasswordKey     string
+		IsWorkloadCluster      bool
+		LoggingEnabled         bool
+		TracingEnabled         bool
+		TracingEndpoint        string
+		TempoUsernameKey       string
+		TempoPasswordKey       string
+		OTLPBatchSendBatchSize int
+		OTLPBatchTimeout       string
+		Tenants                []string
 	}{
-		ClusterID:          clusterID,
-		ClusterType:        clusterType,
-		Organization:       organization,
-		Provider:           provider,
-		InsecureSkipVerify: fmt.Sprintf("%t", a.Config.Cluster.InsecureCA),
-		MaxBackoffPeriod:   common.LokiMaxBackoffPeriod,
-		RemoteTimeout:      common.LokiRemoteTimeout,
-		IncludeNamespaces:  a.Config.Logging.IncludeEventsNamespaces,
-		ExcludeNamespaces:  a.Config.Logging.ExcludeEventsNamespaces,
-		SecretName:         apps.AlloyEventsAppName,
-		LoggingURLKey:      common.LokiURLKey,
-		LoggingTenantIDKey: common.LokiTenantIDKey,
-		LoggingUsernameKey: common.LokiUsernameKey,
-		LoggingPasswordKey: common.LokiPasswordKey,
-		IsWorkloadCluster:  isWorkloadCluster,
-		LoggingEnabled:     loggingEnabled,
-		TracingEnabled:     tracingEnabled,
-		TracingEndpoint:    tracingEndpoint,
-		TracingUsernameKey: common.TempoUsernameKey,
-		TracingPasswordKey: common.TempoPasswordKey,
-		Tenants:            tenants,
+		ClusterID:              clusterID,
+		ClusterType:            clusterType,
+		Organization:           organization,
+		Provider:               provider,
+		InsecureSkipVerify:     fmt.Sprintf("%t", a.Config.Cluster.InsecureCA),
+		MaxBackoffPeriod:       common.LokiMaxBackoffPeriod,
+		RemoteTimeout:          common.LokiRemoteTimeout,
+		IncludeNamespaces:      a.Config.Logging.IncludeEventsNamespaces,
+		ExcludeNamespaces:      a.Config.Logging.ExcludeEventsNamespaces,
+		SecretName:             apps.AlloyEventsAppName,
+		LoggingURLKey:          common.LokiURLKey,
+		LoggingTenantIDKey:     common.LokiTenantIDKey,
+		LoggingUsernameKey:     common.LokiUsernameKey,
+		LoggingPasswordKey:     common.LokiPasswordKey,
+		IsWorkloadCluster:      isWorkloadCluster,
+		LoggingEnabled:         loggingEnabled,
+		TracingEnabled:         tracingEnabled,
+		TracingEndpoint:        tracingEndpoint,
+		TempoUsernameKey:       common.TempoUsernameKey,
+		TempoPasswordKey:       common.TempoPasswordKey,
+		OTLPBatchSendBatchSize: common.OTLPBatchSendBatchSize,
+		OTLPBatchTimeout:       common.OTLPBatchTimeout,
+		Tenants:                tenants,
 	}
 
 	if err := alloyEventsConfigTemplate.Execute(&buf, data); err != nil {

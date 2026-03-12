@@ -68,14 +68,14 @@ loki.write "default" {
 {{- end }}
 
 {{- if .TracingEnabled }}
-// Basic authentication for tracing
-otelcol.auth.basic "tracing_credentials" {
-	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TracingUsernameKey }}"])
-	password = remote.kubernetes.secret.credentials.data["{{ .TracingPasswordKey }}"]
+// Basic authentication for Tempo
+otelcol.auth.basic "tempo_credentials" {
+	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TempoUsernameKey }}"])
+	password = remote.kubernetes.secret.credentials.data["{{ .TempoPasswordKey }}"]
 }
 
 // OTLP receiver for traces
-otelcol.receiver.otlp "traces" {
+otelcol.receiver.otlp "default" {
 	grpc {
 		endpoint = "0.0.0.0:4317"
 	}
@@ -123,6 +123,17 @@ otelcol.processor.transform "default" {
 	}
 
 	output {
+		traces = [otelcol.processor.batch.default.input]
+	}
+}
+
+// Batch processor for efficient export
+otelcol.processor.batch "default" {
+	send_batch_size     = {{ .OTLPBatchSendBatchSize }}
+	send_batch_max_size = 0
+	timeout             = "{{ .OTLPBatchTimeout }}"
+
+	output {
 		traces = [
 			{{- range .Tenants }}
 			otelcol.processor.filter.{{ . }}.input,
@@ -131,7 +142,7 @@ otelcol.processor.transform "default" {
 	}
 }
 
-// Filter traces by tenant
+// Per-tenant routing
 {{- range .Tenants }}
 otelcol.processor.filter "{{ . }}" {
 	traces {
@@ -144,11 +155,11 @@ otelcol.processor.filter "{{ . }}" {
 	}
 }
 
-// OTLP gRPC exporter for tenant {{ . }}
+// OTLP gRPC exporter for traces — tenant {{ . }}
 otelcol.exporter.otlp "{{ . }}" {
 	client {
 		{{- if $.IsWorkloadCluster }}
-		auth     = otelcol.auth.basic.tracing_credentials.handler
+		auth     = otelcol.auth.basic.tempo_credentials.handler
 		endpoint = "{{ $.TracingEndpoint }}"
 		tls {
 			insecure_skip_verify = false
