@@ -67,7 +67,7 @@ networkPolicy:
           io.kubernetes.pod.namespace: mimir
       toPorts:
       - ports:
-        - port: "80"
+        - port: "8080"
           protocol: TCP
     {{- end }}
     {{- end }}
