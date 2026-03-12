@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed 
 
+- Move network monitoring Helm value from `logging.enableNetworkMonitoring` to `monitoring.enableNetworkMonitoring`. The old value is still accepted for backward compatibility but is deprecated and will be removed in a future release.
 - Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
 - Migrated cluster feature toggle labels from `giantswarm.io/*` to `observability.giantswarm.io/*` namespace while maintaining full compatibility
   - `giantswarm.io/monitoring` → `observability.giantswarm.io/monitoring`
