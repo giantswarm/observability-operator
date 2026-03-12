@@ -105,8 +105,8 @@ otelcol.auth.basic "tempo_credentials" {
 {{- if and .OTLPMetricsEnabled .IsWorkloadCluster }}
 // Basic authentication for Mimir
 otelcol.auth.basic "mimir_credentials" {
-  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirOTLPUsernameKey }}"])
-  password = remote.kubernetes.secret.credentials.data["{{ .MimirOTLPPasswordKey }}"]
+  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirRemoteWriteUsernameKey }}"])
+  password = remote.kubernetes.secret.credentials.data["{{ .MimirRemoteWritePasswordKey }}"]
 }
 {{- end }}
 {{- if and .OTLPLogsEnabled .IsWorkloadCluster }}
@@ -206,7 +206,8 @@ otelcol.processor.transform "promote_header_to_resource" {
   trace_statements {
     context = "span"
     statements = [
-      `set(resource.attributes["giantswarm.tenant.from-header"], attributes["giantswarm.tenant.from-header"]) where attributes["giantswarm.tenant.from-header"] != ""`,
+      `set(resource.attributes["giantswarm.tenant.from-header"], span.attributes["giantswarm.tenant.from-header"]) where span.attributes["giantswarm.tenant.from-header"] != ""`,
+      `delete_key(span.attributes, "giantswarm.tenant.from-header")`,
     ]
   }
   {{- end }}
@@ -214,7 +215,8 @@ otelcol.processor.transform "promote_header_to_resource" {
   metric_statements {
     context = "datapoint"
     statements = [
-      `set(resource.attributes["giantswarm.tenant.from-header"], attributes["giantswarm.tenant.from-header"]) where attributes["giantswarm.tenant.from-header"] != ""`,
+      `set(resource.attributes["giantswarm.tenant.from-header"], datapoint.attributes["giantswarm.tenant.from-header"]) where datapoint.attributes["giantswarm.tenant.from-header"] != ""`,
+      `delete_key(datapoint.attributes, "giantswarm.tenant.from-header")`,
     ]
   }
   {{- end }}
@@ -222,7 +224,8 @@ otelcol.processor.transform "promote_header_to_resource" {
   log_statements {
     context = "log"
     statements = [
-      `set(resource.attributes["giantswarm.tenant.from-header"], attributes["giantswarm.tenant.from-header"]) where attributes["giantswarm.tenant.from-header"] != ""`,
+      `set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
+      `delete_key(log.attributes, "giantswarm.tenant.from-header")`,
     ]
   }
   {{- end }}
@@ -347,7 +350,7 @@ otelcol.processor.filter "{{ . }}" {
     traces  = [otelcol.exporter.otlp.{{ . }}.input]
     {{- end }}
     {{- if $.OTLPMetricsEnabled }}
-    metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
+    metrics = [otelcol.exporter.prometheusremotewrite.{{ . }}_mimir.input]
     {{- end }}
     {{- if $.OTLPLogsEnabled }}
     logs    = [otelcol.exporter.otlphttp.{{ . }}_loki.input]
@@ -381,25 +384,29 @@ otelcol.exporter.otlp "{{ . }}" {
 {{- end }}
 
 {{- if $.OTLPMetricsEnabled }}
-// OTLP HTTP exporter for metrics — tenant {{ . }} → Mimir
-otelcol.exporter.otlphttp "{{ . }}_mimir" {
-  client {
-    {{- if $.IsWorkloadCluster }}
-    auth     = otelcol.auth.basic.mimir_credentials.handler
-    endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirOTLPURLKey }}"])
-    tls {
-      insecure_skip_verify = false
-    }
-    {{- else }}
-    endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
-    tls {
-      insecure = true
-    }
-    {{- end }}
+// Prometheus Remote Write exporter for metrics — tenant {{ . }} → Mimir
+// resource_to_telemetry_conversion = true promotes resource attributes (cluster metadata) to
+// metric labels, making them queryable in Prometheus/Mimir. This is necessary because OTLP's
+// resource attributes are not exported as labels by default.
+otelcol.exporter.prometheusremotewrite "{{ . }}_mimir" {
+  resource_to_telemetry_conversion {
+    enabled = true
+  }
+  {{- if $.IsWorkloadCluster }}
+  auth = otelcol.auth.basic.mimir_credentials.handler
+  url  = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIURLKey }}"])
+  tls {
+    insecure_skip_verify = false
+  }
+  {{- else }}
+  url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
+  tls {
+    insecure = true
+  }
+  {{- end }}
 
-    headers = {
-      "X-Scope-OrgID" = "{{ . }}",
-    }
+  headers = {
+    "X-Scope-OrgID" = "{{ . }}",
   }
 }
 {{- end }}

@@ -76,7 +76,4 @@ const (
 	MimirRemoteWriteAPIPasswordKey = "metrics-password"          // Password for remote write / OTLP auth
 	MimirRemoteWriteAPIURLKey      = "metrics-remote-write-url"  // URL for remote write endpoint
 	MimirRemoteWriteAPINameKey     = "metrics-remote-write-name" // Name identifier for remote write
-
-	MimirOTLPBaseURLFormat  = MimirBaseURLFormat + "/otlp" // Base URL for Mimir OTLP — exporter appends /v1/metrics
-	MimirOTLPWriteAPIURLKey = "metrics-otlp-url"           // Secret key: base URL for Mimir OTLP write (WC only)
 )

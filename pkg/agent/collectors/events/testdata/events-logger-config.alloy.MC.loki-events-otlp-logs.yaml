@@ -140,7 +140,8 @@ alloy:
           log_statements {
             context = "log"
             statements = [
-              `set(resource.attributes["giantswarm.tenant.from-header"], attributes["giantswarm.tenant.from-header"]) where attributes["giantswarm.tenant.from-header"] != ""`,
+              `set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
+              `delete_key(log.attributes, "giantswarm.tenant.from-header")`,
             ]
           }
           output {

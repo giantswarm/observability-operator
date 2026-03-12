@@ -93,7 +93,8 @@ alloy:
           metric_statements {
             context = "datapoint"
             statements = [
-              `set(resource.attributes["giantswarm.tenant.from-header"], attributes["giantswarm.tenant.from-header"]) where attributes["giantswarm.tenant.from-header"] != ""`,
+              `set(resource.attributes["giantswarm.tenant.from-header"], datapoint.attributes["giantswarm.tenant.from-header"]) where datapoint.attributes["giantswarm.tenant.from-header"] != ""`,
+              `delete_key(datapoint.attributes, "giantswarm.tenant.from-header")`,
             ]
           }
           output {
@@ -159,20 +160,24 @@ alloy:
             datapoint = [`resource.attributes["giantswarm.tenant"] != "giantswarm"`]
           }
           output {
-            metrics = [otelcol.exporter.otlphttp.giantswarm_mimir.input]
+            metrics = [otelcol.exporter.prometheusremotewrite.giantswarm_mimir.input]
           }
         }
-        // OTLP HTTP exporter for metrics — tenant giantswarm → Mimir
-        otelcol.exporter.otlphttp "giantswarm_mimir" {
-          client {
-            auth     = otelcol.auth.basic.mimir_credentials.handler
-            endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-otlp-url"])
-            tls {
-              insecure_skip_verify = false
-            }
-            headers = {
-              "X-Scope-OrgID" = "giantswarm",
-            }
+        // Prometheus Remote Write exporter for metrics — tenant giantswarm → Mimir
+        // resource_to_telemetry_conversion = true promotes resource attributes (cluster metadata) to
+        // metric labels, making them queryable in Prometheus/Mimir. This is necessary because OTLP's
+        // resource attributes are not exported as labels by default.
+        otelcol.exporter.prometheusremotewrite "giantswarm_mimir" {
+          resource_to_telemetry_conversion {
+            enabled = true
+          }
+          auth = otelcol.auth.basic.mimir_credentials.handler
+          url  = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-url"])
+          tls {
+            insecure_skip_verify = false
+          }
+          headers = {
+            "X-Scope-OrgID" = "giantswarm",
           }
         }
     # Resource configuration based on https://github.com/giantswarm/giantswarm/issues/32655

@@ -93,7 +93,8 @@ alloy:
           trace_statements {
             context = "span"
             statements = [
-              `set(resource.attributes["giantswarm.tenant.from-header"], attributes["giantswarm.tenant.from-header"]) where attributes["giantswarm.tenant.from-header"] != ""`,
+              `set(resource.attributes["giantswarm.tenant.from-header"], span.attributes["giantswarm.tenant.from-header"]) where span.attributes["giantswarm.tenant.from-header"] != ""`,
+              `delete_key(span.attributes, "giantswarm.tenant.from-header")`,
             ]
           }
           output {

@@ -61,14 +61,14 @@ func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 		secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
 	}
 
-	// Add Mimir OTLP credentials for workload clusters when OTLP metrics ingestion is enabled
+	// Add Mimir credentials for workload clusters when OTLP metrics ingestion is enabled
 	if otlpMetricsEnabled && s.Config.Cluster.IsWorkloadCluster(cluster) {
-		mimirOTLPURL := fmt.Sprintf(common.MimirOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
+		mimirRemoteWriteURL := fmt.Sprintf(common.MimirRemoteWriteEndpointURLFormat, s.Config.Cluster.BaseDomain)
 		metricsPassword, err := s.MetricsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get mimir otlp password for cluster %s: %w", cluster.Name, err)
+			return nil, fmt.Errorf("failed to get mimir password for cluster %s: %w", cluster.Name, err)
 		}
-		secrets[common.MimirOTLPWriteAPIURLKey] = mimirOTLPURL
+		secrets[common.MimirRemoteWriteAPIURLKey] = mimirRemoteWriteURL
 		secrets[common.MimirRemoteWriteAPIUsernameKey] = cluster.Name
 		secrets[common.MimirRemoteWriteAPIPasswordKey] = metricsPassword
 	}
