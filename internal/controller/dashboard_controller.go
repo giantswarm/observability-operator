@@ -67,10 +67,11 @@ func SetupDashboardReconciler(mgr manager.Manager, cfg config.Config, grafanaCli
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.0/pkg/reconcile
 func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithValues("configmap", req.NamespacedName)
+	ctx = log.IntoContext(ctx, logger)
 
-	logger.Info("Started reconciling Grafana Dashboard Configmaps")
-	defer logger.Info("Finished reconciling Grafana Dashboard Configmaps")
+	logger.Info("started reconciling Grafana dashboard ConfigMap")
+	defer logger.Info("finished reconciling Grafana dashboard ConfigMap")
 
 	dashboard := &v1.ConfigMap{}
 	err := r.Get(ctx, req.NamespacedName, dashboard)

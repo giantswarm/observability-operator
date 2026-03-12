@@ -67,13 +67,12 @@ const (
 	flagAlertmanagerSecretName                = "alertmanager-secret-name"
 	flagAlertmanagerURL                       = "alertmanager-url"
 	flagMonitoringEnabled                     = "monitoring-enabled"
+	flagMonitoringNetworkEnabled              = "monitoring-enable-network-monitoring"
 	flagMonitoringShardingScaleUpSeriesCount  = "monitoring-sharding-scale-up-series-count"
 	flagMonitoringShardingScaleDownPercentage = "monitoring-sharding-scale-down-percentage"
 	flagMonitoringWALTruncateFrequency        = "monitoring-wal-truncate-frequency"
 	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
 	flagMonitoringExemplarsEnabled            = "monitoring-exemplars-enabled"
-	// TODO Rename the flag with the monitoring prefix when migration is done
-	flagMonitoringNetworkEnabled = "logging-enable-network-monitoring"
 
 	// Queue configuration flag names
 	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
@@ -194,7 +193,7 @@ func parseFlags() (err error) {
 	pflag.BoolVar(&cfg.Monitoring.ExemplarsEnabled, flagMonitoringExemplarsEnabled, true,
 		"Enable exemplar forwarding in the remote write pipeline. Opt-out: enabled by default.")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
-		"Enable/disable network monitoring in Alloy logging configuration")
+		"Enable/disable network monitoring in Alloy configuration")
 
 	// Queue configuration flags for Alloy remote write
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string

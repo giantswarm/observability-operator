@@ -8,17 +8,17 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
 
-// TODO rename to observability.giantswarm.io/monitoring
-const MonitoringLabel = "giantswarm.io/monitoring"
+const MonitoringLabel = "observability.giantswarm.io/monitoring"
+const LegacyMonitoringLabel = "giantswarm.io/monitoring"
 
-// TODO rename to observability.giantswarm.io/network-monitoring
-const NetworkMonitoringLabel = "giantswarm.io/network-monitoring"
+const NetworkMonitoringLabel = "observability.giantswarm.io/network-monitoring"
+const LegacyNetworkMonitoringLabel = "giantswarm.io/network-monitoring"
 
-// TODO rename to observability.giantswarm.io/keda-authentication
-const KEDAAuthenticationLabel = "giantswarm.io/keda-authentication"
+const KEDAAuthenticationLabel = "observability.giantswarm.io/keda-authentication"
+const LegacyKEDAAuthenticationLabel = "giantswarm.io/keda-authentication"
 
-// TODO rename to observability.giantswarm.io/keda-namespace
-const KEDANamespaceAnnotation = "giantswarm.io/keda-namespace"
+const KEDANamespaceAnnotation = "observability.giantswarm.io/keda-namespace"
+const LegacyKEDANamespaceAnnotation = "giantswarm.io/keda-namespace"
 
 // QueueConfig represents the configuration for the remote write queue.
 type QueueConfig struct {
@@ -65,14 +65,14 @@ func (c MonitoringConfig) Validate() error {
 // IsMonitoringEnabled checks if monitoring is enabled for a cluster.
 // Uses opt-out model: enabled by default unless explicitly disabled.
 func (c MonitoringConfig) IsMonitoringEnabled(cluster *clusterv1.Cluster) bool {
-	return isClusterFeatureEnabled(c.Enabled, cluster, MonitoringLabel, true)
+	return isClusterFeatureEnabled(c.Enabled, cluster, MonitoringLabel, LegacyMonitoringLabel, true)
 }
 
 // IsNetworkMonitoringEnabled checks if network monitoring is enabled for a cluster.
 // Uses opt-in model: disabled by default, must be explicitly enabled.
 // TODO revisit this logic in the future when network monitoring is more widely adopted.
 func (c MonitoringConfig) IsNetworkMonitoringEnabled(cluster *clusterv1.Cluster) bool {
-	return isClusterFeatureEnabled(c.NetworkEnabled, cluster, NetworkMonitoringLabel, false)
+	return isClusterFeatureEnabled(c.NetworkEnabled, cluster, NetworkMonitoringLabel, LegacyNetworkMonitoringLabel, false)
 }
 
 const KEDADefaultNamespace = "keda"
@@ -85,6 +85,9 @@ func GetKEDANamespace(cluster *clusterv1.Cluster) string {
 		if ns, ok := annotations[KEDANamespaceAnnotation]; ok && ns != "" {
 			return ns
 		}
+		if ns, ok := annotations[LegacyKEDANamespaceAnnotation]; ok && ns != "" {
+			return ns
+		}
 	}
 	return KEDADefaultNamespace
 }
@@ -94,5 +97,5 @@ func GetKEDANamespace(cluster *clusterv1.Cluster) string {
 // When enabled, creates a ClusterTriggerAuthentication resource for KEDA ScaledObjects
 // to authenticate with Mimir for querying metrics.
 func (c MonitoringConfig) IsKEDAAuthenticationEnabled(cluster *clusterv1.Cluster) bool {
-	return isClusterFeatureEnabled(c.Enabled, cluster, KEDAAuthenticationLabel, false)
+	return isClusterFeatureEnabled(c.Enabled, cluster, KEDAAuthenticationLabel, LegacyKEDAAuthenticationLabel, false)
 }

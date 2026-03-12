@@ -65,6 +65,10 @@
                 "enabled": {
                     "type": "boolean"
                 },
+                "enableNetworkMonitoring": {
+                    "type": "boolean",
+                    "description": "Enable network monitoring in Alloy configuration"
+                },
                 "sharding": {
                     "type": "object",
                     "properties": {

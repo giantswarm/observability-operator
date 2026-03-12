@@ -68,10 +68,11 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, 
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.0/pkg/reconcile
 func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithValues("organization", req.Name)
+	ctx = log.IntoContext(ctx, logger)
 
-	logger.Info("Started reconciling Grafana Organization")
-	defer logger.Info("Finished reconciling Grafana Organization")
+	logger.Info("started reconciling Grafana Organization")
+	defer logger.Info("finished reconciling Grafana Organization")
 
 	grafanaOrganization := &v1alpha2.GrafanaOrganization{}
 	err := r.Get(ctx, req.NamespacedName, grafanaOrganization)

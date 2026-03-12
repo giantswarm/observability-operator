@@ -151,9 +151,30 @@ receivers:
 				_ = k8sClient.Delete(ctx, grafanaOrg)
 			}()
 
-			By("Validating that the secret now passes tenant validation")
+			By("Validating that a secret with valid config and no templates passes")
 			_, err = validator.ValidateCreate(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
+
+			By("Validating that a secret with a valid template passes")
+			secretWithTemplate := obj.DeepCopy()
+			secretWithTemplate.Data["alert.tmpl"] = []byte(`{{ define "myalert" }}fired{{ end }}`)
+			_, err = validator.ValidateCreate(ctx, secretWithTemplate)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Rejecting a secret with an invalid template")
+			secretWithBadTemplate := obj.DeepCopy()
+			secretWithBadTemplate.Data["bad.tmpl"] = []byte(`{{ define "broken" }}{{ if }}{{ end }}{{ end }}`)
+			_, err = validator.ValidateCreate(ctx, secretWithBadTemplate)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("alertmanager configuration validation failed"))
+			Expect(err.Error()).To(ContainSubstring("invalid template"))
+
+			By("Rejecting a secret with invalid alertmanager config")
+			secretWithBadConfig := obj.DeepCopy()
+			secretWithBadConfig.Data[alertmanager.AlertmanagerConfigKey] = []byte("invalid yaml: [")
+			_, err = validator.ValidateCreate(ctx, secretWithBadConfig)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("alertmanager configuration validation failed"))
 		})
 
 		It("Should validate that tenant exists in GrafanaOrganizations", func() {

@@ -2,50 +2,101 @@
 
 # observability-operator
 
-This operator is in charge of handling the setup and configuration of the Giant Swarm observability platform.
+Brain of the Giant Swarm observability platform: provisions and configures the full observability stack (metrics, logs, traces, alerts, dashboards) for every managed cluster.
 
-It reconciles `cluster.cluster.x-k8s.io` objects and makes sure each `Cluster` is provided with:
-- TODO(atlas) update this section
+It handles four responsibilities:
+
+- **Cluster monitoring** — reconciles `cluster.x-k8s.io/Cluster` objects and provisions the full observability stack per managed cluster: Alloy agent config for metrics, logs, events, and traces; gateway authentication secrets for Mimir, Loki, and Tempo; and the `observability-bundle` App CR that deploys Alloy onto the workload cluster.
+- **Grafana organizations** — manages Grafana organizations via the `GrafanaOrganization` CRD: creates orgs, configures per-org datasources, and sets up SSO role mappings.
+- **Alertmanager configuration** — assembles and pushes tenant Alertmanager configs to Mimir Alertmanager from labeled Kubernetes Secrets.
+- **Dashboard provisioning** — provisions Grafana dashboards from labeled Kubernetes ConfigMaps, including folder hierarchy management.
+
+## Architecture
+
+Four controllers run in a single binary:
+
+| Controller | Watches | Does |
+|---|---|---|
+| `ClusterMonitoringReconciler` | `cluster.x-k8s.io/Cluster` | Provisions Alloy config (metrics→Mimir, logs→Loki, events→Loki, traces→Tempo), gateway auth secrets, observability-bundle App CR, Cronitor heartbeat |
+| `GrafanaOrganizationReconciler` | `GrafanaOrganization` (v1alpha2) | Creates/updates Grafana orgs, datasources, SSO settings |
+| `AlertmanagerController` | `Secret` with `observability.giantswarm.io/kind: alertmanager-config` | Assembles + pushes Alertmanager config to Mimir Alertmanager |
+| `DashboardController` | `ConfigMap` with `app.giantswarm.io/kind: dashboard` | Provisions dashboards into Grafana orgs via API |
+
+Validating webhooks enforce constraints on alertmanager config secrets, dashboard configmaps, and `GrafanaOrganization` CRs. A conversion webhook handles `GrafanaOrganization` version conversion between v1alpha1 and v1alpha2.
 
 ## Features
 
 ### Alertmanager config provisioning
 
-It will look for kubernetes `Secrets` and use them as alertmanager configs if they meet these criteria:
-- a label `observability.giantswarm.io/kind: alertmanager-config`
-- an annotation or label `observability.giantswarm.io/tenant` set to the tenant that the alertmanager config should be loaded in.
+The operator watches for `Secrets` with the following labels and uses them as Alertmanager configs:
 
-Current limitations:
-- no support for merging configs for the same tenant. Creating 2 secrets for the same tenant will result in an unexpected behavior as the operator could unknowingly replace one with the other.
-- each alertmanager config belongs to one and only one tenant
+- `observability.giantswarm.io/kind: alertmanager-config`
+- `observability.giantswarm.io/tenant: <tenant>` (label or annotation)
 
-### Grafana dashboards provisioning
+One secret per tenant. See [docs/alertmanager.md](docs/alertmanager.md) for full usage and examples.
 
-It will look for kubernetes `ConfigMaps` and use them as dashboards if they meet these criteria:
-- a label `app.giantswarm.io/kind: "dashboard"`
-- an annotation or label `observability.giantswarm.io/organization` set to the organization the dasboard should be loaded in.
+### Grafana dashboard provisioning
 
-Current limitations:
-- no support for folders
-- each dashboard belongs to one and only one organization
+The operator watches for `ConfigMaps` with the following labels and provisions them as Grafana dashboards:
 
-## Getting started
+- `app.giantswarm.io/kind: dashboard`
+- `observability.giantswarm.io/organization: <org-name>` (label or annotation)
+- `observability.giantswarm.io/folder: <path>` (optional, supports nested hierarchy e.g. `team/subteam`)
 
-Get the code and build it via:
+See [docs/dashboards.md](docs/dashboards.md) for full usage and examples.
 
-```bash
-git clone https://github.com/giantswarm/observability-operator.git
-cd observability-operator
-make
-```
+### Grafana organization management
 
-See `make help` for help.
+The operator manages Grafana organizations via the `GrafanaOrganization` CRD. See [docs/grafana-organization.md](docs/grafana-organization.md) for CRD reference and examples.
 
-If you want to run the operator locally against an existing cluster, you can use `make local` which will use `hack/bin/run-local.sh` to setup a local instance for the operator.
+### Per-cluster feature flags
 
-## Architecture
+Observability features are controlled per-cluster via labels on the `Cluster` object:
 
-TODO(atlas): Fill this out
+| Feature | Label | Model | Default |
+|---|---|---|---|
+| Metrics | `giantswarm.io/monitoring` | opt-out | enabled |
+| Logging | `giantswarm.io/logging` | opt-out | enabled |
+| Tracing | `giantswarm.io/tracing` | opt-out | enabled |
+| Network monitoring | `giantswarm.io/network-monitoring` | opt-in | disabled |
+| KEDA auth | `giantswarm.io/keda-authentication` | opt-in | disabled |
+
+The KEDA operator namespace can be overridden per-cluster via the `giantswarm.io/keda-namespace` annotation (default: `keda`).
+
+See [docs/cluster.md](docs/cluster.md) for full details including per-cluster sharding and queue tuning.
+
+## Getting Started
+
+The operator is deployed via the Helm chart in `helm/observability-operator/`. See [docs/configuration.md](docs/configuration.md) for the full values reference.
+
+For local development and contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Observability
+
+The operator exposes the following metrics (prefix: `observability_operator_`):
+
+| Metric | Description |
+|---|---|
+| `observability_operator_grafana_organization_info` | GrafanaOrganization info (labels: `name`, `display_name`, `org_id`, `status`) |
+| `observability_operator_grafana_organization_tenants` | Info gauge, 1 per (tenant, org) — use `count(...) by (org_id)` for tenant count per org (labels: `name`, `org_id`) |
+| `observability_operator_alertmanager_routes` | Route count per tenant (label: `tenant`) |
+| `observability_operator_mimir_head_series_query_errors_total` | Counter of Mimir query errors |
+
+Self-monitoring via PodMonitor at `helm/observability-operator/templates/pod-monitor.yaml`. Alerts, dashboards, and runbooks live in the `prometheus-rules` and `dashboards` repositories.
+
+See [docs/metrics.md](docs/metrics.md) for the full metrics reference.
+
+## Documentation
+
+| Doc | Description |
+|---|---|
+| [docs/configuration.md](docs/configuration.md) | Full Helm values reference, including queue tuning guidelines |
+| [docs/grafana-organization.md](docs/grafana-organization.md) | GrafanaOrganization CRD usage and examples |
+| [docs/alertmanager.md](docs/alertmanager.md) | Alertmanager config secret usage and examples |
+| [docs/dashboards.md](docs/dashboards.md) | Dashboard provisioning and folder support |
+| [docs/cluster.md](docs/cluster.md) | Per-cluster observability feature flags and sharding overrides |
+| [docs/metrics.md](docs/metrics.md) | Operator metrics reference and example queries |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, testing, and coding conventions |
 
 ## Credits
 
