@@ -6,8 +6,8 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
-// TODO rename to observability.giantswarm.io/logging
-const LoggingLabel = "giantswarm.io/logging"
+const LoggingLabel = "observability.giantswarm.io/logging"
+const LegacyLoggingLabel = "giantswarm.io/logging"
 
 // LoggingConfig represents the configuration used by the logging package.
 type LoggingConfig struct {
@@ -43,5 +43,5 @@ func (l LoggingConfig) Validate() error {
 //   - cluster is not being deleted
 //   - cluster-specific logging label is set to true (or missing/invalid, defaulting to true)
 func (l LoggingConfig) IsLoggingEnabled(cluster *clusterv1.Cluster) bool {
-	return isClusterFeatureEnabled(l.Enabled, cluster, LoggingLabel, true)
+	return isClusterFeatureEnabled(l.Enabled, cluster, LoggingLabel, LegacyLoggingLabel, true)
 }
