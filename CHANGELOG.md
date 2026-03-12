@@ -33,7 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enable independent configuration of logging and network monitoring features. Log collection now works when logging is enabled, and network monitoring collection can be enabled separately from logging for flexible per-cluster observability configurations.
 - Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
-- Alertmanager config secrets now receive a finalizer (`observability.giantswarm.io/alertmanager-config`) so the corresponding Mimir Alertmanager configuration is deleted when the secret is removed. Previously, deleting a secret left orphaned config in Mimir.
 
 ### Fixed
 
