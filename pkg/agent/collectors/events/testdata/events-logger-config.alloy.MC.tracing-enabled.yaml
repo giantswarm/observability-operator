@@ -50,10 +50,10 @@ networkPolicy:
         # Alloy UI and API
         - port: "12345"
           protocol: TCP
-        # OTLP GRPC receiver for traces
+        # OTLP gRPC receiver
         - port: "4317"
           protocol: "TCP"
-        # OTLP HTTP receiver for traces
+        # OTLP HTTP receiver
         - port: "4318"
           protocol: "TCP"
 
@@ -94,13 +94,13 @@ alloy:
         		scrape_job       = "kubernetes-events",
         	}
         }
-        // Basic authentication for tracing
-        otelcol.auth.basic "tracing_credentials" {
+        // Basic authentication for Tempo
+        otelcol.auth.basic "tempo_credentials" {
         	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-username"])
         	password = remote.kubernetes.secret.credentials.data["tracing-password"]
         }
         // OTLP receiver for traces
-        otelcol.receiver.otlp "traces" {
+        otelcol.receiver.otlp "default" {
         	grpc {
         		endpoint = "0.0.0.0:4317"
         	}
@@ -142,12 +142,21 @@ alloy:
         		]
         	}
         	output {
+        		traces = [otelcol.processor.batch.default.input]
+        	}
+        }
+        // Batch processor for efficient export
+        otelcol.processor.batch "default" {
+        	send_batch_size     = 8192
+        	send_batch_max_size = 0
+        	timeout             = "200ms"
+        	output {
         		traces = [
         			otelcol.processor.filter.giantswarm.input,
         		]
         	}
         }
-        // Filter traces by tenant
+        // Per-tenant routing
         otelcol.processor.filter "giantswarm" {
         	traces {
         		span = [
@@ -158,7 +167,7 @@ alloy:
         		traces = [otelcol.exporter.otlp.giantswarm.input]
         	}
         }
-        // OTLP gRPC exporter for tenant giantswarm
+        // OTLP gRPC exporter for traces — tenant giantswarm
         otelcol.exporter.otlp "giantswarm" {
         	client {
         		tls {
@@ -197,7 +206,7 @@ alloy:
   crds:
     create: false
   extraObjects:
-  # OTLP gateway service to receive traces
+  # OTLP gateway service for traces
   - apiVersion: v1
     kind: Service
     metadata:

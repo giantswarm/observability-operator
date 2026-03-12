@@ -64,10 +64,10 @@ networkPolicy:
         # Alloy UI and API
         - port: "12345"
           protocol: TCP
-        # OTLP GRPC receiver for traces
+        # OTLP gRPC receiver
         - port: "4317"
           protocol: "TCP"
-        # OTLP HTTP receiver for traces
+        # OTLP HTTP receiver
         - port: "4318"
           protocol: "TCP"
     {{- end }}
@@ -107,7 +107,7 @@ alloy:
 
   {{- if .TracingEnabled }}
   extraObjects:
-  # OTLP gateway service to receive traces
+  # OTLP gateway service for traces
   - apiVersion: v1
     kind: Service
     metadata:
