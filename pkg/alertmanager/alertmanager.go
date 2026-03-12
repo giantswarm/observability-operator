@@ -101,7 +101,7 @@ func (s *service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, te
 
 	templates := extractTemplates(secret)
 
-	err = s.Configure(ctx, alertmanagerConfig, templates, tenantID)
+	err = s.configure(ctx, alertmanagerConfig, templates, tenantID)
 	if err != nil {
 		return fmt.Errorf("failed to configure alertmanager: %w", err)
 	}
@@ -171,11 +171,11 @@ func extractTemplates(secret *v1.Secret) map[string]string {
 	return templates
 }
 
-// Configure sends the configuration and templates to Mimir Alertmanager's API.
+// configure sends the configuration and templates to Mimir Alertmanager's API.
 // It is the caller's responsibility to ensure template names are valid (no path separators)
 // and that templates are referenced in the configuration.
 // https://grafana.com/docs/mimir/latest/references/http-api/#set-alertmanager-configuration
-func (s *service) Configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
+func (s *service) configure(ctx context.Context, alertmanagerConfigContent []byte, templates map[string]string, tenantID string) error {
 	logger := log.FromContext(ctx)
 
 	requestData := configRequest{
