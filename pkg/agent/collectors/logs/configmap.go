@@ -175,9 +175,9 @@ func generateAlloyConfig(
 	enableNetworkMonitoring bool,
 	clusterConfig config.ClusterConfig,
 ) (string, error) {
-	// Ensure default tenant is included
+	// Ensure default tenant is included without mutating the caller's slice.
 	if !slices.Contains(tenants, organization.GiantSwarmDefaultTenant) {
-		tenants = append(tenants, organization.GiantSwarmDefaultTenant)
+		tenants = append(slices.Clone(tenants), organization.GiantSwarmDefaultTenant)
 	}
 
 	isWorkloadCluster := clusterConfig.IsWorkloadCluster(cluster)

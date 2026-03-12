@@ -123,10 +123,14 @@ alloy:
             traces  = [otelcol.processor.batch.default.input]
           }
         }
-        // Batch processor for efficient export
+        // Batch processor for efficient export.
+        // send_batch_max_size caps the number of items per export call, preventing individual
+        // gRPC messages from exceeding the server's 4 MB decompressed message size limit.
+        // Both size fields are set to the same value so batch semantics are simple and predictable:
+        // flush when send_batch_max_size items are queued, or when timeout elapses.
         otelcol.processor.batch "default" {
-          send_batch_size     = 8192
-          send_batch_max_size = 0
+          send_batch_size     = 512
+          send_batch_max_size = 512
           timeout             = "200ms"
           output {
             traces  = [
