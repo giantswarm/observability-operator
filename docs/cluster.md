@@ -6,16 +6,13 @@ The operator supports enabling/disabling observability features per workload clu
 
 Set these labels on the `cluster.x-k8s.io/Cluster` object to control which features are active for that cluster.
 
-| Feature | Label | Model | Default |
-|---|---|---|---|
-| Metrics | `giantswarm.io/monitoring` | opt-out | enabled |
-| Logging | `giantswarm.io/logging` | opt-out | enabled |
-| Tracing | `giantswarm.io/tracing` | opt-out | enabled |
-| Network monitoring | `giantswarm.io/network-monitoring` | opt-in | disabled |
-| KEDA authentication | `giantswarm.io/keda-authentication` | opt-in | disabled |
-
-**Opt-out** — the feature is enabled by default; set the label to `"false"` to disable it.
-**Opt-in** — the feature is disabled by default; set the label to `"true"` to enable it.
+| Feature | Label | Default |
+|---|---|---|
+| Metrics | `giantswarm.io/monitoring` | enabled |
+| Logging | `giantswarm.io/logging` | enabled |
+| Tracing | `giantswarm.io/tracing` | enabled |
+| Network monitoring | `giantswarm.io/network-monitoring` | disabled |
+| KEDA authentication | `giantswarm.io/keda-authentication` | disabled |
 
 Both the installation-level `enabled` flag (Helm value) and the per-cluster label must allow the feature for it to be active.
 
@@ -53,7 +50,7 @@ metadata:
 
 ## Sharding overrides
 
-By default, the operator configures 1 Alloy shard per 1M time series (with a 20% scale-down threshold). These can be tuned per cluster via annotations:
+By default, the operator configures 1 Alloy-Metrics shard per 1M time series (with a 20% scale-down threshold). These can be tuned per cluster via annotations:
 
 | Annotation | Description |
 |---|---|
