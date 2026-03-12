@@ -62,6 +62,10 @@ alerting:
 monitoring:
   # -- Enable monitoring at the installation level
   enabled: false
+
+  # -- Enable network monitoring
+  enableNetworkMonitoring: false
+
   sharding:
     # -- Time series count per Alloy shard
     scaleUpSeriesCount: 1000000
@@ -100,7 +104,7 @@ logging:
   # -- Enable log filtering
   enableNodeFiltering: false
 
-  # -- Enable network monitoring
+  # -- Deprecated: use monitoring.enableNetworkMonitoring instead
   enableNetworkMonitoring: false
 
   # -- Default namespaces to collect logs from
