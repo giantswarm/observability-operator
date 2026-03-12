@@ -59,6 +59,84 @@ alloy:
         	namespace = "kube-system"
         	name = "alloy-events"
         }
+        // OTLP receiver — accepts traces and metrics from cluster workloads.
+        otelcol.receiver.otlp "default" {
+        	grpc {
+        		endpoint = "0.0.0.0:4317"
+        	}
+        	http {
+        		endpoint = "0.0.0.0:4318"
+        	}
+        	output {
+        		metrics = [otelcol.processor.k8sattributes.default.input]
+        	}
+        }
+        // Add Kubernetes metadata to all OTLP signals.
+        otelcol.processor.k8sattributes "default" {
+        	extract {
+        		metadata = [
+        			"k8s.namespace.name",
+        			"k8s.pod.name",
+        			"k8s.container.name",
+        		]
+        		label {
+        			key = "observability.giantswarm.io/tenant"
+        			tag_name = "giantswarm.tenant"
+        		}
+        		otel_annotations = true
+        	}
+        	output {
+        		metrics = [otelcol.processor.transform.default.input]
+        	}
+        }
+        // Add cluster metadata to traces and metrics
+        otelcol.processor.transform "default" {
+        	error_mode = "ignore"
+        	metric_statements {
+        		context = "resource"
+        		statements = [
+        			`set(attributes["giantswarm.cluster.id"], "test-installation")`,
+        			`set(attributes["giantswarm.cluster.type"], "management_cluster")`,
+        			`set(attributes["giantswarm.cluster.organization"], "test-organization")`,
+        			`set(attributes["giantswarm.cluster.provider"], "capa")`,
+        		]
+        	}
+        	output {
+        		metrics = [otelcol.processor.batch.default.input]
+        	}
+        }
+        // Batch processor for efficient export
+        otelcol.processor.batch "default" {
+        	send_batch_size     = 8192
+        	send_batch_max_size = 0
+        	timeout             = "200ms"
+        	output {
+        		metrics = [
+        			otelcol.processor.filter.giantswarm.input,
+        		]
+        	}
+        }
+        // Per-tenant routing
+        otelcol.processor.filter "giantswarm" {
+        	metrics {
+        		datapoint = [`resource.attributes["giantswarm.tenant"] != "giantswarm"`]
+        	}
+        	output {
+        		metrics = [otelcol.exporter.otlphttp.giantswarm_mimir.input]
+        	}
+        }
+        // OTLP HTTP exporter for metrics — tenant giantswarm → Mimir
+        otelcol.exporter.otlphttp "giantswarm_mimir" {
+        	client {
+        		endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
+        		tls {
+        			insecure = true
+        		}
+        		headers = {
+        			"X-Scope-OrgID" = "giantswarm",
+        		}
+        	}
+        }
     # Resource configuration based on https://github.com/giantswarm/giantswarm/issues/32655
     # CPU limits updated in https://github.com/giantswarm/giantswarm/issues/34619 to prevent throttling
     resources:

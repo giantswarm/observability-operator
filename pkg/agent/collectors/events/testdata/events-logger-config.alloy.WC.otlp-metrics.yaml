@@ -33,8 +33,8 @@ alloy:
         }
         // Basic authentication for Mimir
         otelcol.auth.basic "mimir_credentials" {
-        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-        	password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+        	password = remote.kubernetes.secret.credentials.data["metrics-password"]
         }
         // OTLP receiver — accepts traces and metrics from cluster workloads.
         otelcol.receiver.otlp "default" {

@@ -67,15 +67,15 @@ loki.write "default" {
 }
 {{- end }}
 
-{{- if and .IsWorkloadCluster (or .TracingEnabled .OTLPMetricsEnabled) }}
-{{- if .TracingEnabled }}
+{{- if or .TracingEnabled .OTLPMetricsEnabled }}
+{{- if and .IsWorkloadCluster .TracingEnabled }}
 // Basic authentication for Tempo
 otelcol.auth.basic "tempo_credentials" {
 	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TempoUsernameKey }}"])
 	password = remote.kubernetes.secret.credentials.data["{{ .TempoPasswordKey }}"]
 }
 {{- end }}
-{{- if .OTLPMetricsEnabled }}
+{{- if and .IsWorkloadCluster .OTLPMetricsEnabled }}
 // Basic authentication for Mimir
 otelcol.auth.basic "mimir_credentials" {
 	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirOTLPUsernameKey }}"])
@@ -156,7 +156,7 @@ otelcol.processor.transform "default" {
 
 	output {
 		{{- if .TracingEnabled }}
-		traces  = [otelcol.processor.batch.default.input]
+		traces = [otelcol.processor.batch.default.input]
 		{{- end }}
 		{{- if .OTLPMetricsEnabled }}
 		metrics = [otelcol.processor.batch.default.input]
@@ -172,7 +172,7 @@ otelcol.processor.batch "default" {
 
 	output {
 		{{- if .TracingEnabled }}
-		traces  = [
+		traces = [
 			{{- range .Tenants }}
 			otelcol.processor.filter.{{ . }}.input,
 			{{- end }}
@@ -203,7 +203,7 @@ otelcol.processor.filter "{{ . }}" {
 	{{- end }}
 	output {
 		{{- if $.TracingEnabled }}
-		traces  = [otelcol.exporter.otlp.{{ . }}_tempo.input]
+		traces = [otelcol.exporter.otlp.{{ . }}_tempo.input]
 		{{- end }}
 		{{- if $.OTLPMetricsEnabled }}
 		metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
