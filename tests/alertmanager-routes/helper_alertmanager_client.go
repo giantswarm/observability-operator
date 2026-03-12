@@ -24,6 +24,7 @@ import (
 	"github.com/prometheus/alertmanager/config"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/alertmanager"
@@ -74,7 +75,7 @@ type alertmanagerClient struct {
 	httpReceiverAddress string
 
 	alertmanagerAPIClient *client.AlertmanagerAPI
-	alertmanagerService   *alertmanager.Service
+	alertmanagerService   alertmanager.Service
 	httpClient            *http.Client
 }
 
@@ -104,7 +105,7 @@ func NewAlertmanagerClient(t *testing.T, alertmanagerURL *url.URL, tenantID, htt
 			},
 		})
 
-		amClient.alertmanagerService = &amConfigurationClient
+		amClient.alertmanagerService = amConfigurationClient
 	}
 
 	return amClient
@@ -157,7 +158,10 @@ func (a alertmanagerClient) Configure() error {
 		return fmt.Errorf("failed to marshal alertmanager configuration: %v", err)
 	}
 
-	templateFiles := make(map[string]string)
+	// Build a Secret that mirrors how the operator receives the configuration.
+	secretData := map[string][]byte{
+		alertmanager.AlertmanagerConfigKey: amConfigContent,
+	}
 	paths, err := filepath.Glob(filepath.Join(configDir, "*"+alertmanager.TemplatesSuffix))
 	if err != nil {
 		return fmt.Errorf("failed to list template files: %v", err)
@@ -167,11 +171,12 @@ func (a alertmanagerClient) Configure() error {
 		if err != nil {
 			return fmt.Errorf("failed to read template file %s: %v", path, err)
 		}
-		templateFiles[filepath.Base(path)] = string(content)
+		secretData[filepath.Base(path)] = content
 	}
+	secret := &corev1.Secret{Data: secretData}
 
 	// Configure Alertmanager
-	err = a.alertmanagerService.Configure(a.t.Context(), amConfigContent, templateFiles, a.TenantID)
+	err = a.alertmanagerService.ConfigureFromSecret(a.t.Context(), secret, a.TenantID)
 	if err != nil {
 		return fmt.Errorf("failed to upload configuration: %v", err)
 	}
