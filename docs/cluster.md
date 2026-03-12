@@ -53,7 +53,7 @@ metadata:
 
 ## Sharding overrides
 
-By default, the operator configures 1 Alloy shard per 1M time series (with a 20% scale-down threshold). These can be tuned per cluster via annotations:
+By default, the operator configures 1 Alloy-Metrics shard per 1M time series (with a 20% scale-down threshold). These can be tuned per cluster via annotations:
 
 | Annotation | Description |
 |---|---|
