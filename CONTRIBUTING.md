@@ -24,7 +24,7 @@ git clone https://github.com/giantswarm/observability-operator.git
 cd observability-operator
 go build ./...                    # verify it compiles
 make test                         # unit + integration tests
-make run-local                    # run operator locally against an existing cluster
+make run-local                    # run operator locally against an existing management cluster
 ```
 
 See `make help` for all available targets.
