@@ -80,7 +80,7 @@ make setup-envtest    # download Kubernetes test binaries for envtest
 
 ### Manual end-to-end testing
 
-Deploy your branch to a testing installation and suspend Flux reconciliation for the `observability-operator` app before running manual tests.
+Deploy your branch to a testing installation and suspend Flux reconciliation for the `observability-operator` ocirepo before running manual tests.
 
 ```bash
 make manual-testing INSTALLATION=<installation-name>
