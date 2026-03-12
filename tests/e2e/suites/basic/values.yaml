@@ -1,0 +1,2 @@
+# Default values for observability-operator e2e tests.
+# Override as needed per MC.
