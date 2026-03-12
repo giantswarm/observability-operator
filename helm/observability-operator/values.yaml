@@ -90,6 +90,10 @@ monitoring:
     # retryOnHttp429: true  # Retry on HTTP 429 responses
     # -- Max age of samples to send (0s = disabled)
     sampleAgeLimit: "30m"
+  exemplars:
+    # -- Enable exemplar forwarding in the remote write pipeline.
+    # Requires Mimir to have exemplar storage enabled (max_global_exemplars_per_user > 0).
+    enabled: true
 
 # Enable or disable distributed tracing support
 tracing:

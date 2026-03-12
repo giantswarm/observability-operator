@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Enable exemplar forwarding in the Alloy remote write pipeline (`monitoring.exemplars.enabled`, default `true`). Exemplars link metric data points to traces in Tempo, enabling trace-to-metrics and metrics-to-traces drill-downs in Grafana. Requires Mimir to have exemplar storage enabled (`max_global_exemplars_per_user > 0`).
 - Validate alertmanager configs via webhook. May generate errors if existing configs are broken.
 - Alertmanager config secrets now receive a finalizer (`observability.giantswarm.io/alertmanager-config`) so the corresponding Mimir Alertmanager configuration is deleted when the secret is removed. Previously, deleting a secret left orphaned config in Mimir.
 - Comprehensive documentation overhaul: rewrote README with architecture tables and feature flags; added CONTRIBUTING.md with dev setup, coding conventions, and testing guide; added per-feature docs (alertmanager.md, dashboards.md, grafana-organization.md, cluster.md, metrics.md); consolidated operator metrics into a single reference page.
