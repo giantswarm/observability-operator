@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Alertmanager config secrets now receive a finalizer (`observability.giantswarm.io/alertmanager-config`) so the corresponding Mimir Alertmanager configuration is deleted when the secret is removed. Previously, deleting a secret left orphaned config in Mimir.
+
 ### Changed 
 
+- Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
 - Migrated cluster feature toggle labels from `giantswarm.io/*` to `observability.giantswarm.io/*` namespace while maintaining full compatibility
   - `giantswarm.io/monitoring` → `observability.giantswarm.io/monitoring`
   - `giantswarm.io/network-monitoring` → `observability.giantswarm.io/network-monitoring`
@@ -23,7 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enable independent configuration of logging and network monitoring features. Log collection now works when logging is enabled, and network monitoring collection can be enabled separately from logging for flexible per-cluster observability configurations.
 - Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
-- Alertmanager config secrets now receive a finalizer (`observability.giantswarm.io/alertmanager-config`) so the corresponding Mimir Alertmanager configuration is deleted when the secret is removed. Previously, deleting a secret left orphaned config in Mimir.
 
 ### Fixed
 
@@ -32,10 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
 - Support Gateway API TLS certificate for Grafana client: the operator now tries `gateway-giantswarm-default-https-tls` in `envoy-gateway-system` first, falling back to the legacy `grafana-tls` secret in `monitoring`.
-- Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
-- Expand alertmanager controller RBAC: add `patch` on secrets and `update` on `secrets/finalizers` to support finalizer management.
+- Fix alertmanager controller RBAC marker: reduce secrets verbs to `get;list;watch` only and remove unused `secrets/finalizers` marker — the controller only reads the secret, it never writes to it or sets a finalizer.
 - Remove unnecessary `create` and `delete` verbs from `cluster.x-k8s.io/clusters` RBAC — the operator only reconciles existing clusters, never creates or deletes them.
 - Remove unnecessary `delete` verb from `coordination.k8s.io/leases` RBAC — controller-runtime leader election only requires `create;get;update;patch` on leases, never `delete`.
 
