@@ -202,6 +202,7 @@ alloy:
             name           = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
             enable_http2   = false
             remote_timeout = "60s"
+            send_exemplars = true
             url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
             basic_auth {
               username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
@@ -325,6 +326,7 @@ alloy:
             name           = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
             enable_http2   = false
             remote_timeout = "60s"
+            send_exemplars = true
             url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
             basic_auth {
               username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])

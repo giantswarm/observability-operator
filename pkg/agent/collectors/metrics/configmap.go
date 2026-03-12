@@ -155,6 +155,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		ExternalLabels map[string]string
 
 		IsSupportingScrapeConfigs bool
+		ExemplarsEnabled          bool
 	}{
 		AlloySecretName:      apps.AlloyMetricsAppName,
 		AlloySecretNamespace: apps.AlloyNamespace,
@@ -198,6 +199,7 @@ func (a *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		IsWorkloadCluster:         a.Config.Cluster.IsWorkloadCluster(cluster),
 		IsSupportingScrapeConfigs: observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
+		ExemplarsEnabled:          a.Config.Monitoring.ExemplarsEnabled,
 	}
 
 	err = alloyConfigTemplate.Execute(&values, data)
