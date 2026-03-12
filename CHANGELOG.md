@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Validate alertmanager configs via webhook. May generate errors if existing configs are broken.
+ 
+### Changed
+
+- Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
+
 ## [0.64.0] - 2026-03-11
 
 ### Added
