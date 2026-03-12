@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Enable exemplar forwarding in the Alloy remote write pipeline (`monitoring.exemplars.enabled`, default `true`). Exemplars link metric data points to traces in Tempo, enabling trace-to-metrics and metrics-to-traces drill-downs in Grafana. Requires Mimir to have exemplar storage enabled (`max_global_exemplars_per_user > 0`).
+
 ## [0.64.0] - 2026-03-11
 
 ### Added
 
-- Enable exemplar forwarding in the Alloy remote write pipeline (`monitoring.exemplars.enabled`, default `true`). Exemplars link metric data points to traces in Tempo, enabling trace-to-metrics and metrics-to-traces drill-downs in Grafana. Requires Mimir to have exemplar storage enabled (`max_global_exemplars_per_user > 0`).
 - Enable independent configuration of logging and network monitoring features. Log collection now works when logging is enabled, and network monitoring collection can be enabled separately from logging for flexible per-cluster observability configurations.
 - Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
 
