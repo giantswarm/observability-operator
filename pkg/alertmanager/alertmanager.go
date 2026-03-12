@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/prometheus/alertmanager/config"
+	"github.com/prometheus/alertmanager/template"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
@@ -64,8 +65,23 @@ func New(cfg pkgconfig.Config) Service {
 	}
 }
 
-// ExtractAlertmanagerConfig extracts the raw config bytes.
-func ExtractAlertmanagerConfig(secret *v1.Secret) ([]byte, error) {
+// Validate checks that the secret contains a valid Alertmanager configuration and
+// that all template files parse correctly. It is the single entry point used by
+// the admission webhook — callers that need the extracted data should use
+// ConfigureFromSecret instead.
+func Validate(secret *v1.Secret) error {
+	raw, err := extractAlertmanagerConfig(secret)
+	if err != nil {
+		return err
+	}
+	if _, err := parseAlertmanagerConfig(raw); err != nil {
+		return err
+	}
+	_, err = extractTemplates(secret)
+	return err
+}
+
+func extractAlertmanagerConfig(secret *v1.Secret) ([]byte, error) {
 	alertmanagerConfig, found := secret.Data[AlertmanagerConfigKey]
 	if !found {
 		return nil, fmt.Errorf("missing %s in alertmanager secret", AlertmanagerConfigKey)
@@ -81,7 +97,7 @@ func (s *service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, te
 		return fmt.Errorf("alertmanager secret is nil")
 	}
 
-	alertmanagerConfig, err := ExtractAlertmanagerConfig(secret)
+	alertmanagerConfig, err := extractAlertmanagerConfig(secret)
 	if err != nil {
 		return fmt.Errorf("failed to extract alertmanager config: %w", err)
 	}
@@ -90,7 +106,7 @@ func (s *service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, te
 	// The returned config is used only for metrics and not sent to alertmanager
 	// as transforming it via String() would produce an invalid configuration
 	// with all secrets replaced with <redacted>.
-	amConfig, err := ParseAlertmanagerConfig(alertmanagerConfig)
+	amConfig, err := parseAlertmanagerConfig(alertmanagerConfig)
 	if err != nil {
 		return fmt.Errorf("failed to load alertmanager configuration: %w", err)
 	}
@@ -99,7 +115,10 @@ func (s *service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, te
 	metrics.AlertmanagerRoutes.WithLabelValues(tenantID).Set(float64(routeCount))
 	logger.WithValues("tenant", tenantID, "routes", routeCount).Info("Updated Alertmanager routes metric")
 
-	templates := extractTemplates(secret)
+	templates, err := extractTemplates(secret)
+	if err != nil {
+		return fmt.Errorf("failed to extract alertmanager templates: %w", err)
+	}
 
 	err = s.configure(ctx, alertmanagerConfig, templates, tenantID)
 	if err != nil {
@@ -149,7 +168,7 @@ func (s *service) DeleteForTenant(ctx context.Context, tenantID string) error {
 	}
 }
 
-func ParseAlertmanagerConfig(alertmanagerConfig []byte) (*config.Config, error) {
+func parseAlertmanagerConfig(alertmanagerConfig []byte) (*config.Config, error) {
 	amConfig, err := config.Load(string(alertmanagerConfig))
 	if err != nil {
 		return nil, err
@@ -157,18 +176,31 @@ func ParseAlertmanagerConfig(alertmanagerConfig []byte) (*config.Config, error) 
 	return amConfig, nil
 }
 
-func extractTemplates(secret *v1.Secret) map[string]string {
-	templates := make(map[string]string)
-	// TODO Validate templates (and add it in the validating webhook)
-	for key, value := range secret.Data {
-		if strings.HasSuffix(key, TemplatesSuffix) {
-			// Template key/name should not be a path otherwise the request will fail with:
-			// > error validating Alertmanager config: invalid template name "/etc/dummy.tmpl": the template name cannot contain any path
-			baseKey := path.Base(key)
-			templates[baseKey] = string(value)
-		}
+func extractTemplates(secret *v1.Secret) (map[string]string, error) {
+	// Create the engine once — mirrors Alertmanager's runtime behaviour where all
+	// templates share a single namespace, so cross-template references are validated too.
+	t, err := template.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create template engine: %w", err)
 	}
-	return templates
+
+	templates := make(map[string]string)
+	for key, value := range secret.Data {
+		if !strings.HasSuffix(key, TemplatesSuffix) {
+			continue
+		}
+		// Template key/name should not be a path otherwise the request will fail with:
+		// > error validating Alertmanager config: invalid template name "/etc/dummy.tmpl": the template name cannot contain any path
+		baseKey := path.Base(key)
+		content := string(value)
+
+		if err := t.Parse(strings.NewReader(content)); err != nil {
+			return nil, fmt.Errorf("invalid template %q: %w", baseKey, err)
+		}
+
+		templates[baseKey] = content
+	}
+	return templates, nil
 }
 
 // configure sends the configuration and templates to Mimir Alertmanager's API.
