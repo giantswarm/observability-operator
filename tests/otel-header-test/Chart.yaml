@@ -1,5 +1,0 @@
-apiVersion: v2
-name: otel-header-test
-description: Test app for OTLP X-Scope-OrgID header extraction (PR #744)
-type: application
-version: 0.1.0

@@ -39,9 +39,6 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// cronitorConfig holds the minimal set of configuration values needed by the
-// CronitorHeartbeatRepository. It is extracted from config.Config at construction
-// time to avoid coupling the adapter to the full configuration graph.
 type cronitorConfig struct {
 	clusterName   string
 	pipeline      string
