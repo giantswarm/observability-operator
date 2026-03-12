@@ -253,20 +253,20 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	ctx = log.IntoContext(ctx, logger)
 
 	if !r.Config.Monitoring.Enabled {
-		logger.Info("monitoring is disabled at the installation level.")
+		logger.Info("monitoring is disabled at the installation level")
 	}
 
 	if !r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-		logger.Info("monitoring is disabled for this cluster.")
+		logger.Info("monitoring is disabled for this cluster", "cluster", cluster.Name, "namespace", cluster.Namespace)
 	}
 
 	// Handle deletion reconciliation loop.
 	if !cluster.DeletionTimestamp.IsZero() {
-		logger.Info("handling deletion for cluster")
+		logger.Info("handling deletion for cluster", "cluster", cluster.Name, "namespace", cluster.Namespace)
 		return r.reconcileDelete(ctx, cluster)
 	}
 
-	logger.Info("reconciling cluster")
+	logger.Info("reconciling cluster", "cluster", cluster.Name, "namespace", cluster.Namespace)
 
 	// Handle normal reconciliation loop.
 	return r.reconcile(ctx, cluster)
@@ -411,78 +411,80 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 	logger := log.FromContext(ctx)
 
 	// We do not need to delete anything if there is no finalizer on the cluster
-	if controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
-		// Collect all errors to ensure all cleanup tasks have a chance to run
-		var errs []error
+	if !controllerutil.ContainsFinalizer(cluster, monitoring.MonitoringFinalizer) {
+		return ctrl.Result{}, nil
+	}
 
-		// We always remove the bundle configure, even if monitoring is disabled for the cluster.
-		err := r.BundleConfigurationService.RemoveConfiguration(ctx, cluster)
+	// Collect all errors to ensure all cleanup tasks have a chance to run
+	var errs []error
+
+	// We always remove the bundle configure, even if monitoring is disabled for the cluster.
+	err := r.BundleConfigurationService.RemoveConfiguration(ctx, cluster)
+	if err != nil {
+		logger.Error(err, "failed to remove the observability-bundle configuration")
+		errs = append(errs, fmt.Errorf("remove bundle configuration: %w", err))
+	}
+
+	// Metrics-specific: Delete Alloy monitoring configuration
+	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
+		err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
-			logger.Error(err, "failed to remove the observability-bundle configuration")
-			errs = append(errs, fmt.Errorf("remove bundle configuration: %w", err))
+			logger.Error(err, "failed to delete alloy monitoring config")
+			errs = append(errs, fmt.Errorf("delete alloy metrics: %w", err))
 		}
+	}
 
-		// Metrics-specific: Delete Alloy monitoring configuration
-		if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-			err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
-			if err != nil {
-				logger.Error(err, "failed to delete alloy monitoring config")
-				errs = append(errs, fmt.Errorf("delete alloy metrics: %w", err))
-			}
-		}
-
-		// alloy-logs specific: daemonset alloy config, that collects data from each node (not only logs) - TODO rename alloy-logs to alloy-daemonset
-		if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
-			// Clean up any existing alloy logs configuration
-			err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
-			if err != nil {
-				logger.Error(err, "failed to delete alloy logs config")
-				errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
-			}
-		}
-
-		// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs and traces - TODO rename alloy-events to alloy-cluster
-		if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
-			// Clean up any existing alloy events configuration
-			err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
-			if err != nil {
-				logger.Error(err, "failed to delete alloy events config")
-				errs = append(errs, fmt.Errorf("alloy events reconcile delete: %w", err))
-			}
-		}
-
-		// Delete cluster auth for all enabled observability backends
-		for authType, entry := range r.authManagers {
-			if entry.isEnabled(cluster) {
-				err = entry.authManager.DeleteClusterAuth(ctx, cluster)
-				if err != nil {
-					logger.Error(err, fmt.Sprintf("failed to delete cluster auth for %s", authType))
-					errs = append(errs, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
-				}
-			}
-		}
-		// TODO add deletion of rules in the Mimir ruler on cluster deletion
-
-		// Management cluster specific configuration
-		if cluster.Name == r.Config.Cluster.Name {
-			err := r.tearDown(ctx)
-			if err != nil {
-				logger.Error(err, "failed to tear down the monitoring stack")
-				errs = append(errs, fmt.Errorf("teardown monitoring stack: %w", err))
-			}
-		}
-
-		// If any errors occurred during deletion, combine them and return
-		if len(errs) > 0 {
-			return ctrl.Result{}, errors.Join(errs...)
-		}
-
-		// We get the latest state of the object to avoid race conditions.
-		// Finalizer handling needs to come last.
-		err = r.finalizerHelper.EnsureRemoved(ctx, cluster)
+	// alloy-logs specific: daemonset alloy config, that collects data from each node (not only logs) - TODO rename alloy-logs to alloy-daemonset
+	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
+		// Clean up any existing alloy logs configuration
+		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
+			logger.Error(err, "failed to delete alloy logs config")
+			errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
 		}
+	}
+
+	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs and traces - TODO rename alloy-events to alloy-cluster
+	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
+		// Clean up any existing alloy events configuration
+		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
+		if err != nil {
+			logger.Error(err, "failed to delete alloy events config")
+			errs = append(errs, fmt.Errorf("alloy events reconcile delete: %w", err))
+		}
+	}
+
+	// Delete cluster auth for all enabled observability backends
+	for authType, entry := range r.authManagers {
+		if entry.isEnabled(cluster) {
+			err = entry.authManager.DeleteClusterAuth(ctx, cluster)
+			if err != nil {
+				logger.Error(err, "failed to delete cluster auth", "auth_type", authType)
+				errs = append(errs, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
+			}
+		}
+	}
+	// TODO add deletion of rules in the Mimir ruler on cluster deletion
+
+	// Management cluster specific configuration
+	if cluster.Name == r.Config.Cluster.Name {
+		err := r.tearDown(ctx)
+		if err != nil {
+			logger.Error(err, "failed to tear down the monitoring stack")
+			errs = append(errs, fmt.Errorf("teardown monitoring stack: %w", err))
+		}
+	}
+
+	// If any errors occurred during deletion, combine them and return
+	if len(errs) > 0 {
+		return ctrl.Result{}, errors.Join(errs...)
+	}
+
+	// We get the latest state of the object to avoid race conditions.
+	// Finalizer handling needs to come last.
+	err = r.finalizerHelper.EnsureRemoved(ctx, cluster)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return ctrl.Result{}, nil
