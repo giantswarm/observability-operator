@@ -151,6 +151,7 @@ func (a *Service) generateAlloyEventsConfig(
 		TempoPasswordKey       string
 		OTLPBatchSendBatchSize int
 		OTLPBatchTimeout       string
+		OTLPBatchMaxSize       int
 		Tenants                []string
 		OTLPMetricsEnabled     bool
 		MimirOTLPURLKey        string
@@ -183,6 +184,7 @@ func (a *Service) generateAlloyEventsConfig(
 		TempoPasswordKey:       common.TempoPasswordKey,
 		OTLPBatchSendBatchSize: common.OTLPBatchSendBatchSize,
 		OTLPBatchTimeout:       common.OTLPBatchTimeout,
+		OTLPBatchMaxSize:       common.OTLPBatchMaxSize,
 		Tenants:                tenants,
 		OTLPMetricsEnabled:     otlpMetricsEnabled,
 		MimirOTLPURLKey:        common.MimirOTLPURLKey,
