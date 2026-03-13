@@ -70,10 +70,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 
 	// Create Cronitor heartbeat repository if both keys are provided
 	if cfg.Environment.CronitorHeartbeatManagementKey != "" && cfg.Environment.CronitorHeartbeatPingKey != "" {
-		cronitorRepository, err := heartbeat.NewCronitorHeartbeatRepository(cfg, nil)
-		if err != nil {
-			return fmt.Errorf("unable to create cronitor heartbeat repository: %w", err)
-		}
+		cronitorRepository := heartbeat.NewCronitorHeartbeatRepository(cfg, nil)
 		heartbeatRepositories = append(heartbeatRepositories, cronitorRepository)
 	}
 
