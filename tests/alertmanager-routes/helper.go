@@ -61,6 +61,9 @@ func RunAlertmanagerIntegrationTest(t *testing.T, testCases []TestCase, waitTime
 			if len(tc.Expectations) > 0 && len(records) == 0 {
 				// Fail when we expect notifications but none were received at all.
 				t.Fatalf("no Alertmanager notifications received")
+                       } else if len(tc.Expectations) == 0 && len(records) > 0 { 
+                                 // Fail when we do not expect any notifications but some were received 
+                                 t.Fatalf("unexpected Alertmanager notifications received")
 			}
 
 			for i, expectation := range tc.Expectations {
