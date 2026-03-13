@@ -35,16 +35,17 @@ type httpRequest struct {
 
 // httpReceiver is a HTTP server that records incoming requests
 // This server stores every incoming requests internally for them to be later
-// retrieved using GetHTTPRequests method.
+// retrieved using FlushAndGetHTTPRequests method.
 // Any HTTP Proxy connection (CONNECT) made to this server is tunneled to the internal HTTPS server.
 type httpReceiver struct {
 	records     []httpRequest
 	recordsFile *os.File
 	mutex       sync.Mutex
 
-	address     string
-	httpServer  *httptest.Server
-	httpsServer *httptest.Server
+	address        string
+	allocatedPorts []int
+	httpServer     *httptest.Server
+	httpsServer    *httptest.Server
 }
 
 // NewHTTPReceiver creates a new HTTP receiver
@@ -59,18 +60,20 @@ func NewHTTPReceiver(t *testing.T) (*httpReceiver, error) {
 	}
 	h.recordsFile = f
 
-	ln, httpAddress, err := newListener(minPort, maxPort)
+	ln, httpAddress, httpPort, err := newListener(minPort, maxPort)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP listener: %v", err)
 	}
 	// We only store the HTTP address, as this is the entry point for Alertmanager to send notifications
 	// HTTPS address is only used internally when tunneling via CONNECT method
 	h.address = httpAddress
+	h.allocatedPorts = append(h.allocatedPorts, httpPort)
 
-	lns, httpsAddress, err := newListener(minPort, maxPort)
+	lns, httpsAddress, httpsPort, err := newListener(minPort, maxPort)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTPS listener: %v", err)
 	}
+	h.allocatedPorts = append(h.allocatedPorts, httpsPort)
 
 	// Setup HTTP server to receive requests
 	// This is the main handler which is handling all the incoming HTTP requests. It is defined here as a closure to have access to both t (for logging) and h (for request storage) variables.
@@ -120,10 +123,11 @@ func NewHTTPReceiver(t *testing.T) (*httpReceiver, error) {
 // ports tracks used ports to avoid trying to reuse them
 var ports = map[int]struct{}{}
 
-// newListener creates a new TCP listener in the given port range
-func newListener(minPort, maxPort int) (net.Listener, string, error) {
+// newListener creates a new TCP listener in the given port range.
+// It returns the listener, address string, port number, and any error.
+func newListener(minPort, maxPort int) (net.Listener, string, int, error) {
 	for port := minPort; port <= maxPort; port++ {
-		// Stupid optimization to avoid trying already used ports
+		// Avoid trying already used ports
 		if _, used := ports[port]; used {
 			continue
 		}
@@ -133,11 +137,11 @@ func newListener(minPort, maxPort int) (net.Listener, string, error) {
 		l, err := net.Listen("tcp", address)
 		if err == nil {
 			ports[port] = struct{}{}
-			return l, address, nil
+			return l, address, port, nil
 		}
 	}
 
-	return nil, "", fmt.Errorf("no available ports in range %d-%d", minPort, maxPort)
+	return nil, "", 0, fmt.Errorf("no available ports in range %d-%d", minPort, maxPort)
 }
 
 // Start start both HTTP and HTTPS servers
@@ -146,11 +150,13 @@ func (h *httpReceiver) Start() {
 	h.httpsServer.StartTLS()
 }
 
-// Stop stops both HTTP and HTTPS servers
+// Stop stops both HTTP and HTTPS servers and releases their ports back to the pool.
 func (h *httpReceiver) Stop() {
-	// Stop HTTP servers
 	h.httpServer.Close()
 	h.httpsServer.Close()
+	for _, port := range h.allocatedPorts {
+		delete(ports, port)
+	}
 }
 
 // GetAddress returns the HTTP server address
@@ -158,8 +164,8 @@ func (h *httpReceiver) GetAddress() string {
 	return h.address
 }
 
-// GetHTTPRequests returns the recorded HTTP requests received
-func (h *httpReceiver) GetHTTPRequests() []httpRequest {
+// FlushAndGetHTTPRequests returns the recorded HTTP requests and writes them to the log file.
+func (h *httpReceiver) FlushAndGetHTTPRequests() []httpRequest {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 

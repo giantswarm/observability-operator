@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/internal/predicates"
-	"github.com/giantswarm/observability-operator/pkg/alertmanager"
+	"github.com/giantswarm/observability-operator/pkg/alerting/alertmanager"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
 )

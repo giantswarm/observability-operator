@@ -32,24 +32,26 @@ type Service struct {
 	TenantRepository        tenancy.TenantRepository
 	LogsAuthManager         auth.AuthManager
 	TracesAuthManager       auth.AuthManager
+	MetricsAuthManager      auth.AuthManager
 }
 
 func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is configured")
 
-	// Determine if logging and tracing are enabled for this cluster
+	// Determine if logging, tracing, and OTLP metrics are enabled for this cluster
 	loggingEnabled := a.Config.Logging.IsLoggingEnabled(cluster)
 	tracingEnabled := a.Config.Tracing.IsTracingEnabled(cluster) && observabilityBundleVersion.GE(minimumTracingSupportVersion)
+	otlpMetricsEnabled := a.Config.Monitoring.IsMonitoringEnabled(cluster) && a.Config.Monitoring.OTLPEnabled && observabilityBundleVersion.GE(minimumTracingSupportVersion)
 
 	// Generate ConfigMap data
-	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, observabilityBundleVersion)
+	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, observabilityBundleVersion)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 	}
 
 	// Generate Secret data
-	secretData, err := a.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled)
+	secretData, err := a.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events secret: %w", err)
 	}

@@ -228,6 +228,7 @@ func (s *service) configure(ctx context.Context, alertmanagerConfigContent []byt
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set(common.OrgIDHeader, tenantID)
+	req.Header.Set("Content-Type", "application/yaml")
 	req.ContentLength = int64(dataLen)
 
 	resp, err := s.httpClient.Do(req)

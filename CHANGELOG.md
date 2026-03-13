@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alertmanager config secrets now receive a finalizer (`observability.giantswarm.io/alertmanager-config`) so the corresponding Mimir Alertmanager configuration is deleted when the secret is removed. Previously, deleting a secret left orphaned config in Mimir.
 - Comprehensive documentation overhaul: rewrote README with architecture tables and feature flags; added CONTRIBUTING.md with dev setup, coding conventions, and testing guide; added per-feature docs (alertmanager.md, dashboards.md, grafana-organization.md, cluster.md, metrics.md); consolidated operator metrics into a single reference page.
 - Add `otelcol.processor.batch` to the OTLP traces pipeline (`send_batch_size=8192`, `timeout=200ms`) for efficient export to Tempo. Warning: may increase RAM usage for alloy-events.
+- Add OTLP metrics ingestion to the events collector (`monitoring.otlp.enabled`, default `true`). When enabled alongside `monitoring.enabled`, the alloy-events collector accepts OTLP metrics on the existing otlp-gateway Service (ports 4317/4318) and routes them per-tenant to Mimir via `/otlp/v1/metrics`. Requires observability-bundle ≥ 1.11.0. External gateway routes (Mimir HTTPRoute `/otlp/v1/metrics`) must be updated before enabling on workload clusters.
 
 ### Changed 
 
@@ -27,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `giantswarm.io/keda-namespace` → `observability.giantswarm.io/keda-namespace`
   - `giantswarm.io/logging` → `observability.giantswarm.io/logging`
   - `giantswarm.io/tracing` → `observability.giantswarm.io/tracing`
+
+### Fixed
+
+- Fix: heartbeat hasChanged bug where Notify field was silently ignored
+- Fix: missing Content-Type: application/yaml header on alertmanager configure request
 
 ## [0.64.0] - 2026-03-11
 
