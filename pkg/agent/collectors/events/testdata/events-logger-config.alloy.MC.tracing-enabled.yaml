@@ -94,12 +94,7 @@ alloy:
         		scrape_job       = "kubernetes-events",
         	}
         }
-        // Basic authentication for Tempo
-        otelcol.auth.basic "tempo_credentials" {
-        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-username"])
-        	password = remote.kubernetes.secret.credentials.data["tracing-password"]
-        }
-        // OTLP receiver for traces
+        // OTLP receiver — accepts traces and metrics from cluster workloads.
         otelcol.receiver.otlp "default" {
         	grpc {
         		endpoint = "0.0.0.0:4317"
@@ -111,7 +106,7 @@ alloy:
         		traces = [otelcol.processor.k8sattributes.default.input]
         	}
         }
-        // Add Kubernetes metadata to traces
+        // Add Kubernetes metadata to all OTLP signals.
         otelcol.processor.k8sattributes "default" {
         	extract {
         		metadata = [
@@ -129,7 +124,7 @@ alloy:
         		traces = [otelcol.processor.transform.default.input]
         	}
         }
-        // Add cluster metadata to traces
+        // Add cluster metadata to traces and metrics
         otelcol.processor.transform "default" {
         	error_mode = "ignore"
         	trace_statements {
@@ -159,16 +154,14 @@ alloy:
         // Per-tenant routing
         otelcol.processor.filter "giantswarm" {
         	traces {
-        		span = [
-        			`resource.attributes["giantswarm.tenant"] != "giantswarm"`,
-        		]
+        		span = [`resource.attributes["giantswarm.tenant"] != "giantswarm"`]
         	}
         	output {
-        		traces = [otelcol.exporter.otlp.giantswarm.input]
+        		traces = [otelcol.exporter.otlp.giantswarm_tempo.input]
         	}
         }
         // OTLP gRPC exporter for traces — tenant giantswarm
-        otelcol.exporter.otlp "giantswarm" {
+        otelcol.exporter.otlp "giantswarm_tempo" {
         	client {
         		tls {
         			// Use insecure connection since this exporter uses a (direct) internal Tempo endpoint which is not behind a TLS reverse proxy.
@@ -206,7 +199,7 @@ alloy:
   crds:
     create: false
   extraObjects:
-  # OTLP gateway service for traces
+  # OTLP gateway service for traces and metrics
   - apiVersion: v1
     kind: Service
     metadata:

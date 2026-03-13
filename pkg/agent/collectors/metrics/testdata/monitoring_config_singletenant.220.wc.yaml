@@ -61,10 +61,10 @@ alloy:
         }
         // load rules for tenant tenant1
         mimir.rules.kubernetes "tenant1" {
-          address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRulerAPIURL"])
+          address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-ruler-url"])
           basic_auth {
-            username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-            password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+            username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+            password = remote.kubernetes.secret.credentials.data["metrics-password"]
           }
           extra_query_matchers {
             matcher {
@@ -172,14 +172,14 @@ alloy:
         // remote write pipeline configuration for tenant tenant1
         prometheus.remote_write "tenant1" {
           endpoint {
-            name           = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
+            name           = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-name"])
             enable_http2   = false
             remote_timeout = "60s"
             send_exemplars = true
-            url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIURL"])
+            url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-url"])
             basic_auth {
-              username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIUsername"])
-              password = remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIPassword"]
+              username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+              password = remote.kubernetes.secret.credentials.data["metrics-password"]
             }
         
             headers = {

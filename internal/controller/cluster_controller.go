@@ -154,6 +154,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 		TenantRepository:        tenantRepository,
 		LogsAuthManager:         lokiAuthManager,
 		TracesAuthManager:       tempoAuthManager,
+		MetricsAuthManager:      mimirAuthManager,
 	}
 
 	r := &ClusterMonitoringReconciler{
@@ -378,8 +379,9 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		}
 	}
 
-	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs and traces - TODO rename alloy-events to alloy-cluster
-	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
+	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs, traces and OTLP data - TODO rename alloy-events to alloy-cluster
+	otlpEnabled := r.Config.Monitoring.OTLPEnabled && r.Config.Monitoring.IsMonitoringEnabled(cluster)
+	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) || otlpEnabled {
 		// Create or update Alloy events configuration
 		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
 		if err != nil {
@@ -441,8 +443,9 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 	}
 
-	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs and traces - TODO rename alloy-events to alloy-cluster
-	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) {
+	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs, traces and OTLP data - TODO rename alloy-events to alloy-cluster
+	otlpEnabled := r.Config.Monitoring.OTLPEnabled && r.Config.Monitoring.IsMonitoringEnabled(cluster)
+	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) || otlpEnabled {
 		// Clean up any existing alloy events configuration
 		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
 		if err != nil {

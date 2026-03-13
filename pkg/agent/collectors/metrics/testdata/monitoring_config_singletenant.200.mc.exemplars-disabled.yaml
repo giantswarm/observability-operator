@@ -145,7 +145,7 @@ alloy:
         // remote write pipeline configuration for tenant tenant1
         prometheus.remote_write "tenant1" {
           endpoint {
-            name           = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirRemoteWriteAPIName"])
+            name           = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-name"])
             enable_http2   = false
             remote_timeout = "60s"
             send_exemplars = false

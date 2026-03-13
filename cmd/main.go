@@ -73,6 +73,7 @@ const (
 	flagMonitoringWALTruncateFrequency        = "monitoring-wal-truncate-frequency"
 	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
 	flagMonitoringExemplarsEnabled            = "monitoring-exemplars-enabled"
+	flagMonitoringOTLPEnabled                 = "monitoring-otlp-enabled"
 
 	// Queue configuration flag names
 	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
@@ -194,6 +195,8 @@ func parseFlags() (err error) {
 		"Enable exemplar forwarding in the remote write pipeline. Opt-out: enabled by default.")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
 		"Enable/disable network monitoring in Alloy configuration")
+	pflag.BoolVar(&cfg.Monitoring.OTLPEnabled, flagMonitoringOTLPEnabled, true,
+		"Enable OTLP metrics ingestion via the events collector (requires monitoring-enabled=true)")
 
 	// Queue configuration flags for Alloy remote write
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string

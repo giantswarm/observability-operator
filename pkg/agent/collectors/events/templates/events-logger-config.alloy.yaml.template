@@ -5,11 +5,13 @@
 # It configures Alloy for events logging.
 {{- else if .TracingEnabled }}
 # It configures Alloy for tracing.
+{{- else if .OTLPMetricsEnabled }}
+# It configures Alloy for OTLP metrics ingestion.
 {{- end }}
 # - configMap is generated from events-logger.alloy.template and passed as a string
 #   here and will be created by Alloy's chart.
 # - Alloy runs as a deployment, with only 1 replica.
-{{- if or .TracingEnabled (and .LoggingEnabled (not .IsWorkloadCluster)) }}
+{{- if or .TracingEnabled .OTLPMetricsEnabled (and .LoggingEnabled (not .IsWorkloadCluster)) }}
 networkPolicy:
   cilium:
     {{- if not .IsWorkloadCluster }}
@@ -56,8 +58,20 @@ networkPolicy:
         - port: "4318"
           protocol: TCP
     {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    # Allow direct access to mimir-gateway
+    - toEndpoints:
+      - matchLabels:
+          app.kubernetes.io/component: gateway
+          app.kubernetes.io/name: mimir
+          io.kubernetes.pod.namespace: mimir
+      toPorts:
+      - ports:
+        - port: "8080"
+          protocol: TCP
     {{- end }}
-    {{- if .TracingEnabled }}
+    {{- end }}
+    {{- if or .TracingEnabled .OTLPMetricsEnabled }}
     ingress:
     - toPorts:
       - ports:
@@ -105,9 +119,9 @@ alloy:
   crds:
     create: false
 
-  {{- if .TracingEnabled }}
+  {{- if or .TracingEnabled .OTLPMetricsEnabled }}
   extraObjects:
-  # OTLP gateway service for traces
+  # OTLP gateway service for traces and metrics
   - apiVersion: v1
     kind: Service
     metadata:
