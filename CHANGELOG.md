@@ -54,11 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove unnecessary `create` and `delete` verbs from `cluster.x-k8s.io/clusters` RBAC — the operator only reconciles existing clusters, never creates or deletes them.
 - Remove unnecessary `delete` verb from `coordination.k8s.io/leases` RBAC — controller-runtime leader election only requires `create;get;update;patch` on leases, never `delete`.
 
-### Fixed
-
-- Replace deprecated `nonsensitive()` builtin with `convert.nonsensitive()` in Alloy metrics and events templates (deprecated since Alloy v1.4 / PR#1516).
-- Fix `remote.kubernetes.secret "credentials"` block in logging Alloy template that was missing its closing brace when `LoggingEnabled` is true, causing an unclosed block and a duplicate inner block to be emitted instead.
-
 ## [0.63.0] - 2026-03-05
 
 ### Added
