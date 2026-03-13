@@ -24,7 +24,7 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool) (map[string]string, error) {
+func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool) (map[string]string, error) {
 	secrets := map[string]string{}
 
 	// Add Loki credentials if logging is enabled
@@ -54,6 +54,18 @@ func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 
 		secrets[common.TempoUsernameKey] = cluster.Name
 		secrets[common.TempoPasswordKey] = tracesPassword
+	}
+
+	// Add Mimir OTLP credentials for workload clusters when OTLP metrics ingestion is enabled
+	if otlpMetricsEnabled && a.Config.Cluster.IsWorkloadCluster(cluster) {
+		mimirOTLPURL := fmt.Sprintf(common.MimirOTLPBaseURLFormat, a.Config.Cluster.BaseDomain)
+		metricsPassword, err := a.MetricsAuthManager.GetClusterPassword(ctx, cluster)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get mimir otlp password for cluster %s: %w", cluster.Name, err)
+		}
+		secrets[common.MimirOTLPWriteAPIURLKey] = mimirOTLPURL
+		secrets[common.MimirRemoteWriteAPIUsernameKey] = cluster.Name
+		secrets[common.MimirRemoteWriteAPIPasswordKey] = metricsPassword
 	}
 
 	return secrets, nil

@@ -67,14 +67,23 @@ loki.write "default" {
 }
 {{- end }}
 
-{{- if .TracingEnabled }}
+{{- if or .TracingEnabled .OTLPMetricsEnabled }}
+{{- if and .IsWorkloadCluster .TracingEnabled }}
 // Basic authentication for Tempo
 otelcol.auth.basic "tempo_credentials" {
 	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TempoUsernameKey }}"])
 	password = remote.kubernetes.secret.credentials.data["{{ .TempoPasswordKey }}"]
 }
+{{- end }}
+{{- if and .IsWorkloadCluster .OTLPMetricsEnabled }}
+// Basic authentication for Mimir
+otelcol.auth.basic "mimir_credentials" {
+	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirOTLPUsernameKey }}"])
+	password = remote.kubernetes.secret.credentials.data["{{ .MimirOTLPPasswordKey }}"]
+}
+{{- end }}
 
-// OTLP receiver for traces
+// OTLP receiver — accepts traces and metrics from cluster workloads.
 otelcol.receiver.otlp "default" {
 	grpc {
 		endpoint = "0.0.0.0:4317"
@@ -84,11 +93,16 @@ otelcol.receiver.otlp "default" {
 	}
 
 	output {
+		{{- if .TracingEnabled }}
 		traces = [otelcol.processor.k8sattributes.default.input]
+		{{- end }}
+		{{- if .OTLPMetricsEnabled }}
+		metrics = [otelcol.processor.k8sattributes.default.input]
+		{{- end }}
 	}
 }
 
-// Add Kubernetes metadata to traces
+// Add Kubernetes metadata to all OTLP signals.
 otelcol.processor.k8sattributes "default" {
 	extract {
 		metadata = [
@@ -104,14 +118,20 @@ otelcol.processor.k8sattributes "default" {
 	}
 
 	output {
+		{{- if .TracingEnabled }}
 		traces = [otelcol.processor.transform.default.input]
+		{{- end }}
+		{{- if .OTLPMetricsEnabled }}
+		metrics = [otelcol.processor.transform.default.input]
+		{{- end }}
 	}
 }
 
-// Add cluster metadata to traces
+// Add cluster metadata to traces and metrics
 otelcol.processor.transform "default" {
 	error_mode = "ignore"
 
+	{{- if .TracingEnabled }}
 	trace_statements {
 		context = "resource"
 		statements = [
@@ -121,9 +141,26 @@ otelcol.processor.transform "default" {
 			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
 		]
 	}
+	{{- end }}
+	{{- if .OTLPMetricsEnabled }}
+	metric_statements {
+		context = "resource"
+		statements = [
+			`set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
+			`set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
+			`set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
+			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+		]
+	}
+	{{- end }}
 
 	output {
+		{{- if .TracingEnabled }}
 		traces = [otelcol.processor.batch.default.input]
+		{{- end }}
+		{{- if .OTLPMetricsEnabled }}
+		metrics = [otelcol.processor.batch.default.input]
+		{{- end }}
 	}
 }
 
@@ -134,29 +171,49 @@ otelcol.processor.batch "default" {
 	timeout             = "{{ .OTLPBatchTimeout }}"
 
 	output {
+		{{- if .TracingEnabled }}
 		traces = [
 			{{- range .Tenants }}
 			otelcol.processor.filter.{{ . }}.input,
 			{{- end }}
 		]
+		{{- end }}
+		{{- if .OTLPMetricsEnabled }}
+		metrics = [
+			{{- range .Tenants }}
+			otelcol.processor.filter.{{ . }}.input,
+			{{- end }}
+		]
+		{{- end }}
 	}
 }
 
 // Per-tenant routing
 {{- range .Tenants }}
 otelcol.processor.filter "{{ . }}" {
+	{{- if $.TracingEnabled }}
 	traces {
-		span = [
-			`resource.attributes["giantswarm.tenant"] != "{{ . }}"`,
-		]
+		span = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
 	}
+	{{- end }}
+	{{- if $.OTLPMetricsEnabled }}
+	metrics {
+		datapoint = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
+	}
+	{{- end }}
 	output {
-		traces = [otelcol.exporter.otlp.{{ . }}.input]
+		{{- if $.TracingEnabled }}
+		traces = [otelcol.exporter.otlp.{{ . }}_tempo.input]
+		{{- end }}
+		{{- if $.OTLPMetricsEnabled }}
+		metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
+		{{- end }}
 	}
 }
 
+{{- if $.TracingEnabled }}
 // OTLP gRPC exporter for traces — tenant {{ . }}
-otelcol.exporter.otlp "{{ . }}" {
+otelcol.exporter.otlp "{{ . }}_tempo" {
 	client {
 		{{- if $.IsWorkloadCluster }}
 		auth     = otelcol.auth.basic.tempo_credentials.handler
@@ -177,6 +234,31 @@ otelcol.exporter.otlp "{{ . }}" {
 		}
 	}
 }
+{{- end }}
+
+{{- if $.OTLPMetricsEnabled }}
+// OTLP HTTP exporter for metrics — tenant {{ . }} → Mimir
+otelcol.exporter.otlphttp "{{ . }}_mimir" {
+	client {
+		{{- if $.IsWorkloadCluster }}
+		auth     = otelcol.auth.basic.mimir_credentials.handler
+		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirOTLPURLKey }}"])
+		tls {
+			insecure_skip_verify = false
+		}
+		{{- else }}
+		endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
+		tls {
+			insecure = true
+		}
+		{{- end }}
+
+		headers = {
+			"X-Scope-OrgID" = "{{ . }}",
+		}
+	}
+}
+{{- end }}
 
 {{- end }}
 {{- end }}
