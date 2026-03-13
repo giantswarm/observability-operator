@@ -60,11 +60,6 @@ alloy:
         	namespace = "kube-system"
         	name = "alloy-events"
         }
-        // Basic authentication for Tempo
-        otelcol.auth.basic "tempo_credentials" {
-        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-username"])
-        	password = remote.kubernetes.secret.credentials.data["tracing-password"]
-        }
         // OTLP receiver — accepts traces, metrics and logs from cluster workloads.
         otelcol.receiver.otlp "default" {
         	grpc {
