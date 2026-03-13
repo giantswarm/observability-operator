@@ -68,7 +68,7 @@ loki.write "default" {
 {{- end }}
 
 {{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled }}
-{{- if .TracingEnabled }}
+{{- if and .IsWorkloadCluster .TracingEnabled }}
 // Basic authentication for Tempo
 otelcol.auth.basic "tempo_credentials" {
 	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TempoUsernameKey }}"])
@@ -82,7 +82,7 @@ otelcol.auth.basic "mimir_credentials" {
 	password = remote.kubernetes.secret.credentials.data["{{ .MimirOTLPPasswordKey }}"]
 }
 {{- end }}
-{{- if and .OTLPLogsEnabled .IsWorkloadCluster }}
+{{- if and .IsWorkloadCluster .OTLPLogsEnabled }}
 // Basic authentication for Loki
 otelcol.auth.basic "loki_credentials" {
 	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LokiOTLPUsernameKey }}"])

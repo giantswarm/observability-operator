@@ -51,15 +51,17 @@ func RunAlertmanagerIntegrationTest(t *testing.T, testCases []TestCase, waitTime
 	t.Logf("Waiting %s to receive Alertmanager notifications...", waitTime)
 	time.Sleep(waitTime)
 
-	// Assert expectation match received Alertmanager notifications
-	records := receiver.GetHTTPRequests()
+	// Assert expectations match received Alertmanager notifications.
+	// records is shared across all test cases, so each case only checks its own
+	// expectations against the full set of received requests.
+	records := receiver.FlushAndGetHTTPRequests()
 
 	for _, tc := range testCases {
 		t.Run(tc.Alert.Name, func(t *testing.T) {
-			if len(tc.Expectations) > 0 && len(records) <= 0 {
-				// Fail when we expect notifications but none were received
+			if len(tc.Expectations) > 0 && len(records) == 0 {
+				// Fail when we expect notifications but none were received at all.
 				t.Fatalf("no Alertmanager notifications received")
-			} else if len(tc.Expectations) <= 0 && len(records) > 0 {
+			} else if len(tc.Expectations) == 0 && len(records) > 0 {
 				// Fail when we do not expect any notifications but some were received
 				t.Fatalf("unexpected Alertmanager notifications received")
 			}

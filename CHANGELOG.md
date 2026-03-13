@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `giantswarm.io/logging` → `observability.giantswarm.io/logging`
   - `giantswarm.io/tracing` → `observability.giantswarm.io/tracing`
 
+### Fixed
+
+- Fix: heartbeat hasChanged bug where Notify field was silently ignored
+- Fix: missing Content-Type: application/yaml header on alertmanager configure request
+
 ## [0.64.0] - 2026-03-11
 
 ### Added

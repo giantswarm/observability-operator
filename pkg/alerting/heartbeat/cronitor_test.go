@@ -20,6 +20,10 @@ func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	return m.doFunc(req)
 }
 
+func newTestRepo(cfg config.Config, client HTTPClient) *CronitorHeartbeatRepository {
+	return NewCronitorHeartbeatRepository(cfg, client).(*CronitorHeartbeatRepository)
+}
+
 func TestNewCronitorHeartbeatRepository(t *testing.T) {
 	cfg := config.Config{
 		Cluster: config.ClusterConfig{
@@ -33,10 +37,7 @@ func TestNewCronitorHeartbeatRepository(t *testing.T) {
 	}
 
 	t.Run("with nil http client", func(t *testing.T) {
-		repo, err := NewCronitorHeartbeatRepository(cfg, nil)
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
+		repo := NewCronitorHeartbeatRepository(cfg, nil)
 		if repo == nil {
 			t.Fatal("expected repository, got nil")
 		}
@@ -44,16 +45,11 @@ func TestNewCronitorHeartbeatRepository(t *testing.T) {
 
 	t.Run("with custom http client", func(t *testing.T) {
 		mockClient := &mockHTTPClient{}
-		repo, err := NewCronitorHeartbeatRepository(cfg, mockClient)
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
+		repo := newTestRepo(cfg, mockClient)
 		if repo == nil {
 			t.Fatal("expected repository, got nil")
 		}
-
-		cronitorRepo := repo.(*CronitorHeartbeatRepository)
-		if cronitorRepo.httpClient != mockClient {
+		if repo.httpClient != mockClient {
 			t.Error("expected custom http client to be used")
 		}
 	})
@@ -70,11 +66,7 @@ func TestMakeMonitor(t *testing.T) {
 		},
 	}
 
-	repo := &CronitorHeartbeatRepository{
-		Config:     cfg,
-		httpClient: &mockHTTPClient{},
-	}
-
+	repo := newTestRepo(cfg, &mockHTTPClient{})
 	monitor := repo.makeMonitor()
 
 	if monitor.Type != "heartbeat" {
@@ -84,11 +76,11 @@ func TestMakeMonitor(t *testing.T) {
 	if monitor.Key != expectedKey {
 		t.Errorf("expected key %q, got %s", expectedKey, monitor.Key)
 	}
-	if monitor.GraceSeconds != 1800 {
-		t.Errorf("expected grace_seconds %d, got %d", 1800, monitor.GraceSeconds)
+	if monitor.GraceSeconds != monitorGraceSeconds {
+		t.Errorf("expected grace_seconds %d, got %d", monitorGraceSeconds, monitor.GraceSeconds)
 	}
-	if monitor.Schedule != "every 30 minutes" {
-		t.Errorf("expected schedule %q, got %s", "every 30 minutes", monitor.Schedule)
+	if monitor.Schedule != monitorSchedule {
+		t.Errorf("expected schedule %q, got %s", monitorSchedule, monitor.Schedule)
 	}
 	if len(monitor.Tags) != 4 {
 		t.Errorf("expected 4 tags, got %d", len(monitor.Tags))
@@ -143,10 +135,7 @@ func TestCreateOrUpdate_CreateNew(t *testing.T) {
 		},
 	}
 
-	repo := &CronitorHeartbeatRepository{
-		Config:     cfg,
-		httpClient: mockClient,
-	}
+	repo := newTestRepo(cfg, mockClient)
 
 	err := repo.CreateOrUpdate(context.Background())
 	if err != nil {
@@ -170,12 +159,13 @@ func TestCreateOrUpdate_UpdateExisting(t *testing.T) {
 		},
 	}
 
-	existingMonitor := &CronitorMonitor{
+	existingMonitor := &cronitorMonitor{
 		Type:         "heartbeat",
 		Key:          "mimir-test-cluster",
 		Name:         "mimir-test-cluster",
 		GraceSeconds: 900, // Different from desired 1800
 		Schedule:     "every 1 hour",
+		Notify:       []string{"testing"},
 		Tags:         []string{"team:atlas", "pipeline:testing"}, // Same pipeline, so no ping needed
 	}
 
@@ -213,17 +203,13 @@ func TestCreateOrUpdate_UpdateExisting(t *testing.T) {
 				}, nil
 			}
 
-			// No ping call expected for updates
-
+			// No ping call expected for updates without pipeline change
 			t.Fatalf("unexpected call %d: %s %s", callCount, req.Method, req.URL)
 			return nil, nil
 		},
 	}
 
-	repo := &CronitorHeartbeatRepository{
-		Config:     cfg,
-		httpClient: mockClient,
-	}
+	repo := newTestRepo(cfg, mockClient)
 
 	err := repo.CreateOrUpdate(context.Background())
 	if err != nil {
@@ -248,10 +234,7 @@ func TestCreateOrUpdate_NoChangeNeeded(t *testing.T) {
 	}
 
 	// Create a monitor that matches what makeMonitor() would create
-	repo := &CronitorHeartbeatRepository{
-		Config:     cfg,
-		httpClient: &mockHTTPClient{},
-	}
+	repo := newTestRepo(cfg, &mockHTTPClient{})
 	desiredMonitor := repo.makeMonitor()
 
 	callCount := 0
@@ -310,10 +293,7 @@ func TestDelete(t *testing.T) {
 			},
 		}
 
-		repo := &CronitorHeartbeatRepository{
-			Config:     cfg,
-			httpClient: mockClient,
-		}
+		repo := newTestRepo(cfg, mockClient)
 
 		err := repo.Delete(context.Background())
 		if err != nil {
@@ -331,10 +311,7 @@ func TestDelete(t *testing.T) {
 			},
 		}
 
-		repo := &CronitorHeartbeatRepository{
-			Config:     cfg,
-			httpClient: mockClient,
-		}
+		repo := newTestRepo(cfg, mockClient)
 
 		err := repo.Delete(context.Background())
 		if err != nil {
@@ -355,12 +332,13 @@ func TestCreateOrUpdate_EnvironmentChange(t *testing.T) {
 		},
 	}
 
-	existingMonitor := &CronitorMonitor{
+	existingMonitor := &cronitorMonitor{
 		Type:         "heartbeat",
 		Key:          "mimir-test-cluster",
 		Name:         "mimir-test-cluster",
 		GraceSeconds: 1800,
 		Schedule:     "every 1 hour",
+		Notify:       []string{"testing"},
 		Tags:         []string{"team:atlas", "installation:test-cluster", "pipeline:testing"}, // Old pipeline
 	}
 
@@ -414,10 +392,7 @@ func TestCreateOrUpdate_EnvironmentChange(t *testing.T) {
 		},
 	}
 
-	repo := &CronitorHeartbeatRepository{
-		Config:     cfg,
-		httpClient: mockClient,
-	}
+	repo := newTestRepo(cfg, mockClient)
 
 	err := repo.CreateOrUpdate(context.Background())
 	if err != nil {
@@ -434,81 +409,125 @@ func TestHasChanged(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		existing *CronitorMonitor
-		desired  *CronitorMonitor
+		existing *cronitorMonitor
+		desired  *cronitorMonitor
 		expected bool
 	}{
 		{
 			name: "no changes",
-			existing: &CronitorMonitor{
+			existing: &cronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1", "tag2"},
 				Note:         "test note",
+				Notify:       []string{"production"},
 			},
-			desired: &CronitorMonitor{
+			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1", "tag2"},
 				Note:         "test note",
+				Notify:       []string{"production"},
 			},
 			expected: false,
 		},
 		{
 			name: "grace seconds changed",
-			existing: &CronitorMonitor{
+			existing: &cronitorMonitor{
 				GraceSeconds: 900,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
+				Notify:       []string{"production"},
 			},
-			desired: &CronitorMonitor{
+			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
+				Notify:       []string{"production"},
 			},
 			expected: true,
 		},
 		{
 			name: "schedule changed",
-			existing: &CronitorMonitor{
+			existing: &cronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 30 minutes",
 				Tags:         []string{"tag1"},
+				Notify:       []string{"production"},
 			},
-			desired: &CronitorMonitor{
+			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
+				Notify:       []string{"production"},
 			},
 			expected: true,
 		},
 		{
 			name: "tags changed",
-			existing: &CronitorMonitor{
+			existing: &cronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
+				Notify:       []string{"production"},
 			},
-			desired: &CronitorMonitor{
+			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1", "tag2"},
+				Notify:       []string{"production"},
 			},
 			expected: true,
 		},
 		{
 			name: "note changed",
-			existing: &CronitorMonitor{
+			existing: &cronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
 				Note:         "old note",
+				Notify:       []string{"production"},
 			},
-			desired: &CronitorMonitor{
+			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
 				Schedule:     "every 1 hour",
 				Tags:         []string{"tag1"},
 				Note:         "new note",
+				Notify:       []string{"production"},
+			},
+			expected: true,
+		},
+		{
+			name: "notify changed (pipeline rename)",
+			existing: &cronitorMonitor{
+				GraceSeconds: 1800,
+				Schedule:     monitorSchedule,
+				Tags:         []string{"tag1"},
+				Notify:       []string{"testing"},
+			},
+			desired: &cronitorMonitor{
+				GraceSeconds: 1800,
+				Schedule:     monitorSchedule,
+				Tags:         []string{"tag1"},
+				Notify:       []string{"production"},
+			},
+			expected: true,
+		},
+		{
+			name: "realert interval changed",
+			existing: &cronitorMonitor{
+				GraceSeconds:    1800,
+				Schedule:        monitorSchedule,
+				Tags:            []string{"tag1"},
+				Notify:          []string{"production"},
+				RealertInterval: "every 12 hours",
+			},
+			desired: &cronitorMonitor{
+				GraceSeconds:    1800,
+				Schedule:        monitorSchedule,
+				Tags:            []string{"tag1"},
+				Notify:          []string{"production"},
+				RealertInterval: monitorRealertInterval,
 			},
 			expected: true,
 		},
