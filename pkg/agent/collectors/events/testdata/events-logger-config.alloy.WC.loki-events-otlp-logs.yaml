@@ -24,110 +24,110 @@ alloy:
       create: true
       content: |-
         logging {
-        	level  = "info"
-        	format = "logfmt"
+          level  = "info"
+          format = "logfmt"
         }
         remote.kubernetes.secret "credentials" {
-        	namespace = "kube-system"
-        	name = "alloy-events"
+          namespace = "kube-system"
+          name = "alloy-events"
         }
         // Kubernetes events source for Loki
         loki.source.kubernetes_events "default" {
-        	namespaces = []
-        	forward_to = [loki.write.default.receiver]
+          namespaces = []
+          forward_to = [loki.write.default.receiver]
         }
         // Loki target configuration
         loki.write "default" {
-        	endpoint {
-        		max_backoff_period = "10m"
-        		remote_timeout     = "60s"
-        		tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
-        		url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-url"])
-        		basic_auth {
-        			username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
-        			password = remote.kubernetes.secret.credentials.data["logging-password"]
-        		}
-        		tls_config {
-        			insecure_skip_verify = false
-        		}
-        	}
-        	external_labels = {
-        		cluster_id       = "test-cluster",
-        		cluster_type     = "workload_cluster",
-        		organization     = "test-organization",
-        		provider         = "capa",
-        		scrape_job       = "kubernetes-events",
-        	}
+          endpoint {
+            max_backoff_period = "10m"
+            remote_timeout     = "60s"
+            tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
+            url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-url"])
+            basic_auth {
+              username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
+              password = remote.kubernetes.secret.credentials.data["logging-password"]
+            }
+            tls_config {
+              insecure_skip_verify = false
+            }
+          }
+          external_labels = {
+            cluster_id       = "test-cluster",
+            cluster_type     = "workload_cluster",
+            organization     = "test-organization",
+            provider         = "capa",
+            scrape_job       = "kubernetes-events",
+          }
         }
         // Basic authentication for Loki
         otelcol.auth.basic "loki_credentials" {
-        	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
-        	password = remote.kubernetes.secret.credentials.data["logging-password"]
+          username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
+          password = remote.kubernetes.secret.credentials.data["logging-password"]
         }
         // OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
         // processors, enabling the X-Scope-OrgID header to be used for tenant routing.
         otelcol.receiver.otlp "default" {
-        	grpc {
-        		endpoint         = "0.0.0.0:4317"
-        		include_metadata = true
-        	}
-        	http {
-        		endpoint         = "0.0.0.0:4318"
-        		include_metadata = true
-        	}
-        	output {
-        		logs    = [otelcol.processor.k8sattributes.default.input]
-        	}
+          grpc {
+            endpoint         = "0.0.0.0:4317"
+            include_metadata = true
+          }
+          http {
+            endpoint         = "0.0.0.0:4318"
+            include_metadata = true
+          }
+          output {
+            logs    = [otelcol.processor.k8sattributes.default.input]
+          }
         }
         // Add Kubernetes metadata to all OTLP signals.
         // The tenant pod label is extracted to giantswarm.tenant.from-label (a temporary
         // attribute) rather than directly to giantswarm.tenant; validation and final
         // assignment happen in the transform processor below.
         otelcol.processor.k8sattributes "default" {
-        	extract {
-        		metadata = [
-        			"k8s.namespace.name",
-        			"k8s.pod.name",
-        			"k8s.container.name",
-        		]
-        		label {
-        			key      = "observability.giantswarm.io/tenant"
-        			tag_name = "giantswarm.tenant.from-label"
-        		}
-        		otel_annotations = true
-        	}
-        	output {
-        		logs    = [otelcol.processor.attributes.extract_tenant_header.input]
-        	}
+          extract {
+            metadata = [
+              "k8s.namespace.name",
+              "k8s.pod.name",
+              "k8s.container.name",
+            ]
+            label {
+              key      = "observability.giantswarm.io/tenant"
+              tag_name = "giantswarm.tenant.from-label"
+            }
+            otel_annotations = true
+          }
+          output {
+            logs    = [otelcol.processor.attributes.extract_tenant_header.input]
+          }
         }
         // Extract the X-Scope-OrgID request header into signal attributes.
         // The header is normalized by the receiver to metadata.x-scope-orgid.
         otelcol.processor.attributes "extract_tenant_header" {
-        	action {
-        		key          = "giantswarm.tenant.from-header"
-        		action       = "insert"
-        		from_context = "metadata.x-scope-orgid"
-        	}
-        	output {
-        		logs    = [otelcol.processor.transform.promote_header_to_resource.input]
-        	}
+          action {
+            key          = "giantswarm.tenant.from-header"
+            action       = "insert"
+            from_context = "metadata.x-scope-orgid"
+          }
+          output {
+            logs    = [otelcol.processor.transform.promote_header_to_resource.input]
+          }
         }
         // Promote signal-level header attribute to resource attributes.
         // The attributes processor adds giantswarm.tenant.from-header at the signal level (span/log/metric).
         // This transform copies it to resource.attributes where tenant resolution can access it.
         otelcol.processor.transform "promote_header_to_resource" {
-        	error_mode = "ignore"
-        	log_statements {
-        		context = "log"
-        		statements = [
-        			`set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
-        			`delete_key(log.attributes, "giantswarm.tenant.from-header")`,
-        		]
-        	}
-        	output {
-        		logs    = [otelcol.processor.transform.default.input]
-        	}
+          error_mode = "ignore"
+          log_statements {
+            context = "log"
+            statements = [
+              `set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
+              `delete_key(log.attributes, "giantswarm.tenant.from-header")`,
+            ]
+          }
+          output {
+            logs    = [otelcol.processor.transform.default.input]
+          }
         }
         // Add cluster metadata and resolve giantswarm.tenant for all OTLP signals.
         //
@@ -145,27 +145,44 @@ alloy:
         // Invalid, empty, or absent values from either source are never promoted, so signals
         // whose tenant cannot be resolved are dropped by the per-tenant filter processors.
         otelcol.processor.transform "default" {
-        	error_mode = "ignore"
-        	log_statements {
-        		context = "resource"
-        		statements = [
-        			// Cluster metadata
-        			`set(resource.attributes["giantswarm.cluster.id"], "test-cluster")`,
-        			`set(resource.attributes["giantswarm.cluster.type"], "workload_cluster")`,
-        			`set(resource.attributes["giantswarm.cluster.organization"], "test-organization")`,
-        			`set(resource.attributes["giantswarm.cluster.provider"], "capa")`,
-        			// Tenant resolution — step 1: promote valid pod-label value
-        			`set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
-        			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
-        			`set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-header"] == "giantswarm"`,
-        			// Tenant resolution — step 3: clean up temporary attributes
-        			`delete_key(resource.attributes, "giantswarm.tenant.from-label")`,
-        			`delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
-        		]
-        	}
-        	output {
-        		logs    = [otelcol.processor.batch.default.input]
-        	}
+          error_mode = "ignore"
+          log_statements {
+            context = "resource"
+            statements = [
+              // Cluster metadata
+              `set(resource.attributes["giantswarm.cluster.id"], "test-cluster")`,
+              `set(resource.attributes["giantswarm.cluster.type"], "workload_cluster")`,
+              `set(resource.attributes["giantswarm.cluster.organization"], "test-organization")`,
+              `set(resource.attributes["giantswarm.cluster.provider"], "capa")`,
+              // Tenant resolution — step 1: promote valid pod-label value
+              `set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
+              // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+              `set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-header"] == "giantswarm"`,
+              // Tenant resolution — step 3: clean up temporary attributes
+              `delete_key(resource.attributes, "giantswarm.tenant.from-label")`,
+              `delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
+            ]
+          }
+          log_statements {
+            context = "resource"
+            statements = [
+              // Cluster metadata
+              `set(attributes["giantswarm.cluster.id"], "test-cluster")`,
+              `set(attributes["giantswarm.cluster.type"], "workload_cluster")`,
+              `set(attributes["giantswarm.cluster.organization"], "test-organization")`,
+              `set(attributes["giantswarm.cluster.provider"], "capa")`,
+              // Tenant resolution — step 1: promote valid pod-label value
+              `set(attributes["giantswarm.tenant"], "giantswarm") where attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
+              // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+              `set(attributes["giantswarm.tenant"], "giantswarm") where attributes["giantswarm.tenant.from-header"] == "giantswarm"`,
+              // Tenant resolution — step 3: clean up temporary attributes
+              `delete_key(attributes, "giantswarm.tenant.from-label")`,
+              `delete_key(attributes, "giantswarm.tenant.from-header")`,
+            ]
+          }
+          output {
+            logs    = [otelcol.processor.batch.default.input]
+          }
         }
         // Batch processor for efficient export.
         // send_batch_max_size caps the number of items per export call, preventing individual
@@ -173,38 +190,38 @@ alloy:
         // Both size fields are set to the same value so batch semantics are simple and predictable:
         // flush when send_batch_max_size items are queued, or when timeout elapses.
         otelcol.processor.batch "default" {
-        	send_batch_size     = 1024
-        	send_batch_max_size = 1024
-        	timeout             = "500ms"
-        	output {
-        		logs = [
-        			otelcol.processor.filter.giantswarm.input,
-        		]
-        	}
+          send_batch_size     = 1024
+          send_batch_max_size = 1024
+          timeout             = "500ms"
+          output {
+            logs = [
+              otelcol.processor.filter.giantswarm.input,
+            ]
+          }
         }
         // Per-tenant routing
         otelcol.processor.filter "giantswarm" {
-        	logs {
-        		log_record = [
-        			`resource.attributes["giantswarm.tenant"] != "giantswarm"`,
-        		]
-        	}
-        	output {
-        		logs    = [otelcol.exporter.otlphttp.giantswarm_loki.input]
-        	}
+          logs {
+            log_record = [
+              `resource.attributes["giantswarm.tenant"] != "giantswarm"`,
+            ]
+          }
+          output {
+            logs    = [otelcol.exporter.otlphttp.giantswarm_loki.input]
+          }
         }
         // OTLP HTTP exporter for logs — tenant giantswarm → Loki
         otelcol.exporter.otlphttp "giantswarm_loki" {
-        	client {
-        		auth     = otelcol.auth.basic.loki_credentials.handler
-        		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-otlp-url"])
-        		tls {
-        			insecure_skip_verify = false
-        		}
-        		headers = {
-        			"X-Scope-OrgID" = "giantswarm",
-        		}
-        	}
+          client {
+            auth     = otelcol.auth.basic.loki_credentials.handler
+            endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-otlp-url"])
+            tls {
+              insecure_skip_verify = false
+            }
+            headers = {
+              "X-Scope-OrgID" = "giantswarm",
+            }
+          }
         }
     # Resource configuration based on https://github.com/giantswarm/giantswarm/issues/32655
     # CPU limits updated in https://github.com/giantswarm/giantswarm/issues/34619 to prevent throttling

@@ -150,28 +150,6 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			tracingEnabled: true,
 		},
 		{
-			name: "WorkloadCluster_NoneEnabled",
-			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
-					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
-					},
-				},
-				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						Kind: "AWSCluster",
-					},
-				},
-			},
-			tenants: []string{"giantswarm"},
-			// goldenPath omitted - this should return an error
-			loggingEnabled: false,
-			tracingEnabled: false,
-		},
-		{
 			name: "ManagementCluster_OTLPTraces",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -192,6 +170,28 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.otlp-traces.yaml"),
 			loggingEnabled: false,
 			tracingEnabled: true,
+		},
+		{
+			name: "WorkloadCluster_NoneEnabled",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "default",
+					Labels: map[string]string{
+						"giantswarm.io/cluster":     "test-cluster",
+						"cluster.x-k8s.io/provider": "aws",
+					},
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants: []string{"giantswarm"},
+			// goldenPath omitted - this should return an error
+			loggingEnabled: false,
+			tracingEnabled: false,
 		},
 		{
 			name: "ManagementCluster_NoneEnabled",
