@@ -380,7 +380,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 	}
 
 	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs, traces and OTLP data - TODO rename alloy-events to alloy-cluster
-	otlpEnabled := r.Config.Monitoring.OTLPEnabled && r.Config.Monitoring.IsMonitoringEnabled(cluster) || (r.Config.Logging.OTLPEnabled && r.Config.Logging.IsLoggingEnabled(cluster))
+	otlpEnabled := (r.Config.Monitoring.OTLPEnabled && r.Config.Monitoring.IsMonitoringEnabled(cluster)) || (r.Config.Logging.OTLPEnabled && r.Config.Logging.IsLoggingEnabled(cluster))
 	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) || otlpEnabled {
 		// Create or update Alloy events configuration
 		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
@@ -444,7 +444,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 	}
 
 	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs, traces and OTLP data - TODO rename alloy-events to alloy-cluster
-	otlpEnabled := r.Config.Monitoring.OTLPEnabled && r.Config.Monitoring.IsMonitoringEnabled(cluster) || (r.Config.Logging.OTLPEnabled && r.Config.Logging.IsLoggingEnabled(cluster))
+	otlpEnabled := (r.Config.Monitoring.OTLPEnabled && r.Config.Monitoring.IsMonitoringEnabled(cluster)) || (r.Config.Logging.OTLPEnabled && r.Config.Logging.IsLoggingEnabled(cluster))
 	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) || otlpEnabled {
 		// Clean up any existing alloy events configuration
 		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
