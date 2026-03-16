@@ -10,7 +10,7 @@ Set these labels on the `cluster.x-k8s.io/Cluster` object to control which featu
 |---|---|---|
 | Metrics| `observability.giantswarm.io/monitoring` | enabled |
 | Logs | `observability.giantswarm.io/logging` | enabled |
-| Tracing (OTLP traces → Tempo) | `observability.giantswarm.io/tracing` | enabled |
+| Traces | `observability.giantswarm.io/tracing` | enabled |
 | Network monitoring | `observability.giantswarm.io/network-monitoring` | disabled |
 | KEDA authentication | `observability.giantswarm.io/keda-authentication` | disabled |
 
