@@ -8,7 +8,7 @@ Set these labels on the `cluster.x-k8s.io/Cluster` object to control which featu
 
 | Feature | Label | Default |
 |---|---|---|
-| Metrics| `observability.giantswarm.io/monitoring` | enabled |
+| Metrics | `observability.giantswarm.io/monitoring` | enabled |
 | Logs | `observability.giantswarm.io/logging` | enabled |
 | Traces | `observability.giantswarm.io/tracing` | enabled |
 | Network monitoring | `observability.giantswarm.io/network-monitoring` | disabled |
