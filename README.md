@@ -11,6 +11,58 @@ It handles four responsibilities:
 - **Alertmanager configuration** — assembles and pushes tenant Alertmanager configs to Mimir Alertmanager from labeled Kubernetes Secrets.
 - **Dashboard provisioning** — provisions Grafana dashboards from labeled Kubernetes ConfigMaps, including folder hierarchy management.
 
+## Project Structure
+
+```
+observability-operator/
+├── api/                                # CRD type definitions (kubebuilder)
+│   ├── v1alpha1/                       # GrafanaOrganization v1alpha1
+│   └── v1alpha2/                       # GrafanaOrganization v1alpha2 (storage version)
+├── cmd/
+│   └── main.go                         # Operator entry point
+├── config/                             # Kubebuilder manifests (CRDs, RBAC, webhooks)
+├── docs/                               # Feature documentation
+├── helm/
+│   └── observability-operator/         # Helm chart for deployment
+│       └── files/alertmanager/         # Alertmanager config templates
+├── internal/
+│   ├── controller/                     # Reconcilers (cluster, dashboard, alertmanager, grafanaorg)
+│   ├── mapper/                         # Watch event mappers (dashboard, organization)
+│   ├── predicates/                     # Event filter predicates
+│   └── webhook/                        # Validating & conversion webhooks
+│       ├── v1/                         # Secret & ConfigMap validators
+│       ├── v1alpha1/                   # GrafanaOrganization v1alpha1 validator
+│       ├── v1alpha2/                   # GrafanaOrganization v1alpha2 validator
+│       └── validation/                 # Shared validation logic
+├── pkg/
+│   ├── agent/                          # Alloy ConfigMap/Secret repository
+│   │   ├── collectors/                 # Per-signal config builders:
+│   │   │   ├── metrics/                # Alloy metrics config + KEDA auth objects
+│   │   │   ├── logs/                   # Alloy logs + network monitoring config
+│   │   │   └── events/                 # Alloy Kubernetes events config
+│   │   └── common/                     # Shared Alloy config keys
+│   ├── alerting/
+│   │   ├── alertmanager/               # Assembles + pushes config to Mimir Alertmanager API
+│   │   └── heartbeat/                  # Cronitor heartbeat monitor management
+│   ├── auth/                           # Gateway auth secrets (Mimir, Loki, Tempo credentials)
+│   ├── bundle/                         # observability-bundle App/HelmRelease CR reconciliation
+│   ├── common/                         # Shared utilities (labels, tenancy, organization helpers)
+│   ├── config/                         # Operator config struct from Helm values / CLI flags
+│   ├── domain/                         # Domain types (orgs, dashboards, folders, clusters)
+│   ├── grafana/                        # Grafana HTTP client (orgs, datasources, dashboards, SSO)
+│   │   └── client/                     # HTTP client, TLS, credential management
+│   ├── metrics/                        # Prometheus metrics declarations (all custom metrics)
+│   └── monitoring/
+│       ├── mimir/                      # Mimir querier (head series)
+│       └── sharding/                   # Per-cluster agent sharding logic
+├── tests/
+│   ├── alertmanager-routes/            # BATS route tests + Go integration tests
+│   ├── alertmanager-integration/       # Kind + Mimir setup for integration tests
+│   ├── ats/                            # Acceptance test suite
+│   └── bats/                           # BATS test framework
+└── CHANGELOG.md                        # Keep a Changelog format
+```
+
 ## Architecture
 
 Four controllers run in a single binary:
