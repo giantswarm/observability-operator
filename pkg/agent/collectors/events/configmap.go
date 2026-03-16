@@ -100,6 +100,8 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate alloy events config: %w", err)
 	}
+
+	// Generate the values YAML that wraps the Alloy config
 	valuesYAML, err := s.generateEventsYAMLConfig(alloyConfig, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled, isWorkloadCluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate events YAML config: %w", err)
