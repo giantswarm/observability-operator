@@ -16,7 +16,6 @@ Set these labels on the `cluster.x-k8s.io/Cluster` object to control which featu
 
 Both the installation-level `enabled` flag (Helm value) and the per-cluster label must allow the feature for it to be active.
 
-
 ### OTLP signals (installation-level opt-in)
 
 OTLP metrics and OTLP logs are enabled at the **installation level** via Helm values, and then gated per cluster by the existing `monitoring` / `logging` labels.
