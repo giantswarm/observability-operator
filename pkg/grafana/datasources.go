@@ -99,7 +99,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 
 	// Add Loki datasource for multi-tenant data reading
 	lokiDatasource := DatasourceLoki().Merge(Datasource{
-		Name: "Loki",
+		Name: LokiDatasourceName,
 		UID:  LokiDatasourceUID,
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
@@ -129,8 +129,8 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 	datasources = append(datasources, lokiDatasource)
 
 	// Add Mimir datasource for multi-tenant data reading
-	datasources = append(datasources, DatasourceMimir().Merge(Datasource{
-		Name:      "Mimir",
+	mimirDatasource := DatasourceMimir().Merge(Datasource{
+		Name:      MimirDatasourceName,
 		UID:       MimirDatasourceUID,
 		IsDefault: true,
 		JSONData: map[string]any{
@@ -140,12 +140,26 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		SecureJSONData: map[string]string{
 			"httpHeaderValue1": multiTenantIDsHeaderValue,
 		},
-	}))
+	})
+
+	// Add tracing integration if tracing is enabled
+	if s.cfg.Tracing.Enabled {
+		// Add exemplar destinations for Mimir to Tempo integration
+		mimirDatasource.JSONData["exemplarTraceIdDestinations"] = []map[string]any{
+			{
+				"name":            "traceID",
+				"datasourceUid":   TempoDatasourceUID,
+				"urlDisplayLabel": "View in Tempo",
+			},
+		}
+	}
+
+	datasources = append(datasources, mimirDatasource)
 
 	// Add Tempo datasource - only if tracing is enabled
 	if s.cfg.Tracing.Enabled {
-		datasources = append(datasources, DatasourceTempo().Merge(Datasource{
-			Name: "Tempo",
+		tempoDatasource := DatasourceTempo().Merge(Datasource{
+			Name: TempoDatasourceName,
 			UID:  TempoDatasourceUID,
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
@@ -153,7 +167,8 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 			SecureJSONData: map[string]string{
 				"httpHeaderValue1": multiTenantIDsHeaderValue,
 			},
-		}))
+		})
+		datasources = append(datasources, tempoDatasource)
 	}
 
 	// 2. Create per-tenant datasources ONLY for alerting-enabled tenants
@@ -162,7 +177,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		for _, tenant := range alertingTenants {
 			// Per-tenant Loki datasource for log viewing and alerting
 			lokiPerTenantDatasource := DatasourceLoki().Merge(Datasource{
-				Name: fmt.Sprintf("Loki (%s)", tenant.Name),
+				Name: fmt.Sprintf("%s (%s)", LokiDatasourceName, tenant.Name),
 				UID:  fmt.Sprintf("%s-%s", LokiDatasourceUID, tenant.Name),
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
@@ -190,8 +205,8 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 			datasources = append(datasources, lokiPerTenantDatasource)
 
 			// Per-tenant Mimir datasource for rules management
-			datasources = append(datasources, DatasourceMimir().Merge(Datasource{
-				Name: fmt.Sprintf("Mimir (%s)", tenant.Name),
+			mimirPerTenantDatasource := DatasourceMimir().Merge(Datasource{
+				Name: fmt.Sprintf("%s (%s)", MimirDatasourceName, tenant.Name),
 				UID:  fmt.Sprintf("%s-%s", MimirDatasourceUID, tenant.Name),
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
@@ -200,11 +215,23 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 				SecureJSONData: map[string]string{
 					"httpHeaderValue1": tenant.Name,
 				},
-			}))
+			})
+
+			if s.cfg.Tracing.Enabled {
+				mimirPerTenantDatasource.JSONData["exemplarTraceIdDestinations"] = []map[string]any{
+					{
+						"name":            "traceID",
+						"datasourceUid":   TempoDatasourceUID,
+						"urlDisplayLabel": "View in Tempo",
+					},
+				}
+			}
+
+			datasources = append(datasources, mimirPerTenantDatasource)
 
 			// Per-tenant Alertmanager datasource for alerts management
 			datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
-				Name: fmt.Sprintf("Mimir Alertmanager (%s)", tenant.Name),
+				Name: fmt.Sprintf("%s (%s)", MimirAlertmanagerDatasourceName, tenant.Name),
 				UID:  fmt.Sprintf("%s-%s", MimirAlertmanagerDatasourceUID, tenant.Name),
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
@@ -219,7 +246,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		tenant := alertingTenants[0]
 		// Alertmanager datasource for alerts management
 		datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
-			Name: "Mimir Alertmanager",
+			Name: MimirAlertmanagerDatasourceName,
 			UID:  MimirAlertmanagerDatasourceUID,
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,

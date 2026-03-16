@@ -3,8 +3,10 @@ package grafana
 import "fmt"
 
 const (
-	// datasourceUIDPrefix is the prefix for all datasources managed by the operator
-	datasourceUIDPrefix       = "gs-"
+	// datasourceUIDPrefix is the prefix for all datasource UIDs managed by the operator
+	datasourceUIDPrefix = "gs-"
+	// datasourceNamePrefix is the prefix for all datasource display names managed by the operator
+	datasourceNamePrefix      = "GS "
 	datasourceProxyAccessMode = "proxy"
 
 	// traceIDRegex is a regular expression pattern that matches trace IDs in raw log lines.
@@ -38,6 +40,12 @@ var (
 	MimirDatasourceUID             = fmt.Sprintf("%smimir", datasourceUIDPrefix)
 	MimirAlertmanagerDatasourceUID = fmt.Sprintf("%smimir-alertmanager", datasourceUIDPrefix)
 	TempoDatasourceUID             = fmt.Sprintf("%stempo", datasourceUIDPrefix)
+
+	LokiDatasourceName              = datasourceNamePrefix + "Loki"
+	MimirDatasourceName             = datasourceNamePrefix + "Mimir"
+	MimirAlertmanagerDatasourceName = datasourceNamePrefix + "Mimir Alertmanager"
+	TempoDatasourceName             = datasourceNamePrefix + "Tempo"
+	MimirCardinalityDatasourceName  = datasourceNamePrefix + "Mimir Cardinality"
 )
 
 // Predefined datasources
@@ -94,7 +102,7 @@ var (
 	DatasourceMimirCardinality = func() Datasource {
 		return Datasource{
 			Type:   "marcusolsson-json-datasource",
-			Name:   "Mimir Cardinality",
+			Name:   MimirCardinalityDatasourceName,
 			UID:    fmt.Sprintf("%smimir-cardinality", datasourceUIDPrefix),
 			URL:    "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/",
 			Access: datasourceProxyAccessMode,
