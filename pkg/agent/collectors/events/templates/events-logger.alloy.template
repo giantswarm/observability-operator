@@ -171,6 +171,9 @@ otelcol.processor.k8sattributes "default" {
 		{{- if .OTLPLogsEnabled }}
 		logs    = [otelcol.processor.attributes.extract_tenant_header.input]
 		{{- end }}
+		{{- if .OTLPLogsEnabled }}
+		logs    = [otelcol.processor.transform.default.input]
+		{{- end }}
 	}
 }
 
@@ -226,6 +229,17 @@ otelcol.processor.transform "promote_header_to_resource" {
 		statements = [
 			`set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
 			`delete_key(log.attributes, "giantswarm.tenant.from-header")`,
+		]
+	}
+	{{- end }}
+	{{- if .OTLPLogsEnabled }}
+	log_statements {
+		context = "resource"
+		statements = [
+			`set(attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
+			`set(attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
+			`set(attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
+			`set(attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
 		]
 	}
 	{{- end }}
