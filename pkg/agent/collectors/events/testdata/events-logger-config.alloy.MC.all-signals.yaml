@@ -259,23 +259,6 @@ alloy:
               `delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
             ]
           }
-          log_statements {
-            context = "resource"
-            statements = [
-              // Cluster metadata
-              `set(attributes["giantswarm.cluster.id"], "test-installation")`,
-              `set(attributes["giantswarm.cluster.type"], "management_cluster")`,
-              `set(attributes["giantswarm.cluster.organization"], "test-organization")`,
-              `set(attributes["giantswarm.cluster.provider"], "capa")`,
-              // Tenant resolution — step 1: promote valid pod-label value
-              `set(attributes["giantswarm.tenant"], "giantswarm") where attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
-              // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
-              `set(attributes["giantswarm.tenant"], "giantswarm") where attributes["giantswarm.tenant.from-header"] == "giantswarm"`,
-              // Tenant resolution — step 3: clean up temporary attributes
-              `delete_key(attributes, "giantswarm.tenant.from-label")`,
-              `delete_key(attributes, "giantswarm.tenant.from-header")`,
-            ]
-          }
           output {
             traces = [otelcol.processor.batch.default.input]
             metrics = [otelcol.processor.batch.default.input]
