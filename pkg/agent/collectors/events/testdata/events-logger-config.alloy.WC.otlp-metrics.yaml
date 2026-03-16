@@ -27,12 +27,16 @@ alloy:
           level  = "info"
           format = "logfmt"
         }
+        remote.kubernetes.secret "credentials" {
+          namespace = "kube-system"
+          name = "alloy-events"
+        }
         // Basic authentication for Mimir
         otelcol.auth.basic "mimir_credentials" {
           username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
           password = remote.kubernetes.secret.credentials.data["metrics-password"]
         }
-        // OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
+        // OTLP receiver — accepts metrics from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
         // processors, enabling the X-Scope-OrgID header to be used for tenant routing.
         otelcol.receiver.otlp "default" {
@@ -99,7 +103,7 @@ alloy:
         }
         // Add cluster metadata and resolve giantswarm.tenant for all OTLP signals.
         //
-        // Tenant resolution (applied identically to traces, metrics, and logs):
+        // Tenant resolution:
         //   1. Label extraction  — giantswarm.tenant.from-label (set by k8sattributes from
         //      the pod label observability.giantswarm.io/tenant) is already in resource attributes
         //   2. Header extraction — giantswarm.tenant.from-header (promoted from signal attributes by
@@ -117,11 +121,11 @@ alloy:
           metric_statements {
             context = "resource"
             statements = [
-              // Cluster metadata
-              `set(resource.attributes["giantswarm.cluster.id"], "test-cluster")`,
-              `set(resource.attributes["giantswarm.cluster.type"], "workload_cluster")`,
-              `set(resource.attributes["giantswarm.cluster.organization"], "test-organization")`,
-              `set(resource.attributes["giantswarm.cluster.provider"], "capa")`,
+              // Cluster metadata (OTel / k8s semantic conventions)
+              `set(resource.attributes["k8s.cluster.name"], "test-cluster")`,
+              `set(resource.attributes["k8s.cluster.type"], "workload_cluster")`,
+              `set(resource.attributes["k8s.cluster.organization"], "test-organization")`,
+              `set(resource.attributes["cloud.provider"], "capa")`,
               // Tenant resolution — step 1: promote valid pod-label value
               `set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
               // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)

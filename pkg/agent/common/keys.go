@@ -68,12 +68,12 @@ const (
 	MimirRemoteWriteTimeout           = "60s"                               // Timeout for remote write operations
 
 	// Mimir secret keys for remote write configuration and authentication.
-	MimirQueryAPIURLKey            = "metrics-query-url"         // URL for Mimir query endpoint
-	MimirRulerAPIURLKey            = "metrics-ruler-url"         // URL for Mimir ruler API
-	MimirRemoteWriteAPIUsernameKey = "metrics-username"          // Username for remote write / OTLP auth
-	MimirRemoteWriteAPIPasswordKey = "metrics-password"          // Password for remote write / OTLP auth
-	MimirRemoteWriteAPIURLKey      = "metrics-remote-write-url"  // URL for remote write endpoint
-	MimirRemoteWriteAPINameKey     = "metrics-remote-write-name" // Name identifier for remote write
+	MimirQueryAPIURLKey        = "metrics-query-url"         // URL for Mimir query endpoint
+	MimirRulerAPIURLKey        = "metrics-ruler-url"         // URL for Mimir ruler API
+	MimirUsernameKey           = "metrics-username"          // Username for Mimir remote write and OTLP auth
+	MimirPasswordKey           = "metrics-password"          // Password for Mimir remote write and OTLP auth
+	MimirRemoteWriteAPIURLKey  = "metrics-remote-write-url"  // URL for remote write endpoint
+	MimirRemoteWriteAPINameKey = "metrics-remote-write-name" // Name identifier for remote write
 
 	MimirOTLPBaseURLFormat = MimirBaseURLFormat + "/otlp" // Base URL for Mimir OTLP — exporter appends /v1/metrics
 	MimirOTLPURLKey        = "metrics-otlp-url"           // Secret key: base URL for Mimir OTLP write (WC only)

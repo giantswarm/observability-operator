@@ -64,7 +64,7 @@ alloy:
           namespaces = []
           forward_to = [loki.write.default.receiver]
         }
-        // Loki target configuration
+        // Write Kubernetes events to Loki
         loki.write "default" {
           endpoint {
             max_backoff_period = "10m"
@@ -83,7 +83,7 @@ alloy:
             scrape_job       = "kubernetes-events",
           }
         }
-        // OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
+        // OTLP receiver — accepts logs from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
         // processors, enabling the X-Scope-OrgID header to be used for tenant routing.
         otelcol.receiver.otlp "default" {
@@ -96,7 +96,7 @@ alloy:
             include_metadata = true
           }
           output {
-            logs    = [otelcol.processor.k8sattributes.default.input]
+            logs = [otelcol.processor.k8sattributes.default.input]
           }
         }
         // Add Kubernetes metadata to all OTLP signals.
@@ -117,7 +117,7 @@ alloy:
             otel_annotations = true
           }
           output {
-            logs    = [otelcol.processor.attributes.extract_tenant_header.input]
+            logs = [otelcol.processor.attributes.extract_tenant_header.input]
           }
         }
         // Extract the X-Scope-OrgID request header into signal attributes.
@@ -129,7 +129,7 @@ alloy:
             from_context = "metadata.x-scope-orgid"
           }
           output {
-            logs    = [otelcol.processor.transform.promote_header_to_resource.input]
+            logs = [otelcol.processor.transform.promote_header_to_resource.input]
           }
         }
         // Promote signal-level header attribute to resource attributes.
@@ -145,12 +145,12 @@ alloy:
             ]
           }
           output {
-            logs    = [otelcol.processor.transform.default.input]
+            logs = [otelcol.processor.transform.default.input]
           }
         }
         // Add cluster metadata and resolve giantswarm.tenant for all OTLP signals.
         //
-        // Tenant resolution (applied identically to traces, metrics, and logs):
+        // Tenant resolution:
         //   1. Label extraction  — giantswarm.tenant.from-label (set by k8sattributes from
         //      the pod label observability.giantswarm.io/tenant) is already in resource attributes
         //   2. Header extraction — giantswarm.tenant.from-header (promoted from signal attributes by
@@ -168,11 +168,11 @@ alloy:
           log_statements {
             context = "resource"
             statements = [
-              // Cluster metadata
-              `set(resource.attributes["giantswarm.cluster.id"], "test-installation")`,
-              `set(resource.attributes["giantswarm.cluster.type"], "management_cluster")`,
-              `set(resource.attributes["giantswarm.cluster.organization"], "test-organization")`,
-              `set(resource.attributes["giantswarm.cluster.provider"], "capa")`,
+              // Cluster metadata (OTel / k8s semantic conventions)
+              `set(resource.attributes["k8s.cluster.name"], "test-installation")`,
+              `set(resource.attributes["k8s.cluster.type"], "management_cluster")`,
+              `set(resource.attributes["k8s.cluster.organization"], "test-organization")`,
+              `set(resource.attributes["cloud.provider"], "capa")`,
               // Tenant resolution — step 1: promote valid pod-label value
               `set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
               // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
@@ -183,7 +183,7 @@ alloy:
             ]
           }
           output {
-            logs    = [otelcol.processor.batch.default.input]
+            logs = [otelcol.processor.batch.default.input]
           }
         }
         // Batch processor for efficient export.
@@ -204,12 +204,10 @@ alloy:
         // Per-tenant routing
         otelcol.processor.filter "giantswarm" {
           logs {
-            log_record = [
-              `resource.attributes["giantswarm.tenant"] != "giantswarm"`,
-            ]
+            log_record = [`resource.attributes["giantswarm.tenant"] != "giantswarm"`]
           }
           output {
-            logs    = [otelcol.exporter.otlphttp.giantswarm_loki.input]
+            logs = [otelcol.exporter.otlphttp.giantswarm_loki.input]
           }
         }
         // OTLP HTTP exporter for logs — tenant giantswarm → Loki

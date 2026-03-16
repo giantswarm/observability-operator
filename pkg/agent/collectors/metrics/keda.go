@@ -40,10 +40,10 @@ func generateKEDAExtraObjects(kedaNamespace string, secretData map[string]string
 	data := kedaTemplateData{
 		SecretName:  kedaAuthSecretName,
 		Namespace:   kedaNamespace,
-		UsernameKey: common.MimirRemoteWriteAPIUsernameKey,
-		PasswordKey: common.MimirRemoteWriteAPIPasswordKey,
-		Username:    secretData[common.MimirRemoteWriteAPIUsernameKey],
-		Password:    secretData[common.MimirRemoteWriteAPIPasswordKey],
+		UsernameKey: common.MimirUsernameKey,
+		PasswordKey: common.MimirPasswordKey,
+		Username:    secretData[common.MimirUsernameKey],
+		Password:    secretData[common.MimirPasswordKey],
 	}
 
 	var buf bytes.Buffer

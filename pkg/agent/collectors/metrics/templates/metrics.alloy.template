@@ -14,8 +14,8 @@ mimir.rules.kubernetes "{{ . }}" {
   {{- if $.IsWorkloadCluster }}
   address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRulerAPIURLKey }}"])
   basic_auth {
-    username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIUsernameKey }}"])
-    password = remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIPasswordKey }}"]
+    username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirUsernameKey }}"])
+    password = remote.kubernetes.secret.credentials.data["{{ $.MimirPasswordKey }}"]
   }
   extra_query_matchers {
     matcher {
@@ -209,8 +209,8 @@ prometheus.remote_write "{{ . }}" {
     {{- if $.IsWorkloadCluster }}
     url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIURLKey }}"])
     basic_auth {
-      username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIUsernameKey }}"])
-      password = remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIPasswordKey }}"]
+      username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirUsernameKey }}"])
+      password = remote.kubernetes.secret.credentials.data["{{ $.MimirPasswordKey }}"]
     }
     {{- else }}
     url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
