@@ -134,7 +134,7 @@ otelcol.auth.basic "loki_credentials" {
 {{- if .TracingEnabled }}{{- $signals = append $signals "traces" }}{{- end -}}
 {{- if .OTLPMetricsEnabled }}{{- $signals = append $signals "metrics" }}{{- end -}}
 {{- if .OTLPLogsEnabled }}{{- $signals = append $signals "logs" }}{{- end -}}
-{{- $n := len $signals -}}
+{{- $n := len $signals }}
 // OTLP receiver — accepts
 {{- if eq $n 1 }} {{ first $signals }}
 {{- else if eq $n 2 }} {{ index $signals 0 }} and {{ index $signals 1 }}

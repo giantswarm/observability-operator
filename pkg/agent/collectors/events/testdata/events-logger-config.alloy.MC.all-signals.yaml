@@ -103,7 +103,8 @@ alloy:
             provider         = "capa",
             scrape_job       = "kubernetes-events",
           }
-        }// OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
+        }
+        // OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
         // processors, enabling the X-Scope-OrgID header to be used for tenant routing.
         otelcol.receiver.otlp "default" {

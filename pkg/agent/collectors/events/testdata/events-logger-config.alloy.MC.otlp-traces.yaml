@@ -59,7 +59,8 @@ alloy:
         remote.kubernetes.secret "credentials" {
           namespace = "kube-system"
           name = "alloy-events"
-        }// OTLP receiver — accepts traces from cluster workloads.
+        }
+        // OTLP receiver — accepts traces from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
         // processors, enabling the X-Scope-OrgID header to be used for tenant routing.
         otelcol.receiver.otlp "default" {
