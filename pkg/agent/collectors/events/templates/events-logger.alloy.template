@@ -171,9 +171,6 @@ otelcol.processor.k8sattributes "default" {
 		{{- if .OTLPLogsEnabled }}
 		logs    = [otelcol.processor.attributes.extract_tenant_header.input]
 		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs    = [otelcol.processor.transform.default.input]
-		{{- end }}
 	}
 }
 
