@@ -42,6 +42,7 @@ spec:
         {{ with .Values.monitoring }}
         - --monitoring-enabled={{ .enabled }}
         - --monitoring-otlp-enabled={{ .otlp.enabled }}
+        - --monitoring-enable-network-monitoring={{.enableNetworkMonitoring }}
         - --monitoring-sharding-scale-up-series-count={{ .sharding.scaleUpSeriesCount }}
         - --monitoring-sharding-scale-down-percentage={{ .sharding.scaleDownPercentage }}
         - --monitoring-wal-truncate-frequency={{ .wal.truncateFrequency }}
@@ -95,10 +96,6 @@ spec:
         {{- if .excludeEventsFromNamespaces }}
         - --logging-exclude-events-from-namespaces={{ .excludeEventsFromNamespaces | join "," }}
         {{- end }}
-        {{- end }}
-        # Network monitoring configuration (logging.enableNetworkMonitoring is deprecated, use monitoring.enableNetworkMonitoring)
-        {{- if or .Values.monitoring.enableNetworkMonitoring .Values.logging.enableNetworkMonitoring }}
-        - --monitoring-enable-network-monitoring=true
         {{- end }}
         env:
         - name: ENABLE_WEBHOOKS

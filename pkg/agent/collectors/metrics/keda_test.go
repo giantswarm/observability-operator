@@ -9,8 +9,8 @@ import (
 
 func TestGenerateKEDAExtraObjects(t *testing.T) {
 	secretData := map[string]string{
-		common.MimirRemoteWriteAPIUsernameKey: "test-cluster",
-		common.MimirRemoteWriteAPIPasswordKey: "test-password",
+		common.MimirUsernameKey: "test-cluster",
+		common.MimirPasswordKey: "test-password",
 	}
 
 	tests := []struct {

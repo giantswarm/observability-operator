@@ -22,7 +22,7 @@ alloy:
           namespaces = []
           forward_to = [loki.write.default.receiver]
         }
-        // Loki target configuration
+        // Write Kubernetes events to Loki
         loki.write "default" {
           endpoint {
             max_backoff_period = "10m"

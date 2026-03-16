@@ -8,13 +8,26 @@ Set these labels on the `cluster.x-k8s.io/Cluster` object to control which featu
 
 | Feature | Label | Default |
 |---|---|---|
-| Metrics | `giantswarm.io/monitoring` | enabled |
-| Logging | `giantswarm.io/logging` | enabled |
-| Tracing | `giantswarm.io/tracing` | enabled |
-| Network monitoring | `giantswarm.io/network-monitoring` | disabled |
-| KEDA authentication | `giantswarm.io/keda-authentication` | disabled |
+| Metrics | `observability.giantswarm.io/monitoring` | enabled |
+| Logs | `observability.giantswarm.io/logging` | enabled |
+| Traces | `observability.giantswarm.io/tracing` | enabled |
+| Network monitoring | `observability.giantswarm.io/network-monitoring` | disabled |
+| KEDA authentication | `observability.giantswarm.io/keda-authentication` | disabled |
 
 Both the installation-level `enabled` flag (Helm value) and the per-cluster label must allow the feature for it to be active.
+
+### OTLP signals (installation-level opt-in)
+
+OTLP metrics and OTLP logs are enabled at the **installation level** via Helm values, and then gated per cluster by the existing `monitoring` / `logging` labels.
+
+| Feature | Helm value | Per-cluster gate |
+|---|---|---|
+| OTLP metrics (workload cluster → Mimir) | `monitoring.otlpEnabled: true` | `observability.giantswarm.io/monitoring` |
+| OTLP logs (workload cluster → Loki) | `logging.otlpEnabled: true` | `observability.giantswarm.io/logging` |
+
+When OTLP metrics is active, resource attributes (`k8s.cluster.name`, `k8s.cluster.type`, `k8s.cluster.organization`, `cloud.provider`) are automatically promoted to Mimir metric labels via `-distributor.otel-promote-resource-attributes`.
+
+Tenant routing for all OTLP signals uses the `giantswarm.tenant` resource attribute, which is resolved from either the pod label `observability.giantswarm.io/tenant` or the `X-Scope-OrgID` HTTP header.
 
 ### Example — disable logging for a cluster
 
@@ -24,7 +37,7 @@ kind: Cluster
 metadata:
   name: my-cluster
   labels:
-    giantswarm.io/logging: "false"
+    observability.giantswarm.io/logging: "false"
 ```
 
 ### Example — enable network monitoring for a cluster
@@ -35,7 +48,7 @@ kind: Cluster
 metadata:
   name: my-cluster
   labels:
-    giantswarm.io/network-monitoring: "true"
+    observability.giantswarm.io/network-monitoring: "true"
 ```
 
 ## KEDA namespace
@@ -45,7 +58,7 @@ When KEDA authentication is enabled, the operator creates a `ClusterTriggerAuthe
 ```yaml
 metadata:
   annotations:
-    giantswarm.io/keda-namespace: my-keda-namespace
+    observability.giantswarm.io/keda-namespace: my-keda-namespace
 ```
 
 ## Sharding overrides
