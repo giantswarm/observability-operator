@@ -16,7 +16,6 @@ Set these labels on the `cluster.x-k8s.io/Cluster` object to control which featu
 
 Both the installation-level `enabled` flag (Helm value) and the per-cluster label must allow the feature for it to be active.
 
-> **Legacy labels:** The `giantswarm.io/*` variants (e.g. `giantswarm.io/monitoring`) are still accepted as aliases for backwards compatibility.
 
 ### OTLP signals (installation-level opt-in)
 
