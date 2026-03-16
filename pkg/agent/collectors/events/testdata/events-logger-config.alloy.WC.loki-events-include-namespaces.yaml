@@ -18,7 +18,7 @@ alloy:
         	name = "alloy-events"
         }
         // Kubernetes events source for Loki
-        loki.source.kubernetes_events "local" {
+        loki.source.kubernetes_events "default" {
         	namespaces = ["namespace1", "namespace2"]
         	forward_to = [loki.write.default.receiver]
         }

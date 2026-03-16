@@ -32,7 +32,7 @@ alloy:
         	name = "alloy-events"
         }
         // Kubernetes events source for Loki
-        loki.source.kubernetes_events "local" {
+        loki.source.kubernetes_events "default" {
         	namespaces = []
         	forward_to = [loki.write.default.receiver]
         }
@@ -74,13 +74,17 @@ alloy:
         	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
         	password = remote.kubernetes.secret.credentials.data["logging-password"]
         }
-        // OTLP receiver — accepts traces, metrics and logs from cluster workloads.
+        // OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
+        // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
+        // processors, enabling the X-Scope-OrgID header to be used for tenant routing.
         otelcol.receiver.otlp "default" {
         	grpc {
-        		endpoint = "0.0.0.0:4317"
+        		endpoint         = "0.0.0.0:4317"
+        		include_metadata = true
         	}
         	http {
-        		endpoint = "0.0.0.0:4318"
+        		endpoint         = "0.0.0.0:4318"
+        		include_metadata = true
         	}
         	output {
         		traces = [otelcol.processor.k8sattributes.default.input]
@@ -89,6 +93,9 @@ alloy:
         	}
         }
         // Add Kubernetes metadata to all OTLP signals.
+        // The tenant pod label is extracted to giantswarm.tenant.from-label (a temporary
+        // attribute) rather than directly to giantswarm.tenant; validation and final
+        // assignment happen in the transform processor below.
         otelcol.processor.k8sattributes "default" {
         	extract {
         		metadata = [
@@ -97,10 +104,56 @@ alloy:
         			"k8s.container.name",
         		]
         		label {
-        			key = "observability.giantswarm.io/tenant"
-        			tag_name = "giantswarm.tenant"
+        			key      = "observability.giantswarm.io/tenant"
+        			tag_name = "giantswarm.tenant.from-label"
         		}
         		otel_annotations = true
+        	}
+        	output {
+        		traces = [otelcol.processor.attributes.extract_tenant_header.input]
+        		metrics = [otelcol.processor.attributes.extract_tenant_header.input]
+        		logs    = [otelcol.processor.attributes.extract_tenant_header.input]
+        	}
+        }
+        // Extract the X-Scope-OrgID request header into signal attributes.
+        // The header is normalized by the receiver to metadata.x-scope-orgid.
+        otelcol.processor.attributes "extract_tenant_header" {
+        	action {
+        		key          = "giantswarm.tenant.from-header"
+        		action       = "insert"
+        		from_context = "metadata.x-scope-orgid"
+        	}
+        	output {
+        		traces = [otelcol.processor.transform.promote_header_to_resource.input]
+        		metrics = [otelcol.processor.transform.promote_header_to_resource.input]
+        		logs    = [otelcol.processor.transform.promote_header_to_resource.input]
+        	}
+        }
+        // Promote signal-level header attribute to resource attributes.
+        // The attributes processor adds giantswarm.tenant.from-header at the signal level (span/log/metric).
+        // This transform copies it to resource.attributes where tenant resolution can access it.
+        otelcol.processor.transform "promote_header_to_resource" {
+        	error_mode = "ignore"
+        	trace_statements {
+        		context = "span"
+        		statements = [
+        			`set(resource.attributes["giantswarm.tenant.from-header"], span.attributes["giantswarm.tenant.from-header"]) where span.attributes["giantswarm.tenant.from-header"] != ""`,
+        			`delete_key(span.attributes, "giantswarm.tenant.from-header")`,
+        		]
+        	}
+        	metric_statements {
+        		context = "datapoint"
+        		statements = [
+        			`set(resource.attributes["giantswarm.tenant.from-header"], datapoint.attributes["giantswarm.tenant.from-header"]) where datapoint.attributes["giantswarm.tenant.from-header"] != ""`,
+        			`delete_key(datapoint.attributes, "giantswarm.tenant.from-header")`,
+        		]
+        	}
+        	log_statements {
+        		context = "log"
+        		statements = [
+        			`set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
+        			`delete_key(log.attributes, "giantswarm.tenant.from-header")`,
+        		]
         	}
         	output {
         		traces = [otelcol.processor.transform.default.input]
@@ -108,34 +161,72 @@ alloy:
         		logs    = [otelcol.processor.transform.default.input]
         	}
         }
-        // Add cluster metadata to traces, metrics and logs
+        // Add cluster metadata and resolve giantswarm.tenant for all OTLP signals.
+        //
+        // Tenant resolution (applied identically to traces, metrics, and logs):
+        //   1. Label extraction  — giantswarm.tenant.from-label (set by k8sattributes from
+        //      the pod label observability.giantswarm.io/tenant) is already in resource attributes
+        //   2. Header extraction — giantswarm.tenant.from-header (promoted from signal attributes by
+        //      the promote_header_to_resource transform) is in resource attributes
+        //   3. Header promotion  — giantswarm.tenant.from-header is promoted to giantswarm.tenant
+        //      only if the value matches an accepted tenant, overriding any label-derived value.
+        //   4. Label promotion   — giantswarm.tenant.from-label is promoted to giantswarm.tenant
+        //      only if the value matches an accepted tenant (and header was not matched).
+        //   5. Cleanup — both temporary attributes are removed.
+        //
+        // Invalid, empty, or absent values from either source are never promoted, so signals
+        // whose tenant cannot be resolved are dropped by the per-tenant filter processors.
         otelcol.processor.transform "default" {
         	error_mode = "ignore"
         	trace_statements {
         		context = "resource"
         		statements = [
-        			`set(attributes["giantswarm.cluster.id"], "test-cluster")`,
-        			`set(attributes["giantswarm.cluster.type"], "workload_cluster")`,
-        			`set(attributes["giantswarm.cluster.organization"], "test-organization")`,
-        			`set(attributes["giantswarm.cluster.provider"], "capa")`,
+        			// Cluster metadata
+        			`set(resource.attributes["giantswarm.cluster.id"], "test-cluster")`,
+        			`set(resource.attributes["giantswarm.cluster.type"], "workload_cluster")`,
+        			`set(resource.attributes["giantswarm.cluster.organization"], "test-organization")`,
+        			`set(resource.attributes["giantswarm.cluster.provider"], "capa")`,
+        			// Tenant resolution — step 1: promote valid pod-label value
+        			`set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
+        			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+        			`set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-header"] == "giantswarm"`,
+        			// Tenant resolution — step 3: clean up temporary attributes
+        			`delete_key(resource.attributes, "giantswarm.tenant.from-label")`,
+        			`delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
         		]
         	}
         	metric_statements {
         		context = "resource"
         		statements = [
-        			`set(attributes["giantswarm.cluster.id"], "test-cluster")`,
-        			`set(attributes["giantswarm.cluster.type"], "workload_cluster")`,
-        			`set(attributes["giantswarm.cluster.organization"], "test-organization")`,
-        			`set(attributes["giantswarm.cluster.provider"], "capa")`,
+        			// Cluster metadata
+        			`set(resource.attributes["giantswarm.cluster.id"], "test-cluster")`,
+        			`set(resource.attributes["giantswarm.cluster.type"], "workload_cluster")`,
+        			`set(resource.attributes["giantswarm.cluster.organization"], "test-organization")`,
+        			`set(resource.attributes["giantswarm.cluster.provider"], "capa")`,
+        			// Tenant resolution — step 1: promote valid pod-label value
+        			`set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
+        			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+        			`set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-header"] == "giantswarm"`,
+        			// Tenant resolution — step 3: clean up temporary attributes
+        			`delete_key(resource.attributes, "giantswarm.tenant.from-label")`,
+        			`delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
         		]
         	}
         	log_statements {
         		context = "resource"
         		statements = [
-        			`set(attributes["giantswarm.cluster.id"], "test-cluster")`,
-        			`set(attributes["giantswarm.cluster.type"], "workload_cluster")`,
-        			`set(attributes["giantswarm.cluster.organization"], "test-organization")`,
-        			`set(attributes["giantswarm.cluster.provider"], "capa")`,
+        			// Cluster metadata
+        			`set(resource.attributes["giantswarm.cluster.id"], "test-cluster")`,
+        			`set(resource.attributes["giantswarm.cluster.type"], "workload_cluster")`,
+        			`set(resource.attributes["giantswarm.cluster.organization"], "test-organization")`,
+        			`set(resource.attributes["giantswarm.cluster.provider"], "capa")`,
+        			// Tenant resolution — step 1: promote valid pod-label value
+        			`set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
+        			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+        			`set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-header"] == "giantswarm"`,
+        			// Tenant resolution — step 3: clean up temporary attributes
+        			`delete_key(resource.attributes, "giantswarm.tenant.from-label")`,
+        			`delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
         		]
         	}
         	output {
@@ -144,11 +235,15 @@ alloy:
         		logs    = [otelcol.processor.batch.default.input]
         	}
         }
-        // Batch processor for efficient export
+        // Batch processor for efficient export.
+        // send_batch_max_size caps the number of items per export call, preventing individual
+        // gRPC messages from exceeding the server's 4 MB decompressed message size limit.
+        // Both size fields are set to the same value so batch semantics are simple and predictable:
+        // flush when send_batch_max_size items are queued, or when timeout elapses.
         otelcol.processor.batch "default" {
-        	send_batch_size     = 8192
-        	send_batch_max_size = 0
-        	timeout             = "200ms"
+        	send_batch_size     = 1024
+        	send_batch_max_size = 1024
+        	timeout             = "500ms"
         	output {
         		traces = [
         			otelcol.processor.filter.giantswarm.input,
@@ -194,10 +289,12 @@ alloy:
         	}
         }
         // OTLP HTTP exporter for metrics — tenant giantswarm → Mimir
+        // Mimir's distributor is configured with -distributor.otel-promote-resource-attributes
+        // to automatically promote resource attributes (cluster metadata) to metric labels.
         otelcol.exporter.otlphttp "giantswarm_mimir" {
         	client {
         		auth     = otelcol.auth.basic.mimir_credentials.handler
-        		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-otlp-write-api-url"])
+        		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-otlp-url"])
         		tls {
         			insecure_skip_verify = false
         		}

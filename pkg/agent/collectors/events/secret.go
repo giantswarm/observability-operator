@@ -68,7 +68,7 @@ func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 		if err != nil {
 			return nil, fmt.Errorf("failed to get mimir otlp password for cluster %s: %w", cluster.Name, err)
 		}
-		secrets[common.MimirOTLPWriteAPIURLKey] = mimirOTLPURL
+		secrets[common.MimirOTLPURLKey] = mimirOTLPURL
 		secrets[common.MimirRemoteWriteAPIUsernameKey] = cluster.Name
 		secrets[common.MimirRemoteWriteAPIPasswordKey] = metricsPassword
 	}

@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/blang/semver/v4"
 
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
@@ -46,7 +45,7 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 	}
 }
 
-func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool, observabilityBundleVersion semver.Version) (map[string]string, error) {
+func (a *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool) (map[string]string, error) {
 	// Defensive validation: This method should only be called when at least one feature is enabled.
 	// The controller ensures this, but we validate here to catch potential bugs.
 	if !loggingEnabled && !tracingEnabled && !otlpMetricsEnabled && !otlpLogsEnabled {
@@ -152,6 +151,7 @@ func (a *Service) generateAlloyEventsConfig(
 		TempoPasswordKey       string
 		OTLPBatchSendBatchSize int
 		OTLPBatchTimeout       string
+		OTLPBatchMaxSize       int
 		Tenants                []string
 		OTLPMetricsEnabled     bool
 		MimirOTLPURLKey        string
@@ -184,9 +184,10 @@ func (a *Service) generateAlloyEventsConfig(
 		TempoPasswordKey:       common.TempoPasswordKey,
 		OTLPBatchSendBatchSize: common.OTLPBatchSendBatchSize,
 		OTLPBatchTimeout:       common.OTLPBatchTimeout,
+		OTLPBatchMaxSize:       common.OTLPBatchMaxSize,
 		Tenants:                tenants,
 		OTLPMetricsEnabled:     otlpMetricsEnabled,
-		MimirOTLPURLKey:        common.MimirOTLPWriteAPIURLKey,
+		MimirOTLPURLKey:        common.MimirOTLPURLKey,
 		MimirOTLPUsernameKey:   common.MimirRemoteWriteAPIUsernameKey,
 		MimirOTLPPasswordKey:   common.MimirRemoteWriteAPIPasswordKey,
 		OTLPLogsEnabled:        otlpLogsEnabled,

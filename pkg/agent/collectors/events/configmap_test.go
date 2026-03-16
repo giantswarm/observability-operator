@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blang/semver/v4"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,17 +26,16 @@ var (
 
 func TestGenerateAlloyEventsConfig(t *testing.T) {
 	tests := []struct {
-		name                       string
-		cluster                    *clusterv1.Cluster
-		tenants                    []string
-		goldenPath                 string
-		observabilityBundleVersion semver.Version
-		loggingEnabled             bool
-		tracingEnabled             bool
-		otlpMetricsEnabled         bool
-		otlpLogsEnabled            bool
-		includeNamespaces          []string
-		excludeNamespaces          []string
+		name               string
+		cluster            *clusterv1.Cluster
+		tenants            []string
+		goldenPath         string
+		loggingEnabled     bool
+		tracingEnabled     bool
+		otlpMetricsEnabled bool
+		otlpLogsEnabled    bool
+		includeNamespaces  []string
+		excludeNamespaces  []string
 	}{
 		{
 			name: "ManagementCluster_LokiEvents",
@@ -56,11 +54,10 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.loki-events.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			loggingEnabled:             true,
-			tracingEnabled:             false,
+			tenants:        []string{"giantswarm"},
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.loki-events.yaml"),
+			loggingEnabled: true,
+			tracingEnabled: false,
 		},
 		{
 			name: "WorkloadCluster_LokiEvents",
@@ -79,11 +76,10 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			loggingEnabled:             true,
-			tracingEnabled:             false,
+			tenants:        []string{"giantswarm"},
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events.yaml"),
+			loggingEnabled: true,
+			tracingEnabled: false,
 		},
 		{
 			name: "WorkloadCluster_LokiEventsIncludeNamespaces",
@@ -102,12 +98,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-include-namespaces.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			loggingEnabled:             true,
-			tracingEnabled:             false,
-			includeNamespaces:          []string{"namespace1", "namespace2"},
+			tenants:           []string{"giantswarm"},
+			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-include-namespaces.yaml"),
+			loggingEnabled:    true,
+			tracingEnabled:    false,
+			includeNamespaces: []string{"namespace1", "namespace2"},
 		},
 		{
 			name: "WorkloadCluster_LokiEventsExcludeNamespaces",
@@ -126,12 +121,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-exclude-namespaces.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.7.0"),
-			loggingEnabled:             true,
-			tracingEnabled:             false,
-			excludeNamespaces:          []string{"namespace1", "namespace2"},
+			tenants:           []string{"giantswarm"},
+			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-exclude-namespaces.yaml"),
+			loggingEnabled:    true,
+			tracingEnabled:    false,
+			excludeNamespaces: []string{"namespace1", "namespace2"},
 		},
 		{
 			name: "ManagementCluster_OTLPTraces",
@@ -150,11 +144,10 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.otlp-traces.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			loggingEnabled:             false,
-			tracingEnabled:             true,
+			tenants:        []string{"giantswarm"},
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.otlp-traces.yaml"),
+			loggingEnabled: false,
+			tracingEnabled: true,
 		},
 		{
 			name: "WorkloadCluster_OTLPTraces",
@@ -173,11 +166,10 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.otlp-traces.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			loggingEnabled:             false,
-			tracingEnabled:             true,
+			tenants:        []string{"giantswarm"},
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.otlp-traces.yaml"),
+			loggingEnabled: false,
+			tracingEnabled: true,
 		},
 		{
 			name: "ManagementCluster_NoneEnabled",
@@ -198,9 +190,8 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants: []string{"giantswarm"},
 			// goldenPath omitted - this should return an error
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			loggingEnabled:             false,
-			tracingEnabled:             false,
+			loggingEnabled: false,
+			tracingEnabled: false,
 		},
 		{
 			name: "WorkloadCluster_NoneEnabled",
@@ -221,9 +212,8 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			},
 			tenants: []string{"giantswarm"},
 			// goldenPath omitted - this should return an error
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			loggingEnabled:             false,
-			tracingEnabled:             false,
+			loggingEnabled: false,
+			tracingEnabled: false,
 		},
 		{
 			name: "ManagementCluster_OTLPMetrics",
@@ -242,12 +232,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.otlp-metrics.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			loggingEnabled:             false,
-			tracingEnabled:             false,
-			otlpMetricsEnabled:         true,
+			tenants:            []string{"giantswarm"},
+			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.MC.otlp-metrics.yaml"),
+			loggingEnabled:     false,
+			tracingEnabled:     false,
+			otlpMetricsEnabled: true,
 		},
 		{
 			name: "WorkloadCluster_OTLPMetrics",
@@ -266,12 +255,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.otlp-metrics.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			loggingEnabled:             false,
-			tracingEnabled:             false,
-			otlpMetricsEnabled:         true,
+			tenants:            []string{"giantswarm"},
+			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.WC.otlp-metrics.yaml"),
+			loggingEnabled:     false,
+			tracingEnabled:     false,
+			otlpMetricsEnabled: true,
 		},
 		{
 			name: "ManagementCluster_LokiEventsAndOTLPLogs",
@@ -290,13 +278,12 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.loki-events-otlp-logs.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			loggingEnabled:             true,
-			tracingEnabled:             false,
-			otlpMetricsEnabled:         false,
-			otlpLogsEnabled:            true,
+			tenants:            []string{"giantswarm"},
+			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.MC.loki-events-otlp-logs.yaml"),
+			loggingEnabled:     true,
+			tracingEnabled:     false,
+			otlpMetricsEnabled: false,
+			otlpLogsEnabled:    true,
 		},
 		{
 			name: "WorkloadCluster_LokiEventsAndOTLPLogs",
@@ -315,13 +302,12 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-otlp-logs.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			loggingEnabled:             true,
-			tracingEnabled:             false,
-			otlpMetricsEnabled:         false,
-			otlpLogsEnabled:            true,
+			tenants:            []string{"giantswarm"},
+			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-otlp-logs.yaml"),
+			loggingEnabled:     true,
+			tracingEnabled:     false,
+			otlpMetricsEnabled: false,
+			otlpLogsEnabled:    true,
 		},
 		{
 			name: "ManagementCluster_AllSignals",
@@ -340,13 +326,12 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.MC.all-signals.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			loggingEnabled:             true,
-			tracingEnabled:             true,
-			otlpMetricsEnabled:         true,
-			otlpLogsEnabled:            true,
+			tenants:            []string{"giantswarm"},
+			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.MC.all-signals.yaml"),
+			loggingEnabled:     true,
+			tracingEnabled:     true,
+			otlpMetricsEnabled: true,
+			otlpLogsEnabled:    true,
 		},
 		{
 			name: "WorkloadCluster_AllSignals",
@@ -365,13 +350,12 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			goldenPath:                 filepath.Join("testdata", "events-logger-config.alloy.WC.all-signals.yaml"),
-			observabilityBundleVersion: semver.MustParse("1.11.0"),
-			loggingEnabled:             true,
-			tracingEnabled:             true,
-			otlpMetricsEnabled:         true,
-			otlpLogsEnabled:            true,
+			tenants:            []string{"giantswarm"},
+			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.WC.all-signals.yaml"),
+			loggingEnabled:     true,
+			tracingEnabled:     true,
+			otlpMetricsEnabled: true,
+			otlpLogsEnabled:    true,
 		},
 	}
 
@@ -427,7 +411,6 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				tt.tracingEnabled,
 				tt.otlpMetricsEnabled,
 				tt.otlpLogsEnabled,
-				tt.observabilityBundleVersion,
 			)
 
 			// Check if this is a "neither enabled" test case (no golden path)
