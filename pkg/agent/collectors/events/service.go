@@ -22,9 +22,6 @@ const (
 	SecretName    = "events-logger-secret"
 )
 
-// minimumTracingSupportVersion is the minimum observability bundle version that supports tracing
-var minimumTracingSupportVersion = semver.MustParse("1.11.0")
-
 type Service struct {
 	Config                  config.Config
 	ConfigurationRepository agent.ConfigurationRepository
@@ -35,29 +32,30 @@ type Service struct {
 	MetricsAuthManager      auth.AuthManager
 }
 
-func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
+func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is configured")
 
-	// Determine if logging, tracing, and OTLP metrics are enabled for this cluster
-	loggingEnabled := a.Config.Logging.IsLoggingEnabled(cluster)
-	tracingEnabled := a.Config.Tracing.IsTracingEnabled(cluster) && observabilityBundleVersion.GE(minimumTracingSupportVersion)
-	otlpMetricsEnabled := a.Config.Monitoring.IsMonitoringEnabled(cluster) && a.Config.Monitoring.OTLPEnabled && observabilityBundleVersion.GE(minimumTracingSupportVersion)
+	// Determine if logging, tracing, and OTLP signals are enabled for this cluster
+	loggingEnabled := s.Config.Logging.IsLoggingEnabled(cluster)
+	tracingEnabled := s.Config.Tracing.IsTracingEnabled(cluster)
+	otlpMetricsEnabled := s.Config.Monitoring.IsMonitoringEnabled(cluster) && s.Config.Monitoring.OTLPEnabled
+	otlpLogsEnabled := s.Config.Logging.IsLoggingEnabled(cluster) && s.Config.Logging.OTLPEnabled
 
 	// Generate ConfigMap data
-	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, observabilityBundleVersion)
+	configMapData, err := s.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 	}
 
 	// Generate Secret data
-	secretData, err := a.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled)
+	secretData, err := s.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events secret: %w", err)
 	}
 
 	// Save configuration via repository
-	err = a.ConfigurationRepository.Save(ctx, &agent.AgentConfiguration{
+	err = s.ConfigurationRepository.Save(ctx, &agent.AgentConfiguration{
 		ClusterName:      cluster.Name,
 		ClusterNamespace: cluster.Namespace,
 		ConfigMapName:    fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
@@ -75,11 +73,11 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	return nil
 }
 
-func (a *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (s *Service) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is removed")
 
-	err := a.ConfigurationRepository.Delete(
+	err := s.ConfigurationRepository.Delete(
 		ctx,
 		cluster.Name,
 		cluster.Namespace,

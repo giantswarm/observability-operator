@@ -12,15 +12,15 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 )
 
-func (a *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string]string, error) {
-	remoteWriteUrl := fmt.Sprintf(common.MimirRemoteWriteEndpointURLFormat, a.Config.Cluster.BaseDomain)
-	password, err := a.AuthManager.GetClusterPassword(ctx, cluster)
+func (s *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string]string, error) {
+	remoteWriteUrl := fmt.Sprintf(common.MimirRemoteWriteEndpointURLFormat, s.Config.Cluster.BaseDomain)
+	password, err := s.AuthManager.GetClusterPassword(ctx, cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mimir auth password for cluster %s: %w", cluster.Name, err)
 	}
 
-	mimirRulerUrl := fmt.Sprintf(common.MimirBaseURLFormat, a.Config.Cluster.BaseDomain)
-	mimirQueryUrl := fmt.Sprintf(common.MimirQueryEndpointURLFormat, a.Config.Cluster.BaseDomain)
+	mimirRulerUrl := fmt.Sprintf(common.MimirBaseURLFormat, s.Config.Cluster.BaseDomain)
+	mimirQueryUrl := fmt.Sprintf(common.MimirQueryEndpointURLFormat, s.Config.Cluster.BaseDomain)
 
 	// Build secret environment variables map
 	secrets := map[string]string{

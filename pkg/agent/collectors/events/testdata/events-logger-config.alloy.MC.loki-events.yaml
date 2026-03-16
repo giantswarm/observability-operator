@@ -40,36 +40,36 @@ alloy:
       create: true
       content: |-
         logging {
-        	level  = "info"
-        	format = "logfmt"
+          level  = "info"
+          format = "logfmt"
         }
         remote.kubernetes.secret "credentials" {
-        	namespace = "kube-system"
-        	name = "alloy-events"
+          namespace = "kube-system"
+          name = "alloy-events"
         }
         // Kubernetes events source for Loki
-        loki.source.kubernetes_events "local" {
-        	namespaces = []
-        	forward_to = [loki.write.default.receiver]
+        loki.source.kubernetes_events "default" {
+          namespaces = []
+          forward_to = [loki.write.default.receiver]
         }
         // Loki target configuration
         loki.write "default" {
-        	endpoint {
-        		max_backoff_period = "10m"
-        		remote_timeout     = "60s"
-        		tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
-        		url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
-        		tls_config {
-        			insecure_skip_verify = false
-        		}
-        	}
-        	external_labels = {
-        		cluster_id       = "test-installation",
-        		cluster_type     = "management_cluster",
-        		organization     = "test-organization",
-        		provider         = "capa",
-        		scrape_job       = "kubernetes-events",
-        	}
+          endpoint {
+            max_backoff_period = "10m"
+            remote_timeout     = "60s"
+            tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
+            url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
+            tls_config {
+              insecure_skip_verify = false
+            }
+          }
+          external_labels = {
+            cluster_id       = "test-installation",
+            cluster_type     = "management_cluster",
+            organization     = "test-organization",
+            provider         = "capa",
+            scrape_job       = "kubernetes-events",
+          }
         }
     # Resource configuration based on https://github.com/giantswarm/giantswarm/issues/32655
     # CPU limits updated in https://github.com/giantswarm/giantswarm/issues/34619 to prevent throttling
