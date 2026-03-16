@@ -171,7 +171,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			loggingEnabled: false,
 			tracingEnabled: true,
 		},
-    {
+		{
 			name: "ManagementCluster_NoneEnabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
