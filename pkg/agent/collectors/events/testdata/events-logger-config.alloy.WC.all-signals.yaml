@@ -197,7 +197,7 @@ alloy:
         otelcol.exporter.otlphttp "giantswarm_mimir" {
         	client {
         		auth     = otelcol.auth.basic.mimir_credentials.handler
-        		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["mimirOTLPWriteAPIURL"])
+        		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-otlp-write-api-url"])
         		tls {
         			insecure_skip_verify = false
         		}

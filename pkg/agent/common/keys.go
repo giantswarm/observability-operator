@@ -17,11 +17,11 @@ const (
 	LokiPushURLFormat = LokiBaseURLFormat + "/loki/api/v1/push"
 
 	// Loki secret keys for authentication and endpoint configuration
-	LokiURLKey         = "logging-url"       // URL for Loki push endpoint
-	LokiTenantIDKey    = "logging-tenant-id" // Tenant ID for multi-tenancy
-	LokiUsernameKey    = "logging-username"  // Username for basic auth
-	LokiPasswordKey    = "logging-password"  // Password for basic auth
-	LokiRulerAPIURLKey = "ruler-api-url"     // URL for Loki ruler API
+	LokiURLKey         = "logging-url"           // URL for Loki push endpoint
+	LokiTenantIDKey    = "logging-tenant-id"     // Tenant ID for multi-tenancy
+	LokiUsernameKey    = "logging-username"      // Username for basic auth
+	LokiPasswordKey    = "logging-password"      // Password for basic auth
+	LokiRulerAPIURLKey = "logging-ruler-api-url" // URL for Loki ruler API
 	// Loki OTLP configuration
 	LokiOTLPBaseURLFormat = LokiBaseURLFormat + "/otlp" // Base URL for Loki OTLP — exporter appends /v1/logs
 	LokiOTLPURLKey        = "logging-otlp-url"          // Secret key: base URL for Loki OTLP write (WC only)
@@ -66,5 +66,5 @@ const (
 	MimirRemoteWriteAPINameKey     = "metrics-remote-write-name" // Name identifier for remote write
 
 	MimirOTLPBaseURLFormat  = MimirBaseURLFormat + "/otlp" // Base URL for Mimir OTLP — exporter appends /v1/metrics
-	MimirOTLPWriteAPIURLKey = "mimirOTLPWriteAPIURL"       // Secret key: base URL for Mimir OTLP write (WC only)
+	MimirOTLPWriteAPIURLKey = "metrics-otlp-write-api-url" // Secret key: base URL for Mimir OTLP write (WC only)
 )
