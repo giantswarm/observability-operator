@@ -127,7 +127,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			tracingEnabled:    false,
 			excludeNamespaces: []string{"namespace1", "namespace2"},
 		},
-    {
+		{
 			name: "ManagementCluster_OTLPTraces",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
