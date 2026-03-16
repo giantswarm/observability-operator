@@ -142,9 +142,7 @@ See the [prometheus/client_golang docs](https://pkg.go.dev/github.com/prometheus
 
 ## Submitting a PR
 
-See [.github/pull_request_template.md](.github/pull_request_template.md) for the full review checklist.
-
 Key points:
 - Update `CHANGELOG.md` under `[Unreleased]` for every meaningful change
-- Update docs if behaviour, feature flags, CRD fields, or configuration changes
+- Update `docs/` and `README.md` if behaviour, feature flags, CRD fields, exposed metrics, or configuration changes
 - Run `make test` and `make tests-alertmanager-routes` before opening the PR
