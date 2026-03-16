@@ -1,96 +1,96 @@
 {{- /*
-	resource_statements renders the OTTL statements block shared by all three signal
-	types (traces, metrics, logs) inside otelcol.processor.transform "default".
-	It must be called with the top-level template data as its argument (dot).
+  resource_statements renders the OTTL statements block shared by all three signal
+  types (traces, metrics, logs) inside otelcol.processor.transform "default".
+  It must be called with the top-level template data as its argument (dot).
 */ -}}
 {{- define "resource_statements" -}}
-		context = "resource"
-		statements = [
-			// Cluster metadata
-			`set(resource.attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
-			`set(resource.attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
-			`set(resource.attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
-			`set(resource.attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
-			// Tenant resolution — step 1: promote valid pod-label value
-			{{- range .Tenants }}
-			`set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
-			{{- end }}
-			// Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
-			{{- range .Tenants }}
-			`set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
-			{{- end }}
-			// Tenant resolution — step 3: clean up temporary attributes
-			`delete_key(resource.attributes, "giantswarm.tenant.from-label")`,
-			`delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
-		]
+    context = "resource"
+    statements = [
+      // Cluster metadata
+      `set(resource.attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
+      `set(resource.attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
+      `set(resource.attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
+      `set(resource.attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+      // Tenant resolution — step 1: promote valid pod-label value
+      {{- range .Tenants }}
+      `set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
+      {{- end }}
+      // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
+      {{- range .Tenants }}
+      `set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-header"] == "{{ . }}"`,
+      {{- end }}
+      // Tenant resolution — step 3: clean up temporary attributes
+      `delete_key(resource.attributes, "giantswarm.tenant.from-label")`,
+      `delete_key(resource.attributes, "giantswarm.tenant.from-header")`,
+    ]
 {{- end }}
 
 logging {
-	level  = "info"
-	format = "logfmt"
+  level  = "info"
+  format = "logfmt"
 }
 
 {{- if .LoggingEnabled }}
 remote.kubernetes.secret "credentials" {
-	namespace = "kube-system"
-	name = "{{ .SecretName }}"
+  namespace = "kube-system"
+  name = "{{ .SecretName }}"
 }
 
 // Kubernetes events source for Loki
 loki.source.kubernetes_events "default" {
-	{{- if and .IsWorkloadCluster .IncludeNamespaces }}
-	namespaces = ["{{ join "\", \"" .IncludeNamespaces }}"]
-	{{- else }}
-	namespaces = []
-	{{- end }}
+  {{- if and .IsWorkloadCluster .IncludeNamespaces }}
+  namespaces = ["{{ join "\", \"" .IncludeNamespaces }}"]
+  {{- else }}
+  namespaces = []
+  {{- end }}
 
-	{{- if and .IsWorkloadCluster .ExcludeNamespaces }}
-	forward_to = [loki.process.default.receiver]
-	{{- else }}
-	forward_to = [loki.write.default.receiver]
-	{{- end }}
+  {{- if and .IsWorkloadCluster .ExcludeNamespaces }}
+  forward_to = [loki.process.default.receiver]
+  {{- else }}
+  forward_to = [loki.write.default.receiver]
+  {{- end }}
 }
 
 {{- if and .IsWorkloadCluster .ExcludeNamespaces }}
 // Exclude configured namespaces from event logs
 loki.process "default" {
-	forward_to = [loki.write.default.receiver]
+  forward_to = [loki.write.default.receiver]
 
-	stage.drop {
-		source = "namespace"
-		expression = {{ join "|" .ExcludeNamespaces | quote }}
-	}
+  stage.drop {
+    source = "namespace"
+    expression = {{ join "|" .ExcludeNamespaces | quote }}
+  }
 }
 {{- end }}
 
 // Loki target configuration
 loki.write "default" {
-	endpoint {
-		max_backoff_period = "{{ .MaxBackoffPeriod }}"
-		remote_timeout     = "{{ .RemoteTimeout }}"
-		tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingTenantIDKey }}"])
+  endpoint {
+    max_backoff_period = "{{ .MaxBackoffPeriod }}"
+    remote_timeout     = "{{ .RemoteTimeout }}"
+    tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingTenantIDKey }}"])
 
-		{{- if .IsWorkloadCluster }}
-		url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingURLKey }}"])
-		basic_auth {
-			username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
-			password = remote.kubernetes.secret.credentials.data["{{ .LoggingPasswordKey }}"]
-		}
-		{{- else }}
-		url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
-		{{- end }}
+    {{- if .IsWorkloadCluster }}
+    url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingURLKey }}"])
+    basic_auth {
+      username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
+      password = remote.kubernetes.secret.credentials.data["{{ .LoggingPasswordKey }}"]
+    }
+    {{- else }}
+    url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
+    {{- end }}
 
-		tls_config {
-			insecure_skip_verify = {{ .InsecureSkipVerify }}
-		}
-	}
-	external_labels = {
-		cluster_id       = "{{ .ClusterID }}",
-		cluster_type     = "{{ .ClusterType }}",
-		organization     = "{{ .Organization }}",
-		provider         = "{{ .Provider }}",
-		scrape_job       = "kubernetes-events",
-	}
+    tls_config {
+      insecure_skip_verify = {{ .InsecureSkipVerify }}
+    }
+  }
+  external_labels = {
+    cluster_id       = "{{ .ClusterID }}",
+    cluster_type     = "{{ .ClusterType }}",
+    organization     = "{{ .Organization }}",
+    provider         = "{{ .Provider }}",
+    scrape_job       = "kubernetes-events",
+  }
 }
 {{- end }}
 
@@ -98,22 +98,22 @@ loki.write "default" {
 {{- if and .IsWorkloadCluster .TracingEnabled }}
 // Basic authentication for Tempo
 otelcol.auth.basic "tempo_credentials" {
-	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TempoUsernameKey }}"])
-	password = remote.kubernetes.secret.credentials.data["{{ .TempoPasswordKey }}"]
+  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TempoUsernameKey }}"])
+  password = remote.kubernetes.secret.credentials.data["{{ .TempoPasswordKey }}"]
 }
 {{- end }}
 {{- if and .IsWorkloadCluster .OTLPMetricsEnabled }}
 // Basic authentication for Mimir
 otelcol.auth.basic "mimir_credentials" {
-	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirOTLPUsernameKey }}"])
-	password = remote.kubernetes.secret.credentials.data["{{ .MimirOTLPPasswordKey }}"]
+  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirOTLPUsernameKey }}"])
+  password = remote.kubernetes.secret.credentials.data["{{ .MimirOTLPPasswordKey }}"]
 }
 {{- end }}
 {{- if and .IsWorkloadCluster .OTLPLogsEnabled }}
 // Basic authentication for Loki
 otelcol.auth.basic "loki_credentials" {
-	username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LokiOTLPUsernameKey }}"])
-	password = remote.kubernetes.secret.credentials.data["{{ .LokiOTLPPasswordKey }}"]
+  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LokiOTLPUsernameKey }}"])
+  password = remote.kubernetes.secret.credentials.data["{{ .LokiOTLPPasswordKey }}"]
 }
 {{- end }}
 
@@ -121,26 +121,26 @@ otelcol.auth.basic "loki_credentials" {
 // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
 // processors, enabling the X-Scope-OrgID header to be used for tenant routing.
 otelcol.receiver.otlp "default" {
-	grpc {
-		endpoint         = "0.0.0.0:4317"
-		include_metadata = true
-	}
-	http {
-		endpoint         = "0.0.0.0:4318"
-		include_metadata = true
-	}
+  grpc {
+    endpoint         = "0.0.0.0:4317"
+    include_metadata = true
+  }
+  http {
+    endpoint         = "0.0.0.0:4318"
+    include_metadata = true
+  }
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [otelcol.processor.k8sattributes.default.input]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [otelcol.processor.k8sattributes.default.input]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs    = [otelcol.processor.k8sattributes.default.input]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [otelcol.processor.k8sattributes.default.input]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [otelcol.processor.k8sattributes.default.input]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs    = [otelcol.processor.k8sattributes.default.input]
+    {{- end }}
+  }
 }
 
 // Add Kubernetes metadata to all OTLP signals.
@@ -148,99 +148,99 @@ otelcol.receiver.otlp "default" {
 // attribute) rather than directly to giantswarm.tenant; validation and final
 // assignment happen in the transform processor below.
 otelcol.processor.k8sattributes "default" {
-	extract {
-		metadata = [
-			"k8s.namespace.name",
-			"k8s.pod.name",
-			"k8s.container.name",
-		]
-		label {
-			key      = "observability.giantswarm.io/tenant"
-			tag_name = "giantswarm.tenant.from-label"
-		}
-		otel_annotations = true
-	}
+  extract {
+    metadata = [
+      "k8s.namespace.name",
+      "k8s.pod.name",
+      "k8s.container.name",
+    ]
+    label {
+      key      = "observability.giantswarm.io/tenant"
+      tag_name = "giantswarm.tenant.from-label"
+    }
+    otel_annotations = true
+  }
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [otelcol.processor.attributes.extract_tenant_header.input]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [otelcol.processor.attributes.extract_tenant_header.input]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs    = [otelcol.processor.attributes.extract_tenant_header.input]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [otelcol.processor.attributes.extract_tenant_header.input]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [otelcol.processor.attributes.extract_tenant_header.input]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs    = [otelcol.processor.attributes.extract_tenant_header.input]
+    {{- end }}
+  }
 }
 
 // Extract the X-Scope-OrgID request header into signal attributes.
 // The header is normalized by the receiver to metadata.x-scope-orgid.
 otelcol.processor.attributes "extract_tenant_header" {
-	action {
-		key          = "giantswarm.tenant.from-header"
-		action       = "insert"
-		from_context = "metadata.x-scope-orgid"
-	}
+  action {
+    key          = "giantswarm.tenant.from-header"
+    action       = "insert"
+    from_context = "metadata.x-scope-orgid"
+  }
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [otelcol.processor.transform.promote_header_to_resource.input]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [otelcol.processor.transform.promote_header_to_resource.input]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs    = [otelcol.processor.transform.promote_header_to_resource.input]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [otelcol.processor.transform.promote_header_to_resource.input]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [otelcol.processor.transform.promote_header_to_resource.input]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs    = [otelcol.processor.transform.promote_header_to_resource.input]
+    {{- end }}
+  }
 }
 
 // Promote signal-level header attribute to resource attributes.
 // The attributes processor adds giantswarm.tenant.from-header at the signal level (span/log/metric).
 // This transform copies it to resource.attributes where tenant resolution can access it.
 otelcol.processor.transform "promote_header_to_resource" {
-	error_mode = "ignore"
+  error_mode = "ignore"
 
-	{{- if .TracingEnabled }}
-	trace_statements {
-		context = "span"
-		statements = [
-			`set(resource.attributes["giantswarm.tenant.from-header"], span.attributes["giantswarm.tenant.from-header"]) where span.attributes["giantswarm.tenant.from-header"] != ""`,
-			`delete_key(span.attributes, "giantswarm.tenant.from-header")`,
-		]
-	}
-	{{- end }}
-	{{- if .OTLPMetricsEnabled }}
-	metric_statements {
-		context = "datapoint"
-		statements = [
-			`set(resource.attributes["giantswarm.tenant.from-header"], datapoint.attributes["giantswarm.tenant.from-header"]) where datapoint.attributes["giantswarm.tenant.from-header"] != ""`,
-			`delete_key(datapoint.attributes, "giantswarm.tenant.from-header")`,
-		]
-	}
-	{{- end }}
-	{{- if .OTLPLogsEnabled }}
-	log_statements {
-		context = "log"
-		statements = [
-			`set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
-			`delete_key(log.attributes, "giantswarm.tenant.from-header")`,
-		]
-	}
-	{{- end }}
+  {{- if .TracingEnabled }}
+  trace_statements {
+    context = "span"
+    statements = [
+      `set(resource.attributes["giantswarm.tenant.from-header"], span.attributes["giantswarm.tenant.from-header"]) where span.attributes["giantswarm.tenant.from-header"] != ""`,
+      `delete_key(span.attributes, "giantswarm.tenant.from-header")`,
+    ]
+  }
+  {{- end }}
+  {{- if .OTLPMetricsEnabled }}
+  metric_statements {
+    context = "datapoint"
+    statements = [
+      `set(resource.attributes["giantswarm.tenant.from-header"], datapoint.attributes["giantswarm.tenant.from-header"]) where datapoint.attributes["giantswarm.tenant.from-header"] != ""`,
+      `delete_key(datapoint.attributes, "giantswarm.tenant.from-header")`,
+    ]
+  }
+  {{- end }}
+  {{- if .OTLPLogsEnabled }}
+  log_statements {
+    context = "log"
+    statements = [
+      `set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
+      `delete_key(log.attributes, "giantswarm.tenant.from-header")`,
+    ]
+  }
+  {{- end }}
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [otelcol.processor.transform.default.input]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [otelcol.processor.transform.default.input]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs    = [otelcol.processor.transform.default.input]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [otelcol.processor.transform.default.input]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [otelcol.processor.transform.default.input]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs    = [otelcol.processor.transform.default.input]
+    {{- end }}
+  }
 }
 
 // Add cluster metadata and resolve giantswarm.tenant for all OTLP signals.
@@ -259,35 +259,35 @@ otelcol.processor.transform "promote_header_to_resource" {
 // Invalid, empty, or absent values from either source are never promoted, so signals
 // whose tenant cannot be resolved are dropped by the per-tenant filter processors.
 otelcol.processor.transform "default" {
-	error_mode = "ignore"
+  error_mode = "ignore"
 
-	{{- if .TracingEnabled }}
-	trace_statements {
-		{{ template "resource_statements" . }}
-	}
-	{{- end }}
-	{{- if .OTLPMetricsEnabled }}
-	metric_statements {
-		{{ template "resource_statements" . }}
-	}
-	{{- end }}
-	{{- if .OTLPLogsEnabled }}
-	log_statements {
-		{{ template "resource_statements" . }}
-	}
-	{{- end }}
+  {{- if .TracingEnabled }}
+  trace_statements {
+    {{ template "resource_statements" . }}
+  }
+  {{- end }}
+  {{- if .OTLPMetricsEnabled }}
+  metric_statements {
+    {{ template "resource_statements" . }}
+  }
+  {{- end }}
+  {{- if .OTLPLogsEnabled }}
+  log_statements {
+    {{ template "resource_statements" . }}
+  }
+  {{- end }}
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [otelcol.processor.batch.default.input]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [otelcol.processor.batch.default.input]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs    = [otelcol.processor.batch.default.input]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [otelcol.processor.batch.default.input]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [otelcol.processor.batch.default.input]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs    = [otelcol.processor.batch.default.input]
+    {{- end }}
+  }
 }
 
 // Batch processor for efficient export.
@@ -296,90 +296,90 @@ otelcol.processor.transform "default" {
 // Both size fields are set to the same value so batch semantics are simple and predictable:
 // flush when send_batch_max_size items are queued, or when timeout elapses.
 otelcol.processor.batch "default" {
-	send_batch_size     = {{ .OTLPBatchSendBatchSize }}
-	send_batch_max_size = {{ .OTLPBatchMaxSize }}
-	timeout             = "{{ .OTLPBatchTimeout }}"
+  send_batch_size     = {{ .OTLPBatchSendBatchSize }}
+  send_batch_max_size = {{ .OTLPBatchMaxSize }}
+  timeout             = "{{ .OTLPBatchTimeout }}"
 
-	output {
-		{{- if .TracingEnabled }}
-		traces = [
-			{{- range .Tenants }}
-			otelcol.processor.filter.{{ . }}.input,
-			{{- end }}
-		]
-		{{- end }}
-		{{- if .OTLPMetricsEnabled }}
-		metrics = [
-			{{- range .Tenants }}
-			otelcol.processor.filter.{{ . }}.input,
-			{{- end }}
-		]
-		{{- end }}
-		{{- if .OTLPLogsEnabled }}
-		logs = [
-			{{- range .Tenants }}
-			otelcol.processor.filter.{{ . }}.input,
-			{{- end }}
-		]
-		{{- end }}
-	}
+  output {
+    {{- if .TracingEnabled }}
+    traces = [
+      {{- range .Tenants }}
+      otelcol.processor.filter.{{ . }}.input,
+      {{- end }}
+    ]
+    {{- end }}
+    {{- if .OTLPMetricsEnabled }}
+    metrics = [
+      {{- range .Tenants }}
+      otelcol.processor.filter.{{ . }}.input,
+      {{- end }}
+    ]
+    {{- end }}
+    {{- if .OTLPLogsEnabled }}
+    logs = [
+      {{- range .Tenants }}
+      otelcol.processor.filter.{{ . }}.input,
+      {{- end }}
+    ]
+    {{- end }}
+  }
 }
 
 // Per-tenant routing
 {{- range .Tenants }}
 otelcol.processor.filter "{{ . }}" {
-	{{- if $.TracingEnabled }}
-	traces {
-		span = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
-	}
-	{{- end }}
-	{{- if $.OTLPMetricsEnabled }}
-	metrics {
-		datapoint = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
-	}
-	{{- end }}
-	{{- if $.OTLPLogsEnabled }}
-	logs {
-		log_record = [
-			`resource.attributes["giantswarm.tenant"] != "{{ . }}"`,
-		]
-	}
-	{{- end }}
-	output {
-		{{- if $.TracingEnabled }}
-		traces = [otelcol.exporter.otlp.{{ . }}_tempo.input]
-		{{- end }}
-		{{- if $.OTLPMetricsEnabled }}
-		metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
-		{{- end }}
-		{{- if $.OTLPLogsEnabled }}
-		logs    = [otelcol.exporter.otlphttp.{{ . }}_loki.input]
-		{{- end }}
-	}
+  {{- if $.TracingEnabled }}
+  traces {
+    span = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
+  }
+  {{- end }}
+  {{- if $.OTLPMetricsEnabled }}
+  metrics {
+    datapoint = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
+  }
+  {{- end }}
+  {{- if $.OTLPLogsEnabled }}
+  logs {
+    log_record = [
+      `resource.attributes["giantswarm.tenant"] != "{{ . }}"`,
+    ]
+  }
+  {{- end }}
+  output {
+    {{- if $.TracingEnabled }}
+    traces = [otelcol.exporter.otlp.{{ . }}_tempo.input]
+    {{- end }}
+    {{- if $.OTLPMetricsEnabled }}
+    metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
+    {{- end }}
+    {{- if $.OTLPLogsEnabled }}
+    logs    = [otelcol.exporter.otlphttp.{{ . }}_loki.input]
+    {{- end }}
+  }
 }
 
 {{- if $.TracingEnabled }}
 // OTLP gRPC exporter for traces — tenant {{ . }}
 otelcol.exporter.otlp "{{ . }}_tempo" {
-	client {
-		{{- if $.IsWorkloadCluster }}
-		auth     = otelcol.auth.basic.tempo_credentials.handler
-		endpoint = "{{ $.TracingEndpoint }}"
-		tls {
-			insecure_skip_verify = false
-		}
-		{{- else }}
-		tls {
-			// Use insecure connection since this exporter uses a (direct) internal Tempo endpoint which is not behind a TLS reverse proxy.
-			insecure = true
-		}
-		endpoint = "tempo-distributor.tempo.svc:4317"
-		{{- end }}
+  client {
+    {{- if $.IsWorkloadCluster }}
+    auth     = otelcol.auth.basic.tempo_credentials.handler
+    endpoint = "{{ $.TracingEndpoint }}"
+    tls {
+      insecure_skip_verify = false
+    }
+    {{- else }}
+    tls {
+      // Use insecure connection since this exporter uses a (direct) internal Tempo endpoint which is not behind a TLS reverse proxy.
+      insecure = true
+    }
+    endpoint = "tempo-distributor.tempo.svc:4317"
+    {{- end }}
 
-		headers = {
-			"X-Scope-OrgID" = "{{ . }}",
-		}
-	}
+    headers = {
+      "X-Scope-OrgID" = "{{ . }}",
+    }
+  }
 }
 {{- end }}
 
@@ -388,48 +388,48 @@ otelcol.exporter.otlp "{{ . }}_tempo" {
 // Mimir's distributor is configured with -distributor.otel-promote-resource-attributes
 // to automatically promote resource attributes (cluster metadata) to metric labels.
 otelcol.exporter.otlphttp "{{ . }}_mimir" {
-	client {
-		{{- if $.IsWorkloadCluster }}
-		auth     = otelcol.auth.basic.mimir_credentials.handler
-		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirOTLPURLKey }}"])
-		tls {
-			insecure_skip_verify = false
-		}
-		{{- else }}
-		endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
-		tls {
-			insecure = true
-		}
-		{{- end }}
+  client {
+    {{- if $.IsWorkloadCluster }}
+    auth     = otelcol.auth.basic.mimir_credentials.handler
+    endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirOTLPURLKey }}"])
+    tls {
+      insecure_skip_verify = false
+    }
+    {{- else }}
+    endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
+    tls {
+      insecure = true
+    }
+    {{- end }}
 
-		headers = {
-			"X-Scope-OrgID" = "{{ . }}",
-		}
-	}
+    headers = {
+      "X-Scope-OrgID" = "{{ . }}",
+    }
+  }
 }
 {{- end }}
 
 {{- if $.OTLPLogsEnabled }}
 // OTLP HTTP exporter for logs — tenant {{ . }} → Loki
 otelcol.exporter.otlphttp "{{ . }}_loki" {
-	client {
-		{{- if $.IsWorkloadCluster }}
-		auth     = otelcol.auth.basic.loki_credentials.handler
-		endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LokiOTLPURLKey }}"])
-		tls {
-			insecure_skip_verify = false
-		}
-		{{- else }}
-		endpoint = "http://loki-gateway.loki.svc:80/otlp"
-		tls {
-			insecure = true
-		}
-		{{- end }}
+  client {
+    {{- if $.IsWorkloadCluster }}
+    auth     = otelcol.auth.basic.loki_credentials.handler
+    endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LokiOTLPURLKey }}"])
+    tls {
+      insecure_skip_verify = false
+    }
+    {{- else }}
+    endpoint = "http://loki-gateway.loki.svc:80/otlp"
+    tls {
+      insecure = true
+    }
+    {{- end }}
 
-		headers = {
-			"X-Scope-OrgID" = "{{ . }}",
-		}
-	}
+    headers = {
+      "X-Scope-OrgID" = "{{ . }}",
+    }
+  }
 }
 {{- end }}
 

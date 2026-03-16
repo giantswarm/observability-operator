@@ -24,16 +24,16 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool) (map[string]string, error) {
+func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool) (map[string]string, error) {
 	secrets := map[string]string{}
 
 	// Add Loki credentials if logging is enabled
 	if loggingEnabled {
-		lokiURL := fmt.Sprintf(common.LokiPushURLFormat, a.Config.Cluster.BaseDomain)
-		lokiRulerURL := fmt.Sprintf(common.LokiBaseURLFormat, a.Config.Cluster.BaseDomain)
+		lokiURL := fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
+		lokiRulerURL := fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
 
 		// Get Loki auth credentials
-		logsPassword, err := a.LogsAuthManager.GetClusterPassword(ctx, cluster)
+		logsPassword, err := s.LogsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
 		}
@@ -47,7 +47,7 @@ func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 
 	// Add tracing credentials if tracing is enabled
 	if tracingEnabled {
-		tracesPassword, err := a.TracesAuthManager.GetClusterPassword(ctx, cluster)
+		tracesPassword, err := s.TracesAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get tempo auth password for cluster %s: %w", cluster.Name, err)
 		}
@@ -57,14 +57,14 @@ func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 	}
 
 	// Add Loki OTLP URL for workload clusters when OTLP logs ingestion is enabled
-	if otlpLogsEnabled && a.Config.Cluster.IsWorkloadCluster(cluster) {
-		secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, a.Config.Cluster.BaseDomain)
+	if otlpLogsEnabled && s.Config.Cluster.IsWorkloadCluster(cluster) {
+		secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
 	}
 
 	// Add Mimir OTLP credentials for workload clusters when OTLP metrics ingestion is enabled
-	if otlpMetricsEnabled && a.Config.Cluster.IsWorkloadCluster(cluster) {
-		mimirOTLPURL := fmt.Sprintf(common.MimirOTLPBaseURLFormat, a.Config.Cluster.BaseDomain)
-		metricsPassword, err := a.MetricsAuthManager.GetClusterPassword(ctx, cluster)
+	if otlpMetricsEnabled && s.Config.Cluster.IsWorkloadCluster(cluster) {
+		mimirOTLPURL := fmt.Sprintf(common.MimirOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
+		metricsPassword, err := s.MetricsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get mimir otlp password for cluster %s: %w", cluster.Name, err)
 		}

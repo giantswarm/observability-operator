@@ -44,49 +44,49 @@ alloy:
       create: true
       content: |-
         logging {
-        	level  = "warn"
-        	format = "logfmt"
+          level  = "warn"
+          format = "logfmt"
         }
         beyla.ebpf "default" {
-        	attributes {
-        		kubernetes {
-        			cluster_name = "test-cluster"
-        			enable = "true"
-        		}
-        		select {
-        			attr = "beyla_network_flow_bytes"
-        			include = [
-        				"k8s.src.namespace",
-        				"k8s.src.name",
-        				"k8s.src.type",
-        				"k8s.dst.namespace",
-        				"k8s.dst.name",
-        				"k8s.dst.type",
-        				"src.cidr",
-        				"src.address",
-        				"src.name",
-        				"dst.cidr",
-        				"dst.address",
-        				"src.zone",
-        				"dst.zone",
-        				"dst.name",
-        				"transport",
-        				"direction",
-        			]
-        		}
-        	}
-        	filters {
-        		network {
-        			attr = "direction"
-        			match = "request"
-        		}
-        	}
-        	metrics {
-        		features = [
-        			"network",
-        			"network_inter_zone",
-        		]
-        	}
+          attributes {
+            kubernetes {
+              cluster_name = "test-installation"
+              enable = "true"
+            }
+            select {
+              attr = "beyla_network_flow_bytes"
+              include = [
+                "k8s.src.namespace",
+                "k8s.src.name",
+                "k8s.src.type",
+                "k8s.dst.namespace",
+                "k8s.dst.name",
+                "k8s.dst.type",
+                "src.cidr",
+                "src.address",
+                "src.name",
+                "dst.cidr",
+                "dst.address",
+                "src.zone",
+                "dst.zone",
+                "dst.name",
+                "transport",
+                "direction",
+              ]
+            }
+          }
+          filters {
+            network {
+              attr = "direction"
+              match = "request"
+            }
+          }
+          metrics {
+            features = [
+              "network",
+              "network_inter_zone",
+            ]
+          }
         }
     # We decided to configure the alloy-logs resources as such after some investigation done https://github.com/giantswarm/giantswarm/issues/32655
     resources:
