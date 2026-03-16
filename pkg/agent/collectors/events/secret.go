@@ -24,7 +24,7 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool) (map[string]string, error) {
+func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool) (map[string]string, error) {
 	secrets := map[string]string{}
 
 	// Add Loki credentials if logging is enabled
@@ -54,6 +54,11 @@ func (a *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 
 		secrets[common.TempoUsernameKey] = cluster.Name
 		secrets[common.TempoPasswordKey] = tracesPassword
+	}
+
+	// Add Loki OTLP URL for workload clusters when OTLP logs ingestion is enabled
+	if otlpLogsEnabled && a.Config.Cluster.IsWorkloadCluster(cluster) {
+		secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, a.Config.Cluster.BaseDomain)
 	}
 
 	// Add Mimir OTLP credentials for workload clusters when OTLP metrics ingestion is enabled

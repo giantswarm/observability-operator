@@ -43,15 +43,16 @@ func (a *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	loggingEnabled := a.Config.Logging.IsLoggingEnabled(cluster)
 	tracingEnabled := a.Config.Tracing.IsTracingEnabled(cluster) && observabilityBundleVersion.GE(minimumTracingSupportVersion)
 	otlpMetricsEnabled := a.Config.Monitoring.IsMonitoringEnabled(cluster) && a.Config.Monitoring.OTLPEnabled && observabilityBundleVersion.GE(minimumTracingSupportVersion)
+	otlpLogsEnabled := a.Config.Logging.IsLoggingEnabled(cluster) && a.Config.Logging.OTLPEnabled && observabilityBundleVersion.GE(minimumTracingSupportVersion)
 
 	// Generate ConfigMap data
-	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, observabilityBundleVersion)
+	configMapData, err := a.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled, observabilityBundleVersion)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 	}
 
 	// Generate Secret data
-	secretData, err := a.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled)
+	secretData, err := a.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events secret: %w", err)
 	}

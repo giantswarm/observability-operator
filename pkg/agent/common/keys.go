@@ -22,6 +22,9 @@ const (
 	LokiUsernameKey    = "logging-username"  // Username for basic auth
 	LokiPasswordKey    = "logging-password"  // Password for basic auth
 	LokiRulerAPIURLKey = "ruler-api-url"     // URL for Loki ruler API
+	// Loki OTLP configuration
+	LokiOTLPBaseURLFormat = LokiBaseURLFormat + "/otlp" // Base URL for Loki OTLP — exporter appends /v1/logs
+	LokiOTLPURLKey        = "logging-otlp-url"          // Secret key: base URL for Loki OTLP write (WC only)
 
 	// Loki performance tuning parameters
 	LokiMaxBackoffPeriod = "10m" // Maximum backoff period for retries
@@ -55,8 +58,6 @@ const (
 	MimirRemoteWriteTimeout           = "60s"                               // Timeout for remote write operations
 
 	// Mimir secret keys for remote write configuration and authentication.
-	// All keys follow the kebab-case signal-purpose convention used by Loki (logging-*)
-	// and Tempo (tracing-*) keys.
 	MimirQueryAPIURLKey            = "metrics-query-url"         // URL for Mimir query endpoint
 	MimirRulerAPIURLKey            = "metrics-ruler-url"         // URL for Mimir ruler API
 	MimirRemoteWriteAPIUsernameKey = "metrics-username"          // Username for remote write / OTLP auth

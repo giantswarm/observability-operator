@@ -94,7 +94,7 @@ alloy:
         		scrape_job       = "kubernetes-events",
         	}
         }
-        // OTLP receiver — accepts traces and metrics from cluster workloads.
+        // OTLP receiver — accepts traces, metrics and logs from cluster workloads.
         otelcol.receiver.otlp "default" {
         	grpc {
         		endpoint = "0.0.0.0:4317"
@@ -124,7 +124,7 @@ alloy:
         		traces = [otelcol.processor.transform.default.input]
         	}
         }
-        // Add cluster metadata to traces and metrics
+        // Add cluster metadata to traces, metrics and logs
         otelcol.processor.transform "default" {
         	error_mode = "ignore"
         	trace_statements {
@@ -199,7 +199,7 @@ alloy:
   crds:
     create: false
   extraObjects:
-  # OTLP gateway service for traces and metrics
+  # OTLP gateway service for traces, metrics and logs
   - apiVersion: v1
     kind: Service
     metadata:

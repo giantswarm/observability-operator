@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation overhaul: rewrote README with architecture tables and feature flags; added CONTRIBUTING.md with dev setup, coding conventions, and testing guide; added per-feature docs (alertmanager.md, dashboards.md, grafana-organization.md, cluster.md, metrics.md); consolidated operator metrics into a single reference page.
 - Add `otelcol.processor.batch` to the OTLP traces pipeline (`send_batch_size=8192`, `timeout=200ms`) for efficient export to Tempo. Warning: may increase RAM usage for alloy-events.
 - Add OTLP metrics ingestion to the events collector (`monitoring.otlp.enabled`, default `true`). When enabled alongside `monitoring.enabled`, the alloy-events collector accepts OTLP metrics on the existing otlp-gateway Service (ports 4317/4318) and routes them per-tenant to Mimir via `/otlp/v1/metrics`. Requires observability-bundle ≥ 1.11.0. External gateway routes (Mimir HTTPRoute `/otlp/v1/metrics`) must be updated before enabling on workload clusters.
+- Add OTLP logs ingestion to the events collector (`logging.otlp.enabled`, default `true`). When enabled alongside `logging.enabled`, alloy-events accepts OTLP logs on the existing otlp-gateway Service and routes them per-tenant to Loki via `/otlp/v1/logs`. Requires `loki.loki.limits_config.allow_structured_metadata: true` and observability-bundle ≥ 1.11.0. External gateway routes must be updated before enabling on workload clusters.
 
 ### Changed 
 
