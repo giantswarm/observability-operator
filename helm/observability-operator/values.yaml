@@ -115,9 +115,6 @@ logging:
   # -- Enable log filtering
   enableNodeFiltering: false
 
-  # -- Deprecated: use monitoring.enableNetworkMonitoring instead
-  enableNetworkMonitoring: false
-
   # -- Default namespaces to collect logs from
   defaultNamespaces: []
   # Example:

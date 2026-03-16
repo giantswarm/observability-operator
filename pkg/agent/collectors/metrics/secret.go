@@ -24,12 +24,12 @@ func (s *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 
 	// Build secret environment variables map
 	secrets := map[string]string{
-		common.MimirQueryAPIURLKey:            mimirQueryUrl,
-		common.MimirRulerAPIURLKey:            mimirRulerUrl,
-		common.MimirRemoteWriteAPIURLKey:      remoteWriteUrl,
-		common.MimirRemoteWriteAPINameKey:     common.MimirRemoteWriteName,
-		common.MimirRemoteWriteAPIUsernameKey: cluster.Name,
-		common.MimirRemoteWriteAPIPasswordKey: password,
+		common.MimirQueryAPIURLKey:        mimirQueryUrl,
+		common.MimirRulerAPIURLKey:        mimirRulerUrl,
+		common.MimirRemoteWriteAPIURLKey:  remoteWriteUrl,
+		common.MimirRemoteWriteAPINameKey: common.MimirRemoteWriteName,
+		common.MimirUsernameKey:           cluster.Name,
+		common.MimirPasswordKey:           password,
 	}
 
 	return secrets, nil

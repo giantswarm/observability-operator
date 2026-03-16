@@ -264,10 +264,6 @@
                     "type": "boolean",
                     "description": "Enable node filtering in Alloy logging configuration"
                 },
-                "enableNetworkMonitoring": {
-                    "type": "boolean",
-                    "description": "Enable network monitoring in Alloy logging configuration"
-                },
                 "defaultNamespaces": {
                     "type": "array",
                     "description": "Default namespaces to collect logs from",

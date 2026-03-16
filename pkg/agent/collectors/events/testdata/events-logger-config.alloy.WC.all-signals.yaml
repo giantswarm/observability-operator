@@ -36,7 +36,7 @@ alloy:
           namespaces = []
           forward_to = [loki.write.default.receiver]
         }
-        // Loki target configuration
+        // Write Kubernetes events to Loki
         loki.write "default" {
           endpoint {
             max_backoff_period = "10m"
@@ -73,8 +73,7 @@ alloy:
         otelcol.auth.basic "loki_credentials" {
           username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
           password = remote.kubernetes.secret.credentials.data["logging-password"]
-        }
-        // OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
+        }// OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
         // processors, enabling the X-Scope-OrgID header to be used for tenant routing.
         otelcol.receiver.otlp "default" {
@@ -89,7 +88,7 @@ alloy:
           output {
             traces = [otelcol.processor.k8sattributes.default.input]
             metrics = [otelcol.processor.k8sattributes.default.input]
-            logs    = [otelcol.processor.k8sattributes.default.input]
+            logs = [otelcol.processor.k8sattributes.default.input]
           }
         }
         // Add Kubernetes metadata to all OTLP signals.
@@ -112,7 +111,7 @@ alloy:
           output {
             traces = [otelcol.processor.attributes.extract_tenant_header.input]
             metrics = [otelcol.processor.attributes.extract_tenant_header.input]
-            logs    = [otelcol.processor.attributes.extract_tenant_header.input]
+            logs = [otelcol.processor.attributes.extract_tenant_header.input]
           }
         }
         // Extract the X-Scope-OrgID request header into signal attributes.
@@ -126,7 +125,7 @@ alloy:
           output {
             traces = [otelcol.processor.transform.promote_header_to_resource.input]
             metrics = [otelcol.processor.transform.promote_header_to_resource.input]
-            logs    = [otelcol.processor.transform.promote_header_to_resource.input]
+            logs = [otelcol.processor.transform.promote_header_to_resource.input]
           }
         }
         // Promote signal-level header attribute to resource attributes.
@@ -158,12 +157,12 @@ alloy:
           output {
             traces = [otelcol.processor.transform.default.input]
             metrics = [otelcol.processor.transform.default.input]
-            logs    = [otelcol.processor.transform.default.input]
+            logs = [otelcol.processor.transform.default.input]
           }
         }
         // Add cluster metadata and resolve giantswarm.tenant for all OTLP signals.
         //
-        // Tenant resolution (applied identically to traces, metrics, and logs):
+        // Tenant resolution:
         //   1. Label extraction  — giantswarm.tenant.from-label (set by k8sattributes from
         //      the pod label observability.giantswarm.io/tenant) is already in resource attributes
         //   2. Header extraction — giantswarm.tenant.from-header (promoted from signal attributes by
@@ -181,11 +180,11 @@ alloy:
           trace_statements {
             context = "resource"
             statements = [
-              // Cluster metadata
-              `set(resource.attributes["giantswarm.cluster.id"], "test-cluster")`,
-              `set(resource.attributes["giantswarm.cluster.type"], "workload_cluster")`,
-              `set(resource.attributes["giantswarm.cluster.organization"], "test-organization")`,
-              `set(resource.attributes["giantswarm.cluster.provider"], "capa")`,
+              // Cluster metadata (OTel / k8s semantic conventions)
+              `set(resource.attributes["k8s.cluster.name"], "test-cluster")`,
+              `set(resource.attributes["k8s.cluster.type"], "workload_cluster")`,
+              `set(resource.attributes["k8s.cluster.organization"], "test-organization")`,
+              `set(resource.attributes["cloud.provider"], "capa")`,
               // Tenant resolution — step 1: promote valid pod-label value
               `set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
               // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
@@ -198,11 +197,11 @@ alloy:
           metric_statements {
             context = "resource"
             statements = [
-              // Cluster metadata
-              `set(resource.attributes["giantswarm.cluster.id"], "test-cluster")`,
-              `set(resource.attributes["giantswarm.cluster.type"], "workload_cluster")`,
-              `set(resource.attributes["giantswarm.cluster.organization"], "test-organization")`,
-              `set(resource.attributes["giantswarm.cluster.provider"], "capa")`,
+              // Cluster metadata (OTel / k8s semantic conventions)
+              `set(resource.attributes["k8s.cluster.name"], "test-cluster")`,
+              `set(resource.attributes["k8s.cluster.type"], "workload_cluster")`,
+              `set(resource.attributes["k8s.cluster.organization"], "test-organization")`,
+              `set(resource.attributes["cloud.provider"], "capa")`,
               // Tenant resolution — step 1: promote valid pod-label value
               `set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
               // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
@@ -215,11 +214,11 @@ alloy:
           log_statements {
             context = "resource"
             statements = [
-              // Cluster metadata
-              `set(resource.attributes["giantswarm.cluster.id"], "test-cluster")`,
-              `set(resource.attributes["giantswarm.cluster.type"], "workload_cluster")`,
-              `set(resource.attributes["giantswarm.cluster.organization"], "test-organization")`,
-              `set(resource.attributes["giantswarm.cluster.provider"], "capa")`,
+              // Cluster metadata (OTel / k8s semantic conventions)
+              `set(resource.attributes["k8s.cluster.name"], "test-cluster")`,
+              `set(resource.attributes["k8s.cluster.type"], "workload_cluster")`,
+              `set(resource.attributes["k8s.cluster.organization"], "test-organization")`,
+              `set(resource.attributes["cloud.provider"], "capa")`,
               // Tenant resolution — step 1: promote valid pod-label value
               `set(resource.attributes["giantswarm.tenant"], "giantswarm") where resource.attributes["giantswarm.tenant.from-label"] == "giantswarm"`,
               // Tenant resolution — step 2: promote valid X-Scope-OrgID header (overrides label)
@@ -232,7 +231,7 @@ alloy:
           output {
             traces = [otelcol.processor.batch.default.input]
             metrics = [otelcol.processor.batch.default.input]
-            logs    = [otelcol.processor.batch.default.input]
+            logs = [otelcol.processor.batch.default.input]
           }
         }
         // Batch processor for efficient export.
@@ -265,17 +264,15 @@ alloy:
             datapoint = [`resource.attributes["giantswarm.tenant"] != "giantswarm"`]
           }
           logs {
-            log_record = [
-              `resource.attributes["giantswarm.tenant"] != "giantswarm"`,
-            ]
+            log_record = [`resource.attributes["giantswarm.tenant"] != "giantswarm"`]
           }
           output {
             traces = [otelcol.exporter.otlp.giantswarm_tempo.input]
             metrics = [otelcol.exporter.otlphttp.giantswarm_mimir.input]
-            logs    = [otelcol.exporter.otlphttp.giantswarm_loki.input]
+            logs = [otelcol.exporter.otlphttp.giantswarm_loki.input]
           }
         }
-        // OTLP gRPC exporter for traces — tenant giantswarm
+        // OTLP gRPC exporter for traces — tenant giantswarm → Tempo
         otelcol.exporter.otlp "giantswarm_tempo" {
           client {
             auth     = otelcol.auth.basic.tempo_credentials.handler

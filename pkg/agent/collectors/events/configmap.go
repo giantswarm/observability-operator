@@ -51,7 +51,7 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	// Defensive validation: This method should only be called when at least one feature is enabled.
 	// The controller ensures this, but we validate here to catch potential bugs.
 	if !loggingEnabled && !tracingEnabled && !otlpMetricsEnabled && !otlpLogsEnabled {
-		return nil, fmt.Errorf("cannot generate alloy events config: neither logging nor tracing nor OTLP metrics is enabled")
+		return nil, fmt.Errorf("cannot generate alloy events config: at least one of logging, tracing, OTLP metrics, or OTLP logs must be enabled")
 	}
 
 	// Get list of tenants
@@ -161,12 +161,10 @@ func (s *Service) generateAlloyEventsConfig(
 		Tenants                []string
 		OTLPMetricsEnabled     bool
 		MimirOTLPURLKey        string
-		MimirOTLPUsernameKey   string
-		MimirOTLPPasswordKey   string
+		MimirUsernameKey       string
+		MimirPasswordKey       string
 		OTLPLogsEnabled        bool
 		LokiOTLPURLKey         string
-		LokiOTLPUsernameKey    string
-		LokiOTLPPasswordKey    string
 	}{
 		ClusterID:              clusterID,
 		ClusterType:            clusterType,
@@ -178,12 +176,14 @@ func (s *Service) generateAlloyEventsConfig(
 		IncludeNamespaces:      s.Config.Logging.IncludeEventsNamespaces,
 		ExcludeNamespaces:      s.Config.Logging.ExcludeEventsNamespaces,
 		SecretName:             apps.AlloyEventsAppName,
+		IsWorkloadCluster:      isWorkloadCluster,
+		LoggingEnabled:         loggingEnabled,
+		OTLPLogsEnabled:        otlpLogsEnabled,
+		LokiOTLPURLKey:         common.LokiOTLPURLKey,
 		LoggingURLKey:          common.LokiURLKey,
 		LoggingTenantIDKey:     common.LokiTenantIDKey,
 		LoggingUsernameKey:     common.LokiUsernameKey,
 		LoggingPasswordKey:     common.LokiPasswordKey,
-		IsWorkloadCluster:      isWorkloadCluster,
-		LoggingEnabled:         loggingEnabled,
 		TracingEnabled:         tracingEnabled,
 		TracingEndpoint:        tracingEndpoint,
 		TempoUsernameKey:       common.TempoUsernameKey,
@@ -194,12 +194,8 @@ func (s *Service) generateAlloyEventsConfig(
 		Tenants:                tenants,
 		OTLPMetricsEnabled:     otlpMetricsEnabled,
 		MimirOTLPURLKey:        common.MimirOTLPURLKey,
-		MimirOTLPUsernameKey:   common.MimirRemoteWriteAPIUsernameKey,
-		MimirOTLPPasswordKey:   common.MimirRemoteWriteAPIPasswordKey,
-		OTLPLogsEnabled:        otlpLogsEnabled,
-		LokiOTLPURLKey:         common.LokiOTLPURLKey,
-		LokiOTLPUsernameKey:    common.LokiUsernameKey,
-		LokiOTLPPasswordKey:    common.LokiPasswordKey,
+		MimirUsernameKey:       common.MimirUsernameKey,
+		MimirPasswordKey:       common.MimirPasswordKey,
 	}
 
 	if err := alloyEventsConfigTemplate.Execute(&buf, data); err != nil {

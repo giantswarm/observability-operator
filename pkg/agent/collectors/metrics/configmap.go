@@ -127,8 +127,8 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		AlloySecretNamespace string
 
 		MimirRulerAPIURLKey                   string
-		MimirRemoteWriteAPIUsernameKey        string
-		MimirRemoteWriteAPIPasswordKey        string
+		MimirUsernameKey                      string
+		MimirPasswordKey                      string
 		MimirRemoteWriteAPIURLKey             string
 		MimirRemoteWriteAPINameKey            string
 		MimirRemoteWriteTimeout               string
@@ -161,8 +161,8 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		AlloySecretNamespace: apps.AlloyNamespace,
 
 		MimirRulerAPIURLKey:                   common.MimirRulerAPIURLKey,
-		MimirRemoteWriteAPIUsernameKey:        common.MimirRemoteWriteAPIUsernameKey,
-		MimirRemoteWriteAPIPasswordKey:        common.MimirRemoteWriteAPIPasswordKey,
+		MimirUsernameKey:                      common.MimirUsernameKey,
+		MimirPasswordKey:                      common.MimirPasswordKey,
 		MimirRemoteWriteAPIURLKey:             common.MimirRemoteWriteAPIURLKey,
 		MimirRemoteWriteAPINameKey:            common.MimirRemoteWriteAPINameKey,
 		MimirRemoteWriteTimeout:               common.MimirRemoteWriteTimeout,

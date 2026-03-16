@@ -1,4 +1,17 @@
 {{- /*
+  promote_header_statements renders the statements array that copies giantswarm.tenant.from-header
+  from the signal-level context up to resource attributes and removes it from the signal.
+  Call with the OTTL context variable name as a string (e.g. "span", "datapoint", "log"):
+    {{ template "promote_header_statements" "span" }}
+*/ -}}
+{{- define "promote_header_statements" -}}
+    statements = [
+      `set(resource.attributes["giantswarm.tenant.from-header"], {{ . }}.attributes["giantswarm.tenant.from-header"]) where {{ . }}.attributes["giantswarm.tenant.from-header"] != ""`,
+      `delete_key({{ . }}.attributes, "giantswarm.tenant.from-header")`,
+    ]
+{{- end }}
+
+{{- /*
   resource_statements renders the OTTL statements block shared by all three signal
   types (traces, metrics, logs) inside otelcol.processor.transform "default".
   It must be called with the top-level template data as its argument (dot).
@@ -6,11 +19,11 @@
 {{- define "resource_statements" -}}
     context = "resource"
     statements = [
-      // Cluster metadata
-      `set(resource.attributes["giantswarm.cluster.id"], "{{ .ClusterID }}")`,
-      `set(resource.attributes["giantswarm.cluster.type"], "{{ .ClusterType }}")`,
-      `set(resource.attributes["giantswarm.cluster.organization"], "{{ .Organization }}")`,
-      `set(resource.attributes["giantswarm.cluster.provider"], "{{ .Provider }}")`,
+      // Cluster metadata (OTel / k8s semantic conventions)
+      `set(resource.attributes["k8s.cluster.name"], "{{ .ClusterID }}")`,
+      `set(resource.attributes["k8s.cluster.type"], "{{ .ClusterType }}")`,
+      `set(resource.attributes["k8s.cluster.organization"], "{{ .Organization }}")`,
+      `set(resource.attributes["cloud.provider"], "{{ .Provider }}")`,
       // Tenant resolution — step 1: promote valid pod-label value
       {{- range .Tenants }}
       `set(resource.attributes["giantswarm.tenant"], "{{ . }}") where resource.attributes["giantswarm.tenant.from-label"] == "{{ . }}"`,
@@ -30,12 +43,12 @@ logging {
   format = "logfmt"
 }
 
-{{- if .LoggingEnabled }}
 remote.kubernetes.secret "credentials" {
   namespace = "kube-system"
   name = "{{ .SecretName }}"
 }
 
+{{- if .LoggingEnabled }}
 // Kubernetes events source for Loki
 loki.source.kubernetes_events "default" {
   {{- if and .IsWorkloadCluster .IncludeNamespaces }}
@@ -63,7 +76,7 @@ loki.process "default" {
 }
 {{- end }}
 
-// Loki target configuration
+// Write Kubernetes events to Loki
 loki.write "default" {
   endpoint {
     max_backoff_period = "{{ .MaxBackoffPeriod }}"
@@ -105,19 +118,28 @@ otelcol.auth.basic "tempo_credentials" {
 {{- if and .IsWorkloadCluster .OTLPMetricsEnabled }}
 // Basic authentication for Mimir
 otelcol.auth.basic "mimir_credentials" {
-  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirOTLPUsernameKey }}"])
-  password = remote.kubernetes.secret.credentials.data["{{ .MimirOTLPPasswordKey }}"]
+  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirUsernameKey }}"])
+  password = remote.kubernetes.secret.credentials.data["{{ .MimirPasswordKey }}"]
 }
 {{- end }}
 {{- if and .IsWorkloadCluster .OTLPLogsEnabled }}
 // Basic authentication for Loki
 otelcol.auth.basic "loki_credentials" {
-  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LokiOTLPUsernameKey }}"])
-  password = remote.kubernetes.secret.credentials.data["{{ .LokiOTLPPasswordKey }}"]
+  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
+  password = remote.kubernetes.secret.credentials.data["{{ .LoggingPasswordKey }}"]
 }
 {{- end }}
 
-// OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
+{{- $signals := list -}}
+{{- if .TracingEnabled }}{{- $signals = append $signals "traces" }}{{- end -}}
+{{- if .OTLPMetricsEnabled }}{{- $signals = append $signals "metrics" }}{{- end -}}
+{{- if .OTLPLogsEnabled }}{{- $signals = append $signals "logs" }}{{- end -}}
+{{- $n := len $signals -}}
+// OTLP receiver — accepts
+{{- if eq $n 1 }} {{ first $signals }}
+{{- else if eq $n 2 }} {{ index $signals 0 }} and {{ index $signals 1 }}
+{{- else }} {{ join ", " (initial $signals) }}, and {{ last $signals }}
+{{- end }} from cluster workloads.
 // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
 // processors, enabling the X-Scope-OrgID header to be used for tenant routing.
 otelcol.receiver.otlp "default" {
@@ -138,7 +160,7 @@ otelcol.receiver.otlp "default" {
     metrics = [otelcol.processor.k8sattributes.default.input]
     {{- end }}
     {{- if .OTLPLogsEnabled }}
-    logs    = [otelcol.processor.k8sattributes.default.input]
+    logs = [otelcol.processor.k8sattributes.default.input]
     {{- end }}
   }
 }
@@ -169,7 +191,7 @@ otelcol.processor.k8sattributes "default" {
     metrics = [otelcol.processor.attributes.extract_tenant_header.input]
     {{- end }}
     {{- if .OTLPLogsEnabled }}
-    logs    = [otelcol.processor.attributes.extract_tenant_header.input]
+    logs = [otelcol.processor.attributes.extract_tenant_header.input]
     {{- end }}
   }
 }
@@ -191,7 +213,7 @@ otelcol.processor.attributes "extract_tenant_header" {
     metrics = [otelcol.processor.transform.promote_header_to_resource.input]
     {{- end }}
     {{- if .OTLPLogsEnabled }}
-    logs    = [otelcol.processor.transform.promote_header_to_resource.input]
+    logs = [otelcol.processor.transform.promote_header_to_resource.input]
     {{- end }}
   }
 }
@@ -205,28 +227,19 @@ otelcol.processor.transform "promote_header_to_resource" {
   {{- if .TracingEnabled }}
   trace_statements {
     context = "span"
-    statements = [
-      `set(resource.attributes["giantswarm.tenant.from-header"], span.attributes["giantswarm.tenant.from-header"]) where span.attributes["giantswarm.tenant.from-header"] != ""`,
-      `delete_key(span.attributes, "giantswarm.tenant.from-header")`,
-    ]
+    {{ template "promote_header_statements" "span" }}
   }
   {{- end }}
   {{- if .OTLPMetricsEnabled }}
   metric_statements {
     context = "datapoint"
-    statements = [
-      `set(resource.attributes["giantswarm.tenant.from-header"], datapoint.attributes["giantswarm.tenant.from-header"]) where datapoint.attributes["giantswarm.tenant.from-header"] != ""`,
-      `delete_key(datapoint.attributes, "giantswarm.tenant.from-header")`,
-    ]
+    {{ template "promote_header_statements" "datapoint" }}
   }
   {{- end }}
   {{- if .OTLPLogsEnabled }}
   log_statements {
     context = "log"
-    statements = [
-      `set(resource.attributes["giantswarm.tenant.from-header"], log.attributes["giantswarm.tenant.from-header"]) where log.attributes["giantswarm.tenant.from-header"] != ""`,
-      `delete_key(log.attributes, "giantswarm.tenant.from-header")`,
-    ]
+    {{ template "promote_header_statements" "log" }}
   }
   {{- end }}
 
@@ -238,14 +251,14 @@ otelcol.processor.transform "promote_header_to_resource" {
     metrics = [otelcol.processor.transform.default.input]
     {{- end }}
     {{- if .OTLPLogsEnabled }}
-    logs    = [otelcol.processor.transform.default.input]
+    logs = [otelcol.processor.transform.default.input]
     {{- end }}
   }
 }
 
 // Add cluster metadata and resolve giantswarm.tenant for all OTLP signals.
 //
-// Tenant resolution (applied identically to traces, metrics, and logs):
+// Tenant resolution:
 //   1. Label extraction  — giantswarm.tenant.from-label (set by k8sattributes from
 //      the pod label observability.giantswarm.io/tenant) is already in resource attributes
 //   2. Header extraction — giantswarm.tenant.from-header (promoted from signal attributes by
@@ -285,7 +298,7 @@ otelcol.processor.transform "default" {
     metrics = [otelcol.processor.batch.default.input]
     {{- end }}
     {{- if .OTLPLogsEnabled }}
-    logs    = [otelcol.processor.batch.default.input]
+    logs = [otelcol.processor.batch.default.input]
     {{- end }}
   }
 }
@@ -340,11 +353,10 @@ otelcol.processor.filter "{{ . }}" {
   {{- end }}
   {{- if $.OTLPLogsEnabled }}
   logs {
-    log_record = [
-      `resource.attributes["giantswarm.tenant"] != "{{ . }}"`,
-    ]
+    log_record = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
   }
   {{- end }}
+
   output {
     {{- if $.TracingEnabled }}
     traces = [otelcol.exporter.otlp.{{ . }}_tempo.input]
@@ -353,13 +365,13 @@ otelcol.processor.filter "{{ . }}" {
     metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
     {{- end }}
     {{- if $.OTLPLogsEnabled }}
-    logs    = [otelcol.exporter.otlphttp.{{ . }}_loki.input]
+    logs = [otelcol.exporter.otlphttp.{{ . }}_loki.input]
     {{- end }}
   }
 }
 
 {{- if $.TracingEnabled }}
-// OTLP gRPC exporter for traces — tenant {{ . }}
+// OTLP gRPC exporter for traces — tenant {{ . }} → Tempo
 otelcol.exporter.otlp "{{ . }}_tempo" {
   client {
     {{- if $.IsWorkloadCluster }}

@@ -2,7 +2,6 @@ package events
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
@@ -27,25 +26,28 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool) (map[string]string, error) {
 	secrets := map[string]string{}
 
-	// Add Loki credentials if logging is enabled
-	if loggingEnabled {
-		lokiURL := fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
-		lokiRulerURL := fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
-
-		// Get Loki auth credentials
+	if loggingEnabled || otlpLogsEnabled {
+		// Add Loki direct-write keys for the loki.write block
+		if loggingEnabled {
+			secrets[common.LokiURLKey] = fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
+			secrets[common.LokiTenantIDKey] = organization.GiantSwarmDefaultTenant
+			secrets[common.LokiRulerAPIURLKey] = fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
+		}
+		// Add Loki OTLP URL when OTLP logs ingestion is enabled
+		if otlpLogsEnabled {
+			secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
+		}
+		// Loki credentials (username/password) are shared by loki.write (direct events logging)
+		// and otelcol.auth.basic loki_credentials (OTLP logs exporter).
 		logsPassword, err := s.LogsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
 		}
-
-		secrets[common.LokiURLKey] = lokiURL
-		secrets[common.LokiTenantIDKey] = organization.GiantSwarmDefaultTenant
 		secrets[common.LokiUsernameKey] = cluster.Name
 		secrets[common.LokiPasswordKey] = logsPassword
-		secrets[common.LokiRulerAPIURLKey] = lokiRulerURL
 	}
 
-	// Add tracing credentials if tracing is enabled
+	// Add Tempo OTLP credentials if trace ingestion is enabled
 	if tracingEnabled {
 		tracesPassword, err := s.TracesAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
@@ -56,21 +58,16 @@ func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 		secrets[common.TempoPasswordKey] = tracesPassword
 	}
 
-	// Add Loki OTLP URL for workload clusters when OTLP logs ingestion is enabled
-	if otlpLogsEnabled && s.Config.Cluster.IsWorkloadCluster(cluster) {
-		secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
-	}
-
-	// Add Mimir OTLP credentials for workload clusters when OTLP metrics ingestion is enabled
-	if otlpMetricsEnabled && s.Config.Cluster.IsWorkloadCluster(cluster) {
+	// Add Mimir OTLP credentials when OTLP metrics ingestion is enabled
+	if otlpMetricsEnabled {
 		mimirOTLPURL := fmt.Sprintf(common.MimirOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
 		metricsPassword, err := s.MetricsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get mimir otlp password for cluster %s: %w", cluster.Name, err)
 		}
 		secrets[common.MimirOTLPURLKey] = mimirOTLPURL
-		secrets[common.MimirRemoteWriteAPIUsernameKey] = cluster.Name
-		secrets[common.MimirRemoteWriteAPIPasswordKey] = metricsPassword
+		secrets[common.MimirUsernameKey] = cluster.Name
+		secrets[common.MimirPasswordKey] = metricsPassword
 	}
 
 	return secrets, nil
