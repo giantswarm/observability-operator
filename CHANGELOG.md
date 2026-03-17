@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prefix all GS-managed Grafana datasource display names with `GS ` (e.g. `GS Loki`, `GS Mimir`, `GS Tempo`, `GS Mimir Alertmanager`) to avoid name collisions with customer-created datasources. UIDs are unchanged, so existing dashboards are unaffected.
 - Enable exemplar trace ID destinations on the Mimir datasource when tracing is enabled, so exemplar dots in metric panels link directly to the corresponding trace in Tempo.
 
+## [0.65.0] - 2026-03-17
+
 ### Added
 
 - Added CLAUDE.md with AI agent context: key file map, pkg/ package descriptions, and coding conventions loaded at session start; improved PR template with detailed per-area checklists.
@@ -988,7 +990,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.64.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.65.0...HEAD
+[0.65.0]: https://github.com/giantswarm/observability-operator/compare/v0.64.0...v0.65.0
 [0.64.0]: https://github.com/giantswarm/observability-operator/compare/v0.63.0...v0.64.0
 [0.63.0]: https://github.com/giantswarm/observability-operator/compare/v0.62.0...v0.63.0
 [0.62.0]: https://github.com/giantswarm/observability-operator/compare/v0.61.0...v0.62.0
