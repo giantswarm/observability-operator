@@ -3,7 +3,7 @@ name: observability-operator
 description: The observability-operator manages the Giant Swarm observability platform.
 home: https://github.com/giantswarm/observability-operator
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
-version: 0.65.0
-appVersion: 0.65.0
+version: 0.66.0
+appVersion: 0.66.0
 annotations:
   io.giantswarm.application.team: "atlas"
