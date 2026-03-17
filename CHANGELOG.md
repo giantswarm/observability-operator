@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Prefix all GS-managed Grafana datasource display names with `GS ` (e.g. `GS Loki`, `GS Mimir`, `GS Tempo`, `GS Mimir Alertmanager`) to avoid name collisions with customer-created datasources. UIDs are unchanged, so existing dashboards are unaffected.
+- Enable exemplar trace ID destinations on the Mimir datasource when tracing is enabled, so exemplar dots in metric panels link directly to the corresponding trace in Tempo.
+
 ## [0.65.0] - 2026-03-17
 
 ### Added
