@@ -42,7 +42,13 @@ func (m *mockAuthManager) DeleteGatewaySecrets(ctx context.Context) error {
 
 var _ auth.AuthManager = &mockAuthManager{}
 
+var defaultScrapeProtocols = []string{"PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"}
+
 func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
+	return newTestServiceWithOptions(monitoringEnabled, exemplarsEnabled, true, defaultScrapeProtocols)
+}
+
+func newTestServiceWithOptions(monitoringEnabled, exemplarsEnabled, nativeHistogramsEnabled bool, scrapeProtocols []string) *Service {
 	return &Service{
 		OrganizationRepository: mocks.NewMockOrganizationRepository("dummy-org"),
 		AuthManager:            &mockAuthManager{},
@@ -56,9 +62,11 @@ func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
 				Region:     "dummy-region",
 			},
 			Monitoring: config.MonitoringConfig{
-				Enabled:              monitoringEnabled,
-				ExemplarsEnabled:     exemplarsEnabled,
-				WALTruncateFrequency: time.Minute,
+				Enabled:                 monitoringEnabled,
+				ExemplarsEnabled:        exemplarsEnabled,
+				NativeHistogramsEnabled: nativeHistogramsEnabled,
+				ScrapeProtocols:         scrapeProtocols,
+				WALTruncateFrequency:    time.Minute,
 				QueueConfig: config.QueueConfig{
 					Capacity:          &[]int{30000}[0],
 					MaxShards:         &[]int{10}[0],
@@ -79,6 +87,8 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		observabilityBundleVersion semver.Version
 		monitoringEnabled          bool
 		exemplarsEnabled           bool
+		nativeHistogramsEnabled    bool
+		scrapeProtocols            []string
 	}{
 		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
@@ -99,6 +109,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "ManagementCluster_TwoTenants_v200",
@@ -118,6 +129,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "WorkloadCluster_SingleTenant_v200",
@@ -137,6 +149,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "ManagementCluster_SingleTenant_v200",
@@ -156,6 +169,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "WorkloadCluster_DefaultTenant_v200",
@@ -175,6 +189,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "ManagementCluster_DefaultTenant_v200",
@@ -194,6 +209,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 
 		// Version 2.2.0+ tests (with extra query matchers and scrape configs)
@@ -215,6 +231,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "ManagementCluster_TwoTenants_v220",
@@ -234,6 +251,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "WorkloadCluster_SingleTenant_v220",
@@ -253,6 +271,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "ManagementCluster_SingleTenant_v220",
@@ -272,6 +291,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "WorkloadCluster_DefaultTenant_v220",
@@ -291,6 +311,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "ManagementCluster_DefaultTenant_v220",
@@ -310,6 +331,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    true,
 		},
 		{
 			name: "ExemplarsDisabledInMC_v200",
@@ -329,6 +351,27 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
 			exemplarsEnabled:           false,
+			nativeHistogramsEnabled:    true,
+		},
+		{
+			name: "ManagementCluster_SingleTenant_NativeHistogramsDisabled_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: &corev1.ObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config_singletenant.200.mc.native-histograms-disabled.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+			nativeHistogramsEnabled:    false,
 		},
 		{
 			name: "MonitoringDisabled",
@@ -353,7 +396,11 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			service := newTestService(tt.monitoringEnabled, tt.exemplarsEnabled)
+			scrapeProtocols := tt.scrapeProtocols
+		if scrapeProtocols == nil {
+			scrapeProtocols = defaultScrapeProtocols
+		}
+		service := newTestServiceWithOptions(tt.monitoringEnabled, tt.exemplarsEnabled, tt.nativeHistogramsEnabled, scrapeProtocols)
 
 			resultMap, err := service.GenerateAlloyMonitoringConfigMapData(
 				ctx,

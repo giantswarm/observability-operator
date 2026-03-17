@@ -74,6 +74,8 @@ const (
 	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
 	flagMonitoringExemplarsEnabled            = "monitoring-exemplars-enabled"
 	flagMonitoringOTLPEnabled                 = "monitoring-otlp-enabled"
+	flagMonitoringNativeHistogramsEnabled     = "monitoring-native-histograms-enabled"
+	flagMonitoringScrapeProtocols             = "monitoring-scrape-protocols"
 
 	// Queue configuration flag names
 	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
@@ -198,6 +200,11 @@ func parseFlags() (err error) {
 		"Enable/disable network monitoring in Alloy configuration")
 	pflag.BoolVar(&cfg.Monitoring.OTLPEnabled, flagMonitoringOTLPEnabled, true,
 		"Enable OTLP metrics ingestion via the events collector (requires monitoring-enabled=true)")
+	pflag.BoolVar(&cfg.Monitoring.NativeHistogramsEnabled, flagMonitoringNativeHistogramsEnabled, true,
+		"Enable native histogram scraping by negotiating PrometheusProto scrape protocol. Opt-out: enabled by default. Requires Mimir native histogram ingestion to be enabled.")
+	pflag.StringSliceVar(&cfg.Monitoring.ScrapeProtocols, flagMonitoringScrapeProtocols,
+		[]string{"PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"},
+		"Ordered list of scrape protocols Alloy will negotiate with targets. PrometheusProto must be first to enable native histograms.")
 
 	// Queue configuration flags for Alloy remote write
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string

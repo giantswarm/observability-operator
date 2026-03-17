@@ -156,6 +156,8 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		IsSupportingScrapeConfigs bool
 		ExemplarsEnabled          bool
+		NativeHistogramsEnabled   bool
+		ScrapeProtocols           []string
 	}{
 		AlloySecretName:      apps.AlloyMetricsAppName,
 		AlloySecretNamespace: apps.AlloyNamespace,
@@ -200,6 +202,8 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		IsWorkloadCluster:         s.Config.Cluster.IsWorkloadCluster(cluster),
 		IsSupportingScrapeConfigs: observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
 		ExemplarsEnabled:          s.Config.Monitoring.ExemplarsEnabled,
+		NativeHistogramsEnabled:   s.Config.Monitoring.NativeHistogramsEnabled,
+		ScrapeProtocols:           s.Config.Monitoring.ScrapeProtocols,
 	}
 
 	err = alloyConfigTemplate.Execute(&values, data)

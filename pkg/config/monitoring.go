@@ -56,6 +56,13 @@ type MonitoringConfig struct {
 	// ExemplarsEnabled controls whether exemplars are forwarded in the remote write pipeline.
 	// Uses opt-out model: enabled by default.
 	ExemplarsEnabled bool
+	// NativeHistogramsEnabled controls whether Alloy negotiates the PrometheusProto scrape protocol,
+	// which enables native histogram collection. Uses opt-out model: enabled by default.
+	// Requires Mimir to have native histogram ingestion enabled.
+	NativeHistogramsEnabled bool
+	// ScrapeProtocols is the ordered list of scrape protocols Alloy will negotiate with targets.
+	// PrometheusProto must be first to enable native histograms.
+	ScrapeProtocols []string
 }
 
 // Validate validates the monitoring configuration

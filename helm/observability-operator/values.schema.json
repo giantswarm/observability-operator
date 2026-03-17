@@ -151,6 +151,22 @@
                             "description": "Enable exemplar forwarding in the remote write pipeline. Requires Mimir to have exemplar storage enabled."
                         }
                     }
+                },
+                "nativeHistograms": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enable native histogram scraping via PrometheusProto scrape protocol. Requires Mimir native histogram ingestion to be enabled."
+                        },
+                        "scrapeProtocols": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Ordered list of scrape protocols Alloy negotiates with targets. PrometheusProto must be first to enable native histograms."
+                        }
+                    }
                 }
             }
         },

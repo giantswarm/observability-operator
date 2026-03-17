@@ -82,6 +82,9 @@ prometheus.operator.servicemonitors "{{ . }}_legacy" {
   }
   scrape {
     default_scrape_interval = "60s"
+    {{- if $.NativeHistogramsEnabled }}
+    scrape_protocols = [{{ range $i, $p := $.ScrapeProtocols }}{{ if $i }}, {{ end }}"{{ $p }}"{{ end }}]
+    {{- end }}
   }
   clustering {
     enabled = true
@@ -109,6 +112,9 @@ prometheus.operator.podmonitors "{{ . }}_legacy" {
   }
   scrape {
     default_scrape_interval = "60s"
+    {{- if $.NativeHistogramsEnabled }}
+    scrape_protocols = [{{ range $i, $p := $.ScrapeProtocols }}{{ if $i }}, {{ end }}"{{ $p }}"{{ end }}]
+    {{- end }}
   }
   clustering {
     enabled = true
@@ -149,6 +155,9 @@ prometheus.operator.servicemonitors "{{ . }}" {
   }
   scrape {
     default_scrape_interval = "60s"
+    {{- if $.NativeHistogramsEnabled }}
+    scrape_protocols = [{{ range $i, $p := $.ScrapeProtocols }}{{ if $i }}, {{ end }}"{{ $p }}"{{ end }}]
+    {{- end }}
   }
   clustering {
     enabled = true
@@ -173,6 +182,9 @@ prometheus.operator.podmonitors "{{ . }}" {
   }
   scrape {
     default_scrape_interval = "60s"
+    {{- if $.NativeHistogramsEnabled }}
+    scrape_protocols = [{{ range $i, $p := $.ScrapeProtocols }}{{ if $i }}, {{ end }}"{{ $p }}"{{ end }}]
+    {{- end }}
   }
   clustering {
     enabled = true
@@ -191,6 +203,9 @@ prometheus.operator.scrapeconfigs "{{ . }}" {
   }
   scrape {
     default_scrape_interval = "60s"
+    {{- if $.NativeHistogramsEnabled }}
+    scrape_protocols = [{{ range $i, $p := $.ScrapeProtocols }}{{ if $i }}, {{ end }}"{{ $p }}"{{ end }}]
+    {{- end }}
   }
   clustering {
     enabled = true

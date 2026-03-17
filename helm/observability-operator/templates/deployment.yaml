@@ -78,6 +78,12 @@ spec:
         {{- with .exemplars }}
         - --monitoring-exemplars-enabled={{ .enabled }}
         {{- end }}
+        {{- with .nativeHistograms }}
+        - --monitoring-native-histograms-enabled={{ .enabled }}
+        {{- range .scrapeProtocols }}
+        - --monitoring-scrape-protocols={{ . }}
+        {{- end }}
+        {{- end }}
         {{- end }}
         - --tracing-enabled={{ $.Values.tracing.enabled }}
         # Logging configuration

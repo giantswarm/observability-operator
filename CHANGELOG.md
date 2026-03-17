@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Add `monitoring.nativeHistograms.enabled` (default `true`) and `monitoring.nativeHistograms.scrapeProtocols` Helm values. When enabled, Alloy negotiates `PrometheusProto` scrape protocol with targets, allowing native histograms to be collected without silent downgrade to classic histograms. Requires Mimir native histogram ingestion to be enabled.
+
 ### Added
 
 - Added CLAUDE.md with AI agent context: key file map, pkg/ package descriptions, and coding conventions loaded at session start; improved PR template with detailed per-area checklists.

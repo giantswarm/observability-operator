@@ -98,6 +98,17 @@ monitoring:
     # -- Enable exemplar forwarding in the remote write pipeline.
     # Requires Mimir to have exemplar storage enabled (max_global_exemplars_per_user > 0).
     enabled: true
+  nativeHistograms:
+    # -- Enable native histogram scraping (PrometheusProto scrape protocol). Opt-out: enabled by default.
+    # Requires Mimir to have native histogram ingestion enabled.
+    enabled: true
+    # -- Ordered list of scrape protocols Alloy negotiates with targets.
+    # PrometheusProto must be first to enable native histograms.
+    scrapeProtocols:
+      - PrometheusProto
+      - OpenMetricsText1.0.0
+      - OpenMetricsText0.0.1
+      - PrometheusText0.0.4
 
 # Enable or disable distributed tracing support
 tracing:

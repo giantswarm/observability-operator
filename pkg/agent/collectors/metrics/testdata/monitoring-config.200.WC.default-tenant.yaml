@@ -125,6 +125,7 @@ alloy:
           }
           scrape {
             default_scrape_interval = "60s"
+            scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
           }
           clustering {
             enabled = true
@@ -152,6 +153,7 @@ alloy:
           }
           scrape {
             default_scrape_interval = "60s"
+            scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
           }
           clustering {
             enabled = true
@@ -192,6 +194,7 @@ alloy:
           }
           scrape {
             default_scrape_interval = "60s"
+            scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
           }
           clustering {
             enabled = true
@@ -216,6 +219,7 @@ alloy:
           }
           scrape {
             default_scrape_interval = "60s"
+            scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
           }
           clustering {
             enabled = true
