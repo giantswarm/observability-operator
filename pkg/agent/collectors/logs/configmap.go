@@ -180,8 +180,6 @@ func generateAlloyConfig(
 		tenants = append(tenants, organization.GiantSwarmDefaultTenant)
 	}
 
-	isWorkloadCluster := clusterConfig.IsWorkloadCluster(cluster)
-
 	// Prepare template data for River configuration
 	data := struct {
 		ClusterID                string
@@ -191,7 +189,6 @@ func generateAlloyConfig(
 		Provider                 string
 		MaxBackoffPeriod         string
 		RemoteTimeout            string
-		IsWorkloadCluster        bool
 		NodeFilteringEnabled     bool
 		LoggingEnabled           bool
 		NetworkMonitoringEnabled bool
@@ -211,7 +208,6 @@ func generateAlloyConfig(
 		Provider:                 provider,
 		MaxBackoffPeriod:         common.LokiMaxBackoffPeriod,
 		RemoteTimeout:            common.LokiRemoteTimeout,
-		IsWorkloadCluster:        isWorkloadCluster,
 		NodeFilteringEnabled:     enableNodeFiltering,
 		LoggingEnabled:           enableLogging,
 		NetworkMonitoringEnabled: enableNetworkMonitoring,

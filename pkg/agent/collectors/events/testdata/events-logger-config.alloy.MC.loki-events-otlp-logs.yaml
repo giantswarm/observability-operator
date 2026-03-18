@@ -8,6 +8,7 @@ networkPolicy:
     egress:
     - toEntities:
       - kube-apiserver
+      - world
     # Allow DNS resolution
     - toEndpoints:
       - matchLabels:
@@ -23,16 +24,6 @@ networkPolicy:
         rules:
           dns:
             - matchPattern: '*'
-    # Allow direct access to loki-gateway
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/component: gateway
-          app.kubernetes.io/name: loki
-          io.kubernetes.pod.namespace: loki
-      toPorts:
-      - ports:
-        - port: "8080"
-          protocol: TCP
     ingress:
     - toPorts:
       - ports:
@@ -52,7 +43,7 @@ alloy:
       create: true
       content: |-
         logging {
-          level  = "info"
+          level  = "warn"
           format = "logfmt"
         }
         remote.kubernetes.secret "credentials" {
@@ -70,7 +61,11 @@ alloy:
             max_backoff_period = "10m"
             remote_timeout     = "60s"
             tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
-            url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
+            url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-url"])
+            basic_auth {
+              username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
+              password = remote.kubernetes.secret.credentials.data["logging-password"]
+            }
             tls_config {
               insecure_skip_verify = false
             }
@@ -82,6 +77,11 @@ alloy:
             provider         = "capa",
             scrape_job       = "kubernetes-events",
           }
+        }
+        // Basic authentication for Loki
+        otelcol.auth.basic "loki_credentials" {
+          username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
+          password = remote.kubernetes.secret.credentials.data["logging-password"]
         }
         // OTLP receiver — accepts logs from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
@@ -213,9 +213,10 @@ alloy:
         // OTLP HTTP exporter for logs — tenant giantswarm → Loki
         otelcol.exporter.otlphttp "giantswarm_loki" {
           client {
-            endpoint = "http://loki-gateway.loki.svc:80/otlp"
+            auth     = otelcol.auth.basic.loki_credentials.handler
+            endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-otlp-url"])
             tls {
-              insecure = true
+              insecure_skip_verify = false
             }
             headers = {
               "X-Scope-OrgID" = "giantswarm",

@@ -5,6 +5,25 @@
 # - Alloy runs as a deployment, with only 1 replica.
 networkPolicy:
   cilium:
+    egress:
+    - toEntities:
+      - kube-apiserver
+      - world
+    # Allow DNS resolution
+    - toEndpoints:
+      - matchLabels:
+          k8s-app: coredns
+      - matchLabels:
+          k8s-app: k8s-dns-node-cache
+      toPorts:
+      - ports:
+        - port: "53"
+          protocol: ANY
+        - port: "1053"
+          protocol: ANY
+        rules:
+          dns:
+            - matchPattern: '*'
     ingress:
     - toPorts:
       - ports:
@@ -24,7 +43,7 @@ alloy:
       create: true
       content: |-
         logging {
-          level  = "info"
+          level  = "warn"
           format = "logfmt"
         }
         remote.kubernetes.secret "credentials" {

@@ -5,7 +5,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"net"
 	"slices"
 	"text/template"
 
@@ -77,19 +76,12 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 
 	isWorkloadCluster := s.Config.Cluster.IsWorkloadCluster(cluster)
 
-	// Get Tempo URL for tracing (only for workload clusters with tracing enabled)
-	tempoURL := ""
-	if tracingEnabled && isWorkloadCluster {
-		tempoURL = fmt.Sprintf(common.TempoIngressURLFormat, s.Config.Cluster.BaseDomain)
-	}
-
 	// Generate the Alloy configuration from template
 	alloyConfig, err := s.generateAlloyEventsConfig(
 		cluster.Name,
 		s.Config.Cluster.GetClusterType(cluster),
 		org,
 		provider,
-		tempoURL,
 		tenants,
 		loggingEnabled,
 		tracingEnabled,
@@ -102,7 +94,7 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	}
 
 	// Generate the values YAML that wraps the Alloy config
-	valuesYAML, err := s.generateEventsYAMLConfig(alloyConfig, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled, isWorkloadCluster)
+	valuesYAML, err := s.generateEventsYAMLConfig(alloyConfig, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate events YAML config: %w", err)
 	}
@@ -117,7 +109,6 @@ func (s *Service) generateAlloyEventsConfig(
 	clusterType string,
 	organization string,
 	provider string,
-	tempoURL string,
 	tenants []string,
 	loggingEnabled bool,
 	tracingEnabled bool,
@@ -126,12 +117,6 @@ func (s *Service) generateAlloyEventsConfig(
 	isWorkloadCluster bool,
 ) (string, error) {
 	var buf bytes.Buffer
-
-	// Tempo endpoint must be in host:port format for gRPC
-	tracingEndpoint := ""
-	if tracingEnabled && tempoURL != "" {
-		tracingEndpoint = net.JoinHostPort(tempoURL, "443")
-	}
 
 	// Template data structure
 	data := struct {
@@ -152,7 +137,7 @@ func (s *Service) generateAlloyEventsConfig(
 		IsWorkloadCluster      bool
 		LoggingEnabled         bool
 		TracingEnabled         bool
-		TracingEndpoint        string
+		TempoEndpointKey       string
 		TempoUsernameKey       string
 		TempoPasswordKey       string
 		OTLPBatchSendBatchSize int
@@ -185,7 +170,7 @@ func (s *Service) generateAlloyEventsConfig(
 		LoggingUsernameKey:     common.LokiUsernameKey,
 		LoggingPasswordKey:     common.LokiPasswordKey,
 		TracingEnabled:         tracingEnabled,
-		TracingEndpoint:        tracingEndpoint,
+		TempoEndpointKey:       common.TempoOTLPURLKey,
 		TempoUsernameKey:       common.TempoUsernameKey,
 		TempoPasswordKey:       common.TempoPasswordKey,
 		OTLPBatchSendBatchSize: common.OTLPBatchSendBatchSize,
@@ -205,7 +190,7 @@ func (s *Service) generateAlloyEventsConfig(
 	return buf.String(), nil
 }
 
-func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool, isWorkloadCluster bool) (string, error) {
+func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool) (string, error) {
 	var buf bytes.Buffer
 
 	data := struct {
@@ -214,14 +199,12 @@ func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bo
 		TracingEnabled     bool
 		OTLPMetricsEnabled bool
 		OTLPLogsEnabled    bool
-		IsWorkloadCluster  bool
 	}{
 		AlloyConfig:        alloyConfig,
 		LoggingEnabled:     loggingEnabled,
 		TracingEnabled:     tracingEnabled,
 		OTLPMetricsEnabled: otlpMetricsEnabled,
 		OTLPLogsEnabled:    otlpLogsEnabled,
-		IsWorkloadCluster:  isWorkloadCluster,
 	}
 
 	if err := alloyEventsYAMLConfigTemplate.Execute(&buf, data); err != nil {

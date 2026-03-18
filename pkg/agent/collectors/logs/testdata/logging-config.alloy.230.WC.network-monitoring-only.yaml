@@ -14,6 +14,7 @@ networkPolicy:
     # Allow access to Kubernetes API server for cluster operations
     - toEntities:
       - kube-apiserver
+      - world
     # Allow DNS resolution
     - toEndpoints:
       - matchLabels:

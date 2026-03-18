@@ -8,6 +8,7 @@ networkPolicy:
     egress:
     - toEntities:
       - kube-apiserver
+      - world
     # Allow DNS resolution
     - toEndpoints:
       - matchLabels:
@@ -23,16 +24,6 @@ networkPolicy:
         rules:
           dns:
             - matchPattern: '*'
-    # Allow direct access to mimir-gateway
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/component: gateway
-          app.kubernetes.io/name: mimir
-          io.kubernetes.pod.namespace: mimir
-      toPorts:
-      - ports:
-        - port: "8080"
-          protocol: TCP
     ingress:
     - toPorts:
       - ports:
@@ -52,12 +43,17 @@ alloy:
       create: true
       content: |-
         logging {
-          level  = "info"
+          level  = "warn"
           format = "logfmt"
         }
         remote.kubernetes.secret "credentials" {
           namespace = "kube-system"
           name = "alloy-events"
+        }
+        // Basic authentication for Mimir
+        otelcol.auth.basic "mimir_credentials" {
+          username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+          password = remote.kubernetes.secret.credentials.data["metrics-password"]
         }
         // OTLP receiver — accepts metrics from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
@@ -191,9 +187,10 @@ alloy:
         // to automatically promote resource attributes (cluster metadata) to metric labels.
         otelcol.exporter.otlphttp "giantswarm_mimir" {
           client {
-            endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
+            auth     = otelcol.auth.basic.mimir_credentials.handler
+            endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-otlp-url"])
             tls {
-              insecure = true
+              insecure_skip_verify = false
             }
             headers = {
               "X-Scope-OrgID" = "giantswarm",

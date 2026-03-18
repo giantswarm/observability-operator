@@ -8,6 +8,7 @@ networkPolicy:
     egress:
     - toEntities:
       - kube-apiserver
+      - world
     # Allow DNS resolution
     - toEndpoints:
       - matchLabels:
@@ -23,37 +24,6 @@ networkPolicy:
         rules:
           dns:
             - matchPattern: '*'
-    # Allow direct access to loki-gateway
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/component: gateway
-          app.kubernetes.io/name: loki
-          io.kubernetes.pod.namespace: loki
-      toPorts:
-      - ports:
-        - port: "8080"
-          protocol: TCP
-    # Allow direct access to tempo
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/name: tempo
-          io.kubernetes.pod.namespace: tempo
-      toPorts:
-      - ports:
-        - port: "4317"
-          protocol: TCP
-        - port: "4318"
-          protocol: TCP
-    # Allow direct access to mimir-gateway
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/component: gateway
-          app.kubernetes.io/name: mimir
-          io.kubernetes.pod.namespace: mimir
-      toPorts:
-      - ports:
-        - port: "8080"
-          protocol: TCP
     ingress:
     - toPorts:
       - ports:
@@ -73,7 +43,7 @@ alloy:
       create: true
       content: |-
         logging {
-          level  = "info"
+          level  = "warn"
           format = "logfmt"
         }
         remote.kubernetes.secret "credentials" {
@@ -91,7 +61,11 @@ alloy:
             max_backoff_period = "10m"
             remote_timeout     = "60s"
             tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
-            url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
+            url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-url"])
+            basic_auth {
+              username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
+              password = remote.kubernetes.secret.credentials.data["logging-password"]
+            }
             tls_config {
               insecure_skip_verify = false
             }
@@ -103,6 +77,21 @@ alloy:
             provider         = "capa",
             scrape_job       = "kubernetes-events",
           }
+        }
+        // Basic authentication for Tempo
+        otelcol.auth.basic "tempo_credentials" {
+          username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-username"])
+          password = remote.kubernetes.secret.credentials.data["tracing-password"]
+        }
+        // Basic authentication for Mimir
+        otelcol.auth.basic "mimir_credentials" {
+          username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+          password = remote.kubernetes.secret.credentials.data["metrics-password"]
+        }
+        // Basic authentication for Loki
+        otelcol.auth.basic "loki_credentials" {
+          username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
+          password = remote.kubernetes.secret.credentials.data["logging-password"]
         }
         // OTLP receiver — accepts traces, metrics, and logs from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
@@ -306,11 +295,11 @@ alloy:
         // OTLP gRPC exporter for traces — tenant giantswarm → Tempo
         otelcol.exporter.otlp "giantswarm_tempo" {
           client {
+            auth     = otelcol.auth.basic.tempo_credentials.handler
+            endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-otlp-url"])
             tls {
-              // Use insecure connection since this exporter uses a (direct) internal Tempo endpoint which is not behind a TLS reverse proxy.
-              insecure = true
+              insecure_skip_verify = false
             }
-            endpoint = "tempo-distributor.tempo.svc:4317"
             headers = {
               "X-Scope-OrgID" = "giantswarm",
             }
@@ -321,9 +310,10 @@ alloy:
         // to automatically promote resource attributes (cluster metadata) to metric labels.
         otelcol.exporter.otlphttp "giantswarm_mimir" {
           client {
-            endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
+            auth     = otelcol.auth.basic.mimir_credentials.handler
+            endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-otlp-url"])
             tls {
-              insecure = true
+              insecure_skip_verify = false
             }
             headers = {
               "X-Scope-OrgID" = "giantswarm",
@@ -333,9 +323,10 @@ alloy:
         // OTLP HTTP exporter for logs — tenant giantswarm → Loki
         otelcol.exporter.otlphttp "giantswarm_loki" {
           client {
-            endpoint = "http://loki-gateway.loki.svc:80/otlp"
+            auth     = otelcol.auth.basic.loki_credentials.handler
+            endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-otlp-url"])
             tls {
-              insecure = true
+              insecure_skip_verify = false
             }
             headers = {
               "X-Scope-OrgID" = "giantswarm",
