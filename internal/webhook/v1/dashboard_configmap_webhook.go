@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	v1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/internal/labels"
 	"github.com/giantswarm/observability-operator/internal/mapper"
 )
@@ -78,7 +79,7 @@ func (v *DashboardConfigMapValidator) ValidateCreate(ctx context.Context, Obj *c
 
 	dashboardconfigmaplog.Info("Validation for dashboard ConfigMap upon creation", "name", Obj.GetName())
 
-	return v.validateDashboard(Obj)
+	return v.validateDashboard(ctx, Obj)
 }
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type ConfigMap.
@@ -89,7 +90,7 @@ func (v *DashboardConfigMapValidator) ValidateUpdate(ctx context.Context, oldObj
 	}
 
 	dashboardconfigmaplog.Info("Validation for dashboard ConfigMap upon update", "name", newObj.GetName())
-	return v.validateDashboard(newObj)
+	return v.validateDashboard(ctx, newObj)
 }
 
 // ValidateDelete implements admission.Validator so a webhook will be registered for the type ConfigMap.
@@ -99,7 +100,7 @@ func (v *DashboardConfigMapValidator) ValidateDelete(ctx context.Context, obj *c
 }
 
 // validateDashboard validates a dashboard ConfigMap using domain validation logic
-func (v *DashboardConfigMapValidator) validateDashboard(configmap *corev1.ConfigMap) (admission.Warnings, error) {
+func (v *DashboardConfigMapValidator) validateDashboard(ctx context.Context, configmap *corev1.ConfigMap) (admission.Warnings, error) {
 	// Convert ConfigMap to domain objects using mapper
 	dashboards := v.dashboardMapper.FromConfigMap(configmap)
 
@@ -108,6 +109,21 @@ func (v *DashboardConfigMapValidator) validateDashboard(configmap *corev1.Config
 		errs := dash.Validate()
 		if len(errs) > 0 {
 			return nil, fmt.Errorf("dashboard validation failed for uid %s: %w", dash.UID(), errors.Join(errs...))
+		}
+	}
+
+	// Validate that each referenced organization exists as a GrafanaOrganization CR
+	orgList := &v1alpha2.GrafanaOrganizationList{}
+	if err := v.client.List(ctx, orgList); err != nil {
+		return nil, fmt.Errorf("failed to list GrafanaOrganizations: %w", err)
+	}
+	existingOrgs := make(map[string]struct{}, len(orgList.Items))
+	for _, o := range orgList.Items {
+		existingOrgs[o.Name] = struct{}{}
+	}
+	for _, dash := range dashboards {
+		if _, ok := existingOrgs[dash.Organization()]; !ok {
+			return nil, fmt.Errorf("organization %q referenced by dashboard %q does not exist", dash.Organization(), dash.UID())
 		}
 	}
 

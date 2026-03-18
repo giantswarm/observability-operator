@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Dashboard ConfigMap webhook now validates that the referenced `GrafanaOrganization` CR exists at admission time, rejecting ConfigMaps that reference a non-existent organization instead of silently failing at reconcile time.
+
 ## [0.66.0] - 2026-03-17
 
 ### Changed

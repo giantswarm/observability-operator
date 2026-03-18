@@ -17,12 +17,14 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
@@ -71,8 +73,29 @@ var _ = BeforeSuite(func() {
 
 	// Set the client for use in tests
 	k8sClient = testSuite.K8sClient
+
+	// Create GrafanaOrganization CRs used by dashboard webhook tests.
+	ctx := context.Background()
+	for _, name := range []string{"test-org", "annotation-org", "label-org"} {
+		org := &observabilityv1alpha2.GrafanaOrganization{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+			Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
+				DisplayName: name,
+				RBAC:        &observabilityv1alpha2.RBAC{Admins: []string{}},
+				Tenants:     []observabilityv1alpha2.TenantConfig{{Name: "giantswarm"}},
+			},
+		}
+		Expect(k8sClient.Create(ctx, org)).To(Succeed())
+	}
 })
 
 var _ = AfterSuite(func() {
+	ctx := context.Background()
+	for _, name := range []string{"test-org", "annotation-org", "label-org"} {
+		org := &observabilityv1alpha2.GrafanaOrganization{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+		}
+		_ = k8sClient.Delete(ctx, org)
+	}
 	testSuite.TeardownSuite()
 })
