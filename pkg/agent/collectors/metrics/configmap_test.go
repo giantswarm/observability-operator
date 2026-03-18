@@ -397,10 +397,10 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			ctx := context.Background()
 
 			scrapeProtocols := tt.scrapeProtocols
-		if scrapeProtocols == nil {
-			scrapeProtocols = defaultScrapeProtocols
-		}
-		service := newTestServiceWithOptions(tt.monitoringEnabled, tt.exemplarsEnabled, tt.nativeHistogramsEnabled, scrapeProtocols)
+			if scrapeProtocols == nil {
+				scrapeProtocols = defaultScrapeProtocols
+			}
+			service := newTestServiceWithOptions(tt.monitoringEnabled, tt.exemplarsEnabled, tt.nativeHistogramsEnabled, scrapeProtocols)
 
 			resultMap, err := service.GenerateAlloyMonitoringConfigMapData(
 				ctx,
