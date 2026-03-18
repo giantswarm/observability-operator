@@ -90,12 +90,17 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	ctx := context.Background()
-	for _, name := range []string{"test-org", "annotation-org", "label-org"} {
-		org := &observabilityv1alpha2.GrafanaOrganization{
-			ObjectMeta: metav1.ObjectMeta{Name: name},
+	// Only clean up if BeforeSuite completed successfully
+	if k8sClient != nil {
+		ctx := context.Background()
+		for _, name := range []string{"test-org", "annotation-org", "label-org"} {
+			org := &observabilityv1alpha2.GrafanaOrganization{
+				ObjectMeta: metav1.ObjectMeta{Name: name},
+			}
+			_ = k8sClient.Delete(ctx, org)
 		}
-		_ = k8sClient.Delete(ctx, org)
 	}
-	testSuite.TeardownSuite()
+	if testSuite != nil {
+		testSuite.TeardownSuite()
+	}
 })

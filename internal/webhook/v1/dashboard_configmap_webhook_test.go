@@ -74,7 +74,6 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		}`
 	})
 
-
 	Context("When validating dashboard ConfigMaps", func() {
 		It("Should allow dashboard ConfigMaps with proper labels", func() {
 			By("Testing scope filtering")
