@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Delete all Mimir and Loki ruler rules for every active tenant when a cluster is deleted, preventing stale rules from accumulating. Configured via `monitoring.ruler.url` and `logging.ruler.url` Helm values (empty by default, disabling cleanup).
 
+## [0.66.1] - 2026-03-19
+
+### Fixed
+
+- Fix alert url since we changed the Mimir Datasource name.
+
 ## [0.66.0] - 2026-03-17
 
 ### Changed
@@ -996,7 +1002,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.66.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.66.1...HEAD
+[0.66.1]: https://github.com/giantswarm/observability-operator/compare/v0.66.0...v0.66.1
 [0.66.0]: https://github.com/giantswarm/observability-operator/compare/v0.65.0...v0.66.0
 [0.65.0]: https://github.com/giantswarm/observability-operator/compare/v0.64.0...v0.65.0
 [0.64.0]: https://github.com/giantswarm/observability-operator/compare/v0.63.0...v0.64.0
