@@ -52,7 +52,10 @@ type MonitoringConfig struct {
 	// WALTruncateFrequency is the frequency at which the WAL segments should be truncated.
 	WALTruncateFrequency time.Duration
 	MetricsQueryURL      string
-	QueueConfig          QueueConfig
+	// RulerURL is the URL to the Mimir ruler API used to clean up rules on cluster deletion.
+	// Leave empty to disable ruler cleanup.
+	RulerURL    string
+	QueueConfig QueueConfig
 	// ExemplarsEnabled controls whether exemplars are forwarded in the remote write pipeline.
 	// Uses opt-out model: enabled by default.
 	ExemplarsEnabled bool

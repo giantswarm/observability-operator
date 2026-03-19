@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Delete all Mimir and Loki ruler rules for every active tenant when a cluster is deleted, preventing stale rules from accumulating. Configured via `monitoring.ruler.url` and `logging.ruler.url` Helm values (empty by default, disabling cleanup).
+
 ## [0.66.0] - 2026-03-17
 
 ### Changed

@@ -78,6 +78,9 @@ spec:
         {{- with .exemplars }}
         - --monitoring-exemplars-enabled={{ .enabled }}
         {{- end }}
+        {{- with .ruler }}
+        - --monitoring-ruler-url={{ .url }}
+        {{- end }}
         {{- end }}
         - --tracing-enabled={{ $.Values.tracing.enabled }}
         # Logging configuration
@@ -95,6 +98,9 @@ spec:
         {{- end }}
         {{- if .excludeEventsFromNamespaces }}
         - --logging-exclude-events-from-namespaces={{ .excludeEventsFromNamespaces | join "," }}
+        {{- end }}
+        {{- with .ruler }}
+        - --logging-ruler-url={{ .url }}
         {{- end }}
         {{- end }}
         env:
