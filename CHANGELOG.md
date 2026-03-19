@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Remove legacy `giantswarm.io` labels and annotation support (`giantswarm.io/monitoring`, `giantswarm.io/network-monitoring`, `giantswarm.io/keda-authentication`, `giantswarm.io/keda-namespace`, `giantswarm.io/logging`, `giantswarm.io/tracing`) labels as we now only use the new ones under the `observability.giantswarm.io` domain.
+
 ## [0.66.0] - 2026-03-17
 
 ### Changed
