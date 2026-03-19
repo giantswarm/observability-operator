@@ -13,7 +13,8 @@ networkPolicy:
     egress:
     # Allow access to Kubernetes API server for cluster operations
     - toEntities:
-      - kube-apiserver
+      - kube-
+      - cluster # (needed for access to the gateway)
       - world
     # Allow DNS resolution
     - toEndpoints:

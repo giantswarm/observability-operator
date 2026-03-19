@@ -8,6 +8,7 @@ networkPolicy:
     egress:
     - toEntities:
       - kube-apiserver
+      - cluster # (needed for access to the gateway)
       - world
     # Allow DNS resolution
     - toEndpoints:
