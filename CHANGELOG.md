@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added support for Proxmox clusters.
+
 ### Changed
 
 - All Alloy collectors (metrics, logs, events) now always route to external hostnames via basic auth, removing the management cluster shortcut that used in-cluster service URLs. This makes management cluster behaviour consistent with workload clusters.
