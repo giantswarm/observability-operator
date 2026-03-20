@@ -51,7 +51,7 @@ alloy:
       content: |-
         
         logging {
-          level  = "info"
+          level  = "warn"
           format = "logfmt"
         }
         
@@ -160,6 +160,7 @@ alloy:
             enable_http2   = false
             remote_timeout = "60s"
             send_exemplars = true
+        
             url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-url"])
             basic_auth {
               username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])

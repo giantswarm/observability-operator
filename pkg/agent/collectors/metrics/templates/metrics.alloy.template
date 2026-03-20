@@ -1,5 +1,5 @@
 logging {
-  level  = "info"
+  level  = "warn"
   format = "logfmt"
 }
 
@@ -11,12 +11,12 @@ remote.kubernetes.secret "credentials" {
 {{- range .Tenants }}
 // load rules for tenant {{ . }}
 mimir.rules.kubernetes "{{ . }}" {
-  {{- if $.IsWorkloadCluster }}
   address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRulerAPIURLKey }}"])
   basic_auth {
     username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirUsernameKey }}"])
     password = remote.kubernetes.secret.credentials.data["{{ $.MimirPasswordKey }}"]
   }
+  {{- if $.IsWorkloadCluster }}
   extra_query_matchers {
     matcher {
         name       = "cluster_id"
@@ -24,8 +24,6 @@ mimir.rules.kubernetes "{{ . }}" {
         value      = "{{ $.ClusterID }}"
     }
   }
-  {{- else }}
-  address = "http://mimir-ruler.mimir.svc:8080/"
   {{- end }}
   mimir_namespace_prefix = "{{ $.ClusterID }}"
   tenant_id = "{{ . }}"
@@ -206,15 +204,11 @@ prometheus.remote_write "{{ . }}" {
     remote_timeout = "{{ $.MimirRemoteWriteTimeout }}"
     send_exemplars = {{ $.ExemplarsEnabled }}
 
-    {{- if $.IsWorkloadCluster }}
     url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIURLKey }}"])
     basic_auth {
       username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirUsernameKey }}"])
       password = remote.kubernetes.secret.credentials.data["{{ $.MimirPasswordKey }}"]
     }
-    {{- else }}
-    url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
-    {{- end }}
 
     headers = {
       "X-Scope-OrgID" = "{{ . }}",

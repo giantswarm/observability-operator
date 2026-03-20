@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- All Alloy collectors (metrics, logs, events) now always route to external hostnames via basic auth, removing the management cluster shortcut that used in-cluster service URLs. This makes management cluster behaviour consistent with workload clusters.
+- Tempo gRPC endpoint for the events collector is now stored in the auth secret (`tracing-otlp-url`) rather than baked into the Alloy config, consistent with Loki and Mimir endpoints.
+- Change all alloy log level to warn instead of info.
+
 ## [0.66.1] - 2026-03-19
 
 ### Fixed
