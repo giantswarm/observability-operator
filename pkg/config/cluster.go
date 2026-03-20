@@ -30,6 +30,9 @@ const (
 
 	GCPManagedClusterKind         = "GCPManagedCluster"
 	GCPManagedClusterKindProvider = "gke"
+
+	ProxmoxClusterKind         = "ProxmoxCluster"
+	ProxmoxClusterKindProvider = "proxmox"
 )
 
 // ClusterConfig represents the configuration for the management cluster.
@@ -89,6 +92,8 @@ func (c ClusterConfig) GetClusterProvider(cluster *clusterv1.Cluster) (string, e
 		return GCPClusterKindProvider, nil
 	case GCPManagedClusterKind:
 		return GCPManagedClusterKindProvider, nil
+	case ProxmoxClusterKind:
+		return ProxmoxClusterKindProvider, nil
 	}
 
 	return "", fmt.Errorf("unknown cluster provider for %s", cluster.Spec.InfrastructureRef.Kind)
