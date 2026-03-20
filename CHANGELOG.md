@@ -7,17 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-<<<<<<< feat/dashboard-webhook-org-check
 ### Changed
 
 - Dashboard ConfigMap webhook now validates that the referenced `GrafanaOrganization` CR exists at admission time, rejecting ConfigMaps that reference a non-existent organization instead of silently failing at reconcile time.
-=======
+
 ## [0.66.1] - 2026-03-19
 
 ### Fixed
 
 - Fix alert url since we changed the Mimir Datasource name.
->>>>>>> main
 
 ## [0.66.0] - 2026-03-17
 
