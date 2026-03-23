@@ -99,6 +99,10 @@ monitoring:
     # Requires Mimir to have exemplar storage enabled (max_global_exemplars_per_user > 0).
     enabled: true
 
+  ruler:
+    # -- URL to the Mimir ruler API for deleting rules when a cluster is deleted.
+    url: "http://mimir-gateway.mimir.svc"
+
 # Enable or disable distributed tracing support
 tracing:
   # -- Enable distributed tracing support
@@ -125,6 +129,10 @@ logging:
   includeEventsFromNamespaces: []
   # -- Namespaces to exclude for Kubernetes events
   excludeEventsFromNamespaces: []
+
+  ruler:
+    # -- URL to the Loki ruler API for deleting rules when a cluster is deleted.
+    url: "http://loki-gateway.loki.svc"
 
 # Resource and security configuration for the operator pod.
 # Defaults are appropriate for most deployments.

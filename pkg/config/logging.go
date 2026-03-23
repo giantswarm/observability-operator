@@ -28,6 +28,10 @@ type LoggingConfig struct {
 
 	// ExcludeEventsNamespaces is the list of namespaces to exclude events from
 	ExcludeEventsNamespaces []string
+
+	// RulerURL is the URL to the Loki ruler API used to clean up rules on cluster deletion.
+	// Leave empty to disable Loki ruler cleanup.
+	RulerURL string
 }
 
 // Validate validates the logging configuration

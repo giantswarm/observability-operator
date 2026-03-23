@@ -151,6 +151,15 @@
                             "description": "Enable exemplar forwarding in the remote write pipeline. Requires Mimir to have exemplar storage enabled."
                         }
                     }
+                },
+                "ruler": {
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "URL to the Mimir ruler API for deleting rules when a cluster is deleted. Set to empty string to disable."
+                        }
+                    }
                 }
             }
         },
@@ -283,6 +292,15 @@
                     "description": "Namespaces to exclude from event collection",
                     "items": {
                         "type": "string"
+                    }
+                },
+                "ruler": {
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "URL to the Loki ruler API for deleting rules when a cluster is deleted. Set to empty string to disable."
+                        }
                     }
                 }
             }

@@ -33,6 +33,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/ruler"
 )
 
 // authManagerEntry pairs an auth manager with its feature check function
@@ -58,6 +59,10 @@ type ClusterMonitoringReconciler struct {
 	authManagers map[auth.AuthType]authManagerEntry
 	// BundleConfigurationService is the service for configuring the observability bundle.
 	BundleConfigurationService *bundle.BundleConfigurationService
+	// RulerClient deletes ruler rules on cluster deletion.
+	RulerClient ruler.Client
+	// TenantRepository provides the list of all active tenants for ruler cleanup.
+	TenantRepository tenancy.TenantRepository
 	// FinalizerHelper is the helper for managing finalizers.
 	finalizerHelper FinalizerHelper
 }
@@ -157,6 +162,15 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 		MetricsAuthManager:      mimirAuthManager,
 	}
 
+	var rulerClients []ruler.Client
+	if cfg.Monitoring.RulerURL != "" {
+		rulerClients = append(rulerClients, ruler.NewMimir(cfg.Monitoring.RulerURL))
+	}
+	if cfg.Logging.RulerURL != "" {
+		rulerClients = append(rulerClients, ruler.NewLoki(cfg.Logging.RulerURL))
+	}
+	rulerClient := ruler.NewMulti(rulerClients...)
+
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
 		Config:                     cfg,
@@ -166,6 +180,8 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 		AlloyEventsService:         alloyEventsService,
 		authManagers:               authManagers,
 		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
+		RulerClient:                rulerClient,
+		TenantRepository:           tenantRepository,
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
 
@@ -464,7 +480,19 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			}
 		}
 	}
-	// TODO add deletion of rules in the Mimir ruler on cluster deletion
+	// Delete ruler rules scoped to this cluster for every active tenant.
+	tenants, err := r.TenantRepository.List(ctx)
+	if err != nil {
+		logger.Error(err, "failed to list tenants for ruler cleanup")
+		errs = append(errs, fmt.Errorf("list tenants for ruler cleanup: %w", err))
+	} else {
+		for _, tenantID := range tenants {
+			if err := r.RulerClient.DeleteClusterRulesForTenant(ctx, tenantID, cluster.Name); err != nil {
+				logger.Error(err, "failed to delete ruler rules", "tenant", tenantID)
+				errs = append(errs, fmt.Errorf("delete ruler rules for tenant %s: %w", tenantID, err))
+			}
+		}
+	}
 
 	// Management cluster specific configuration
 	if cluster.Name == r.Config.Cluster.Name {

@@ -72,6 +72,7 @@ const (
 	flagMonitoringShardingScaleDownPercentage = "monitoring-sharding-scale-down-percentage"
 	flagMonitoringWALTruncateFrequency        = "monitoring-wal-truncate-frequency"
 	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
+	flagMonitoringRulerURL                    = "monitoring-ruler-url"
 	flagMonitoringExemplarsEnabled            = "monitoring-exemplars-enabled"
 	flagMonitoringOTLPEnabled                 = "monitoring-otlp-enabled"
 
@@ -92,6 +93,7 @@ const (
 	// Logging configuration flag names
 	flagLoggingOTLPEnabled                 = "logging-otlp-enabled"
 	flagLoggingEnabled                     = "logging-enabled"
+	flagLoggingRulerURL                    = "logging-ruler-url"
 	flagLoggingDefaultNamespaces           = "logging-default-namespaces"
 	flagLoggingEnableNodeFiltering         = "logging-enable-node-filtering"
 	flagLoggingIncludeEventsFromNamespaces = "logging-include-events-from-namespaces"
@@ -192,6 +194,8 @@ func parseFlags() (err error) {
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
 	pflag.StringVar(&cfg.Monitoring.MetricsQueryURL, flagMonitoringMetricsQueryURL, "http://mimir-gateway.mimir.svc/prometheus",
 		"URL to query for cluster metrics (internal Mimir query endpoint)")
+	pflag.StringVar(&cfg.Monitoring.RulerURL, flagMonitoringRulerURL, "http://mimir-gateway.mimir.svc",
+		"URL to the Mimir ruler API for cleaning up rules on cluster deletion")
 	pflag.BoolVar(&cfg.Monitoring.ExemplarsEnabled, flagMonitoringExemplarsEnabled, true,
 		"Enable exemplar forwarding in the remote write pipeline. Opt-out: enabled by default.")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
@@ -240,6 +244,8 @@ func parseFlags() (err error) {
 		"Comma-separated list of namespaces to collect events from on workload clusters (if empty, collect from all)")
 	pflag.StringSliceVar(&cfg.Logging.ExcludeEventsNamespaces, flagLoggingExcludeEventsFromNamespaces, []string{},
 		"Comma-separated list of namespaces to exclude events from on workload clusters")
+	pflag.StringVar(&cfg.Logging.RulerURL, flagLoggingRulerURL, "http://loki-gateway.loki.svc",
+		"URL to the Loki ruler API for cleaning up rules on cluster deletion")
 
 	// Zap logging options
 	opts := zap.Options{
