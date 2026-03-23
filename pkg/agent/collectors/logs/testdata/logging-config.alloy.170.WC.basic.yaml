@@ -15,8 +15,7 @@ networkPolicy:
     # Allow access to Kubernetes API server for cluster operations
     - toEntities:
       - kube-apiserver
-      # Allow reaching external Loki endpoints (workload clusters always go external;
-      # management clusters go external when hostNetwork=true due to network monitoring)
+      - cluster # (needed for access to the gateway)
       - world
     # Allow DNS resolution
     - toEndpoints:

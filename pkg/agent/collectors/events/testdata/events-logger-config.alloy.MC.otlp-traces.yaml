@@ -8,6 +8,8 @@ networkPolicy:
     egress:
     - toEntities:
       - kube-apiserver
+      - cluster # (needed for access to the gateway)
+      - world
     # Allow DNS resolution
     - toEndpoints:
       - matchLabels:
@@ -23,17 +25,6 @@ networkPolicy:
         rules:
           dns:
             - matchPattern: '*'
-    # Allow direct access to tempo
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/name: tempo
-          io.kubernetes.pod.namespace: tempo
-      toPorts:
-      - ports:
-        - port: "4317"
-          protocol: TCP
-        - port: "4318"
-          protocol: TCP
     ingress:
     - toPorts:
       - ports:
@@ -53,12 +44,17 @@ alloy:
       create: true
       content: |-
         logging {
-          level  = "info"
+          level  = "warn"
           format = "logfmt"
         }
         remote.kubernetes.secret "credentials" {
           namespace = "kube-system"
           name = "alloy-events"
+        }
+        // Basic authentication for Tempo
+        otelcol.auth.basic "tempo_credentials" {
+          username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-username"])
+          password = remote.kubernetes.secret.credentials.data["tracing-password"]
         }
         // OTLP receiver — accepts traces from cluster workloads.
         // include_metadata = true propagates HTTP headers and gRPC metadata to downstream
@@ -190,11 +186,11 @@ alloy:
         // OTLP gRPC exporter for traces — tenant giantswarm → Tempo
         otelcol.exporter.otlp "giantswarm_tempo" {
           client {
+            auth     = otelcol.auth.basic.tempo_credentials.handler
+            endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-otlp-url"])
             tls {
-              // Use insecure connection since this exporter uses a (direct) internal Tempo endpoint which is not behind a TLS reverse proxy.
-              insecure = true
+              insecure_skip_verify = false
             }
-            endpoint = "tempo-distributor.tempo.svc:4317"
             headers = {
               "X-Scope-OrgID" = "giantswarm",
             }

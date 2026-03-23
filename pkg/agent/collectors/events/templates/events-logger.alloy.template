@@ -39,7 +39,7 @@
 {{- end }}
 
 logging {
-  level  = "info"
+  level  = "warn"
   format = "logfmt"
 }
 
@@ -83,15 +83,11 @@ loki.write "default" {
     remote_timeout     = "{{ .RemoteTimeout }}"
     tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingTenantIDKey }}"])
 
-    {{- if .IsWorkloadCluster }}
     url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingURLKey }}"])
     basic_auth {
       username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
       password = remote.kubernetes.secret.credentials.data["{{ .LoggingPasswordKey }}"]
     }
-    {{- else }}
-    url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
-    {{- end }}
 
     tls_config {
       insecure_skip_verify = {{ .InsecureSkipVerify }}
@@ -108,21 +104,21 @@ loki.write "default" {
 {{- end }}
 
 {{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled }}
-{{- if and .IsWorkloadCluster .TracingEnabled }}
+{{- if .TracingEnabled }}
 // Basic authentication for Tempo
 otelcol.auth.basic "tempo_credentials" {
   username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .TempoUsernameKey }}"])
   password = remote.kubernetes.secret.credentials.data["{{ .TempoPasswordKey }}"]
 }
 {{- end }}
-{{- if and .IsWorkloadCluster .OTLPMetricsEnabled }}
+{{- if .OTLPMetricsEnabled }}
 // Basic authentication for Mimir
 otelcol.auth.basic "mimir_credentials" {
   username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirUsernameKey }}"])
   password = remote.kubernetes.secret.credentials.data["{{ .MimirPasswordKey }}"]
 }
 {{- end }}
-{{- if and .IsWorkloadCluster .OTLPLogsEnabled }}
+{{- if .OTLPLogsEnabled }}
 // Basic authentication for Loki
 otelcol.auth.basic "loki_credentials" {
   username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
@@ -374,19 +370,11 @@ otelcol.processor.filter "{{ . }}" {
 // OTLP gRPC exporter for traces — tenant {{ . }} → Tempo
 otelcol.exporter.otlp "{{ . }}_tempo" {
   client {
-    {{- if $.IsWorkloadCluster }}
     auth     = otelcol.auth.basic.tempo_credentials.handler
-    endpoint = "{{ $.TracingEndpoint }}"
+    endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.TempoEndpointKey }}"])
     tls {
       insecure_skip_verify = false
     }
-    {{- else }}
-    tls {
-      // Use insecure connection since this exporter uses a (direct) internal Tempo endpoint which is not behind a TLS reverse proxy.
-      insecure = true
-    }
-    endpoint = "tempo-distributor.tempo.svc:4317"
-    {{- end }}
 
     headers = {
       "X-Scope-OrgID" = "{{ . }}",
@@ -401,18 +389,11 @@ otelcol.exporter.otlp "{{ . }}_tempo" {
 // to automatically promote resource attributes (cluster metadata) to metric labels.
 otelcol.exporter.otlphttp "{{ . }}_mimir" {
   client {
-    {{- if $.IsWorkloadCluster }}
     auth     = otelcol.auth.basic.mimir_credentials.handler
     endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirOTLPURLKey }}"])
     tls {
       insecure_skip_verify = false
     }
-    {{- else }}
-    endpoint = "http://mimir-gateway.mimir.svc:80/otlp"
-    tls {
-      insecure = true
-    }
-    {{- end }}
 
     headers = {
       "X-Scope-OrgID" = "{{ . }}",
@@ -425,18 +406,11 @@ otelcol.exporter.otlphttp "{{ . }}_mimir" {
 // OTLP HTTP exporter for logs — tenant {{ . }} → Loki
 otelcol.exporter.otlphttp "{{ . }}_loki" {
   client {
-    {{- if $.IsWorkloadCluster }}
     auth     = otelcol.auth.basic.loki_credentials.handler
     endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LokiOTLPURLKey }}"])
     tls {
       insecure_skip_verify = false
     }
-    {{- else }}
-    endpoint = "http://loki-gateway.loki.svc:80/otlp"
-    tls {
-      insecure = true
-    }
-    {{- end }}
 
     headers = {
       "X-Scope-OrgID" = "{{ . }}",
