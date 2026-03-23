@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Change all alloy log level to warn instead of info.
 - Dashboard ConfigMap webhook now validates that the referenced `GrafanaOrganization` CR exists at admission time, rejecting ConfigMaps that reference a non-existent organization instead of silently failing at reconcile time.
 
+### Removed
+
+- Remove legacy `giantswarm.io` labels and annotation support (`giantswarm.io/monitoring`, `giantswarm.io/network-monitoring`, `giantswarm.io/keda-authentication`, `giantswarm.io/keda-namespace`, `giantswarm.io/logging`, `giantswarm.io/tracing`) labels as we now only use the new ones under the `observability.giantswarm.io` domain.
+
 ## [0.66.1] - 2026-03-19
 
 ### Fixed

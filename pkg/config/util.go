@@ -13,10 +13,7 @@ import (
 // The defaultWhenMissing parameter controls the behavior when the label is missing:
 //   - true: feature is enabled by default (opt-out model)
 //   - false: feature is disabled by default (opt-in model)
-//
-// During the label migration from giantswarm.io/* to observability.giantswarm.io/*, labelKey is checked
-// first and legacyLabelKey is used as a fallback when labelKey is absent.
-func isClusterFeatureEnabled(globalEnabled bool, cluster *clusterv1.Cluster, labelKey string, legacyLabelKey string, defaultWhenMissing bool) bool {
+func isClusterFeatureEnabled(globalEnabled bool, cluster *clusterv1.Cluster, labelKey string, defaultWhenMissing bool) bool {
 	// Check global flag
 	if !globalEnabled {
 		return false
@@ -28,16 +25,13 @@ func isClusterFeatureEnabled(globalEnabled bool, cluster *clusterv1.Cluster, lab
 		return false
 	}
 
-	// Check cluster-specific label, preferring the new key and falling back to the legacy key.
+	// Check cluster-specific label
 	labels := cluster.GetLabels()
 	if labels == nil {
 		return defaultWhenMissing
 	}
 
 	labelValue, ok := labels[labelKey]
-	if !ok {
-		labelValue, ok = labels[legacyLabelKey]
-	}
 	if !ok {
 		return defaultWhenMissing
 	}

@@ -107,13 +107,13 @@ Observability features are controlled per-cluster via labels on the `Cluster` ob
 
 | Feature | Label | Model | Default |
 |---|---|---|---|
-| Metrics | `giantswarm.io/monitoring` | opt-out | enabled |
-| Logging | `giantswarm.io/logging` | opt-out | enabled |
-| Tracing | `giantswarm.io/tracing` | opt-out | enabled |
-| Network monitoring | `giantswarm.io/network-monitoring` | opt-in | disabled |
-| KEDA auth | `giantswarm.io/keda-authentication` | opt-in | disabled |
+| Metrics | `observability.giantswarm.io/monitoring` | opt-out | enabled |
+| Logging | `observability.giantswarm.io/logging` | opt-out | enabled |
+| Tracing | `observability.giantswarm.io/tracing` | opt-out | enabled |
+| Network monitoring | `observability.giantswarm.io/network-monitoring` | opt-in | disabled |
+| KEDA auth | `observability.giantswarm.io/keda-authentication` | opt-in | disabled |
 
-The KEDA operator namespace can be overridden per-cluster via the `giantswarm.io/keda-namespace` annotation (default: `keda`).
+The KEDA operator namespace can be overridden per-cluster via the `observability.giantswarm.io/keda-namespace` annotation (default: `keda`).
 
 See [docs/cluster.md](docs/cluster.md) for full details including per-cluster sharding and queue tuning.
 

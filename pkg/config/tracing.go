@@ -5,7 +5,6 @@ import (
 )
 
 const TracingLabel = "observability.giantswarm.io/tracing"
-const LegacyTracingLabel = "giantswarm.io/tracing"
 
 // TracingConfig represents the configuration for tracing support in Grafana.
 type TracingConfig struct {
@@ -25,5 +24,5 @@ func (c TracingConfig) Validate() error {
 //   - cluster is not being deleted
 //   - cluster-specific tracing label is set to true (or missing/invalid, defaulting to true)
 func (c TracingConfig) IsTracingEnabled(cluster *clusterv1.Cluster) bool {
-	return isClusterFeatureEnabled(c.Enabled, cluster, TracingLabel, LegacyTracingLabel, true)
+	return isClusterFeatureEnabled(c.Enabled, cluster, TracingLabel, true)
 }
