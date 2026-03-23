@@ -17,13 +17,14 @@ import (
 
 func TestNewNoop(t *testing.T) {
 	c := ruler.NewNoop()
-	err := c.DeleteAllRulesForTenant(context.Background(), "giantswarm")
+	err := c.DeleteClusterRulesForTenant(context.Background(), "giantswarm", "my-cluster")
 	assert.NoError(t, err)
 }
 
-func TestNewMimir_DeleteAllRulesForTenant(t *testing.T) {
+func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 	tests := []struct {
 		name           string
+		clusterID      string
 		listStatus     int
 		listBody       any
 		deleteStatuses map[string]int // namespace → status to return on DELETE
@@ -31,45 +32,58 @@ func TestNewMimir_DeleteAllRulesForTenant(t *testing.T) {
 	}{
 		{
 			name:       "no rules (404 on list)",
+			clusterID:  "my-cluster",
 			listStatus: http.StatusNotFound,
 			wantErr:    false,
 		},
 		{
 			name:       "no namespaces (empty map)",
+			clusterID:  "my-cluster",
 			listStatus: http.StatusOK,
 			listBody:   map[string]any{},
 			wantErr:    false,
 		},
 		{
-			name:       "deletes all namespaces",
+			name:       "deletes only namespaces matching cluster prefix",
+			clusterID:  "my-cluster",
 			listStatus: http.StatusOK,
-			listBody:   map[string]any{"ns-a": nil, "ns-b": nil},
+			listBody:   map[string]any{"my-cluster/rules": nil, "my-cluster/alerts": nil, "other-cluster/rules": nil},
 			deleteStatuses: map[string]int{
-				"ns-a": http.StatusNoContent,
-				"ns-b": http.StatusOK,
+				"my-cluster/rules":  http.StatusNoContent,
+				"my-cluster/alerts": http.StatusOK,
 			},
 			wantErr: false,
 		},
 		{
-			name:       "treats 404 on delete as success",
+			name:       "skips all namespaces when none match prefix",
+			clusterID:  "my-cluster",
 			listStatus: http.StatusOK,
-			listBody:   map[string]any{"ns-gone": nil},
+			listBody:   map[string]any{"other-cluster/rules": nil},
+			wantErr:    false,
+		},
+		{
+			name:       "treats 404 on delete as success",
+			clusterID:  "my-cluster",
+			listStatus: http.StatusOK,
+			listBody:   map[string]any{"my-cluster/gone": nil},
 			deleteStatuses: map[string]int{
-				"ns-gone": http.StatusNotFound,
+				"my-cluster/gone": http.StatusNotFound,
 			},
 			wantErr: false,
 		},
 		{
 			name:       "returns error on unexpected delete status",
+			clusterID:  "my-cluster",
 			listStatus: http.StatusOK,
-			listBody:   map[string]any{"ns-fail": nil},
+			listBody:   map[string]any{"my-cluster/fail": nil},
 			deleteStatuses: map[string]int{
-				"ns-fail": http.StatusInternalServerError,
+				"my-cluster/fail": http.StatusInternalServerError,
 			},
 			wantErr: true,
 		},
 		{
 			name:       "returns error on unexpected list status",
+			clusterID:  "my-cluster",
 			listStatus: http.StatusInternalServerError,
 			wantErr:    true,
 		},
@@ -106,7 +120,7 @@ func TestNewMimir_DeleteAllRulesForTenant(t *testing.T) {
 			defer srv.Close()
 
 			c := ruler.NewMimir(srv.URL)
-			err := c.DeleteAllRulesForTenant(context.Background(), tenantID)
+			err := c.DeleteClusterRulesForTenant(context.Background(), tenantID, tt.clusterID)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -116,7 +130,7 @@ func TestNewMimir_DeleteAllRulesForTenant(t *testing.T) {
 	}
 }
 
-func TestNewLoki_DeleteAllRulesForTenant(t *testing.T) {
+func TestNewLoki_DeleteClusterRulesForTenant(t *testing.T) {
 	const tenantID = "giantswarm"
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -132,19 +146,20 @@ func TestNewLoki_DeleteAllRulesForTenant(t *testing.T) {
 	defer srv.Close()
 
 	c := ruler.NewLoki(srv.URL)
-	err := c.DeleteAllRulesForTenant(context.Background(), tenantID)
+	err := c.DeleteClusterRulesForTenant(context.Background(), tenantID, "my-cluster")
 	assert.NoError(t, err)
 }
 
-func TestNewMulti_DeleteAllRulesForTenant(t *testing.T) {
+func TestNewMulti_DeleteClusterRulesForTenant(t *testing.T) {
 	const tenantID = "giantswarm"
+	const clusterID = "my-cluster"
 
 	t.Run("calls all backends", func(t *testing.T) {
 		called := map[string]int{}
-		clientA := &trackingClient{name: "mimir", calls: called, wantTenant: tenantID}
-		clientB := &trackingClient{name: "loki", calls: called, wantTenant: tenantID}
+		clientA := &trackingClient{name: "mimir", calls: called, wantTenant: tenantID, wantCluster: clusterID}
+		clientB := &trackingClient{name: "loki", calls: called, wantTenant: tenantID, wantCluster: clusterID}
 
-		err := ruler.NewMulti(clientA, clientB).DeleteAllRulesForTenant(context.Background(), tenantID)
+		err := ruler.NewMulti(clientA, clientB).DeleteClusterRulesForTenant(context.Background(), tenantID, clusterID)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, called["mimir"])
 		assert.Equal(t, 1, called["loki"])
@@ -152,10 +167,10 @@ func TestNewMulti_DeleteAllRulesForTenant(t *testing.T) {
 
 	t.Run("calls all backends even when one errors", func(t *testing.T) {
 		called := map[string]int{}
-		clientA := &trackingClient{name: "mimir", calls: called, wantTenant: tenantID, err: fmt.Errorf("mimir down")}
-		clientB := &trackingClient{name: "loki", calls: called, wantTenant: tenantID}
+		clientA := &trackingClient{name: "mimir", calls: called, wantTenant: tenantID, wantCluster: clusterID, err: fmt.Errorf("mimir down")}
+		clientB := &trackingClient{name: "loki", calls: called, wantTenant: tenantID, wantCluster: clusterID}
 
-		err := ruler.NewMulti(clientA, clientB).DeleteAllRulesForTenant(context.Background(), tenantID)
+		err := ruler.NewMulti(clientA, clientB).DeleteClusterRulesForTenant(context.Background(), tenantID, clusterID)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "mimir down")
 		assert.Equal(t, 1, called["mimir"], "mimir should have been called")
@@ -164,16 +179,20 @@ func TestNewMulti_DeleteAllRulesForTenant(t *testing.T) {
 }
 
 type trackingClient struct {
-	name       string
-	calls      map[string]int
-	wantTenant string
-	err        error
+	name        string
+	calls       map[string]int
+	wantTenant  string
+	wantCluster string
+	err         error
 }
 
-func (tc *trackingClient) DeleteAllRulesForTenant(_ context.Context, tenantID string) error {
+func (tc *trackingClient) DeleteClusterRulesForTenant(_ context.Context, tenantID, clusterID string) error {
 	tc.calls[tc.name]++
 	if tc.wantTenant != "" && tenantID != tc.wantTenant {
 		return fmt.Errorf("trackingClient %s: got tenantID %q, want %q", tc.name, tenantID, tc.wantTenant)
+	}
+	if tc.wantCluster != "" && clusterID != tc.wantCluster {
+		return fmt.Errorf("trackingClient %s: got clusterID %q, want %q", tc.name, clusterID, tc.wantCluster)
 	}
 	return tc.err
 }

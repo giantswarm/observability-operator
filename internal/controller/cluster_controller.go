@@ -480,14 +480,14 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 			}
 		}
 	}
-	// Delete ruler rules for every active tenant on cluster deletion.
+	// Delete ruler rules scoped to this cluster for every active tenant.
 	tenants, err := r.TenantRepository.List(ctx)
 	if err != nil {
 		logger.Error(err, "failed to list tenants for ruler cleanup")
 		errs = append(errs, fmt.Errorf("list tenants for ruler cleanup: %w", err))
 	} else {
 		for _, tenantID := range tenants {
-			if err := r.RulerClient.DeleteAllRulesForTenant(ctx, tenantID); err != nil {
+			if err := r.RulerClient.DeleteClusterRulesForTenant(ctx, tenantID, cluster.Name); err != nil {
 				logger.Error(err, "failed to delete ruler rules", "tenant", tenantID)
 				errs = append(errs, fmt.Errorf("delete ruler rules for tenant %s: %w", tenantID, err))
 			}

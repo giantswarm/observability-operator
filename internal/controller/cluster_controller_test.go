@@ -24,6 +24,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/ruler"
 )
 
 var _ = Describe("Cluster Controller", func() {
@@ -225,6 +226,8 @@ var _ = Describe("Cluster Controller", func() {
 				AlloyLogsService:           alloyLogsService,
 				AlloyEventsService:         alloyEventsService,
 				authManagers:               authManagers,
+				RulerClient:                ruler.NewNoop(),
+				TenantRepository:           tenancy.NewTenantRepository(k8sClient),
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
 			}
 		})

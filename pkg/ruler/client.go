@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -24,9 +25,11 @@ const (
 
 // Client deletes recording and alerting rules from a ruler backend.
 type Client interface {
-	// DeleteAllRulesForTenant deletes all rule namespaces owned by tenantID.
-	// Implementations must be idempotent: a tenant with no rules is not an error.
-	DeleteAllRulesForTenant(ctx context.Context, tenantID string) error
+	// DeleteClusterRulesForTenant deletes all rule namespaces owned by tenantID
+	// whose name starts with clusterID (the mimir_namespace_prefix / loki_namespace_prefix
+	// set by Alloy, which equals the cluster name).
+	// Implementations must be idempotent: a tenant with no matching rules is not an error.
+	DeleteClusterRulesForTenant(ctx context.Context, tenantID, clusterID string) error
 }
 
 // NewMimir returns a Client that targets the Mimir ruler at baseURL.
@@ -50,8 +53,8 @@ type client struct {
 	httpClient   *http.Client
 }
 
-func (c *client) DeleteAllRulesForTenant(ctx context.Context, tenantID string) error {
-	logger := log.FromContext(ctx).WithValues("tenant", tenantID)
+func (c *client) DeleteClusterRulesForTenant(ctx context.Context, tenantID, clusterID string) error {
+	logger := log.FromContext(ctx).WithValues("tenant", tenantID, "cluster", clusterID)
 
 	namespaces, err := c.listNamespaces(ctx, tenantID)
 	if err != nil {
@@ -59,21 +62,28 @@ func (c *client) DeleteAllRulesForTenant(ctx context.Context, tenantID string) e
 	}
 
 	var errs []error
+	deleted := 0
 	for _, ns := range namespaces {
+		if !strings.HasPrefix(ns, clusterID) {
+			continue
+		}
 		if err := c.deleteNamespace(ctx, tenantID, ns); err != nil {
 			errs = append(errs, err)
 			continue
 		}
 		logger.Info("deleted ruler namespace", "namespace", ns)
+		deleted++
 	}
 
-	if len(errs) == 0 && len(namespaces) > 0 {
-		logger.Info("deleted all ruler rules", "namespaces_deleted", len(namespaces))
+	if len(errs) == 0 && deleted > 0 {
+		logger.Info("deleted cluster ruler rules", "namespaces_deleted", deleted)
 	}
 
 	return errors.Join(errs...)
 }
 
+// listNamespaces returns the names of all rule namespaces that exist for tenantID.
+// A 404 response is treated as "no namespaces" and returns nil, nil.
 func (c *client) listNamespaces(ctx context.Context, tenantID string) ([]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+c.rulesAPIPath, nil)
 	if err != nil {
@@ -108,6 +118,8 @@ func (c *client) listNamespaces(ctx context.Context, tenantID string) ([]string,
 	return namespaces, nil
 }
 
+// deleteNamespace deletes a single rule namespace for tenantID.
+// 404 is treated as success (already gone).
 func (c *client) deleteNamespace(ctx context.Context, tenantID, namespace string) error {
 	u := c.baseURL + c.rulesAPIPath + "/" + url.PathEscape(namespace)
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
@@ -142,10 +154,10 @@ type multiClient struct {
 	clients []Client
 }
 
-func (m *multiClient) DeleteAllRulesForTenant(ctx context.Context, tenantID string) error {
+func (m *multiClient) DeleteClusterRulesForTenant(ctx context.Context, tenantID, clusterID string) error {
 	var errs []error
 	for _, c := range m.clients {
-		errs = append(errs, c.DeleteAllRulesForTenant(ctx, tenantID))
+		errs = append(errs, c.DeleteClusterRulesForTenant(ctx, tenantID, clusterID))
 	}
 	return errors.Join(errs...)
 }
@@ -153,4 +165,4 @@ func (m *multiClient) DeleteAllRulesForTenant(ctx context.Context, tenantID stri
 // noopClient is a no-op implementation of Client (ruler not configured).
 type noopClient struct{}
 
-func (noopClient) DeleteAllRulesForTenant(_ context.Context, _ string) error { return nil }
+func (noopClient) DeleteClusterRulesForTenant(_ context.Context, _, _ string) error { return nil }
