@@ -524,20 +524,20 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			_, err := validator.ValidateCreate(ctx, precedenceConfigMap)
 			Expect(err).NotTo(HaveOccurred()) // Should use annotation-org
 
-			By("Testing organization with special characters")
-			specialOrgConfigMap := obj.DeepCopy()
-			specialOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "org-with-dashes_and_underscores.and.dots"
+			By("Testing with an existing organization")
+			existingOrgConfigMap := obj.DeepCopy()
+			existingOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "test-org"
 
-			_, err = validator.ValidateCreate(ctx, specialOrgConfigMap)
-			Expect(err).NotTo(HaveOccurred()) // Special chars should be allowed
+			_, err = validator.ValidateCreate(ctx, existingOrgConfigMap)
+			Expect(err).NotTo(HaveOccurred()) // Existing org should be accepted
 
-			By("Testing very long organization name")
-			longOrgConfigMap := obj.DeepCopy()
-			longOrgName := "very-long-organization-name-that-might-exceed-normal-limits-but-should-still-be-handled-gracefully-by-the-validation-system"
-			longOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = longOrgName
+			By("Testing non-existent organization is rejected")
+			missingOrgConfigMap := obj.DeepCopy()
+			missingOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "does-not-exist"
 
-			_, err = validator.ValidateCreate(ctx, longOrgConfigMap)
-			Expect(err).NotTo(HaveOccurred()) // Long org names should be allowed
+			_, err = validator.ValidateCreate(ctx, missingOrgConfigMap)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("does not exist"))
 		})
 
 		It("Should handle webhook lifecycle operations correctly", func() {
@@ -658,13 +658,14 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		})
 
 		Context("When testing additional edge cases and security scenarios", func() {
-			It("Should handle Unicode characters in organization names", func() {
-				By("Testing organization with Unicode characters")
-				unicodeOrgConfigMap := obj.DeepCopy()
-				unicodeOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "组织-العربية-русский-🏢"
+			It("Should reject dashboard referencing non-existent organization", func() {
+				By("Testing organization that does not exist as a GrafanaOrganization CR")
+				nonExistentOrgConfigMap := obj.DeepCopy()
+				nonExistentOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "no-such-org"
 
-				_, err := validator.ValidateCreate(ctx, unicodeOrgConfigMap)
-				Expect(err).NotTo(HaveOccurred()) // Unicode should be allowed
+				_, err := validator.ValidateCreate(ctx, nonExistentOrgConfigMap)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("does not exist"))
 			})
 
 			It("Should handle extremely large dashboard JSON gracefully", func() {
