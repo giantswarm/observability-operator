@@ -36,11 +36,8 @@ networkPolicy:
     # Allow access to Kubernetes API server for cluster operations
     - toEntities:
       - kube-apiserver
-      {{- if and .LoggingEnabled (or .IsWorkloadCluster .NetworkMonitoringEnabled) }}
-      # Allow reaching external Loki endpoints (workload clusters always go external;
-      # management clusters go external when hostNetwork=true due to network monitoring)
+      - cluster # (needed for access to the gateway)
       - world
-      {{- end }}
     # Allow DNS resolution
     - toEndpoints:
       - matchLabels:
@@ -59,30 +56,6 @@ networkPolicy:
           protocol: UDP
         - port: "53"
           protocol: TCP
-    {{- if and .LoggingEnabled (not .IsWorkloadCluster) (not .NetworkMonitoringEnabled) }}
-    # Allow direct access to Loki gateway for log ingestion (management cluster without host network)
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/component: gateway
-          app.kubernetes.io/name: loki
-          io.kubernetes.pod.namespace: loki
-      toPorts:
-      - ports:
-        - port: "80"
-          protocol: TCP
-        - port: "8080"
-          protocol: TCP
-    # Allow direct access to Loki backend for Loading rules (management cluster without host network)
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/component: backend
-          app.kubernetes.io/name: loki
-          io.kubernetes.pod.namespace: loki
-      toPorts:
-      - ports:
-        - port: "3100"
-          protocol: TCP
-    {{- end }}
     {{- if and .LoggingEnabled (not .NodeFilteringEnabled) }}
     # Allow Alloy clustering for distributed log collection coordination
     - toEndpoints:

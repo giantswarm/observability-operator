@@ -3,6 +3,28 @@
 # - configMap is generated from events-logger.alloy.template and passed as a string
 #   here and will be created by Alloy's chart.
 # - Alloy runs as a deployment, with only 1 replica.
+networkPolicy:
+  cilium:
+    egress:
+    - toEntities:
+      - kube-apiserver
+      - cluster # (needed for access to the gateway)
+      - world
+    # Allow DNS resolution
+    - toEndpoints:
+      - matchLabels:
+          k8s-app: coredns
+      - matchLabels:
+          k8s-app: k8s-dns-node-cache
+      toPorts:
+      - ports:
+        - port: "53"
+          protocol: ANY
+        - port: "1053"
+          protocol: ANY
+        rules:
+          dns:
+            - matchPattern: '*'
 
 alloy:
   alloy:
@@ -10,7 +32,7 @@ alloy:
       create: true
       content: |-
         logging {
-          level  = "info"
+          level  = "warn"
           format = "logfmt"
         }
         remote.kubernetes.secret "credentials" {

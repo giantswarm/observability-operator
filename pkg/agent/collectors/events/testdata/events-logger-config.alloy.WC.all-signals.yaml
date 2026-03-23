@@ -5,6 +5,26 @@
 # - Alloy runs as a deployment, with only 1 replica.
 networkPolicy:
   cilium:
+    egress:
+    - toEntities:
+      - kube-apiserver
+      - cluster # (needed for access to the gateway)
+      - world
+    # Allow DNS resolution
+    - toEndpoints:
+      - matchLabels:
+          k8s-app: coredns
+      - matchLabels:
+          k8s-app: k8s-dns-node-cache
+      toPorts:
+      - ports:
+        - port: "53"
+          protocol: ANY
+        - port: "1053"
+          protocol: ANY
+        rules:
+          dns:
+            - matchPattern: '*'
     ingress:
     - toPorts:
       - ports:
@@ -24,7 +44,7 @@ alloy:
       create: true
       content: |-
         logging {
-          level  = "info"
+          level  = "warn"
           format = "logfmt"
         }
         remote.kubernetes.secret "credentials" {
@@ -277,7 +297,7 @@ alloy:
         otelcol.exporter.otlp "giantswarm_tempo" {
           client {
             auth     = otelcol.auth.basic.tempo_credentials.handler
-            endpoint = "tempo.test.gigantic.io:443"
+            endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-otlp-url"])
             tls {
               insecure_skip_verify = false
             }

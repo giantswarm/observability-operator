@@ -51,7 +51,7 @@ alloy:
       content: |-
         
         logging {
-          level  = "info"
+          level  = "warn"
           format = "logfmt"
         }
         
@@ -61,7 +61,11 @@ alloy:
         }
         // load rules for tenant tenant1
         mimir.rules.kubernetes "tenant1" {
-          address = "http://mimir-ruler.mimir.svc:8080/"
+          address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-ruler-url"])
+          basic_auth {
+            username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+            password = remote.kubernetes.secret.credentials.data["metrics-password"]
+          }
           mimir_namespace_prefix = "dummy-cluster"
           tenant_id = "tenant1"
           rule_selector {
@@ -149,7 +153,12 @@ alloy:
             enable_http2   = false
             remote_timeout = "60s"
             send_exemplars = false
-            url = "http://mimir-gateway.mimir.svc:80/api/v1/push"
+        
+            url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-remote-write-url"])
+            basic_auth {
+              username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-username"])
+              password = remote.kubernetes.secret.credentials.data["metrics-password"]
+            }
         
             headers = {
               "X-Scope-OrgID" = "tenant1",

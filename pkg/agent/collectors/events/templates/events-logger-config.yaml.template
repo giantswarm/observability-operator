@@ -13,13 +13,14 @@
 # - configMap is generated from events-logger.alloy.template and passed as a string
 #   here and will be created by Alloy's chart.
 # - Alloy runs as a deployment, with only 1 replica.
-{{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled (and .LoggingEnabled (not .IsWorkloadCluster)) }}
+{{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled .LoggingEnabled }}
 networkPolicy:
   cilium:
-    {{- if not .IsWorkloadCluster }}
     egress:
     - toEntities:
       - kube-apiserver
+      - cluster # (needed for access to the gateway)
+      - world
     # Allow DNS resolution
     - toEndpoints:
       - matchLabels:
@@ -35,44 +36,6 @@ networkPolicy:
         rules:
           dns:
             - matchPattern: '*'
-    {{- if or .LoggingEnabled .OTLPLogsEnabled }}
-    # Allow direct access to loki-gateway
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/component: gateway
-          app.kubernetes.io/name: loki
-          io.kubernetes.pod.namespace: loki
-      toPorts:
-      - ports:
-        - port: "8080"
-          protocol: TCP
-    {{- end }}
-    {{- if .TracingEnabled }}
-    # Allow direct access to tempo
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/name: tempo
-          io.kubernetes.pod.namespace: tempo
-      toPorts:
-      - ports:
-        - port: "4317"
-          protocol: TCP
-        - port: "4318"
-          protocol: TCP
-    {{- end }}
-    {{- if .OTLPMetricsEnabled }}
-    # Allow direct access to mimir-gateway
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/component: gateway
-          app.kubernetes.io/name: mimir
-          io.kubernetes.pod.namespace: mimir
-      toPorts:
-      - ports:
-        - port: "8080"
-          protocol: TCP
-    {{- end }}
-    {{- end }}
     {{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled }}
     ingress:
     - toPorts:

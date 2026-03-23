@@ -60,15 +60,11 @@ beyla.ebpf "default" {
 {{- range .Tenants }}
 // load rules for tenant {{ . }}
 loki.rules.kubernetes "{{ . }}" {
-  {{- if or $.IsWorkloadCluster $.NetworkMonitoringEnabled }}
   address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LokiRulerAPIURLKey }}"])
   basic_auth {
     username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LoggingUsernameKey }}"])
     password = remote.kubernetes.secret.credentials.data["{{ $.LoggingPasswordKey }}"]
   }
-  {{- else }}
-  address = "http://loki-backend.loki.svc:3100/"
-  {{- end }}
   loki_namespace_prefix = "{{ $.ClusterID }}"
   tenant_id = "{{ . }}"
   rule_selector {
@@ -319,15 +315,11 @@ loki.source.file "kubernetes_audit" {
 // Loki target configuration
 loki.write "default" {
   endpoint {
-    {{- if or .IsWorkloadCluster .NetworkMonitoringEnabled }}
     basic_auth {
       username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
       password = remote.kubernetes.secret.credentials.data["{{ .LoggingPasswordKey }}"]
     }
     url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingURLKey }}"])
-    {{- else }}
-    url                = "http://loki-gateway.loki.svc:80/loki/api/v1/push"
-    {{- end }}
     max_backoff_period = "{{ .MaxBackoffPeriod }}"
     remote_timeout     = "{{ .RemoteTimeout }}"
     tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingTenantIDKey }}"])
