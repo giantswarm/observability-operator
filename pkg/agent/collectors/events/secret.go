@@ -56,6 +56,7 @@ func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 
 		secrets[common.TempoUsernameKey] = cluster.Name
 		secrets[common.TempoPasswordKey] = tracesPassword
+		secrets[common.TempoOTLPURLKey] = fmt.Sprintf("%s:443", fmt.Sprintf(common.TempoBaseURLFormat, s.Config.Cluster.BaseDomain))
 	}
 
 	// Add Mimir OTLP credentials when OTLP metrics ingestion is enabled

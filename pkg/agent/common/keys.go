@@ -33,12 +33,13 @@ const (
 	// --- Tempo Configuration (Tracing) ---
 	// Used by events collector for distributed tracing
 
-	// Tempo secret keys for authentication
+	// Tempo secret keys for authentication and endpoint configuration
 	TempoUsernameKey = "tracing-username" // Username for Tempo authentication
 	TempoPasswordKey = "tracing-password" // Password for Tempo authentication
+	TempoOTLPURLKey  = "tracing-otlp-url" // gRPC endpoint in host:port format
 
-	// TempoIngressURLFormat is the URL template for Tempo ingress
-	TempoIngressURLFormat = "tempo.%s"
+	// TempoBaseURLFormat is the URL template for Tempo ingress
+	TempoBaseURLFormat = "tempo.%s"
 
 	// --- OTLP Batch Processor Configuration ---
 	// Controls the otelcol.processor.batch block shared by all OTLP pipelines (traces, metrics, logs).

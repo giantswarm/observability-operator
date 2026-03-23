@@ -7,9 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added support for Proxmox clusters.
+
+### Changed
+
+- All Alloy collectors (metrics, logs, events) now always route to external hostnames via basic auth, removing the management cluster shortcut that used in-cluster service URLs. This makes management cluster behaviour consistent with workload clusters.
+- Tempo gRPC endpoint for the events collector is now stored in the auth secret (`tracing-otlp-url`) rather than baked into the Alloy config, consistent with Loki and Mimir endpoints.
+- Change all alloy log level to warn instead of info.
+
 ### Fixed
 
 - Delete all Mimir and Loki ruler rules for every active tenant when a cluster is deleted, preventing stale rules from accumulating. Configured via `monitoring.ruler.url` and `logging.ruler.url` Helm values (empty by default, disabling cleanup).
+
+### Removed
+
+- Remove legacy `giantswarm.io` labels and annotation support (`giantswarm.io/monitoring`, `giantswarm.io/network-monitoring`, `giantswarm.io/keda-authentication`, `giantswarm.io/keda-namespace`, `giantswarm.io/logging`, `giantswarm.io/tracing`) labels as we now only use the new ones under the `observability.giantswarm.io` domain.
 
 ## [0.66.1] - 2026-03-19
 
