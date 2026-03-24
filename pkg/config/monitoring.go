@@ -55,6 +55,10 @@ type MonitoringConfig struct {
 
 	// Gateway holds the namespace and secret names for the Mimir gateway authentication secrets.
 	Gateway GatewayConfig
+
+	// MimirRemoteWriteTimeout is the remote_timeout for the Mimir remote write endpoint in Alloy
+	// agent ConfigMaps (e.g. "60s").
+	MimirRemoteWriteTimeout string
 }
 
 // Validate validates the monitoring configuration

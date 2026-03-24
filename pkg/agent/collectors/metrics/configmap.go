@@ -20,7 +20,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
@@ -68,7 +67,7 @@ func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	// Compute the number of shards based on the number of series.
 	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", service="%s"})by(pod))[6h:1h]))`, cluster.Name, apps.AlloyMetricsAppName)
-	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, s.Config.Monitoring.MetricsQueryURL)
+	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, s.Config.Monitoring.MetricsQueryURL, s.Config.DefaultTenant, s.Config.HTTP.MimirQueryTimeout)
 	if err != nil {
 		logger.Error(err, "alloy-service - failed to query head series")
 		metrics.MimirQueryErrors.WithLabelValues().Inc()
@@ -165,13 +164,13 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		MimirPasswordKey:                      common.MimirPasswordKey,
 		MimirRemoteWriteAPIURLKey:             common.MimirRemoteWriteAPIURLKey,
 		MimirRemoteWriteAPINameKey:            common.MimirRemoteWriteAPINameKey,
-		MimirRemoteWriteTimeout:               common.MimirRemoteWriteTimeout,
+		MimirRemoteWriteTimeout:               s.Config.Monitoring.MimirRemoteWriteTimeout,
 		MimirRemoteWriteTLSInsecureSkipVerify: s.Config.Cluster.InsecureCA,
 
 		ClusterID: cluster.Name,
 
 		Tenants:         tenants,
-		DefaultTenantID: organization.GiantSwarmDefaultTenant,
+		DefaultTenantID: s.Config.DefaultTenant,
 
 		QueueConfigBatchSendDeadline: s.Config.Monitoring.QueueConfig.BatchSendDeadline,
 		QueueConfigCapacity:          s.Config.Monitoring.QueueConfig.Capacity,

@@ -35,6 +35,13 @@ type LoggingConfig struct {
 
 	// Gateway holds the namespace and secret names for the Loki gateway authentication secrets.
 	Gateway GatewayConfig
+
+	// LokiMaxBackoffPeriod is the maximum backoff period for Loki remote write retries in Alloy
+	// agent ConfigMaps (e.g. "10m").
+	LokiMaxBackoffPeriod string
+	// LokiRemoteTimeout is the timeout for Loki remote write operations in Alloy agent ConfigMaps
+	// (e.g. "60s").
+	LokiRemoteTimeout string
 }
 
 // Validate validates the logging configuration

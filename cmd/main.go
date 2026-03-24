@@ -121,6 +121,29 @@ const (
 	flagLoggingEnableNodeFiltering         = "logging-enable-node-filtering"
 	flagLoggingIncludeEventsFromNamespaces = "logging-include-events-from-namespaces"
 	flagLoggingExcludeEventsFromNamespaces = "logging-exclude-events-from-namespaces"
+
+	// HTTP timeout flag names
+	flagRulerHTTPTimeout         = "ruler-http-timeout"
+	flagAlertmanagerHTTPTimeout  = "alertmanager-http-timeout"
+	flagMimirQueryTimeout        = "mimir-query-timeout"
+
+	// Grafana client flag names
+	flagGrafanaClientRetries              = "grafana-client-retries"
+	flagGrafanaAdminSecretNamespace       = "grafana-admin-secret-namespace"
+	flagGrafanaAdminSecretName            = "grafana-admin-secret-name"
+	flagGrafanaGatewayTLSSecretNamespace  = "grafana-gateway-tls-secret-namespace"
+	flagGrafanaGatewayTLSSecretName       = "grafana-gateway-tls-secret-name"
+
+	// Default tenant flag name
+	flagDefaultTenant = "default-tenant"
+
+	// Alloy pipeline knob flag names
+	flagMonitoringMimirRemoteWriteTimeout = "monitoring-mimir-remote-write-timeout"
+	flagLoggingLokiMaxBackoffPeriod       = "logging-loki-max-backoff-period"
+	flagLoggingLokiRemoteTimeout          = "logging-loki-remote-timeout"
+	flagOTLPBatchSendBatchSize            = "otlp-batch-send-batch-size"
+	flagOTLPBatchMaxSize                  = "otlp-batch-max-size"
+	flagOTLPBatchTimeout                  = "otlp-batch-timeout"
 )
 
 var (
@@ -298,6 +321,44 @@ func parseFlags() (err error) {
 	pflag.StringVar(&cfg.Logging.Gateway.HTTPRouteSecretName, flagLoggingGatewayHTTPRouteSecretName, "loki-gateway-httproute-auth",
 		"Name of the HTTPRoute auth secret in the Loki gateway namespace.")
 
+	// HTTP timeout flags
+	pflag.DurationVar(&cfg.HTTP.RulerTimeout, flagRulerHTTPTimeout, 30*time.Second,
+		"HTTP client timeout for ruler API requests.")
+	pflag.DurationVar(&cfg.HTTP.AlertmanagerTimeout, flagAlertmanagerHTTPTimeout, 30*time.Second,
+		"HTTP client timeout for Alertmanager API requests.")
+	pflag.DurationVar(&cfg.HTTP.MimirQueryTimeout, flagMimirQueryTimeout, 2*time.Minute,
+		"Timeout for Mimir TSDB head series queries.")
+
+	// Grafana client flags
+	pflag.IntVar(&cfg.Grafana.ClientRetries, flagGrafanaClientRetries, 3,
+		"Number of retries for Grafana API requests.")
+	pflag.StringVar(&cfg.Grafana.AdminSecretNamespace, flagGrafanaAdminSecretNamespace, "monitoring",
+		"Kubernetes namespace containing the Grafana admin credentials secret.")
+	pflag.StringVar(&cfg.Grafana.AdminSecretName, flagGrafanaAdminSecretName, "grafana",
+		"Name of the Kubernetes secret containing Grafana admin credentials.")
+	pflag.StringVar(&cfg.Grafana.GatewayTLSSecretNamespace, flagGrafanaGatewayTLSSecretNamespace, "envoy-gateway-system",
+		"Kubernetes namespace containing the Grafana Gateway TLS secret.")
+	pflag.StringVar(&cfg.Grafana.GatewayTLSSecretName, flagGrafanaGatewayTLSSecretName, "gateway-giantswarm-default-https-tls",
+		"Name of the Kubernetes secret containing the Grafana Gateway TLS certificate.")
+
+	// Default tenant flag
+	pflag.StringVar(&cfg.DefaultTenant, flagDefaultTenant, "giantswarm",
+		"Default tenant ID used when no tenant label is present.")
+
+	// Alloy pipeline knob flags
+	pflag.StringVar(&cfg.Monitoring.MimirRemoteWriteTimeout, flagMonitoringMimirRemoteWriteTimeout, "60s",
+		"Timeout for Alloy Mimir remote write operations.")
+	pflag.StringVar(&cfg.Logging.LokiMaxBackoffPeriod, flagLoggingLokiMaxBackoffPeriod, "10m",
+		"Maximum backoff period for Alloy Loki remote write retries.")
+	pflag.StringVar(&cfg.Logging.LokiRemoteTimeout, flagLoggingLokiRemoteTimeout, "60s",
+		"Timeout for Alloy Loki remote write operations.")
+	pflag.IntVar(&cfg.OTLP.BatchSendBatchSize, flagOTLPBatchSendBatchSize, 1024,
+		"Number of items to batch before flushing in the OTLP exporter.")
+	pflag.IntVar(&cfg.OTLP.BatchMaxSize, flagOTLPBatchMaxSize, 1024,
+		"Maximum batch size for the OTLP exporter.")
+	pflag.StringVar(&cfg.OTLP.BatchTimeout, flagOTLPBatchTimeout, "500ms",
+		"Maximum wait time before flushing an incomplete OTLP batch.")
+
 	// Cronitor heartbeat monitor configuration flags
 	pflag.IntVar(&cfg.Cronitor.GraceSeconds, flagCronitorGraceSeconds, 1800,
 		"Number of seconds after a missed heartbeat before a Cronitor alert fires.")
@@ -432,7 +493,7 @@ func setupApplication() error {
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
 	// Create Grafana client generator for dependency injection
-	grafanaClientGen := &grafanaclient.DefaultGrafanaClientGenerator{}
+	grafanaClientGen := grafanaclient.NewDefaultGrafanaClientGenerator(cfg.Grafana)
 	// Setup controller for the Cluster resource.
 	err = controller.SetupClusterMonitoringReconciler(mgr, cfg, logger)
 	if err != nil {
