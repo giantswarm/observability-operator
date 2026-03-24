@@ -103,15 +103,15 @@ const (
 	flagCronitorRealertInterval = "cronitor-realert-interval"
 
 	// Gateway configuration flag names
-	flagMonitoringGatewayNamespace          = "monitoring-gateway-namespace"
-	flagMonitoringGatewayIngressSecretName  = "monitoring-gateway-ingress-secret-name"
+	flagMonitoringGatewayNamespace           = "monitoring-gateway-namespace"
+	flagMonitoringGatewayIngressSecretName   = "monitoring-gateway-ingress-secret-name"
 	flagMonitoringGatewayHTTPRouteSecretName = "monitoring-gateway-httproute-secret-name"
-	flagLoggingGatewayNamespace             = "logging-gateway-namespace"
-	flagLoggingGatewayIngressSecretName     = "logging-gateway-ingress-secret-name"
-	flagLoggingGatewayHTTPRouteSecretName   = "logging-gateway-httproute-secret-name"
-	flagTracingGatewayNamespace             = "tracing-gateway-namespace"
-	flagTracingGatewayIngressSecretName     = "tracing-gateway-ingress-secret-name"
-	flagTracingGatewayHTTPRouteSecretName   = "tracing-gateway-httproute-secret-name"
+	flagLoggingGatewayNamespace              = "logging-gateway-namespace"
+	flagLoggingGatewayIngressSecretName      = "logging-gateway-ingress-secret-name"
+	flagLoggingGatewayHTTPRouteSecretName    = "logging-gateway-httproute-secret-name"
+	flagTracingGatewayNamespace              = "tracing-gateway-namespace"
+	flagTracingGatewayIngressSecretName      = "tracing-gateway-ingress-secret-name"
+	flagTracingGatewayHTTPRouteSecretName    = "tracing-gateway-httproute-secret-name"
 
 	// Logging configuration flag names
 	flagLoggingOTLPEnabled                 = "logging-otlp-enabled"
