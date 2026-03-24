@@ -122,6 +122,7 @@ func (s *service) ConfigureFromSecret(ctx context.Context, secret *v1.Secret, te
 
 	err = s.configure(ctx, alertmanagerConfig, templates, tenantID)
 	if err != nil {
+		metrics.MimirAlertmanagerAPIErrors.WithLabelValues("push_config").Inc()
 		return fmt.Errorf("failed to configure alertmanager: %w", err)
 	}
 
@@ -145,6 +146,7 @@ func (s *service) DeleteForTenant(ctx context.Context, tenantID string) error {
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
+		metrics.MimirAlertmanagerAPIErrors.WithLabelValues("delete_config").Inc()
 		return fmt.Errorf("failed to send delete request: %w", err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
@@ -160,6 +162,7 @@ func (s *service) DeleteForTenant(ctx context.Context, tenantID string) error {
 		logger.Info("Alertmanager: no configuration found for tenant, treating as already deleted", "tenant", tenantID)
 		return nil
 	default:
+		metrics.MimirAlertmanagerAPIErrors.WithLabelValues("delete_config").Inc()
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("unexpected status %d and failed to read response body: %w", resp.StatusCode, err)

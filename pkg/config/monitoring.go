@@ -52,6 +52,9 @@ type MonitoringConfig struct {
 	// ExemplarsEnabled controls whether exemplars are forwarded in the remote write pipeline.
 	// Uses opt-out model: enabled by default.
 	ExemplarsEnabled bool
+
+	// Gateway holds the namespace and secret names for the Mimir gateway authentication secrets.
+	Gateway GatewayConfig
 }
 
 // Validate validates the monitoring configuration

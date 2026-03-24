@@ -40,6 +40,41 @@ Counter incremented each time the operator fails to query Mimir for head series 
 
 No labels.
 
+## `observability_operator_monitored_cluster_info`
+
+Info gauge with one series per cluster currently being monitored. Always `1`.
+
+| Label | Description |
+|---|---|
+| `cluster_name` | Cluster name |
+| `cluster_namespace` | Cluster namespace |
+
+Populated on every successful reconcile; series removed when a cluster is deleted.
+
+## `observability_operator_grafana_api_errors_total`
+
+Counter incremented each time the operator receives an error from the Grafana API.
+
+| Label | Description |
+|---|---|
+| `operation` | `configure_org`, `delete_org`, `configure_datasources`, `configure_dashboard`, `delete_dashboard` |
+
+## `observability_operator_mimir_alertmanager_api_errors_total`
+
+Counter incremented each time the operator receives an error from the Mimir Alertmanager API.
+
+| Label | Description |
+|---|---|
+| `operation` | `push_config`, `delete_config` |
+
+## `observability_operator_ruler_api_errors_total`
+
+Counter incremented each time the operator receives an error from the ruler API (Mimir or Loki).
+
+| Label | Description |
+|---|---|
+| `operation` | `delete_rules` |
+
 ## Example queries
 
 ```promql
@@ -60,6 +95,18 @@ topk(5, count(observability_operator_grafana_organization_tenants) by (org_id))
 
 # Alertmanager route count per tenant
 observability_operator_alertmanager_routes
+
+# Total number of clusters being monitored
+count(observability_operator_monitored_cluster_info)
+
+# Grafana API error rate (per operation, 5m window)
+rate(observability_operator_grafana_api_errors_total[5m])
+
+# Mimir Alertmanager API error rate
+rate(observability_operator_mimir_alertmanager_api_errors_total[5m])
+
+# Any ruler deletion errors in the last hour
+increase(observability_operator_ruler_api_errors_total[1h])
 ```
 
 ## Adding new metrics

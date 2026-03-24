@@ -32,6 +32,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	operatormetrics "github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/ruler"
 )
@@ -89,30 +90,30 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 	mimirAuthManager := auth.NewAuthManager(
 		managerClient,
 		auth.NewConfig(
-			auth.AuthTypeMetrics,           // authType
-			"mimir",                        // gatewaySecretsNamespace
-			"mimir-gateway-ingress-auth",   // ingressSecretName
-			"mimir-gateway-httproute-auth", // httprouteSecretName
+			auth.AuthTypeMetrics,
+			cfg.Monitoring.Gateway.Namespace,
+			cfg.Monitoring.Gateway.IngressSecretName,
+			cfg.Monitoring.Gateway.HTTPRouteSecretName,
 		),
 	)
 
 	lokiAuthManager := auth.NewAuthManager(
 		managerClient,
 		auth.NewConfig(
-			auth.AuthTypeLogs,             // authType
-			"loki",                        // gatewaySecretsNamespace
-			"loki-gateway-ingress-auth",   // ingressSecretName
-			"loki-gateway-httproute-auth", // httprouteSecretName
+			auth.AuthTypeLogs,
+			cfg.Logging.Gateway.Namespace,
+			cfg.Logging.Gateway.IngressSecretName,
+			cfg.Logging.Gateway.HTTPRouteSecretName,
 		),
 	)
 
 	tempoAuthManager := auth.NewAuthManager(
 		managerClient,
 		auth.NewConfig(
-			auth.AuthTypeTraces,            // authType
-			"tempo",                        // gatewaySecretsNamespace
-			"tempo-gateway-ingress-auth",   // ingressSecretName
-			"tempo-gateway-httproute-auth", // httprouteSecretName
+			auth.AuthTypeTraces,
+			cfg.Tracing.Gateway.Namespace,
+			cfg.Tracing.Gateway.IngressSecretName,
+			cfg.Tracing.Gateway.HTTPRouteSecretName,
 		),
 	)
 
@@ -330,6 +331,8 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		return ctrl.Result{}, errors.Join(errs...)
 	}
 
+	operatormetrics.MonitoredClusterInfo.WithLabelValues(cluster.Name, cluster.Namespace).Set(1)
+
 	return ctrl.Result{}, nil
 }
 
@@ -514,6 +517,8 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 	}
+
+	operatormetrics.MonitoredClusterInfo.DeleteLabelValues(cluster.Name, cluster.Namespace)
 
 	return ctrl.Result{}, nil
 }

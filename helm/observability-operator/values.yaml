@@ -37,6 +37,15 @@ alerting:
   cronitorHeartbeatPingKey: ""
   # -- Cronitor management key
   cronitorHeartbeatManagementKey: ""
+
+# Cronitor heartbeat monitor operational settings.
+cronitor:
+  # -- Seconds after a missed heartbeat before Cronitor fires an alert
+  graceSeconds: 1800
+  # -- Expected heartbeat frequency (e.g. "every 30 minutes")
+  schedule: "every 30 minutes"
+  # -- How often Cronitor re-alerts while the monitor remains in a failing state
+  realertInterval: "every 24 hours"
   # -- List of team-specific configs for per-team PagerDuty routing
   # Expected team contents:
   #  - name: teamA
@@ -103,10 +112,26 @@ monitoring:
     # -- URL to the Mimir ruler API for deleting rules when a cluster is deleted.
     url: "http://mimir-gateway.mimir.svc"
 
+  gateway:
+    # -- Kubernetes namespace where the Mimir gateway secrets reside
+    namespace: "mimir"
+    # -- Name of the Ingress auth secret in the Mimir gateway namespace
+    ingressSecretName: "mimir-gateway-ingress-auth"
+    # -- Name of the HTTPRoute auth secret in the Mimir gateway namespace
+    httprouteSecretName: "mimir-gateway-httproute-auth"
+
 # Enable or disable distributed tracing support
 tracing:
   # -- Enable distributed tracing support
   enabled: false
+
+  gateway:
+    # -- Kubernetes namespace where the Tempo gateway secrets reside
+    namespace: "tempo"
+    # -- Name of the Ingress auth secret in the Tempo gateway namespace
+    ingressSecretName: "tempo-gateway-ingress-auth"
+    # -- Name of the HTTPRoute auth secret in the Tempo gateway namespace
+    httprouteSecretName: "tempo-gateway-httproute-auth"
 
 # Controls log collection and related features.
 logging:
@@ -133,6 +158,14 @@ logging:
   ruler:
     # -- URL to the Loki ruler API for deleting rules when a cluster is deleted.
     url: "http://loki-gateway.loki.svc"
+
+  gateway:
+    # -- Kubernetes namespace where the Loki gateway secrets reside
+    namespace: "loki"
+    # -- Name of the Ingress auth secret in the Loki gateway namespace
+    ingressSecretName: "loki-gateway-ingress-auth"
+    # -- Name of the HTTPRoute auth secret in the Loki gateway namespace
+    httprouteSecretName: "loki-gateway-httproute-auth"
 
 # Resource and security configuration for the operator pod.
 # Defaults are appropriate for most deployments.
@@ -172,6 +205,24 @@ operator:
     # -- Security profile type
     seccompProfile:
       type: RuntimeDefault
+
+# Grafana connection settings.
+grafana:
+  # -- URL of the Grafana instance
+  url: "http://grafana.monitoring.svc.cluster.local"
+  # -- Service URLs for Grafana datasources provisioned by the operator.
+  # Override these if your stack uses non-standard namespaces or service names.
+  datasources:
+    # -- URL of the Loki gateway service
+    lokiURL: "http://loki-gateway.loki.svc"
+    # -- URL of the Mimir gateway (Prometheus-compatible endpoint)
+    mimirURL: "http://mimir-gateway.mimir.svc/prometheus"
+    # -- URL of the Mimir Alertmanager service
+    mimirAlertmanagerURL: "http://mimir-alertmanager.mimir.svc:8080"
+    # -- URL of the Mimir cardinality API
+    mimirCardinalityURL: "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/"
+    # -- URL of the Tempo query-frontend service
+    tempoURL: "http://tempo-query-frontend.tempo.svc:3200"
 
 # Controls the validating webhook configuration.
 webhook:

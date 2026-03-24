@@ -101,6 +101,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 	lokiDatasource := DatasourceLoki().Merge(Datasource{
 		Name: LokiDatasourceName,
 		UID:  LokiDatasourceUID,
+		URL:  s.cfg.Grafana.Datasources.LokiURL,
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
 			"manageAlerts":    len(alertingTenants) == 1,
@@ -132,6 +133,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 	mimirDatasource := DatasourceMimir().Merge(Datasource{
 		Name:      MimirDatasourceName,
 		UID:       MimirDatasourceUID,
+		URL:       s.cfg.Grafana.Datasources.MimirURL,
 		IsDefault: true,
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
@@ -161,6 +163,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		tempoDatasource := DatasourceTempo().Merge(Datasource{
 			Name: TempoDatasourceName,
 			UID:  TempoDatasourceUID,
+			URL:  s.cfg.Grafana.Datasources.TempoURL,
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
 			},
@@ -179,6 +182,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 			lokiPerTenantDatasource := DatasourceLoki().Merge(Datasource{
 				Name: fmt.Sprintf("%s (%s)", LokiDatasourceName, tenant.Name),
 				UID:  fmt.Sprintf("%s-%s", LokiDatasourceUID, tenant.Name),
+				URL:  s.cfg.Grafana.Datasources.LokiURL,
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
 					"manageAlerts":    true,
@@ -208,6 +212,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 			mimirPerTenantDatasource := DatasourceMimir().Merge(Datasource{
 				Name: fmt.Sprintf("%s (%s)", MimirDatasourceName, tenant.Name),
 				UID:  fmt.Sprintf("%s-%s", MimirDatasourceUID, tenant.Name),
+				URL:  s.cfg.Grafana.Datasources.MimirURL,
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
 					"manageAlerts":    true,
@@ -233,6 +238,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 			datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
 				Name: fmt.Sprintf("%s (%s)", MimirAlertmanagerDatasourceName, tenant.Name),
 				UID:  fmt.Sprintf("%s-%s", MimirAlertmanagerDatasourceUID, tenant.Name),
+				URL:  s.cfg.Grafana.Datasources.MimirAlertmanagerURL,
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
 				},
@@ -248,6 +254,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
 			Name: MimirAlertmanagerDatasourceName,
 			UID:  MimirAlertmanagerDatasourceUID,
+			URL:  s.cfg.Grafana.Datasources.MimirAlertmanagerURL,
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
 			},
@@ -261,6 +268,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 	if org.Name() == organization.SharedOrg.Name() {
 		// Add Mimir Cardinality datasources to the "Shared Org"
 		datasources = append(datasources, DatasourceMimirCardinality().Merge(Datasource{
+			URL: s.cfg.Grafana.Datasources.MimirCardinalityURL,
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
 			},

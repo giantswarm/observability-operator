@@ -24,6 +24,12 @@ spec:
         image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ default .Chart.AppVersion .Values.image.tag }}"
         args:
         - --leader-elect
+        - --grafana-url={{ $.Values.grafana.url }}
+        - --grafana-datasource-loki-url={{ $.Values.grafana.datasources.lokiURL }}
+        - --grafana-datasource-mimir-url={{ $.Values.grafana.datasources.mimirURL }}
+        - --grafana-datasource-mimir-alertmanager-url={{ $.Values.grafana.datasources.mimirAlertmanagerURL }}
+        - --grafana-datasource-mimir-cardinality-url={{ $.Values.grafana.datasources.mimirCardinalityURL }}
+        - --grafana-datasource-tempo-url={{ $.Values.grafana.datasources.tempoURL }}
         - --management-cluster-base-domain={{ $.Values.managementCluster.baseDomain }}
         - --management-cluster-customer={{ $.Values.managementCluster.customer }}
         - --management-cluster-insecure-ca={{ $.Values.managementCluster.insecureCA }}
@@ -81,8 +87,18 @@ spec:
         {{- with .ruler }}
         - --monitoring-ruler-url={{ .url }}
         {{- end }}
+        {{- with .gateway }}
+        - --monitoring-gateway-namespace={{ .namespace }}
+        - --monitoring-gateway-ingress-secret-name={{ .ingressSecretName }}
+        - --monitoring-gateway-httproute-secret-name={{ .httprouteSecretName }}
+        {{- end }}
         {{- end }}
         - --tracing-enabled={{ $.Values.tracing.enabled }}
+        {{- with $.Values.tracing.gateway }}
+        - --tracing-gateway-namespace={{ .namespace }}
+        - --tracing-gateway-ingress-secret-name={{ .ingressSecretName }}
+        - --tracing-gateway-httproute-secret-name={{ .httprouteSecretName }}
+        {{- end }}
         # Logging configuration
         {{ with .Values.logging }}
         - --logging-enabled={{ .enabled }}
@@ -102,6 +118,17 @@ spec:
         {{- with .ruler }}
         - --logging-ruler-url={{ .url }}
         {{- end }}
+        {{- with .gateway }}
+        - --logging-gateway-namespace={{ .namespace }}
+        - --logging-gateway-ingress-secret-name={{ .ingressSecretName }}
+        - --logging-gateway-httproute-secret-name={{ .httprouteSecretName }}
+        {{- end }}
+        {{- end }}
+        # Cronitor heartbeat monitor configuration
+        {{- with .Values.cronitor }}
+        - --cronitor-grace-seconds={{ .graceSeconds }}
+        - --cronitor-schedule={{ .schedule }}
+        - --cronitor-realert-interval={{ .realertInterval }}
         {{- end }}
         env:
         - name: ENABLE_WEBHOOKS

@@ -19,6 +19,48 @@
                 }
             }
         },
+        "cronitor": {
+            "type": "object",
+            "properties": {
+                "graceSeconds": {
+                    "type": "integer"
+                },
+                "schedule": {
+                    "type": "string"
+                },
+                "realertInterval": {
+                    "type": "string"
+                }
+            }
+        },
+        "grafana": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string"
+                },
+                "datasources": {
+                    "type": "object",
+                    "properties": {
+                        "lokiURL": {
+                            "type": "string"
+                        },
+                        "mimirURL": {
+                            "type": "string"
+                        },
+                        "mimirAlertmanagerURL": {
+                            "type": "string"
+                        },
+                        "mimirCardinalityURL": {
+                            "type": "string"
+                        },
+                        "tempoURL": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "image": {
             "type": "object",
             "properties": {
@@ -160,6 +202,14 @@
                             "description": "URL to the Mimir ruler API for deleting rules when a cluster is deleted. Set to empty string to disable."
                         }
                     }
+                },
+                "gateway": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": { "type": "string" },
+                        "ingressSecretName": { "type": "string" },
+                        "httprouteSecretName": { "type": "string" }
+                    }
                 }
             }
         },
@@ -250,6 +300,14 @@
                 "enabled": {
                     "type": "boolean",
                     "description": "Enable or disable distributed tracing support"
+                },
+                "gateway": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": { "type": "string" },
+                        "ingressSecretName": { "type": "string" },
+                        "httprouteSecretName": { "type": "string" }
+                    }
                 }
             }
         },
@@ -301,6 +359,14 @@
                             "type": "string",
                             "description": "URL to the Loki ruler API for deleting rules when a cluster is deleted. Set to empty string to disable."
                         }
+                    }
+                },
+                "gateway": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": { "type": "string" },
+                        "ingressSecretName": { "type": "string" },
+                        "httprouteSecretName": { "type": "string" }
                     }
                 }
             }

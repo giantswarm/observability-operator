@@ -32,6 +32,9 @@ type LoggingConfig struct {
 	// RulerURL is the URL to the Loki ruler API used to clean up rules on cluster deletion.
 	// Leave empty to disable Loki ruler cleanup.
 	RulerURL string
+
+	// Gateway holds the namespace and secret names for the Loki gateway authentication secrets.
+	Gateway GatewayConfig
 }
 
 // Validate validates the logging configuration

@@ -64,6 +64,11 @@ func TestMakeMonitor(t *testing.T) {
 		Environment: config.EnvironmentConfig{
 			CronitorHeartbeatManagementKey: "test-key",
 		},
+		Cronitor: config.CronitorConfig{
+			GraceSeconds:    1800,
+			Schedule:        "every 30 minutes",
+			RealertInterval: "every 24 hours",
+		},
 	}
 
 	repo := newTestRepo(cfg, &mockHTTPClient{})
@@ -76,11 +81,11 @@ func TestMakeMonitor(t *testing.T) {
 	if monitor.Key != expectedKey {
 		t.Errorf("expected key %q, got %s", expectedKey, monitor.Key)
 	}
-	if monitor.GraceSeconds != monitorGraceSeconds {
-		t.Errorf("expected grace_seconds %d, got %d", monitorGraceSeconds, monitor.GraceSeconds)
+	if monitor.GraceSeconds != 1800 {
+		t.Errorf("expected grace_seconds %d, got %d", 1800, monitor.GraceSeconds)
 	}
-	if monitor.Schedule != monitorSchedule {
-		t.Errorf("expected schedule %q, got %s", monitorSchedule, monitor.Schedule)
+	if monitor.Schedule != "every 30 minutes" {
+		t.Errorf("expected schedule %q, got %s", "every 30 minutes", monitor.Schedule)
 	}
 	if len(monitor.Tags) != 4 {
 		t.Errorf("expected 4 tags, got %d", len(monitor.Tags))
@@ -501,13 +506,13 @@ func TestHasChanged(t *testing.T) {
 			name: "notify changed (pipeline rename)",
 			existing: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     monitorSchedule,
+				Schedule:     "every 30 minutes",
 				Tags:         []string{"tag1"},
 				Notify:       []string{"testing"},
 			},
 			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     monitorSchedule,
+				Schedule:     "every 30 minutes",
 				Tags:         []string{"tag1"},
 				Notify:       []string{"production"},
 			},
@@ -517,17 +522,17 @@ func TestHasChanged(t *testing.T) {
 			name: "realert interval changed",
 			existing: &cronitorMonitor{
 				GraceSeconds:    1800,
-				Schedule:        monitorSchedule,
+				Schedule:        "every 30 minutes",
 				Tags:            []string{"tag1"},
 				Notify:          []string{"production"},
 				RealertInterval: "every 12 hours",
 			},
 			desired: &cronitorMonitor{
 				GraceSeconds:    1800,
-				Schedule:        monitorSchedule,
+				Schedule:        "every 30 minutes",
 				Tags:            []string{"tag1"},
 				Notify:          []string{"production"},
-				RealertInterval: monitorRealertInterval,
+				RealertInterval: "every 24 hours",
 			},
 			expected: true,
 		},

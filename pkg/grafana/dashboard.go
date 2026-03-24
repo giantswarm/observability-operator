@@ -9,16 +9,18 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
+	"github.com/giantswarm/observability-operator/pkg/metrics"
 )
 
 // ConfigureDashboard configures a dashboard, ensuring folder hierarchy exists and injecting managed tag
 func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
 	org, err := s.FindOrgByName(dashboard.Organization())
 	if err != nil {
+		metrics.GrafanaAPIErrors.WithLabelValues("configure_dashboard").Inc()
 		return fmt.Errorf("failed to find organization: %w", err)
 	}
 
-	return s.withinOrganization(ctx, org, func(ctx context.Context) error {
+	err = s.withinOrganization(ctx, org, func(ctx context.Context) error {
 		logger := log.FromContext(ctx)
 
 		// Ensure folder hierarchy exists and get the leaf folder UID
@@ -43,15 +45,20 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 		logger.Info("updated dashboard", "folderPath", dashboard.FolderPath(), "folderUID", folderUID)
 		return nil
 	})
+	if err != nil {
+		metrics.GrafanaAPIErrors.WithLabelValues("configure_dashboard").Inc()
+	}
+	return err
 }
 
 func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
 	org, err := s.FindOrgByName(dashboard.Organization())
 	if err != nil {
+		metrics.GrafanaAPIErrors.WithLabelValues("delete_dashboard").Inc()
 		return fmt.Errorf("failed to find organization: %w", err)
 	}
 
-	return s.withinOrganization(ctx, org, func(ctx context.Context) error {
+	err = s.withinOrganization(ctx, org, func(ctx context.Context) error {
 		logger := log.FromContext(ctx)
 
 		_, err := s.grafanaClient.Dashboards().GetDashboardByUID(dashboard.UID())
@@ -67,6 +74,10 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 		logger.Info("deleted dashboard")
 		return nil
 	})
+	if err != nil {
+		metrics.GrafanaAPIErrors.WithLabelValues("delete_dashboard").Inc()
+	}
+	return err
 }
 
 const managedDashboardTag = "managed-by: observability-operator"

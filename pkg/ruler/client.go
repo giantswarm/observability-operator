@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/metrics"
 )
 
 const httpTimeout = 30 * time.Second
@@ -58,6 +59,7 @@ func (c *client) DeleteClusterRulesForTenant(ctx context.Context, tenantID, clus
 
 	namespaces, err := c.listNamespaces(ctx, tenantID)
 	if err != nil {
+		metrics.RulerAPIErrors.WithLabelValues("delete_rules").Inc()
 		return fmt.Errorf("failed to list ruler namespaces: %w", err)
 	}
 
@@ -79,7 +81,11 @@ func (c *client) DeleteClusterRulesForTenant(ctx context.Context, tenantID, clus
 		logger.Info("deleted cluster ruler rules", "namespaces_deleted", deleted)
 	}
 
-	return errors.Join(errs...)
+	if err := errors.Join(errs...); err != nil {
+		metrics.RulerAPIErrors.WithLabelValues("delete_rules").Inc()
+		return err
+	}
+	return nil
 }
 
 // listNamespaces returns the names of all rule namespaces that exist for tenantID.
