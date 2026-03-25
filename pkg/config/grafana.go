@@ -9,6 +9,17 @@ import (
 type GrafanaConfig struct {
 	URL         *url.URL
 	Datasources DatasourcesConfig
+
+	// ClientRetries is the number of retries for Grafana HTTP API calls.
+	ClientRetries int
+	// AdminSecretNamespace is the Kubernetes namespace of the Grafana admin credentials secret.
+	AdminSecretNamespace string
+	// AdminSecretName is the name of the Kubernetes secret holding Grafana admin credentials.
+	AdminSecretName string
+	// GatewayTLSSecretNamespace is the namespace of the gateway TLS secret used for Grafana client mTLS.
+	GatewayTLSSecretNamespace string
+	// GatewayTLSSecretName is the name of the gateway TLS secret used for Grafana client mTLS.
+	GatewayTLSSecretName string
 }
 
 // DatasourcesConfig holds the service URLs for the Grafana datasources provisioned by the operator.

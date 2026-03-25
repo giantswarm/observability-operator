@@ -25,6 +25,11 @@ spec:
         args:
         - --leader-elect
         - --grafana-url={{ $.Values.grafana.url }}
+        - --grafana-client-retries={{ $.Values.grafana.clientRetries }}
+        - --grafana-admin-secret-namespace={{ $.Values.grafana.adminSecretNamespace }}
+        - --grafana-admin-secret-name={{ $.Values.grafana.adminSecretName }}
+        - --grafana-gateway-tls-secret-namespace={{ $.Values.grafana.gatewayTLSSecretNamespace }}
+        - --grafana-gateway-tls-secret-name={{ $.Values.grafana.gatewayTLSSecretName }}
         - --grafana-datasource-loki-url={{ $.Values.grafana.datasources.lokiURL }}
         - --grafana-datasource-mimir-url={{ $.Values.grafana.datasources.mimirURL }}
         - --grafana-datasource-mimir-alertmanager-url={{ $.Values.grafana.datasources.mimirAlertmanagerURL }}
@@ -44,6 +49,16 @@ spec:
         - --metrics-secure=true
         - --metrics-cert-path=/tmp/k8s-metrics-server/serving-certs
         {{- end }}
+        # HTTP timeouts
+        - --ruler-http-timeout={{ $.Values.http.rulerTimeout }}
+        - --alertmanager-http-timeout={{ $.Values.http.alertmanagerTimeout }}
+        - --mimir-query-timeout={{ $.Values.http.mimirQueryTimeout }}
+        # Default tenant
+        - --default-tenant={{ $.Values.defaultTenant }}
+        # OTLP batch settings
+        - --otlp-batch-send-batch-size={{ $.Values.otlp.batchSendBatchSize }}
+        - --otlp-batch-max-size={{ $.Values.otlp.batchMaxSize }}
+        - --otlp-batch-timeout={{ $.Values.otlp.batchTimeout }}
         # Alerting configuration
         - --alertmanager-enabled={{ $.Values.alerting.enabled }}
         - --alertmanager-secret-name={{ include "alertmanager-secret.name" . }}
@@ -88,6 +103,7 @@ spec:
         {{- with .exemplars }}
         - --monitoring-exemplars-enabled={{ .enabled }}
         {{- end }}
+        - --monitoring-mimir-remote-write-timeout={{ .mimirRemoteWriteTimeout }}
         {{- with .ruler }}
         - --monitoring-ruler-url={{ .url }}
         {{- end }}
@@ -119,6 +135,8 @@ spec:
         {{- if .excludeEventsFromNamespaces }}
         - --logging-exclude-events-from-namespaces={{ .excludeEventsFromNamespaces | join "," }}
         {{- end }}
+        - --logging-loki-max-backoff-period={{ .lokiMaxBackoffPeriod }}
+        - --logging-loki-remote-timeout={{ .lokiRemoteTimeout }}
         {{- with .ruler }}
         - --logging-ruler-url={{ .url }}
         {{- end }}

@@ -2,6 +2,44 @@
     "$schema": "http://json-schema.org/schema#",
     "type": "object",
     "properties": {
+        "defaultTenant": {
+            "type": "string",
+            "description": "Default tenant ID used when no tenant label is present"
+        },
+        "http": {
+            "type": "object",
+            "properties": {
+                "rulerTimeout": {
+                    "type": "string",
+                    "description": "HTTP client timeout for ruler API requests"
+                },
+                "alertmanagerTimeout": {
+                    "type": "string",
+                    "description": "HTTP client timeout for Alertmanager API requests"
+                },
+                "mimirQueryTimeout": {
+                    "type": "string",
+                    "description": "Timeout for Mimir TSDB head series queries"
+                }
+            }
+        },
+        "otlp": {
+            "type": "object",
+            "properties": {
+                "batchSendBatchSize": {
+                    "type": "integer",
+                    "description": "Number of items to batch before flushing in the OTLP exporter"
+                },
+                "batchMaxSize": {
+                    "type": "integer",
+                    "description": "Maximum batch size for the OTLP exporter"
+                },
+                "batchTimeout": {
+                    "type": "string",
+                    "description": "Maximum wait before flushing an incomplete OTLP batch"
+                }
+            }
+        },
         "alerting": {
             "type": "object",
             "properties": {
@@ -38,6 +76,26 @@
             "properties": {
                 "url": {
                     "type": "string"
+                },
+                "clientRetries": {
+                    "type": "integer",
+                    "description": "Number of retries for Grafana API requests"
+                },
+                "adminSecretNamespace": {
+                    "type": "string",
+                    "description": "Kubernetes namespace containing the Grafana admin credentials secret"
+                },
+                "adminSecretName": {
+                    "type": "string",
+                    "description": "Name of the Kubernetes secret containing Grafana admin credentials"
+                },
+                "gatewayTLSSecretNamespace": {
+                    "type": "string",
+                    "description": "Kubernetes namespace containing the Grafana Gateway TLS secret"
+                },
+                "gatewayTLSSecretName": {
+                    "type": "string",
+                    "description": "Name of the Kubernetes secret containing the Grafana Gateway TLS certificate"
                 },
                 "datasources": {
                     "type": "object",
@@ -193,6 +251,10 @@
                             "description": "Enable exemplar forwarding in the remote write pipeline. Requires Mimir to have exemplar storage enabled."
                         }
                     }
+                },
+                "mimirRemoteWriteTimeout": {
+                    "type": "string",
+                    "description": "Timeout for Alloy Mimir remote write operations"
                 },
                 "ruler": {
                     "type": "object",
@@ -351,6 +413,14 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "lokiMaxBackoffPeriod": {
+                    "type": "string",
+                    "description": "Maximum backoff period for Alloy Loki remote write retries"
+                },
+                "lokiRemoteTimeout": {
+                    "type": "string",
+                    "description": "Timeout for Alloy Loki remote write operations"
                 },
                 "ruler": {
                     "type": "object",

@@ -427,13 +427,16 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 					Name:       managementClusterName,
 				},
 				Logging: config.LoggingConfig{
-					Enabled:             tt.loggingEnabled,
-					DefaultNamespaces:   tt.defaultNamespaces,
-					EnableNodeFiltering: tt.nodeFilteringEnabled,
+					Enabled:              tt.loggingEnabled,
+					DefaultNamespaces:    tt.defaultNamespaces,
+					EnableNodeFiltering:  tt.nodeFilteringEnabled,
+					LokiMaxBackoffPeriod: "10m",
+					LokiRemoteTimeout:    "60s",
 				},
 				Monitoring: config.MonitoringConfig{
 					NetworkEnabled: tt.networkMonitoringEnabled,
 				},
+				DefaultTenant: "giantswarm",
 			}
 
 			mockOrgRepo := mocks.NewMockOrganizationRepository("test-organization")

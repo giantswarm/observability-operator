@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -119,7 +120,7 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			c := ruler.NewMimir(srv.URL)
+			c := ruler.NewMimir(srv.URL, 30*time.Second)
 			err := c.DeleteClusterRulesForTenant(context.Background(), tenantID, tt.clusterID)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -145,7 +146,7 @@ func TestNewLoki_DeleteClusterRulesForTenant(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := ruler.NewLoki(srv.URL)
+	c := ruler.NewLoki(srv.URL, 30*time.Second)
 	err := c.DeleteClusterRulesForTenant(context.Background(), tenantID, "my-cluster")
 	assert.NoError(t, err)
 }

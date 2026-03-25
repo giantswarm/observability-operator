@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/alertmanager/template"
@@ -60,7 +59,7 @@ func New(cfg pkgconfig.Config) Service {
 	return &service{
 		alertmanagerURL: strings.TrimSuffix(cfg.Monitoring.AlertmanagerURL, "/"),
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: cfg.HTTP.AlertmanagerTimeout,
 		},
 	}
 }

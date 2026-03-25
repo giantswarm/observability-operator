@@ -393,7 +393,15 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				Logging: config.LoggingConfig{
 					IncludeEventsNamespaces: tt.includeNamespaces,
 					ExcludeEventsNamespaces: tt.excludeNamespaces,
+					LokiMaxBackoffPeriod:    "10m",
+					LokiRemoteTimeout:       "60s",
 				},
+				OTLP: config.OTLPConfig{
+					BatchSendBatchSize: 1024,
+					BatchMaxSize:       1024,
+					BatchTimeout:       "500ms",
+				},
+				DefaultTenant: "giantswarm",
 			}
 
 			mockOrgRepo := mocks.NewMockOrganizationRepository("test-organization")

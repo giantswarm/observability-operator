@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 )
 
 // Config represents the main configuration for the observability operator.
@@ -15,6 +16,12 @@ type Config struct {
 	Monitoring MonitoringConfig
 	Tracing    TracingConfig
 
+	// HTTP client timeouts for external API calls
+	HTTP HTTPConfig
+
+	// OTLP batch processor settings written into Alloy agent ConfigMaps
+	OTLP OTLPConfig
+
 	// Management cluster configuration
 	Cluster ClusterConfig
 
@@ -23,6 +30,32 @@ type Config struct {
 
 	// Cronitor heartbeat monitor operational settings
 	Cronitor CronitorConfig
+
+	// DefaultTenant is the tenant ID used when no organisation is specified.
+	// Defaults to "giantswarm".
+	DefaultTenant string
+}
+
+// HTTPConfig holds HTTP client timeout settings for outbound API calls.
+type HTTPConfig struct {
+	// RulerTimeout is the HTTP client timeout for Mimir/Loki ruler API calls.
+	RulerTimeout time.Duration
+	// AlertmanagerTimeout is the HTTP client timeout for the Mimir Alertmanager API.
+	AlertmanagerTimeout time.Duration
+	// MimirQueryTimeout is the timeout applied to Mimir instant-query requests.
+	MimirQueryTimeout time.Duration
+}
+
+// OTLPConfig holds batch-processor settings written into Alloy agent ConfigMaps.
+// These control how OTLP signals are batched before export to Mimir, Loki, and Tempo.
+type OTLPConfig struct {
+	// BatchSendBatchSize is the number of items to accumulate before flushing
+	// (must be ≤ BatchMaxSize).
+	BatchSendBatchSize int
+	// BatchMaxSize is the hard cap on batch size.
+	BatchMaxSize int
+	// BatchTimeout is the maximum wait before flushing an incomplete batch (e.g. "500ms").
+	BatchTimeout string
 }
 
 // CronitorConfig holds operational settings for the Cronitor heartbeat monitor.

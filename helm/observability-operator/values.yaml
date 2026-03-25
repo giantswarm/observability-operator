@@ -52,6 +52,27 @@ cronitor:
   #    pagerdutyToken: token-for-teamA
   teams: []
 
+# Default tenant ID used when no tenant label is present on a cluster.
+defaultTenant: "giantswarm"
+
+# HTTP client timeouts for external API calls.
+http:
+  # -- Timeout for ruler (Mimir/Loki) HTTP requests
+  rulerTimeout: 30s
+  # -- Timeout for Alertmanager HTTP requests
+  alertmanagerTimeout: 30s
+  # -- Timeout for Mimir TSDB head series queries
+  mimirQueryTimeout: 2m
+
+# OTLP exporter batch settings (applied to the events collector).
+otlp:
+  # -- Number of items to batch before flushing
+  batchSendBatchSize: 1024
+  # -- Maximum batch size (hard cap)
+  batchMaxSize: 1024
+  # -- Maximum wait before flushing an incomplete batch
+  batchTimeout: "500ms"
+
 # Controls metrics collection from workload clusters via Alloy agents.
 # Per-cluster overrides for sharding are also available via Cluster annotations. See cluster.md.
 # NOTE for local development: All queueConfig fields can also be set via CLI flags when running
@@ -108,6 +129,9 @@ monitoring:
     # Requires Mimir to have exemplar storage enabled (max_global_exemplars_per_user > 0).
     enabled: true
 
+  # -- Timeout for Alloy Mimir remote write operations
+  mimirRemoteWriteTimeout: "60s"
+
   ruler:
     # -- URL to the Mimir ruler API for deleting rules when a cluster is deleted.
     url: "http://mimir-gateway.mimir.svc"
@@ -154,6 +178,11 @@ logging:
   includeEventsFromNamespaces: []
   # -- Namespaces to exclude for Kubernetes events
   excludeEventsFromNamespaces: []
+
+  # -- Maximum backoff period for Alloy Loki remote write retries
+  lokiMaxBackoffPeriod: "10m"
+  # -- Timeout for Alloy Loki remote write operations
+  lokiRemoteTimeout: "60s"
 
   ruler:
     # -- URL to the Loki ruler API for deleting rules when a cluster is deleted.
@@ -224,6 +253,16 @@ operator:
 grafana:
   # -- URL of the Grafana instance
   url: "http://grafana.monitoring.svc.cluster.local"
+  # -- Number of retries for Grafana API requests
+  clientRetries: 3
+  # -- Kubernetes namespace containing the Grafana admin credentials secret
+  adminSecretNamespace: "monitoring"
+  # -- Name of the Kubernetes secret containing Grafana admin credentials
+  adminSecretName: "grafana"
+  # -- Kubernetes namespace containing the Grafana Gateway TLS secret
+  gatewayTLSSecretNamespace: "envoy-gateway-system"
+  # -- Name of the Kubernetes secret containing the Grafana Gateway TLS certificate
+  gatewayTLSSecretName: "gateway-giantswarm-default-https-tls"
   # -- Service URLs for Grafana datasources provisioned by the operator.
   # Override these if your stack uses non-standard namespaces or service names.
   datasources:
