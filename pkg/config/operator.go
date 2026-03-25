@@ -8,6 +8,7 @@ type OperatorConfig struct {
 	SecureMetrics        bool
 	EnableHTTP2          bool
 	WebhookCertPath      string
+	MetricsCertPath      string
 	OperatorNamespace    string
 }
 

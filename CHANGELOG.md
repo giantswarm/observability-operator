@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added support for TLS on the operator's metrics endpoint using cert-manager certificates. Configure via `operator.metricsServerCertificate.enabled` Helm value and `--metrics-secure`, `--metrics-cert-path` CLI flags. The PodMonitor automatically configures Prometheus to scrape metrics over HTTPS when enabled.
+- Added `operator.metricsServerCertificate.*` Helm values to enable and configure TLS certificates for metrics endpoint (`operator.metricsServerCertificate.enabled`, `operator.metricsServerCertificate.secretName`).
+- Added `metrics-cert-path` CLI flag to specify the directory where the metrics server TLS certificate is stored (default: `/tmp/k8s-metrics-server/serving-certs`).
+- Added `metrics-certificate.yaml` Helm template to automatically create cert-manager Certificate resources for the metrics endpoint when enabled.
 - Added support for Proxmox clusters.
 - Added `observability_operator_monitored_cluster_info` info gauge (one series per active cluster; use `count(...)` for total).
 - Added `observability_operator_grafana_api_errors_total` counter to track Grafana API failures by operation (`configure_org`, `delete_org`, `configure_datasources`, `configure_dashboard`, `delete_dashboard`).
@@ -20,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Updated `config/prometheus/monitor.yaml` documentation to clarify that insecureSkipVerify is for development only and point to the TLS patch for production use.
 - All Alloy collectors (metrics, logs, events) now always route to external hostnames via basic auth, removing the management cluster shortcut that used in-cluster service URLs. This makes management cluster behaviour consistent with workload clusters.
 - Tempo gRPC endpoint for the events collector is now stored in the auth secret (`tracing-otlp-url`) rather than baked into the Alloy config, consistent with Loki and Mimir endpoints.
 - Change all alloy log level to warn instead of info.

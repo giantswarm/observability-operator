@@ -183,6 +183,20 @@ operator:
       # -- Memory limit
       memory: 150Mi
 
+  # -- TLS configuration for the operator's metrics endpoint
+  # By default, metrics are exposed over HTTP. For production deployments, enable TLS
+  # to secure the metrics endpoint using cert-manager certificates.
+  # To enable:
+  #   1. Ensure cert-manager is installed and working in the cluster
+  #   2. Set operator.metricsServerCertificate.enabled: true
+  #   3. The Certificate resource will be automatically created using the configured managementCluster.clusterIssuer
+  #   4. The PodMonitor will automatically configure Prometheus to scrape over HTTPS with proper certificate verification
+  metricsServerCertificate:
+    # -- Enable TLS for the metrics server endpoint using cert-manager
+    enabled: true
+    # -- Name of the secret containing the metrics server TLS certificate
+    secretName: "metrics-server-cert"
+
   # -- Container security context
   containerSecurityContext:
     # -- Prevent privilege escalation
