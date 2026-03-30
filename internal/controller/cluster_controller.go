@@ -165,10 +165,10 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 
 	var rulerClients []ruler.Client
 	if cfg.Monitoring.RulerURL != "" {
-		rulerClients = append(rulerClients, ruler.NewMimir(cfg.Monitoring.RulerURL))
+		rulerClients = append(rulerClients, ruler.NewMimir(cfg.Monitoring.RulerURL, cfg.HTTP.RulerTimeout))
 	}
 	if cfg.Logging.RulerURL != "" {
-		rulerClients = append(rulerClients, ruler.NewLoki(cfg.Logging.RulerURL))
+		rulerClients = append(rulerClients, ruler.NewLoki(cfg.Logging.RulerURL, cfg.HTTP.RulerTimeout))
 	}
 	rulerClient := ruler.NewMulti(rulerClients...)
 

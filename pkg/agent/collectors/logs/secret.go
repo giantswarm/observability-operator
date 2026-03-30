@@ -11,7 +11,6 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
-	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 func Secret(cluster *clusterv1.Cluster) *v1.Secret {
@@ -39,7 +38,7 @@ func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clus
 
 		// Build secret environment variables map
 		secrets[common.LokiURLKey] = lokiURL
-		secrets[common.LokiTenantIDKey] = organization.GiantSwarmDefaultTenant
+		secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
 		secrets[common.LokiUsernameKey] = cluster.Name
 		secrets[common.LokiPasswordKey] = logsPassword
 		secrets[common.LokiRulerAPIURLKey] = lokiRulerAPIURL

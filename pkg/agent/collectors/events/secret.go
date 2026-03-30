@@ -10,7 +10,6 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
-	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 func Secret(cluster *clusterv1.Cluster) *v1.Secret {
@@ -30,7 +29,7 @@ func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 		// Add Loki direct-write keys for the loki.write block
 		if loggingEnabled {
 			secrets[common.LokiURLKey] = fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
-			secrets[common.LokiTenantIDKey] = organization.GiantSwarmDefaultTenant
+			secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
 			secrets[common.LokiRulerAPIURLKey] = fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
 		}
 		// Add Loki OTLP URL when OTLP logs ingestion is enabled

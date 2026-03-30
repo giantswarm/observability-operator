@@ -18,7 +18,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
-	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 var (
@@ -58,9 +57,9 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tenants: %w", err)
 	}
-	// Ensure the default GiantSwarm tenant is always present, matching the logs collector behaviour.
-	if !slices.Contains(tenants, organization.GiantSwarmDefaultTenant) {
-		tenants = append(tenants, organization.GiantSwarmDefaultTenant)
+	// Ensure the default tenant is always present, matching the logs collector behaviour.
+	if !slices.Contains(tenants, s.Config.DefaultTenant) {
+		tenants = append(tenants, s.Config.DefaultTenant)
 	}
 
 	// Get cluster metadata
@@ -156,8 +155,8 @@ func (s *Service) generateAlloyEventsConfig(
 		Organization:           organization,
 		Provider:               provider,
 		InsecureSkipVerify:     fmt.Sprintf("%t", s.Config.Cluster.InsecureCA),
-		MaxBackoffPeriod:       common.LokiMaxBackoffPeriod,
-		RemoteTimeout:          common.LokiRemoteTimeout,
+		MaxBackoffPeriod:       s.Config.Logging.LokiMaxBackoffPeriod,
+		RemoteTimeout:          s.Config.Logging.LokiRemoteTimeout,
 		IncludeNamespaces:      s.Config.Logging.IncludeEventsNamespaces,
 		ExcludeNamespaces:      s.Config.Logging.ExcludeEventsNamespaces,
 		SecretName:             apps.AlloyEventsAppName,
@@ -173,9 +172,9 @@ func (s *Service) generateAlloyEventsConfig(
 		TempoEndpointKey:       common.TempoOTLPURLKey,
 		TempoUsernameKey:       common.TempoUsernameKey,
 		TempoPasswordKey:       common.TempoPasswordKey,
-		OTLPBatchSendBatchSize: common.OTLPBatchSendBatchSize,
-		OTLPBatchTimeout:       common.OTLPBatchTimeout,
-		OTLPBatchMaxSize:       common.OTLPBatchMaxSize,
+		OTLPBatchSendBatchSize: s.Config.OTLP.BatchSendBatchSize,
+		OTLPBatchTimeout:       s.Config.OTLP.BatchTimeout,
+		OTLPBatchMaxSize:       s.Config.OTLP.BatchMaxSize,
 		Tenants:                tenants,
 		OTLPMetricsEnabled:     otlpMetricsEnabled,
 		MimirOTLPURLKey:        common.MimirOTLPURLKey,

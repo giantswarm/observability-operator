@@ -17,8 +17,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 )
 
-const httpTimeout = 30 * time.Second
-
 const (
 	mimirRulesAPIPath = "/api/prom/rules"
 	lokiRulesAPIPath  = "/loki/api/v1/rules"
@@ -34,13 +32,13 @@ type Client interface {
 }
 
 // NewMimir returns a Client that targets the Mimir ruler at baseURL.
-func NewMimir(baseURL string) Client {
-	return &client{baseURL: baseURL, rulesAPIPath: mimirRulesAPIPath, httpClient: &http.Client{Timeout: httpTimeout}}
+func NewMimir(baseURL string, timeout time.Duration) Client {
+	return &client{baseURL: baseURL, rulesAPIPath: mimirRulesAPIPath, httpClient: &http.Client{Timeout: timeout}}
 }
 
 // NewLoki returns a Client that targets the Loki ruler at baseURL.
-func NewLoki(baseURL string) Client {
-	return &client{baseURL: baseURL, rulesAPIPath: lokiRulesAPIPath, httpClient: &http.Client{Timeout: httpTimeout}}
+func NewLoki(baseURL string, timeout time.Duration) Client {
+	return &client{baseURL: baseURL, rulesAPIPath: lokiRulesAPIPath, httpClient: &http.Client{Timeout: timeout}}
 }
 
 // NewNoop returns a Client that does nothing.

@@ -18,7 +18,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/config"
-	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 var (
@@ -93,6 +92,8 @@ func (s *Service) GenerateAlloyLogsConfigMapData(ctx context.Context, cluster *c
 		loggingEnabled,
 		networkMonitoringEnabled,
 		s.Config.Cluster,
+		s.Config.Logging,
+		s.Config.DefaultTenant,
 	)
 	if err != nil {
 		return nil, err
@@ -116,9 +117,11 @@ func generateAlloyLoggingConfig(
 	enableLogging bool,
 	enableNetworkMonitoring bool,
 	clusterConfig config.ClusterConfig,
+	loggingConfig config.LoggingConfig,
+	defaultTenant string,
 ) (string, error) {
 	// Generate River configuration
-	alloyConfig, err := generateAlloyConfig(tenants, cluster, org, provider, insecureCA, enableNodeFiltering, enableLogging, enableNetworkMonitoring, clusterConfig)
+	alloyConfig, err := generateAlloyConfig(tenants, cluster, org, provider, insecureCA, enableNodeFiltering, enableLogging, enableNetworkMonitoring, clusterConfig, loggingConfig, defaultTenant)
 	if err != nil {
 		return "", err
 	}
@@ -139,7 +142,7 @@ func generateAlloyLoggingConfig(
 	}{
 		AlloyConfig:                      alloyConfig,
 		DefaultWorkloadClusterNamespaces: defaultWorkloadClusterNamespaces,
-		DefaultWriteTenant:               organization.GiantSwarmDefaultTenant,
+		DefaultWriteTenant:               defaultTenant,
 		LoggingEnabled:                   enableLogging,
 		NetworkMonitoringEnabled:         enableNetworkMonitoring,
 		NodeFilteringEnabled:             enableNodeFiltering,
@@ -174,10 +177,12 @@ func generateAlloyConfig(
 	enableLogging bool,
 	enableNetworkMonitoring bool,
 	clusterConfig config.ClusterConfig,
+	loggingConfig config.LoggingConfig,
+	defaultTenant string,
 ) (string, error) {
 	// Ensure default tenant is included
-	if !slices.Contains(tenants, organization.GiantSwarmDefaultTenant) {
-		tenants = append(tenants, organization.GiantSwarmDefaultTenant)
+	if !slices.Contains(tenants, defaultTenant) {
+		tenants = append(tenants, defaultTenant)
 	}
 
 	// Prepare template data for River configuration
@@ -206,8 +211,8 @@ func generateAlloyConfig(
 		Organization:             org,
 		Installation:             clusterConfig.Name,
 		Provider:                 provider,
-		MaxBackoffPeriod:         common.LokiMaxBackoffPeriod,
-		RemoteTimeout:            common.LokiRemoteTimeout,
+		MaxBackoffPeriod:         loggingConfig.LokiMaxBackoffPeriod,
+		RemoteTimeout:            loggingConfig.LokiRemoteTimeout,
 		NodeFilteringEnabled:     enableNodeFiltering,
 		LoggingEnabled:           enableLogging,
 		NetworkMonitoringEnabled: enableNetworkMonitoring,

@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 var (
@@ -26,7 +25,8 @@ var (
 // to outgoing requests. It wraps an existing http.RoundTripper and injects
 // the organization ID header required by Mimir for multi-tenancy.
 type tenantRoundTripper struct {
-	rt http.RoundTripper // The underlying RoundTripper to perform the actual HTTP request
+	rt     http.RoundTripper // The underlying RoundTripper to perform the actual HTTP request
+	tenant string
 }
 
 // RoundTrip implements the http.RoundTripper interface.
@@ -43,17 +43,17 @@ func (t tenantRoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 	}
 
 	// Set the tenant organization ID header
-	reqCopy.Header.Set(monitoring.OrgIDHeader, organization.GiantSwarmDefaultTenant)
+	reqCopy.Header.Set(monitoring.OrgIDHeader, t.tenant)
 
 	// Forward the request to the underlying transport
 	return t.rt.RoundTrip(reqCopy)
 }
 
 // QueryTSDBHeadSeries performs an instant query against Mimir.
-func QueryTSDBHeadSeries(ctx context.Context, query string, metricsQueryURL string) (float64, error) {
+func QueryTSDBHeadSeries(ctx context.Context, query, metricsQueryURL, defaultTenant string, timeout time.Duration) (float64, error) {
 	config := api.Config{
 		Address:      metricsQueryURL,
-		RoundTripper: tenantRoundTripper{api.DefaultRoundTripper},
+		RoundTripper: tenantRoundTripper{rt: api.DefaultRoundTripper, tenant: defaultTenant},
 	}
 
 	// Create new client.
@@ -65,7 +65,7 @@ func QueryTSDBHeadSeries(ctx context.Context, query string, metricsQueryURL stri
 	// Run query against client.
 	api := v1.NewAPI(c)
 
-	queryContext, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	queryContext, cancel := context.WithTimeout(ctx, timeout)
 	val, _, err := api.Query(queryContext, query, time.Now())
 	cancel()
 	if err != nil {

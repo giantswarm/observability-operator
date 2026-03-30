@@ -56,9 +56,10 @@ func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
 				Region:     "dummy-region",
 			},
 			Monitoring: config.MonitoringConfig{
-				Enabled:              monitoringEnabled,
-				ExemplarsEnabled:     exemplarsEnabled,
-				WALTruncateFrequency: time.Minute,
+				Enabled:                 monitoringEnabled,
+				ExemplarsEnabled:        exemplarsEnabled,
+				WALTruncateFrequency:    time.Minute,
+				MimirRemoteWriteTimeout: "60s",
 				QueueConfig: config.QueueConfig{
 					Capacity:          &[]int{30000}[0],
 					MaxShards:         &[]int{10}[0],
@@ -66,6 +67,10 @@ func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
 					SampleAgeLimit:    &[]string{"30m"}[0],
 				},
 			},
+			HTTP: config.HTTPConfig{
+				MimirQueryTimeout: 2 * time.Minute,
+			},
+			DefaultTenant: "giantswarm",
 		},
 	}
 }
