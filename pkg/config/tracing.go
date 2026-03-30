@@ -10,6 +10,9 @@ const TracingLabel = "observability.giantswarm.io/tracing"
 type TracingConfig struct {
 	// Enabled controls tracing at the installation level
 	Enabled bool
+
+	// Gateway holds the namespace and secret names for the Tempo gateway authentication secrets.
+	Gateway GatewayConfig
 }
 
 // Validate validates the tracing configuration

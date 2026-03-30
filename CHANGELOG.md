@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added support for Proxmox clusters.
+- Added `observability_operator_monitored_cluster_info` info gauge (one series per active cluster; use `count(...)` for total).
+- Added `observability_operator_grafana_api_errors_total` counter to track Grafana API failures by operation (`configure_org`, `delete_org`, `configure_datasources`, `configure_dashboard`, `delete_dashboard`).
+- Added `observability_operator_mimir_alertmanager_api_errors_total` counter to track Mimir Alertmanager API failures by operation (`push_config`, `delete_config`).
+- Added `observability_operator_ruler_api_errors_total` counter to track ruler API failures by operation (`delete_rules`).
+- Added `monitoring.gateway`, `logging.gateway`, and `tracing.gateway` Helm values (and corresponding CLI flags) to make gateway secret namespaces and secret names configurable (`monitoring-gateway-namespace`, `monitoring-gateway-ingress-secret-name`, etc.). Defaults match the existing hardcoded values.
+- Added `grafana.datasources.*` Helm values and corresponding CLI flags to make Grafana datasource service URLs configurable (`grafana-datasource-loki-url`, `grafana-datasource-mimir-url`, `grafana-datasource-mimir-alertmanager-url`, `grafana-datasource-mimir-cardinality-url`, `grafana-datasource-tempo-url`). Defaults match the existing hardcoded values, so no action is required for standard deployments.
+- Added `cronitor.graceSeconds`, `cronitor.schedule`, and `cronitor.realertInterval` Helm values (and corresponding CLI flags `--cronitor-grace-seconds`, `--cronitor-schedule`, `--cronitor-realert-interval`) to make Cronitor heartbeat monitor operational settings configurable. Defaults match the previous hardcoded values (`1800`, `"every 30 minutes"`, `"every 24 hours"`).
 
 ### Changed
 

@@ -119,7 +119,7 @@ See [docs/cluster.md](docs/cluster.md) for full details including per-cluster sh
 
 ## Getting Started
 
-The operator is deployed via the Helm chart in `helm/observability-operator/`. See [docs/configuration.md](docs/configuration.md) for the full values reference.
+The operator is deployed via the Helm chart in `helm/observability-operator/`.
 
 For local development and contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -133,6 +133,10 @@ The operator exposes the following metrics (prefix: `observability_operator_`):
 | `observability_operator_grafana_organization_tenants` | Info gauge, 1 per (tenant, org) — use `count(...) by (org_id)` for tenant count per org (labels: `name`, `org_id`) |
 | `observability_operator_alertmanager_routes` | Route count per tenant (label: `tenant`) |
 | `observability_operator_mimir_head_series_query_errors_total` | Counter of Mimir query errors |
+| `observability_operator_monitored_cluster_info` | Info gauge, 1 per active monitored cluster (labels: `cluster_name`, `cluster_namespace`) |
+| `observability_operator_grafana_api_errors_total` | Counter of Grafana API errors (label: `operation`) |
+| `observability_operator_mimir_alertmanager_api_errors_total` | Counter of Mimir Alertmanager API errors (label: `operation`) |
+| `observability_operator_ruler_api_errors_total` | Counter of ruler API errors (label: `operation`) |
 
 Self-monitoring via PodMonitor at `helm/observability-operator/templates/pod-monitor.yaml`. Alerts, dashboards, and runbooks live in the `prometheus-rules` and `dashboards` repositories.
 
@@ -142,7 +146,6 @@ See [docs/metrics.md](docs/metrics.md) for the full metrics reference.
 
 | Doc | Description |
 |---|---|
-| [docs/configuration.md](docs/configuration.md) | Full Helm values reference, including queue tuning guidelines |
 | [docs/grafana-organization.md](docs/grafana-organization.md) | GrafanaOrganization CRD usage and examples |
 | [docs/alertmanager.md](docs/alertmanager.md) | Alertmanager config secret usage and examples |
 | [docs/dashboards.md](docs/dashboards.md) | Dashboard provisioning and folder support |

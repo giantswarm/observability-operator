@@ -70,7 +70,7 @@ By default, the operator configures 1 Alloy-Metrics shard per 1M time series (wi
 | `observability.giantswarm.io/monitoring-agent-scale-up-series-count` | Time series count that triggers adding a shard |
 | `observability.giantswarm.io/monitoring-agent-scale-down-percentage` | Fraction of `scaleUpSeriesCount` below which a shard is removed |
 
-Installation-level defaults are set via `monitoring.sharding` in Helm values. See [configuration.md](configuration.md).
+Installation-level defaults are set via `monitoring.sharding` in Helm values.
 
 ### Example
 

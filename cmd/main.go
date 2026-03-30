@@ -54,6 +54,13 @@ const (
 	// Grafana configuration flag names
 	flagGrafanaURL = "grafana-url"
 
+	// Grafana datasource URL flag names
+	flagGrafanaDatasourceLokiURL              = "grafana-datasource-loki-url"
+	flagGrafanaDatasourceMimirURL             = "grafana-datasource-mimir-url"
+	flagGrafanaDatasourceMimirAlertmanagerURL = "grafana-datasource-mimir-alertmanager-url"
+	flagGrafanaDatasourceMimirCardinalityURL  = "grafana-datasource-mimir-cardinality-url"
+	flagGrafanaDatasourceTempoURL             = "grafana-datasource-tempo-url"
+
 	// Management cluster configuration flag names
 	flagManagementClusterBaseDomain = "management-cluster-base-domain"
 	flagManagementClusterCustomer   = "management-cluster-customer"
@@ -89,6 +96,22 @@ const (
 
 	// Tracing configuration flag names
 	flagTracingEnabled = "tracing-enabled"
+
+	// Cronitor heartbeat monitor configuration flag names
+	flagCronitorGraceSeconds    = "cronitor-grace-seconds"
+	flagCronitorSchedule        = "cronitor-schedule"
+	flagCronitorRealertInterval = "cronitor-realert-interval"
+
+	// Gateway configuration flag names
+	flagMonitoringGatewayNamespace           = "monitoring-gateway-namespace"
+	flagMonitoringGatewayIngressSecretName   = "monitoring-gateway-ingress-secret-name"
+	flagMonitoringGatewayHTTPRouteSecretName = "monitoring-gateway-httproute-secret-name"
+	flagLoggingGatewayNamespace              = "logging-gateway-namespace"
+	flagLoggingGatewayIngressSecretName      = "logging-gateway-ingress-secret-name"
+	flagLoggingGatewayHTTPRouteSecretName    = "logging-gateway-httproute-secret-name"
+	flagTracingGatewayNamespace              = "tracing-gateway-namespace"
+	flagTracingGatewayIngressSecretName      = "tracing-gateway-ingress-secret-name"
+	flagTracingGatewayHTTPRouteSecretName    = "tracing-gateway-httproute-secret-name"
 
 	// Logging configuration flag names
 	flagLoggingOTLPEnabled                 = "logging-otlp-enabled"
@@ -162,6 +185,16 @@ func parseFlags() (err error) {
 	var grafanaURL string
 	pflag.StringVar(&grafanaURL, flagGrafanaURL, "http://grafana.monitoring.svc.cluster.local",
 		"grafana URL")
+	pflag.StringVar(&cfg.Grafana.Datasources.LokiURL, flagGrafanaDatasourceLokiURL, "http://loki-gateway.loki.svc",
+		"URL of the Loki gateway service used for the Grafana Loki datasource.")
+	pflag.StringVar(&cfg.Grafana.Datasources.MimirURL, flagGrafanaDatasourceMimirURL, "http://mimir-gateway.mimir.svc/prometheus",
+		"URL of the Mimir gateway (Prometheus-compatible endpoint) used for the Grafana Mimir datasource.")
+	pflag.StringVar(&cfg.Grafana.Datasources.MimirAlertmanagerURL, flagGrafanaDatasourceMimirAlertmanagerURL, "http://mimir-alertmanager.mimir.svc:8080",
+		"URL of the Mimir Alertmanager service used for the Grafana Alertmanager datasource.")
+	pflag.StringVar(&cfg.Grafana.Datasources.MimirCardinalityURL, flagGrafanaDatasourceMimirCardinalityURL, "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/",
+		"URL of the Mimir cardinality API used for the Grafana JSON datasource.")
+	pflag.StringVar(&cfg.Grafana.Datasources.TempoURL, flagGrafanaDatasourceTempoURL, "http://tempo-query-frontend.tempo.svc:3200",
+		"URL of the Tempo query-frontend service used for the Grafana Tempo datasource.")
 
 	// Management cluster configuration flags
 	pflag.StringVar(&cfg.Cluster.BaseDomain, flagManagementClusterBaseDomain, "",
@@ -202,6 +235,12 @@ func parseFlags() (err error) {
 		"Enable/disable network monitoring in Alloy configuration")
 	pflag.BoolVar(&cfg.Monitoring.OTLPEnabled, flagMonitoringOTLPEnabled, true,
 		"Enable OTLP metrics ingestion via the events collector (requires monitoring-enabled=true)")
+	pflag.StringVar(&cfg.Monitoring.Gateway.Namespace, flagMonitoringGatewayNamespace, "mimir",
+		"Kubernetes namespace where the Mimir gateway secrets reside.")
+	pflag.StringVar(&cfg.Monitoring.Gateway.IngressSecretName, flagMonitoringGatewayIngressSecretName, "mimir-gateway-ingress-auth",
+		"Name of the Ingress auth secret in the Mimir gateway namespace.")
+	pflag.StringVar(&cfg.Monitoring.Gateway.HTTPRouteSecretName, flagMonitoringGatewayHTTPRouteSecretName, "mimir-gateway-httproute-auth",
+		"Name of the HTTPRoute auth secret in the Mimir gateway namespace.")
 
 	// Queue configuration flags for Alloy remote write
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string
@@ -230,6 +269,12 @@ func parseFlags() (err error) {
 	// Tracing configuration flags
 	pflag.BoolVar(&cfg.Tracing.Enabled, flagTracingEnabled, false,
 		"Enable distributed tracing at the installation level.")
+	pflag.StringVar(&cfg.Tracing.Gateway.Namespace, flagTracingGatewayNamespace, "tempo",
+		"Kubernetes namespace where the Tempo gateway secrets reside.")
+	pflag.StringVar(&cfg.Tracing.Gateway.IngressSecretName, flagTracingGatewayIngressSecretName, "tempo-gateway-ingress-auth",
+		"Name of the Ingress auth secret in the Tempo gateway namespace.")
+	pflag.StringVar(&cfg.Tracing.Gateway.HTTPRouteSecretName, flagTracingGatewayHTTPRouteSecretName, "tempo-gateway-httproute-auth",
+		"Name of the HTTPRoute auth secret in the Tempo gateway namespace.")
 
 	// Logging configuration flags
 	pflag.BoolVar(&cfg.Logging.Enabled, flagLoggingEnabled, false,
@@ -246,6 +291,20 @@ func parseFlags() (err error) {
 		"Comma-separated list of namespaces to exclude events from on workload clusters")
 	pflag.StringVar(&cfg.Logging.RulerURL, flagLoggingRulerURL, "http://loki-gateway.loki.svc",
 		"URL to the Loki ruler API for cleaning up rules on cluster deletion")
+	pflag.StringVar(&cfg.Logging.Gateway.Namespace, flagLoggingGatewayNamespace, "loki",
+		"Kubernetes namespace where the Loki gateway secrets reside.")
+	pflag.StringVar(&cfg.Logging.Gateway.IngressSecretName, flagLoggingGatewayIngressSecretName, "loki-gateway-ingress-auth",
+		"Name of the Ingress auth secret in the Loki gateway namespace.")
+	pflag.StringVar(&cfg.Logging.Gateway.HTTPRouteSecretName, flagLoggingGatewayHTTPRouteSecretName, "loki-gateway-httproute-auth",
+		"Name of the HTTPRoute auth secret in the Loki gateway namespace.")
+
+	// Cronitor heartbeat monitor configuration flags
+	pflag.IntVar(&cfg.Cronitor.GraceSeconds, flagCronitorGraceSeconds, 1800,
+		"Number of seconds after a missed heartbeat before a Cronitor alert fires.")
+	pflag.StringVar(&cfg.Cronitor.Schedule, flagCronitorSchedule, "every 30 minutes",
+		"Expected heartbeat frequency for the Cronitor monitor (e.g. 'every 30 minutes').")
+	pflag.StringVar(&cfg.Cronitor.RealertInterval, flagCronitorRealertInterval, "every 24 hours",
+		"How often Cronitor re-alerts if the monitor stays in a failing state (e.g. 'every 24 hours').")
 
 	// Zap logging options
 	opts := zap.Options{

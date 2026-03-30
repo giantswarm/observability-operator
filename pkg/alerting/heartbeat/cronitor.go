@@ -22,11 +22,8 @@ const (
 	cronitorAPIBaseURL = "https://cronitor.io/api/monitors"
 	cronitorPingURL    = "https://cronitor.link/p"
 
-	monitorGraceSeconds    = 1800
-	monitorSchedule        = "every 30 minutes"
-	monitorRealertInterval = "every 24 hours"
-	monitorTeamTag         = "team:atlas"
-	monitorManagedByTag    = "managed-by:observability-operator"
+	monitorTeamTag      = "team:atlas"
+	monitorManagedByTag = "managed-by:observability-operator"
 )
 
 var (
@@ -40,10 +37,13 @@ type HTTPClient interface {
 }
 
 type cronitorConfig struct {
-	clusterName   string
-	pipeline      string
-	managementKey string
-	pingKey       string
+	clusterName     string
+	pipeline        string
+	managementKey   string
+	pingKey         string
+	graceSeconds    int
+	schedule        string
+	realertInterval string
 }
 
 // CronitorHeartbeatRepository is a repository for managing heartbeats in Cronitor.
@@ -82,10 +82,13 @@ func NewCronitorHeartbeatRepository(cfg config.Config, httpClient HTTPClient) He
 	}
 	return &CronitorHeartbeatRepository{
 		cfg: cronitorConfig{
-			clusterName:   cfg.Cluster.Name,
-			pipeline:      cfg.Cluster.Pipeline,
-			managementKey: cfg.Environment.CronitorHeartbeatManagementKey,
-			pingKey:       cfg.Environment.CronitorHeartbeatPingKey,
+			clusterName:     cfg.Cluster.Name,
+			pipeline:        cfg.Cluster.Pipeline,
+			managementKey:   cfg.Environment.CronitorHeartbeatManagementKey,
+			pingKey:         cfg.Environment.CronitorHeartbeatPingKey,
+			graceSeconds:    cfg.Cronitor.GraceSeconds,
+			schedule:        cfg.Cronitor.Schedule,
+			realertInterval: cfg.Cronitor.RealertInterval,
 		},
 		httpClient: httpClient,
 	}
@@ -112,12 +115,12 @@ func (r *CronitorHeartbeatRepository) makeMonitor() *cronitorMonitor {
 		Type:            "heartbeat",
 		Key:             key,
 		Name:            key,
-		GraceSeconds:    monitorGraceSeconds,
-		Schedule:        monitorSchedule,
+		GraceSeconds:    r.cfg.graceSeconds,
+		Schedule:        r.cfg.schedule,
 		Notify:          []string{r.cfg.pipeline},
 		Tags:            tags,
 		Note:            "📗 Runbook: https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/heartbeat-expired/",
-		RealertInterval: monitorRealertInterval,
+		RealertInterval: r.cfg.realertInterval,
 	}
 }
 
