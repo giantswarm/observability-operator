@@ -56,9 +56,9 @@ func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
 				Region:     "dummy-region",
 			},
 			Monitoring: config.MonitoringConfig{
-				Enabled:                monitoringEnabled,
-				ExemplarsEnabled:       exemplarsEnabled,
-				WALTruncateFrequency:   time.Minute,
+				Enabled:                 monitoringEnabled,
+				ExemplarsEnabled:        exemplarsEnabled,
+				WALTruncateFrequency:    time.Minute,
 				MimirRemoteWriteTimeout: "60s",
 				QueueConfig: config.QueueConfig{
 					Capacity:          &[]int{30000}[0],

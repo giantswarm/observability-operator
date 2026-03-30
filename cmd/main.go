@@ -123,16 +123,16 @@ const (
 	flagLoggingExcludeEventsFromNamespaces = "logging-exclude-events-from-namespaces"
 
 	// HTTP timeout flag names
-	flagRulerHTTPTimeout         = "ruler-http-timeout"
-	flagAlertmanagerHTTPTimeout  = "alertmanager-http-timeout"
-	flagMimirQueryTimeout        = "mimir-query-timeout"
+	flagRulerHTTPTimeout        = "ruler-http-timeout"
+	flagAlertmanagerHTTPTimeout = "alertmanager-http-timeout"
+	flagMimirQueryTimeout       = "mimir-query-timeout"
 
 	// Grafana client flag names
-	flagGrafanaClientRetries              = "grafana-client-retries"
-	flagGrafanaAdminSecretNamespace       = "grafana-admin-secret-namespace"
-	flagGrafanaAdminSecretName            = "grafana-admin-secret-name"
-	flagGrafanaGatewayTLSSecretNamespace  = "grafana-gateway-tls-secret-namespace"
-	flagGrafanaGatewayTLSSecretName       = "grafana-gateway-tls-secret-name"
+	flagGrafanaClientRetries             = "grafana-client-retries"
+	flagGrafanaAdminSecretNamespace      = "grafana-admin-secret-namespace"
+	flagGrafanaAdminSecretName           = "grafana-admin-secret-name"
+	flagGrafanaGatewayTLSSecretNamespace = "grafana-gateway-tls-secret-namespace"
+	flagGrafanaGatewayTLSSecretName      = "grafana-gateway-tls-secret-name"
 
 	// Default tenant flag name
 	flagDefaultTenant = "default-tenant"
