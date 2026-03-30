@@ -58,7 +58,6 @@ var (
 	DatasourceMimirAlertmanager = func() Datasource {
 		return Datasource{
 			Type:   "alertmanager",
-			URL:    "http://mimir-alertmanager.mimir.svc:8080",
 			Access: datasourceProxyAccessMode,
 			JSONData: map[string]any{
 				"handleGrafanaManagedAlerts": false,
@@ -71,7 +70,6 @@ var (
 	DatasourceLoki = func() Datasource {
 		return Datasource{
 			Type:   "loki",
-			URL:    "http://loki-gateway.loki.svc",
 			Access: datasourceProxyAccessMode,
 		}
 	}
@@ -80,7 +78,6 @@ var (
 	DatasourceMimir = func() Datasource {
 		return Datasource{
 			Type:   "prometheus",
-			URL:    "http://mimir-gateway.mimir.svc/prometheus",
 			Access: datasourceProxyAccessMode,
 			JSONData: map[string]any{
 				// Cache matching queries on metadata endpoints within 10 minutes to improve performance
@@ -104,7 +101,6 @@ var (
 			Type:   "marcusolsson-json-datasource",
 			Name:   MimirCardinalityDatasourceName,
 			UID:    fmt.Sprintf("%smimir-cardinality", datasourceUIDPrefix),
-			URL:    "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/",
 			Access: datasourceProxyAccessMode,
 		}
 	}
@@ -114,7 +110,6 @@ var (
 		return Datasource{
 			Type: "tempo",
 			// We connect to the Tempo Query Frontend service to support streaming
-			URL:    "http://tempo-query-frontend.tempo.svc:3200",
 			Access: datasourceProxyAccessMode,
 			JSONData: map[string]any{
 				// Service Map configuration - generates visual service dependency maps
