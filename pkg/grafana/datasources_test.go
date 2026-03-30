@@ -22,7 +22,6 @@ func TestDatasourceTempo(t *testing.T) {
 			name: "tempo datasource configuration",
 			expected: Datasource{
 				Type:   "tempo",
-				URL:    "http://tempo-query-frontend.tempo.svc:3200",
 				Access: "proxy",
 				JSONData: map[string]any{
 					"serviceMap": map[string]any{
@@ -69,7 +68,6 @@ func TestDatasourceLoki(t *testing.T) {
 	result := DatasourceLoki()
 
 	assert.Equal(t, "loki", result.Type)
-	assert.Equal(t, "http://loki-gateway.loki.svc", result.URL)
 	assert.Equal(t, "proxy", result.Access)
 }
 
@@ -77,7 +75,6 @@ func TestDatasourceMimir(t *testing.T) {
 	result := DatasourceMimir()
 
 	assert.Equal(t, "prometheus", result.Type)
-	assert.Equal(t, "http://mimir-gateway.mimir.svc/prometheus", result.URL)
 	assert.Equal(t, "proxy", result.Access)
 
 	// Check specific JSONData fields
@@ -93,7 +90,6 @@ func TestDatasourceMimirAlertmanager(t *testing.T) {
 	result := DatasourceMimirAlertmanager()
 
 	assert.Equal(t, "alertmanager", result.Type)
-	assert.Equal(t, "http://mimir-alertmanager.mimir.svc:8080", result.URL)
 	assert.Equal(t, "proxy", result.Access)
 
 	// Check JSONData fields
@@ -107,7 +103,6 @@ func TestDatasourceMimirCardinality(t *testing.T) {
 	assert.Equal(t, "marcusolsson-json-datasource", result.Type)
 	assert.Equal(t, MimirCardinalityDatasourceName, result.Name)
 	assert.Equal(t, "gs-mimir-cardinality", result.UID)
-	assert.Equal(t, "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/", result.URL)
 	assert.Equal(t, "proxy", result.Access)
 }
 
@@ -293,7 +288,6 @@ func TestGenerateDatasources(t *testing.T) {
 				require.NotNil(t, tempoDS, "Tempo datasource should be present")
 				assert.Equal(t, TempoDatasourceName, tempoDS.Name)
 				assert.Equal(t, "gs-tempo", tempoDS.UID)
-				assert.Equal(t, "http://tempo-query-frontend.tempo.svc:3200", tempoDS.URL)
 
 				// Check tempo-specific configurations
 				serviceMap, ok := tempoDS.JSONData["serviceMap"].(map[string]any)
