@@ -103,7 +103,7 @@ loki.write "default" {
 }
 {{- end }}
 
-{{- if or .TracingEnabled .OTLPMetricsEnabled .OTLPLogsEnabled }}
+{{- if or .TracingEnabled .OTLPMetricsEnabled .LoggingEnabled }}
 {{- if .TracingEnabled }}
 // Basic authentication for Tempo
 otelcol.auth.basic "tempo_credentials" {
@@ -118,7 +118,7 @@ otelcol.auth.basic "mimir_credentials" {
   password = remote.kubernetes.secret.credentials.data["{{ .MimirPasswordKey }}"]
 }
 {{- end }}
-{{- if .OTLPLogsEnabled }}
+{{- if .LoggingEnabled }}
 // Basic authentication for Loki
 otelcol.auth.basic "loki_credentials" {
   username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
@@ -129,7 +129,7 @@ otelcol.auth.basic "loki_credentials" {
 {{- $signals := list -}}
 {{- if .TracingEnabled }}{{- $signals = append $signals "traces" }}{{- end -}}
 {{- if .OTLPMetricsEnabled }}{{- $signals = append $signals "metrics" }}{{- end -}}
-{{- if .OTLPLogsEnabled }}{{- $signals = append $signals "logs" }}{{- end -}}
+{{- if .LoggingEnabled }}{{- $signals = append $signals "logs" }}{{- end -}}
 {{- $n := len $signals }}
 // OTLP receiver — accepts
 {{- if eq $n 1 }} {{ first $signals }}
@@ -155,7 +155,7 @@ otelcol.receiver.otlp "default" {
     {{- if .OTLPMetricsEnabled }}
     metrics = [otelcol.processor.k8sattributes.default.input]
     {{- end }}
-    {{- if .OTLPLogsEnabled }}
+    {{- if .LoggingEnabled }}
     logs = [otelcol.processor.k8sattributes.default.input]
     {{- end }}
   }
@@ -186,7 +186,7 @@ otelcol.processor.k8sattributes "default" {
     {{- if .OTLPMetricsEnabled }}
     metrics = [otelcol.processor.attributes.extract_tenant_header.input]
     {{- end }}
-    {{- if .OTLPLogsEnabled }}
+    {{- if .LoggingEnabled }}
     logs = [otelcol.processor.attributes.extract_tenant_header.input]
     {{- end }}
   }
@@ -208,7 +208,7 @@ otelcol.processor.attributes "extract_tenant_header" {
     {{- if .OTLPMetricsEnabled }}
     metrics = [otelcol.processor.transform.promote_header_to_resource.input]
     {{- end }}
-    {{- if .OTLPLogsEnabled }}
+    {{- if .LoggingEnabled }}
     logs = [otelcol.processor.transform.promote_header_to_resource.input]
     {{- end }}
   }
@@ -232,7 +232,7 @@ otelcol.processor.transform "promote_header_to_resource" {
     {{ template "promote_header_statements" "datapoint" }}
   }
   {{- end }}
-  {{- if .OTLPLogsEnabled }}
+  {{- if .LoggingEnabled }}
   log_statements {
     context = "log"
     {{ template "promote_header_statements" "log" }}
@@ -246,7 +246,7 @@ otelcol.processor.transform "promote_header_to_resource" {
     {{- if .OTLPMetricsEnabled }}
     metrics = [otelcol.processor.transform.default.input]
     {{- end }}
-    {{- if .OTLPLogsEnabled }}
+    {{- if .LoggingEnabled }}
     logs = [otelcol.processor.transform.default.input]
     {{- end }}
   }
@@ -280,7 +280,7 @@ otelcol.processor.transform "default" {
     {{ template "resource_statements" . }}
   }
   {{- end }}
-  {{- if .OTLPLogsEnabled }}
+  {{- if .LoggingEnabled }}
   log_statements {
     {{ template "resource_statements" . }}
   }
@@ -293,7 +293,7 @@ otelcol.processor.transform "default" {
     {{- if .OTLPMetricsEnabled }}
     metrics = [otelcol.processor.batch.default.input]
     {{- end }}
-    {{- if .OTLPLogsEnabled }}
+    {{- if .LoggingEnabled }}
     logs = [otelcol.processor.batch.default.input]
     {{- end }}
   }
@@ -324,7 +324,7 @@ otelcol.processor.batch "default" {
       {{- end }}
     ]
     {{- end }}
-    {{- if .OTLPLogsEnabled }}
+    {{- if .LoggingEnabled }}
     logs = [
       {{- range .Tenants }}
       otelcol.processor.filter.{{ . }}.input,
@@ -347,7 +347,7 @@ otelcol.processor.filter "{{ . }}" {
     datapoint = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
   }
   {{- end }}
-  {{- if $.OTLPLogsEnabled }}
+  {{- if $.LoggingEnabled }}
   logs {
     log_record = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
   }
@@ -360,7 +360,7 @@ otelcol.processor.filter "{{ . }}" {
     {{- if $.OTLPMetricsEnabled }}
     metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
     {{- end }}
-    {{- if $.OTLPLogsEnabled }}
+    {{- if $.LoggingEnabled }}
     logs = [otelcol.exporter.otlphttp.{{ . }}_loki.input]
     {{- end }}
   }
@@ -402,7 +402,7 @@ otelcol.exporter.otlphttp "{{ . }}_mimir" {
 }
 {{- end }}
 
-{{- if $.OTLPLogsEnabled }}
+{{- if $.LoggingEnabled }}
 // OTLP HTTP exporter for logs — tenant {{ . }} → Loki
 otelcol.exporter.otlphttp "{{ . }}_loki" {
   client {

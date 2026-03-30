@@ -114,7 +114,6 @@ const (
 	flagTracingGatewayHTTPRouteSecretName    = "tracing-gateway-httproute-secret-name"
 
 	// Logging configuration flag names
-	flagLoggingOTLPEnabled                 = "logging-otlp-enabled"
 	flagLoggingEnabled                     = "logging-enabled"
 	flagLoggingRulerURL                    = "logging-ruler-url"
 	flagLoggingDefaultNamespaces           = "logging-default-namespaces"
@@ -302,8 +301,6 @@ func parseFlags() (err error) {
 	// Logging configuration flags
 	pflag.BoolVar(&cfg.Logging.Enabled, flagLoggingEnabled, false,
 		"Enable logging at the installation level.")
-	pflag.BoolVar(&cfg.Logging.OTLPEnabled, flagLoggingOTLPEnabled, true,
-		"Enable OTLP log ingestion via the events collector (requires logging-enabled=true)")
 	pflag.StringSliceVar(&cfg.Logging.DefaultNamespaces, flagLoggingDefaultNamespaces, []string{},
 		"Comma-separated list of namespaces to collect logs from by default on workload clusters")
 	pflag.BoolVar(&cfg.Logging.EnableNodeFiltering, flagLoggingEnableNodeFiltering, false,
