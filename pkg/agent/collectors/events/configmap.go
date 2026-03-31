@@ -141,7 +141,7 @@ func (s *Service) generateAlloyEventsConfig(
 		OTLPBatchTimeout       string
 		OTLPBatchMaxSize       int
 		Tenants                []string
-		OTLPMetricsEnabled     bool
+		MonitoringEnabled     bool
 		MimirOTLPURLKey        string
 		MimirUsernameKey       string
 		MimirPasswordKey       string
@@ -171,7 +171,7 @@ func (s *Service) generateAlloyEventsConfig(
 		OTLPBatchTimeout:       s.Config.OTLP.BatchTimeout,
 		OTLPBatchMaxSize:       s.Config.OTLP.BatchMaxSize,
 		Tenants:                tenants,
-		OTLPMetricsEnabled:     metricsEnabled,
+		MonitoringEnabled:     metricsEnabled,
 		MimirOTLPURLKey:        common.MimirOTLPURLKey,
 		MimirUsernameKey:       common.MimirUsernameKey,
 		MimirPasswordKey:       common.MimirPasswordKey,
@@ -192,12 +192,12 @@ func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bo
 		AlloyConfig        string
 		LoggingEnabled     bool
 		TracingEnabled     bool
-		OTLPMetricsEnabled bool
+		MonitoringEnabled bool
 	}{
 		AlloyConfig:        alloyConfig,
 		LoggingEnabled:     loggingEnabled,
 		TracingEnabled:     tracingEnabled,
-		OTLPMetricsEnabled: metricsEnabled,
+		MonitoringEnabled: metricsEnabled,
 	}
 
 	if err := alloyEventsYAMLConfigTemplate.Execute(&buf, data); err != nil {
