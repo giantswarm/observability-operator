@@ -45,10 +45,10 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 	}
 }
 
-func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, metricsEnabled bool) (map[string]string, error) {
+func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, monitoringEnabled bool) (map[string]string, error) {
 	// Defensive validation: This method should only be called when at least one feature is enabled.
 	// The controller ensures this, but we validate here to catch potential bugs.
-	if !loggingEnabled && !tracingEnabled && !metricsEnabled {
+	if !loggingEnabled && !tracingEnabled && !monitoringEnabled {
 		return nil, fmt.Errorf("cannot generate alloy events config: at least one of logging, tracing, or monitoring must be enabled")
 	}
 
@@ -84,7 +84,7 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 		tenants,
 		loggingEnabled,
 		tracingEnabled,
-		metricsEnabled,
+		monitoringEnabled,
 		isWorkloadCluster,
 	)
 	if err != nil {
@@ -92,7 +92,7 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	}
 
 	// Generate the values YAML that wraps the Alloy config
-	valuesYAML, err := s.generateEventsYAMLConfig(alloyConfig, loggingEnabled, tracingEnabled, metricsEnabled)
+	valuesYAML, err := s.generateEventsYAMLConfig(alloyConfig, loggingEnabled, tracingEnabled, monitoringEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate events YAML config: %w", err)
 	}
@@ -110,7 +110,7 @@ func (s *Service) generateAlloyEventsConfig(
 	tenants []string,
 	loggingEnabled bool,
 	tracingEnabled bool,
-	metricsEnabled bool,
+	monitoringEnabled bool,
 	isWorkloadCluster bool,
 ) (string, error) {
 	var buf bytes.Buffer
@@ -141,7 +141,7 @@ func (s *Service) generateAlloyEventsConfig(
 		OTLPBatchTimeout       string
 		OTLPBatchMaxSize       int
 		Tenants                []string
-		MonitoringEnabled     bool
+		MonitoringEnabled      bool
 		MimirOTLPURLKey        string
 		MimirUsernameKey       string
 		MimirPasswordKey       string
@@ -171,7 +171,7 @@ func (s *Service) generateAlloyEventsConfig(
 		OTLPBatchTimeout:       s.Config.OTLP.BatchTimeout,
 		OTLPBatchMaxSize:       s.Config.OTLP.BatchMaxSize,
 		Tenants:                tenants,
-		MonitoringEnabled:     metricsEnabled,
+		MonitoringEnabled:      monitoringEnabled,
 		MimirOTLPURLKey:        common.MimirOTLPURLKey,
 		MimirUsernameKey:       common.MimirUsernameKey,
 		MimirPasswordKey:       common.MimirPasswordKey,
@@ -185,19 +185,19 @@ func (s *Service) generateAlloyEventsConfig(
 	return buf.String(), nil
 }
 
-func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bool, tracingEnabled bool, metricsEnabled bool) (string, error) {
+func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bool, tracingEnabled bool, monitoringEnabled bool) (string, error) {
 	var buf bytes.Buffer
 
 	data := struct {
-		AlloyConfig        string
-		LoggingEnabled     bool
-		TracingEnabled     bool
+		AlloyConfig       string
+		LoggingEnabled    bool
+		TracingEnabled    bool
 		MonitoringEnabled bool
 	}{
-		AlloyConfig:        alloyConfig,
-		LoggingEnabled:     loggingEnabled,
-		TracingEnabled:     tracingEnabled,
-		MonitoringEnabled: metricsEnabled,
+		AlloyConfig:       alloyConfig,
+		LoggingEnabled:    loggingEnabled,
+		TracingEnabled:    tracingEnabled,
+		MonitoringEnabled: monitoringEnabled,
 	}
 
 	if err := alloyEventsYAMLConfigTemplate.Execute(&buf, data); err != nil {
