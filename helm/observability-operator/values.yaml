@@ -96,10 +96,6 @@ monitoring:
   # -- Enable network monitoring
   enableNetworkMonitoring: false
 
-  otlp:
-    # -- Enable OTLP metrics ingestion via the events collector (requires monitoring.enabled=true)
-    enabled: true
-
   sharding:
     # -- Time series count per Alloy shard
     scaleUpSeriesCount: 1000000
