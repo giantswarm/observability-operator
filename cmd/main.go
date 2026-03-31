@@ -44,12 +44,14 @@ import (
 const (
 	// Operator configuration flag names
 	flagMetricsBindAddress     = "metrics-bind-address"
+	flagMetricsCertPath        = "metrics-cert-path"
+	flagMetricsSecure          = "metrics-secure"
 	flagHealthProbeBindAddress = "health-probe-bind-address"
 	flagLeaderElect            = "leader-elect"
-	flagMetricsSecure          = "metrics-secure"
-	flagEnableHTTP2            = "enable-http2"
-	flagWebhookCertPath        = "webhook-cert-path"
-	flagOperatorNamespace      = "operator-namespace"
+
+	flagEnableHTTP2       = "enable-http2"
+	flagWebhookCertPath   = "webhook-cert-path"
+	flagOperatorNamespace = "operator-namespace"
 
 	// Grafana configuration flag names
 	flagGrafanaURL = "grafana-url"
@@ -199,6 +201,8 @@ func parseFlags() (err error) {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	pflag.StringVar(&cfg.Operator.WebhookCertPath, flagWebhookCertPath, "/tmp/k8s-webhook-server/serving-certs",
 		"Path to the directory where the webhook server will store its TLS certificate and key.")
+	pflag.StringVar(&cfg.Operator.MetricsCertPath, flagMetricsCertPath, "/tmp/k8s-metrics-server/serving-certs",
+		"Path to the directory where the metrics server will store its TLS certificate and key.")
 	pflag.StringVar(&cfg.Operator.OperatorNamespace, flagOperatorNamespace, "",
 		"The namespace where the observability-operator is running.")
 
@@ -453,6 +457,7 @@ func setupApplication() error {
 		Metrics: metricsserver.Options{
 			BindAddress:   cfg.Operator.MetricsAddr,
 			SecureServing: cfg.Operator.SecureMetrics,
+			CertDir:       cfg.Operator.MetricsCertPath,
 			TLSOpts:       tlsOpts,
 		},
 		WebhookServer:          webhookServer,
