@@ -6,7 +6,7 @@
 {{- else if and .LoggingEnabled .MonitoringEnabled }}
 # It configures Alloy for events logging and OTLP metrics and logs ingestion.
 {{- else if .LoggingEnabled }}
-# It configures Alloy for events logging and OTLP metrics and logs ingestion.
+# It configures Alloy for events logging and OTLP logs ingestion.
 {{- else if and .TracingEnabled .MonitoringEnabled }}
 # It configures Alloy for tracing and OTLP metrics ingestion.
 {{- else if .TracingEnabled }}
