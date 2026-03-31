@@ -161,9 +161,6 @@ tracing:
 logging:
   # -- Enable logging support
   enabled: false
-  otlp:
-    # -- Enable OTLP log ingestion via the events collector (requires logging.enabled=true)
-    enabled: true
 
   # -- Enable log filtering
   enableNodeFiltering: false
