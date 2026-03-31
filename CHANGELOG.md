@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Kubernetes events are now forwarded to Loki via the OTLP pipeline (`otelcol.receiver.loki` → `otelcol.exporter.otlphttp`) instead of native Loki remote write (`loki.write`). The `loki.write` block, `loki.process` filter, and loki.write-specific secret keys (`logging-url`, `logging-tenant-id`, `logging-ruler-api-url`) are removed from the events collector.
 - Updated `config/prometheus/monitor.yaml` documentation to clarify that insecureSkipVerify is for development only and point to the TLS patch for production use.
 - All Alloy collectors (metrics, logs, events) now always route to external hostnames via basic auth, removing the management cluster shortcut that used in-cluster service URLs. This makes management cluster behaviour consistent with workload clusters.
 - Tempo gRPC endpoint for the events collector is now stored in the auth secret (`tracing-otlp-url`) rather than baked into the Alloy config, consistent with Loki and Mimir endpoints.

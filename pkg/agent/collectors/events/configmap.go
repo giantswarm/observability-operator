@@ -105,7 +105,7 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 func (s *Service) generateAlloyEventsConfig(
 	clusterID string,
 	clusterType string,
-	organization string,
+	org string,
 	provider string,
 	tenants []string,
 	loggingEnabled bool,
@@ -121,14 +121,10 @@ func (s *Service) generateAlloyEventsConfig(
 		ClusterType            string
 		Organization           string
 		Provider               string
-		InsecureSkipVerify     string
-		MaxBackoffPeriod       string
-		RemoteTimeout          string
+		DefaultTenant          string
 		IncludeNamespaces      []string
 		ExcludeNamespaces      []string
 		SecretName             string
-		LoggingURLKey          string
-		LoggingTenantIDKey     string
 		LoggingUsernameKey     string
 		LoggingPasswordKey     string
 		IsWorkloadCluster      bool
@@ -149,18 +145,15 @@ func (s *Service) generateAlloyEventsConfig(
 	}{
 		ClusterID:              clusterID,
 		ClusterType:            clusterType,
-		Organization:           organization,
+		Organization:           org,
 		Provider:               provider,
-		InsecureSkipVerify:     fmt.Sprintf("%t", s.Config.Cluster.InsecureCA),
-		MaxBackoffPeriod:       s.Config.Logging.LokiMaxBackoffPeriod,
-		RemoteTimeout:          s.Config.Logging.LokiRemoteTimeout,
+		DefaultTenant:          s.Config.DefaultTenant,
 		IncludeNamespaces:      s.Config.Logging.IncludeEventsNamespaces,
 		ExcludeNamespaces:      s.Config.Logging.ExcludeEventsNamespaces,
 		SecretName:             apps.AlloyEventsAppName,
 		IsWorkloadCluster:      isWorkloadCluster,
 		LoggingEnabled:         loggingEnabled,
-		LoggingURLKey:          common.LokiURLKey,
-		LoggingTenantIDKey:     common.LokiTenantIDKey,
+		LokiOTLPURLKey:         common.LokiOTLPURLKey,
 		LoggingUsernameKey:     common.LokiUsernameKey,
 		LoggingPasswordKey:     common.LokiPasswordKey,
 		TracingEnabled:         tracingEnabled,
@@ -175,7 +168,6 @@ func (s *Service) generateAlloyEventsConfig(
 		MimirOTLPURLKey:        common.MimirOTLPURLKey,
 		MimirUsernameKey:       common.MimirUsernameKey,
 		MimirPasswordKey:       common.MimirPasswordKey,
-		LokiOTLPURLKey:         common.LokiOTLPURLKey,
 	}
 
 	if err := alloyEventsConfigTemplate.Execute(&buf, data); err != nil {

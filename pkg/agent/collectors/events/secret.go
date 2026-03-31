@@ -26,9 +26,7 @@ func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 	secrets := map[string]string{}
 
 	if loggingEnabled {
-		secrets[common.LokiURLKey] = fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
-		secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
-		secrets[common.LokiRulerAPIURLKey] = fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
+		// Events are sent to Loki via OTLP — no native loki.write path.
 		secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
 		logsPassword, err := s.LogsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {

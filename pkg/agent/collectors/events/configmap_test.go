@@ -37,7 +37,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 		excludeNamespaces []string
 	}{
 		{
-			name: "ManagementCluster_LokiEvents",
+			name: "ManagementCluster_LoggingEnabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -54,12 +54,12 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				},
 			},
 			tenants:        []string{"giantswarm"},
-			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.loki-events.yaml"),
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.logging-enabled.yaml"),
 			loggingEnabled: true,
 			tracingEnabled: false,
 		},
 		{
-			name: "WorkloadCluster_LokiEvents",
+			name: "WorkloadCluster_LoggingEnabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
@@ -76,12 +76,12 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				},
 			},
 			tenants:        []string{"giantswarm"},
-			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events.yaml"),
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.logging-enabled.yaml"),
 			loggingEnabled: true,
 			tracingEnabled: false,
 		},
 		{
-			name: "WorkloadCluster_LokiEventsIncludeNamespaces",
+			name: "WorkloadCluster_LoggingEnabledIncludeNamespaces",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "include-namespaces",
@@ -98,13 +98,13 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				},
 			},
 			tenants:           []string{"giantswarm"},
-			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-include-namespaces.yaml"),
+			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.logging-enabled-include-namespaces.yaml"),
 			loggingEnabled:    true,
 			tracingEnabled:    false,
 			includeNamespaces: []string{"namespace1", "namespace2"},
 		},
 		{
-			name: "WorkloadCluster_LokiEventsExcludeNamespaces",
+			name: "WorkloadCluster_LoggingEnabledExcludeNamespaces",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "exclude-namespaces",
@@ -121,13 +121,13 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				},
 			},
 			tenants:           []string{"giantswarm"},
-			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-exclude-namespaces.yaml"),
+			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.logging-enabled-exclude-namespaces.yaml"),
 			loggingEnabled:    true,
 			tracingEnabled:    false,
 			excludeNamespaces: []string{"namespace1", "namespace2"},
 		},
 		{
-			name: "ManagementCluster_OTLPTraces",
+			name: "ManagementCluster_TracingEnabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -149,7 +149,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			tracingEnabled: true,
 		},
 		{
-			name: "WorkloadCluster_OTLPTraces",
+			name: "WorkloadCluster_TracingEnabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
@@ -215,7 +215,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			tracingEnabled: false,
 		},
 		{
-			name: "ManagementCluster_OTLPMetrics",
+			name: "ManagementCluster_MonitoringEnabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
@@ -238,7 +238,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			monitoringEnabled: true,
 		},
 		{
-			name: "WorkloadCluster_OTLPMetrics",
+			name: "WorkloadCluster_MonitoringEnabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster",
@@ -342,8 +342,6 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				Logging: config.LoggingConfig{
 					IncludeEventsNamespaces: tt.includeNamespaces,
 					ExcludeEventsNamespaces: tt.excludeNamespaces,
-					LokiMaxBackoffPeriod:    "10m",
-					LokiRemoteTimeout:       "60s",
 				},
 				OTLP: config.OTLPConfig{
 					BatchSendBatchSize: 1024,

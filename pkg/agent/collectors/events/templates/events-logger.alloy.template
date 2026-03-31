@@ -60,14 +60,14 @@ loki.source.kubernetes_events "default" {
   {{- if and .IsWorkloadCluster .ExcludeNamespaces }}
   forward_to = [loki.process.default.receiver]
   {{- else }}
-  forward_to = [loki.write.default.receiver]
+  forward_to = [otelcol.receiver.loki.events.receiver]
   {{- end }}
 }
 
 {{- if and .IsWorkloadCluster .ExcludeNamespaces }}
 // Exclude configured namespaces from event logs
 loki.process "default" {
-  forward_to = [loki.write.default.receiver]
+  forward_to = [otelcol.receiver.loki.events.receiver]
 
   stage.drop {
     source = "namespace"
@@ -76,29 +76,34 @@ loki.process "default" {
 }
 {{- end }}
 
-// Write Kubernetes events to Loki
-loki.write "default" {
-  endpoint {
-    max_backoff_period = "{{ .MaxBackoffPeriod }}"
-    remote_timeout     = "{{ .RemoteTimeout }}"
-    tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingTenantIDKey }}"])
-
-    url                = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingURLKey }}"])
-    basic_auth {
-      username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingUsernameKey }}"])
-      password = remote.kubernetes.secret.credentials.data["{{ .LoggingPasswordKey }}"]
-    }
-
-    tls_config {
-      insecure_skip_verify = {{ .InsecureSkipVerify }}
-    }
+// Bridge Kubernetes events (Loki format) into the OTLP pipeline.
+// loki.source.kubernetes_events emits Loki-format log entries; this receiver converts
+// them to OTLP log records for downstream processing and export via otelcol.
+otelcol.receiver.loki "events" {
+  output {
+    logs = [otelcol.processor.transform.events.input]
   }
-  external_labels = {
-    cluster_id       = "{{ .ClusterID }}",
-    cluster_type     = "{{ .ClusterType }}",
-    organization     = "{{ .Organization }}",
-    provider         = "{{ .Provider }}",
-    scrape_job       = "kubernetes-events",
+}
+
+// Set cluster metadata and tenant for Kubernetes events.
+// Events always belong to the default tenant — unlike OTLP workload signals,
+// they cannot carry a pod label or X-Scope-OrgID header, so the tenant is set directly.
+otelcol.processor.transform "events" {
+  error_mode = "ignore"
+
+  log_statements {
+    context = "resource"
+    statements = [
+      `set(resource.attributes["giantswarm.tenant"], "{{ .DefaultTenant }}")`,
+      `set(resource.attributes["k8s.cluster.name"], "{{ .ClusterID }}")`,
+      `set(resource.attributes["k8s.cluster.type"], "{{ .ClusterType }}")`,
+      `set(resource.attributes["k8s.cluster.organization"], "{{ .Organization }}")`,
+      `set(resource.attributes["cloud.provider"], "{{ .Provider }}")`,
+    ]
+  }
+
+  output {
+    logs = [otelcol.processor.batch.default.input]
   }
 }
 {{- end }}
@@ -126,6 +131,7 @@ otelcol.auth.basic "loki_credentials" {
 }
 {{- end }}
 
+{{- if or .TracingEnabled .MonitoringEnabled .LoggingEnabled }}
 {{- $signals := list -}}
 {{- if .TracingEnabled }}{{- $signals = append $signals "traces" }}{{- end -}}
 {{- if .MonitoringEnabled }}{{- $signals = append $signals "metrics" }}{{- end -}}
@@ -298,6 +304,7 @@ otelcol.processor.transform "default" {
     {{- end }}
   }
 }
+{{- end }}
 
 // Batch processor for efficient export.
 // send_batch_max_size caps the number of items per export call, preventing individual
