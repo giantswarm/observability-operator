@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All Alloy collectors (metrics, logs, events) now always route to external hostnames via basic auth, removing the management cluster shortcut that used in-cluster service URLs. This makes management cluster behaviour consistent with workload clusters.
 - Tempo gRPC endpoint for the events collector is now stored in the auth secret (`tracing-otlp-url`) rather than baked into the Alloy config, consistent with Loki and Mimir endpoints.
 - Change all alloy log level to warn instead of info.
-- Dashboard ConfigMap webhook now validates that the referenced `GrafanaOrganization` CR exists at admission time, rejecting ConfigMaps that reference a non-existent organization instead of silently failing at reconcile time.
+- Dashboard ConfigMap webhook now validates that the referenced `GrafanaOrganization` CR exists at admission time (matched by `spec.displayName`), rejecting ConfigMaps that reference a non-existent organization instead of silently failing at reconcile time.
 
 ### Fixed
 

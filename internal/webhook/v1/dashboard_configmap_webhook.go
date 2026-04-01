@@ -119,7 +119,7 @@ func (v *DashboardConfigMapValidator) validateDashboard(ctx context.Context, con
 	}
 	existingOrgs := make(map[string]struct{}, len(orgList.Items))
 	for _, o := range orgList.Items {
-		existingOrgs[o.Name] = struct{}{}
+		existingOrgs[o.Spec.DisplayName] = struct{}{}
 	}
 	for _, dash := range dashboards {
 		if _, ok := existingOrgs[dash.Organization()]; !ok {
