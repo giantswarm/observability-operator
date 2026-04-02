@@ -22,22 +22,14 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool) (map[string]string, error) {
+func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, metricsEnabled bool) (map[string]string, error) {
 	secrets := map[string]string{}
 
-	if loggingEnabled || otlpLogsEnabled {
-		// Add Loki direct-write keys for the loki.write block
-		if loggingEnabled {
-			secrets[common.LokiURLKey] = fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
-			secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
-			secrets[common.LokiRulerAPIURLKey] = fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
-		}
-		// Add Loki OTLP URL when OTLP logs ingestion is enabled
-		if otlpLogsEnabled {
-			secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
-		}
-		// Loki credentials (username/password) are shared by loki.write (direct events logging)
-		// and otelcol.auth.basic loki_credentials (OTLP logs exporter).
+	if loggingEnabled {
+		secrets[common.LokiURLKey] = fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
+		secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
+		secrets[common.LokiRulerAPIURLKey] = fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
+		secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
 		logsPassword, err := s.LogsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
@@ -58,8 +50,8 @@ func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 		secrets[common.TempoOTLPURLKey] = fmt.Sprintf("%s:443", fmt.Sprintf(common.TempoBaseURLFormat, s.Config.Cluster.BaseDomain))
 	}
 
-	// Add Mimir OTLP credentials when OTLP metrics ingestion is enabled
-	if otlpMetricsEnabled {
+	// Add Mimir OTLP credentials when monitoring is enabled
+	if metricsEnabled {
 		mimirOTLPURL := fmt.Sprintf(common.MimirOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
 		metricsPassword, err := s.MetricsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
