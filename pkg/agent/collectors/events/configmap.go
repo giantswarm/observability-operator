@@ -45,11 +45,11 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 	}
 }
 
-func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool) (map[string]string, error) {
+func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, metricsEnabled bool) (map[string]string, error) {
 	// Defensive validation: This method should only be called when at least one feature is enabled.
 	// The controller ensures this, but we validate here to catch potential bugs.
-	if !loggingEnabled && !tracingEnabled && !otlpMetricsEnabled && !otlpLogsEnabled {
-		return nil, fmt.Errorf("cannot generate alloy events config: at least one of logging, tracing, OTLP metrics, or OTLP logs must be enabled")
+	if !loggingEnabled && !tracingEnabled && !metricsEnabled {
+		return nil, fmt.Errorf("cannot generate alloy events config: at least one of logging, tracing, or monitoring must be enabled")
 	}
 
 	// Get list of tenants
@@ -84,8 +84,7 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 		tenants,
 		loggingEnabled,
 		tracingEnabled,
-		otlpMetricsEnabled,
-		otlpLogsEnabled,
+		metricsEnabled,
 		isWorkloadCluster,
 	)
 	if err != nil {
@@ -93,7 +92,7 @@ func (s *Service) GenerateAlloyEventsConfigMapData(ctx context.Context, cluster 
 	}
 
 	// Generate the values YAML that wraps the Alloy config
-	valuesYAML, err := s.generateEventsYAMLConfig(alloyConfig, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled)
+	valuesYAML, err := s.generateEventsYAMLConfig(alloyConfig, loggingEnabled, tracingEnabled, metricsEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate events YAML config: %w", err)
 	}
@@ -111,8 +110,7 @@ func (s *Service) generateAlloyEventsConfig(
 	tenants []string,
 	loggingEnabled bool,
 	tracingEnabled bool,
-	otlpMetricsEnabled bool,
-	otlpLogsEnabled bool,
+	metricsEnabled bool,
 	isWorkloadCluster bool,
 ) (string, error) {
 	var buf bytes.Buffer
@@ -147,7 +145,6 @@ func (s *Service) generateAlloyEventsConfig(
 		MimirOTLPURLKey        string
 		MimirUsernameKey       string
 		MimirPasswordKey       string
-		OTLPLogsEnabled        bool
 		LokiOTLPURLKey         string
 	}{
 		ClusterID:              clusterID,
@@ -162,8 +159,6 @@ func (s *Service) generateAlloyEventsConfig(
 		SecretName:             apps.AlloyEventsAppName,
 		IsWorkloadCluster:      isWorkloadCluster,
 		LoggingEnabled:         loggingEnabled,
-		OTLPLogsEnabled:        otlpLogsEnabled,
-		LokiOTLPURLKey:         common.LokiOTLPURLKey,
 		LoggingURLKey:          common.LokiURLKey,
 		LoggingTenantIDKey:     common.LokiTenantIDKey,
 		LoggingUsernameKey:     common.LokiUsernameKey,
@@ -176,10 +171,11 @@ func (s *Service) generateAlloyEventsConfig(
 		OTLPBatchTimeout:       s.Config.OTLP.BatchTimeout,
 		OTLPBatchMaxSize:       s.Config.OTLP.BatchMaxSize,
 		Tenants:                tenants,
-		OTLPMetricsEnabled:     otlpMetricsEnabled,
+		OTLPMetricsEnabled:     metricsEnabled,
 		MimirOTLPURLKey:        common.MimirOTLPURLKey,
 		MimirUsernameKey:       common.MimirUsernameKey,
 		MimirPasswordKey:       common.MimirPasswordKey,
+		LokiOTLPURLKey:         common.LokiOTLPURLKey,
 	}
 
 	if err := alloyEventsConfigTemplate.Execute(&buf, data); err != nil {
@@ -189,7 +185,7 @@ func (s *Service) generateAlloyEventsConfig(
 	return buf.String(), nil
 }
 
-func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bool, tracingEnabled bool, otlpMetricsEnabled bool, otlpLogsEnabled bool) (string, error) {
+func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bool, tracingEnabled bool, metricsEnabled bool) (string, error) {
 	var buf bytes.Buffer
 
 	data := struct {
@@ -197,13 +193,11 @@ func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bo
 		LoggingEnabled     bool
 		TracingEnabled     bool
 		OTLPMetricsEnabled bool
-		OTLPLogsEnabled    bool
 	}{
 		AlloyConfig:        alloyConfig,
 		LoggingEnabled:     loggingEnabled,
 		TracingEnabled:     tracingEnabled,
-		OTLPMetricsEnabled: otlpMetricsEnabled,
-		OTLPLogsEnabled:    otlpLogsEnabled,
+		OTLPMetricsEnabled: metricsEnabled,
 	}
 
 	if err := alloyEventsYAMLConfigTemplate.Execute(&buf, data); err != nil {

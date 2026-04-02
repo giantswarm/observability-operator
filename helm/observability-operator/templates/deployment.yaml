@@ -122,7 +122,6 @@ spec:
         # Logging configuration
         {{ with .Values.logging }}
         - --logging-enabled={{ .enabled }}
-        - --logging-otlp-enabled={{ .otlp.enabled }}
         {{- if .enableNodeFiltering }}
         - --logging-enable-node-filtering=true
         {{- end }}

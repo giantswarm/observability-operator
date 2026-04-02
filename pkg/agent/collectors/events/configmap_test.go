@@ -26,16 +26,15 @@ var (
 
 func TestGenerateAlloyEventsConfig(t *testing.T) {
 	tests := []struct {
-		name               string
-		cluster            *clusterv1.Cluster
-		tenants            []string
-		goldenPath         string
-		loggingEnabled     bool
-		tracingEnabled     bool
-		otlpMetricsEnabled bool
-		otlpLogsEnabled    bool
-		includeNamespaces  []string
-		excludeNamespaces  []string
+		name              string
+		cluster           *clusterv1.Cluster
+		tenants           []string
+		goldenPath        string
+		loggingEnabled    bool
+		tracingEnabled    bool
+		metricsEnabled    bool
+		includeNamespaces []string
+		excludeNamespaces []string
 	}{
 		{
 			name: "ManagementCluster_LokiEvents",
@@ -232,11 +231,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:            []string{"giantswarm"},
-			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.MC.otlp-metrics.yaml"),
-			loggingEnabled:     false,
-			tracingEnabled:     false,
-			otlpMetricsEnabled: true,
+			tenants:        []string{"giantswarm"},
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.otlp-metrics.yaml"),
+			loggingEnabled: false,
+			tracingEnabled: false,
+			metricsEnabled: true,
 		},
 		{
 			name: "WorkloadCluster_OTLPMetrics",
@@ -255,59 +254,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:            []string{"giantswarm"},
-			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.WC.otlp-metrics.yaml"),
-			loggingEnabled:     false,
-			tracingEnabled:     false,
-			otlpMetricsEnabled: true,
-		},
-		{
-			name: "ManagementCluster_LokiEventsAndOTLPLogs",
-			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      managementClusterName,
-					Namespace: "default",
-					Labels: map[string]string{
-						"giantswarm.io/cluster":     managementClusterName,
-						"cluster.x-k8s.io/provider": "aws",
-					},
-				},
-				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						Kind: "AWSCluster",
-					},
-				},
-			},
-			tenants:            []string{"giantswarm"},
-			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.MC.loki-events-otlp-logs.yaml"),
-			loggingEnabled:     true,
-			tracingEnabled:     false,
-			otlpMetricsEnabled: false,
-			otlpLogsEnabled:    true,
-		},
-		{
-			name: "WorkloadCluster_LokiEventsAndOTLPLogs",
-			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
-					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
-					},
-				},
-				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						Kind: "AWSCluster",
-					},
-				},
-			},
-			tenants:            []string{"giantswarm"},
-			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-otlp-logs.yaml"),
-			loggingEnabled:     true,
-			tracingEnabled:     false,
-			otlpMetricsEnabled: false,
-			otlpLogsEnabled:    true,
+			tenants:        []string{"giantswarm"},
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.otlp-metrics.yaml"),
+			loggingEnabled: false,
+			tracingEnabled: false,
+			metricsEnabled: true,
 		},
 		{
 			name: "ManagementCluster_AllSignals",
@@ -326,12 +277,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:            []string{"giantswarm"},
-			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.MC.all-signals.yaml"),
-			loggingEnabled:     true,
-			tracingEnabled:     true,
-			otlpMetricsEnabled: true,
-			otlpLogsEnabled:    true,
+			tenants:        []string{"giantswarm"},
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.all-signals.yaml"),
+			loggingEnabled: true,
+			tracingEnabled: true,
+			metricsEnabled: true,
 		},
 		{
 			name: "WorkloadCluster_AllSignals",
@@ -350,12 +300,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:            []string{"giantswarm"},
-			goldenPath:         filepath.Join("testdata", "events-logger-config.alloy.WC.all-signals.yaml"),
-			loggingEnabled:     true,
-			tracingEnabled:     true,
-			otlpMetricsEnabled: true,
-			otlpLogsEnabled:    true,
+			tenants:        []string{"giantswarm"},
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.all-signals.yaml"),
+			loggingEnabled: true,
+			tracingEnabled: true,
+			metricsEnabled: true,
 		},
 	}
 
@@ -417,15 +366,14 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				tt.cluster,
 				tt.loggingEnabled,
 				tt.tracingEnabled,
-				tt.otlpMetricsEnabled,
-				tt.otlpLogsEnabled,
+				tt.metricsEnabled,
 			)
 
 			// Check if this is a "neither enabled" test case (no golden path)
 			if tt.goldenPath == "" {
 				// Should return an error when no feature is enabled
 				if err == nil {
-					t.Errorf("GenerateAlloyEventsConfigMapData() expected error when neither logging nor tracing nor OTLP metrics nor OTLP logs enabled, got nil")
+					t.Errorf("GenerateAlloyEventsConfigMapData() expected error when neither logging nor tracing nor monitoring enabled, got nil")
 				}
 				return
 			}

@@ -39,17 +39,16 @@ func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	// Determine if logging, tracing, and OTLP signals are enabled for this cluster
 	loggingEnabled := s.Config.Logging.IsLoggingEnabled(cluster)
 	tracingEnabled := s.Config.Tracing.IsTracingEnabled(cluster)
-	otlpMetricsEnabled := s.Config.Monitoring.IsMonitoringEnabled(cluster) && s.Config.Monitoring.OTLPEnabled
-	otlpLogsEnabled := s.Config.Logging.IsLoggingEnabled(cluster) && s.Config.Logging.OTLPEnabled
+	metricsEnabled := s.Config.Monitoring.IsMonitoringEnabled(cluster) && s.Config.Monitoring.OTLPEnabled
 
 	// Generate ConfigMap data
-	configMapData, err := s.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled)
+	configMapData, err := s.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, metricsEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 	}
 
 	// Generate Secret data
-	secretData, err := s.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, otlpMetricsEnabled, otlpLogsEnabled)
+	secretData, err := s.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, metricsEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events secret: %w", err)
 	}
