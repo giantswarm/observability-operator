@@ -103,7 +103,7 @@ loki.write "default" {
 }
 {{- end }}
 
-{{- if or .TracingEnabled .OTLPMetricsEnabled .LoggingEnabled }}
+{{- if or .TracingEnabled .MonitoringEnabled .LoggingEnabled }}
 {{- if .TracingEnabled }}
 // Basic authentication for Tempo
 otelcol.auth.basic "tempo_credentials" {
@@ -111,7 +111,7 @@ otelcol.auth.basic "tempo_credentials" {
   password = remote.kubernetes.secret.credentials.data["{{ .TempoPasswordKey }}"]
 }
 {{- end }}
-{{- if .OTLPMetricsEnabled }}
+{{- if .MonitoringEnabled }}
 // Basic authentication for Mimir
 otelcol.auth.basic "mimir_credentials" {
   username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .MimirUsernameKey }}"])
@@ -128,7 +128,7 @@ otelcol.auth.basic "loki_credentials" {
 
 {{- $signals := list -}}
 {{- if .TracingEnabled }}{{- $signals = append $signals "traces" }}{{- end -}}
-{{- if .OTLPMetricsEnabled }}{{- $signals = append $signals "metrics" }}{{- end -}}
+{{- if .MonitoringEnabled }}{{- $signals = append $signals "metrics" }}{{- end -}}
 {{- if .LoggingEnabled }}{{- $signals = append $signals "logs" }}{{- end -}}
 {{- $n := len $signals }}
 // OTLP receiver — accepts
@@ -152,7 +152,7 @@ otelcol.receiver.otlp "default" {
     {{- if .TracingEnabled }}
     traces = [otelcol.processor.k8sattributes.default.input]
     {{- end }}
-    {{- if .OTLPMetricsEnabled }}
+    {{- if .MonitoringEnabled }}
     metrics = [otelcol.processor.k8sattributes.default.input]
     {{- end }}
     {{- if .LoggingEnabled }}
@@ -183,7 +183,7 @@ otelcol.processor.k8sattributes "default" {
     {{- if .TracingEnabled }}
     traces = [otelcol.processor.attributes.extract_tenant_header.input]
     {{- end }}
-    {{- if .OTLPMetricsEnabled }}
+    {{- if .MonitoringEnabled }}
     metrics = [otelcol.processor.attributes.extract_tenant_header.input]
     {{- end }}
     {{- if .LoggingEnabled }}
@@ -205,7 +205,7 @@ otelcol.processor.attributes "extract_tenant_header" {
     {{- if .TracingEnabled }}
     traces = [otelcol.processor.transform.promote_header_to_resource.input]
     {{- end }}
-    {{- if .OTLPMetricsEnabled }}
+    {{- if .MonitoringEnabled }}
     metrics = [otelcol.processor.transform.promote_header_to_resource.input]
     {{- end }}
     {{- if .LoggingEnabled }}
@@ -226,7 +226,7 @@ otelcol.processor.transform "promote_header_to_resource" {
     {{ template "promote_header_statements" "span" }}
   }
   {{- end }}
-  {{- if .OTLPMetricsEnabled }}
+  {{- if .MonitoringEnabled }}
   metric_statements {
     context = "datapoint"
     {{ template "promote_header_statements" "datapoint" }}
@@ -243,7 +243,7 @@ otelcol.processor.transform "promote_header_to_resource" {
     {{- if .TracingEnabled }}
     traces = [otelcol.processor.transform.default.input]
     {{- end }}
-    {{- if .OTLPMetricsEnabled }}
+    {{- if .MonitoringEnabled }}
     metrics = [otelcol.processor.transform.default.input]
     {{- end }}
     {{- if .LoggingEnabled }}
@@ -275,7 +275,7 @@ otelcol.processor.transform "default" {
     {{ template "resource_statements" . }}
   }
   {{- end }}
-  {{- if .OTLPMetricsEnabled }}
+  {{- if .MonitoringEnabled }}
   metric_statements {
     {{ template "resource_statements" . }}
   }
@@ -290,7 +290,7 @@ otelcol.processor.transform "default" {
     {{- if .TracingEnabled }}
     traces = [otelcol.processor.batch.default.input]
     {{- end }}
-    {{- if .OTLPMetricsEnabled }}
+    {{- if .MonitoringEnabled }}
     metrics = [otelcol.processor.batch.default.input]
     {{- end }}
     {{- if .LoggingEnabled }}
@@ -317,7 +317,7 @@ otelcol.processor.batch "default" {
       {{- end }}
     ]
     {{- end }}
-    {{- if .OTLPMetricsEnabled }}
+    {{- if .MonitoringEnabled }}
     metrics = [
       {{- range .Tenants }}
       otelcol.processor.filter.{{ . }}.input,
@@ -342,7 +342,7 @@ otelcol.processor.filter "{{ . }}" {
     span = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
   }
   {{- end }}
-  {{- if $.OTLPMetricsEnabled }}
+  {{- if $.MonitoringEnabled }}
   metrics {
     datapoint = [`resource.attributes["giantswarm.tenant"] != "{{ . }}"`]
   }
@@ -357,7 +357,7 @@ otelcol.processor.filter "{{ . }}" {
     {{- if $.TracingEnabled }}
     traces = [otelcol.exporter.otlp.{{ . }}_tempo.input]
     {{- end }}
-    {{- if $.OTLPMetricsEnabled }}
+    {{- if $.MonitoringEnabled }}
     metrics = [otelcol.exporter.otlphttp.{{ . }}_mimir.input]
     {{- end }}
     {{- if $.LoggingEnabled }}
@@ -383,7 +383,7 @@ otelcol.exporter.otlp "{{ . }}_tempo" {
 }
 {{- end }}
 
-{{- if $.OTLPMetricsEnabled }}
+{{- if $.MonitoringEnabled }}
 // OTLP HTTP exporter for metrics — tenant {{ . }} → Mimir
 // Mimir's distributor is configured with -distributor.otel-promote-resource-attributes
 // to automatically promote resource attributes (cluster metadata) to metric labels.
