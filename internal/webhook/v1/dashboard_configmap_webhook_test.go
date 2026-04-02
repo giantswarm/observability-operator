@@ -657,6 +657,54 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			Expect(err).NotTo(HaveOccurred()) // Should handle multiple dashboards efficiently
 		})
 
+		Context("When matching organizations by displayName vs resource name", func() {
+			// Regression test for https://github.com/giantswarm/observability-operator/pull/775:
+			// the webhook must match the organization by spec.displayName, not the K8s resource name.
+			// The suite creates a GrafanaOrganization with Name="giantswarm" / DisplayName="Giant Swarm".
+			It("Should accept a dashboard referencing an org by its displayName", func() {
+				By("Referencing 'Giant Swarm' (the displayName, not the resource name)")
+				cm := &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "display-name-match",
+						Namespace: "default",
+						Labels: map[string]string{
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
+						},
+						Annotations: map[string]string{
+							labels.GrafanaOrganizationKey: "Giant Swarm",
+						},
+					},
+					Data: map[string]string{
+						"dashboard.json": `{"uid": "display-name-match", "title": "Test"}`,
+					},
+				}
+				_, err := validator.ValidateCreate(ctx, cm)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("Should reject a dashboard referencing an org by its K8s resource name when displayName differs", func() {
+				By("Referencing 'giantswarm' (the resource name, not the displayName 'Giant Swarm')")
+				cm := &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "resource-name-mismatch",
+						Namespace: "default",
+						Labels: map[string]string{
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
+						},
+						Annotations: map[string]string{
+							labels.GrafanaOrganizationKey: "giantswarm",
+						},
+					},
+					Data: map[string]string{
+						"dashboard.json": `{"uid": "resource-name-mismatch", "title": "Test"}`,
+					},
+				}
+				_, err := validator.ValidateCreate(ctx, cm)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("does not exist"))
+			})
+		})
+
 		Context("When testing additional edge cases and security scenarios", func() {
 			It("Should reject dashboard referencing non-existent organization", func() {
 				By("Testing organization that does not exist as a GrafanaOrganization CR")

@@ -87,13 +87,25 @@ var _ = BeforeSuite(func() {
 		}
 		Expect(k8sClient.Create(ctx, org)).To(Succeed())
 	}
+	// Create a GrafanaOrganization where Name != DisplayName to test that the webhook
+	// matches by displayName (not resource name). This exercises the regression fixed in
+	// https://github.com/giantswarm/observability-operator/pull/775.
+	giantswarmOrg := &observabilityv1alpha2.GrafanaOrganization{
+		ObjectMeta: metav1.ObjectMeta{Name: "giantswarm"},
+		Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
+			DisplayName: "Giant Swarm",
+			RBAC:        &observabilityv1alpha2.RBAC{Admins: []string{}},
+			Tenants:     []observabilityv1alpha2.TenantConfig{{Name: "giantswarm"}},
+		},
+	}
+	Expect(k8sClient.Create(ctx, giantswarmOrg)).To(Succeed())
 })
 
 var _ = AfterSuite(func() {
 	// Only clean up if BeforeSuite completed successfully
 	if k8sClient != nil {
 		ctx := context.Background()
-		for _, name := range []string{"test-org", "annotation-org", "label-org"} {
+		for _, name := range []string{"test-org", "annotation-org", "label-org", "giantswarm"} {
 			org := &observabilityv1alpha2.GrafanaOrganization{
 				ObjectMeta: metav1.ObjectMeta{Name: name},
 			}
