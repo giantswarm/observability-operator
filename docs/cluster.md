@@ -16,14 +16,14 @@ Set these labels on the `cluster.x-k8s.io/Cluster` object to control which featu
 
 Both the installation-level `enabled` flag (Helm value) and the per-cluster label must allow the feature for it to be active.
 
-### OTLP signals (installation-level opt-in)
+### OTLP signals
 
-OTLP metrics and OTLP logs are enabled at the **installation level** via Helm values, and then gated per cluster by the existing `monitoring` / `logging` labels.
+OTLP metrics and OTLP logs are always active when the corresponding feature is enabled — there is no separate opt-in flag.
 
-| Feature | Helm value | Per-cluster gate |
-|---|---|---|
-| OTLP metrics (workload cluster → Mimir) | `monitoring.otlpEnabled: true` | `observability.giantswarm.io/monitoring` |
-| OTLP logs (workload cluster → Loki) | `logging.otlpEnabled: true` | `observability.giantswarm.io/logging` |
+| Feature | Activation |
+|---|---|
+| OTLP metrics (workload cluster → Mimir) | Always active when `observability.giantswarm.io/monitoring` is enabled |
+| OTLP logs (workload cluster → Loki) | Always active when `observability.giantswarm.io/logging` is enabled |
 
 When OTLP metrics is active, resource attributes (`k8s.cluster.name`, `k8s.cluster.type`, `k8s.cluster.organization`, `cloud.provider`) are automatically promoted to Mimir metric labels via `-distributor.otel-promote-resource-attributes`.
 

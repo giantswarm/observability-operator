@@ -32,7 +32,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 		goldenPath        string
 		loggingEnabled    bool
 		tracingEnabled    bool
-		metricsEnabled    bool
+		monitoringEnabled bool
 		includeNamespaces []string
 		excludeNamespaces []string
 	}{
@@ -144,7 +144,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				},
 			},
 			tenants:        []string{"giantswarm"},
-			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.otlp-traces.yaml"),
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.tracing-enabled.yaml"),
 			loggingEnabled: false,
 			tracingEnabled: true,
 		},
@@ -166,7 +166,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				},
 			},
 			tenants:        []string{"giantswarm"},
-			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.otlp-traces.yaml"),
+			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.tracing-enabled.yaml"),
 			loggingEnabled: false,
 			tracingEnabled: true,
 		},
@@ -231,11 +231,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:        []string{"giantswarm"},
-			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.otlp-metrics.yaml"),
-			loggingEnabled: false,
-			tracingEnabled: false,
-			metricsEnabled: true,
+			tenants:           []string{"giantswarm"},
+			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.MC.monitoring-enabled.yaml"),
+			loggingEnabled:    false,
+			tracingEnabled:    false,
+			monitoringEnabled: true,
 		},
 		{
 			name: "WorkloadCluster_OTLPMetrics",
@@ -254,11 +254,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:        []string{"giantswarm"},
-			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.otlp-metrics.yaml"),
-			loggingEnabled: false,
-			tracingEnabled: false,
-			metricsEnabled: true,
+			tenants:           []string{"giantswarm"},
+			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.monitoring-enabled.yaml"),
+			loggingEnabled:    false,
+			tracingEnabled:    false,
+			monitoringEnabled: true,
 		},
 		{
 			name: "ManagementCluster_AllSignals",
@@ -277,11 +277,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:        []string{"giantswarm"},
-			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.all-signals.yaml"),
-			loggingEnabled: true,
-			tracingEnabled: true,
-			metricsEnabled: true,
+			tenants:           []string{"giantswarm"},
+			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.MC.all-signals.yaml"),
+			loggingEnabled:    true,
+			tracingEnabled:    true,
+			monitoringEnabled: true,
 		},
 		{
 			name: "WorkloadCluster_AllSignals",
@@ -300,11 +300,11 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 			},
-			tenants:        []string{"giantswarm"},
-			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.all-signals.yaml"),
-			loggingEnabled: true,
-			tracingEnabled: true,
-			metricsEnabled: true,
+			tenants:           []string{"giantswarm"},
+			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.all-signals.yaml"),
+			loggingEnabled:    true,
+			tracingEnabled:    true,
+			monitoringEnabled: true,
 		},
 	}
 
@@ -366,7 +366,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 				tt.cluster,
 				tt.loggingEnabled,
 				tt.tracingEnabled,
-				tt.metricsEnabled,
+				tt.monitoringEnabled,
 			)
 
 			// Check if this is a "neither enabled" test case (no golden path)

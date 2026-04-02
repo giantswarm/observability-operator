@@ -22,7 +22,7 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, metricsEnabled bool) (map[string]string, error) {
+func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, monitoringEnabled bool) (map[string]string, error) {
 	secrets := map[string]string{}
 
 	if loggingEnabled {
@@ -51,7 +51,7 @@ func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 	}
 
 	// Add Mimir OTLP credentials when monitoring is enabled
-	if metricsEnabled {
+	if monitoringEnabled {
 		mimirOTLPURL := fmt.Sprintf(common.MimirOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
 		metricsPassword, err := s.MetricsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {

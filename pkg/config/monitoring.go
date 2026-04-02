@@ -34,9 +34,6 @@ type MonitoringConfig struct {
 	// NetworkEnabled controls network monitoring at the installation level
 	NetworkEnabled bool
 
-	// OTLPEnabled controls whether OTLP metrics ingestion is enabled via the events collector
-	OTLPEnabled bool
-
 	AlertmanagerSecretName string
 	AlertmanagerURL        string
 	AlertmanagerEnabled    bool

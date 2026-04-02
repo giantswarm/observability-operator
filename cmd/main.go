@@ -83,7 +83,6 @@ const (
 	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
 	flagMonitoringRulerURL                    = "monitoring-ruler-url"
 	flagMonitoringExemplarsEnabled            = "monitoring-exemplars-enabled"
-	flagMonitoringOTLPEnabled                 = "monitoring-otlp-enabled"
 
 	// Queue configuration flag names
 	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
@@ -259,8 +258,6 @@ func parseFlags() (err error) {
 		"Enable exemplar forwarding in the remote write pipeline. Opt-out: enabled by default.")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
 		"Enable/disable network monitoring in Alloy configuration")
-	pflag.BoolVar(&cfg.Monitoring.OTLPEnabled, flagMonitoringOTLPEnabled, true,
-		"Enable OTLP metrics ingestion via the events collector (requires monitoring-enabled=true)")
 	pflag.StringVar(&cfg.Monitoring.Gateway.Namespace, flagMonitoringGatewayNamespace, "mimir",
 		"Kubernetes namespace where the Mimir gateway secrets reside.")
 	pflag.StringVar(&cfg.Monitoring.Gateway.IngressSecretName, flagMonitoringGatewayIngressSecretName, "mimir-gateway-ingress-auth",
