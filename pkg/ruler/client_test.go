@@ -98,9 +98,9 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 		},
 		{
 			// Real Mimir response: top-level keys are namespace names in YAML format.
-			name:      "handles real Mimir YAML response with matching namespace",
-			clusterID: "my-cluster",
-			listStatus: http.StatusOK,
+			name:        "handles real Mimir YAML response with matching namespace",
+			clusterID:   "my-cluster",
+			listStatus:  http.StatusOK,
 			listBodyRaw: []byte("my-cluster/rules:\n- name: group1\n  rules: []\nother-cluster/rules:\n- name: group2\n  rules: []\n"),
 			deleteStatuses: map[string]int{
 				"my-cluster/rules": http.StatusNoContent,
