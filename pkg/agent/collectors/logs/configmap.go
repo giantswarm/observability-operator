@@ -87,7 +87,7 @@ func (s *Service) GenerateAlloyLogsConfigMapData(ctx context.Context, cluster *c
 		tenants,
 		org,
 		provider,
-		s.Config.Cluster.InsecureCA,
+		s.Config.Cluster.CASecretName != "",
 		enableNodeFiltering,
 		loggingEnabled,
 		networkMonitoringEnabled,
@@ -112,7 +112,7 @@ func generateAlloyLoggingConfig(
 	tenants []string,
 	org string,
 	provider string,
-	insecureCA bool,
+	hasCABundle bool,
 	enableNodeFiltering bool,
 	enableLogging bool,
 	enableNetworkMonitoring bool,
@@ -121,7 +121,7 @@ func generateAlloyLoggingConfig(
 	defaultTenant string,
 ) (string, error) {
 	// Generate River configuration
-	alloyConfig, err := generateAlloyConfig(tenants, cluster, org, provider, insecureCA, enableNodeFiltering, enableLogging, enableNetworkMonitoring, clusterConfig, loggingConfig, defaultTenant)
+	alloyConfig, err := generateAlloyConfig(tenants, cluster, org, provider, hasCABundle, enableNodeFiltering, enableLogging, enableNetworkMonitoring, clusterConfig, loggingConfig, defaultTenant)
 	if err != nil {
 		return "", err
 	}
@@ -134,6 +134,7 @@ func generateAlloyLoggingConfig(
 		AlloyImageTag                    *string
 		DefaultWorkloadClusterNamespaces []string
 		DefaultWriteTenant               string
+		HasCABundle                      bool
 		LoggingEnabled                   bool
 		NetworkMonitoringEnabled         bool
 		NodeFilteringEnabled             bool
@@ -143,6 +144,7 @@ func generateAlloyLoggingConfig(
 		AlloyConfig:                      alloyConfig,
 		DefaultWorkloadClusterNamespaces: defaultWorkloadClusterNamespaces,
 		DefaultWriteTenant:               defaultTenant,
+		HasCABundle:                      clusterConfig.CASecretName != "",
 		LoggingEnabled:                   enableLogging,
 		NetworkMonitoringEnabled:         enableNetworkMonitoring,
 		NodeFilteringEnabled:             enableNodeFiltering,
@@ -172,7 +174,7 @@ func generateAlloyConfig(
 	cluster *clusterv1.Cluster,
 	org string,
 	provider string,
-	insecureCA bool,
+	hasCABundle bool,
 	enableNodeFiltering bool,
 	enableLogging bool,
 	enableNetworkMonitoring bool,
@@ -197,7 +199,7 @@ func generateAlloyConfig(
 		NodeFilteringEnabled     bool
 		LoggingEnabled           bool
 		NetworkMonitoringEnabled bool
-		InsecureSkipVerify       bool
+		HasCABundle              bool
 		SecretName               string
 		LoggingURLKey            string
 		LoggingTenantIDKey       string
@@ -216,7 +218,7 @@ func generateAlloyConfig(
 		NodeFilteringEnabled:     enableNodeFiltering,
 		LoggingEnabled:           enableLogging,
 		NetworkMonitoringEnabled: enableNetworkMonitoring,
-		InsecureSkipVerify:       insecureCA,
+		HasCABundle:              hasCABundle,
 		SecretName:               apps.AlloyLogsAppName,
 		LoggingURLKey:            common.LokiURLKey,
 		LoggingTenantIDKey:       common.LokiTenantIDKey,

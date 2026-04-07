@@ -14,8 +14,10 @@ managementCluster:
   clusterIssuer: selfsigned-giantswarm
   # -- Customer identifier
   customer: customer
-  # -- Skip CA verification — for development only
-  insecureCA: false
+  # -- Namespace of the cert-manager CA Secret (only required on private-CA installations)
+  caSecretNamespace: kube-system
+  # -- Name of the cert-manager CA Secret (key: tls.crt). Leave empty on public-CA installations.
+  caSecretName: ""
   # -- Cluster name
   name: name
   # -- Pipeline identifier (e.g. stable, testing)

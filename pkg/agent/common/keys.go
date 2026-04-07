@@ -78,4 +78,11 @@ const (
 
 	MimirOTLPBaseURLFormat = MimirBaseURLFormat + "/otlp" // Base URL for Mimir OTLP — exporter appends /v1/metrics
 	MimirOTLPURLKey        = "metrics-otlp-url"           // Secret key: base URL for Mimir OTLP write (WC only)
+
+	// --- TLS Configuration ---
+
+	// CABundleKey is the secret key for the PEM-encoded CA certificate used by Alloy to verify
+	// TLS connections to Loki, Mimir, and Tempo on private-CA installations.
+	// Absent on public-CA installations; Alloy falls back to the system trust store.
+	CABundleKey = "ca-bundle"
 )

@@ -145,8 +145,11 @@
                 "customer": {
                     "type": "string"
                 },
-                "insecureCA": {
-                    "type": "boolean"
+                "caSecretNamespace": {
+                    "type": "string"
+                },
+                "caSecretName": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"

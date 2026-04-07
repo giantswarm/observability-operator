@@ -16,6 +16,11 @@ mimir.rules.kubernetes "{{ . }}" {
     username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirUsernameKey }}"])
     password = remote.kubernetes.secret.credentials.data["{{ $.MimirPasswordKey }}"]
   }
+  {{- if $.HasCABundle }}
+  tls_config {
+    ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
+  }
+  {{- end }}
   {{- if $.IsWorkloadCluster }}
   extra_query_matchers {
     matcher {
@@ -213,9 +218,11 @@ prometheus.remote_write "{{ . }}" {
     headers = {
       "X-Scope-OrgID" = "{{ . }}",
     }
+    {{- if $.HasCABundle }}
     tls_config {
-      insecure_skip_verify = {{ $.MimirRemoteWriteTLSInsecureSkipVerify }}
+      ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
     }
+    {{- end }}
     {{- if or $.QueueConfigBatchSendDeadline $.QueueConfigCapacity $.QueueConfigMaxBackoff $.QueueConfigMaxSamplesPerSend $.QueueConfigMaxShards $.QueueConfigMinBackoff $.QueueConfigMinShards $.QueueConfigRetryOnHttp429 $.QueueConfigSampleAgeLimit }}
     queue_config {
       {{- if $.QueueConfigBatchSendDeadline }}

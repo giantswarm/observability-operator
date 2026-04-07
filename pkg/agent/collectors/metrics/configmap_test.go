@@ -49,7 +49,6 @@ func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
 		Config: config.Config{
 			Cluster: config.ClusterConfig{
 				BaseDomain: "test.gigantic.io",
-				InsecureCA: false,
 				Customer:   "dummy-customer",
 				Name:       managementClusterName,
 				Pipeline:   "dummy-pipeline",

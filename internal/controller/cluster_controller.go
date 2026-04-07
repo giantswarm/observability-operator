@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -26,6 +27,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/events"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/logs"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
+	agentcommon "github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/alerting/heartbeat"
 	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
@@ -194,6 +196,31 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	err := ctrl.NewControllerManagedBy(mgr).
 		Named("cluster").
 		For(&clusterv1.Cluster{}).
+		// Reconcile all clusters when the CA Secret changes so Alloy picks up CA rotation immediately.
+		Watches(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
+				if r.Config.Cluster.CASecretName == "" ||
+					object.GetNamespace() != r.Config.Cluster.CASecretNamespace ||
+					object.GetName() != r.Config.Cluster.CASecretName {
+					return nil
+				}
+				logger := log.FromContext(ctx)
+				var clusters clusterv1.ClusterList
+				if err := mgr.GetClient().List(ctx, &clusters); err != nil {
+					logger.Error(err, "failed to list cluster CRs on CA Secret change")
+					return nil
+				}
+				requests := make([]reconcile.Request, 0, len(clusters.Items))
+				for _, cluster := range clusters.Items {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Name:      cluster.Name,
+							Namespace: cluster.Namespace,
+						},
+					})
+				}
+				return requests
+			})).
 		// Reconcile all clusters when the grafana organizations have changed to update agents configs with the new list of tenants where metrics are sent to.
 		Watches(&v1alpha1.GrafanaOrganization{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
@@ -363,12 +390,18 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		return fmt.Errorf("failed to get observability-bundle version: %w", err)
 	}
 
+	// Read CA bundle once for all services (empty string on public-CA installations).
+	caBundle, err := agentcommon.ReadCABundle(ctx, r.Client, r.Config.Cluster)
+	if err != nil {
+		return fmt.Errorf("failed to read CA bundle: %w", err)
+	}
+
 	// Collect errors for independent alloy service operations
 	var errs []error
 
 	// Metrics-specific: Alloy monitoring configuration
 	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-		err = r.AlloyMetricsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		err = r.AlloyMetricsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy monitoring config")
 			errs = append(errs, fmt.Errorf("alloy metrics reconcile create: %w", err))
@@ -384,7 +417,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 	// alloy-logs specific: daemonset alloy config, that collects data from each node (not only logs) - TODO rename alloy-logs to alloy-node
 	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
 		// Create or update Alloy logs configuration
-		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy logs config")
 			errs = append(errs, fmt.Errorf("alloy logs reconcile create: %w", err))
@@ -401,7 +434,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs, traces and OTLP data - TODO rename alloy-events to alloy-cluster
 	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) || r.Config.Monitoring.IsMonitoringEnabled(cluster) {
 		// Create or update Alloy events configuration
-		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion)
+		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle)
 		if err != nil {
 			logger.Error(err, "failed to create or update alloy events config")
 			errs = append(errs, fmt.Errorf("alloy events reconcile create: %w", err))
