@@ -285,3 +285,19 @@ webhook:
     # -- Validate GrafanaOrganization CRs
     grafanaOrganization:
       enabled: true
+
+# Vertical Pod Autoscaler configuration for the operator deployment
+verticalPodAutoscaler:
+  # -- Enable VPA for the operator deployment
+  enabled: true
+  # -- VPA update mode: "Off", "Initial", "Recreate", or "Auto"
+  updateMode: "Auto"
+  # -- Resource policy for VPA recommendations
+  resourcePolicy:
+    containerPolicies:
+    - containerName: observability-operator
+      controlledResources:
+      - memory
+      controlledValues: "RequestsAndLimits"
+      maxAllowed:
+        memory: 512Mi

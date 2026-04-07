@@ -17,3 +17,6 @@ spec:
   ingress:
     - fromEntities:
         - cluster
+        - kube-apiserver
+        - host
+        - remote-node
