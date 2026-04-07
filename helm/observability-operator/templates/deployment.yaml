@@ -37,7 +37,8 @@ spec:
         - --grafana-datasource-tempo-url={{ $.Values.grafana.datasources.tempoURL }}
         - --management-cluster-base-domain={{ $.Values.managementCluster.baseDomain }}
         - --management-cluster-customer={{ $.Values.managementCluster.customer }}
-        - --management-cluster-insecure-ca={{ $.Values.managementCluster.insecureCA }}
+        - --management-cluster-ca-secret-namespace={{ $.Values.managementCluster.caSecretNamespace }}
+        - --management-cluster-ca-secret-name={{ $.Values.managementCluster.caSecretName }}
         - --management-cluster-name={{ $.Values.managementCluster.name }}
         - --management-cluster-pipeline={{ $.Values.managementCluster.pipeline }}
         - --management-cluster-region={{ $.Values.managementCluster.region }}

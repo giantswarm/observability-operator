@@ -65,6 +65,11 @@ loki.rules.kubernetes "{{ . }}" {
     username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LoggingUsernameKey }}"])
     password = remote.kubernetes.secret.credentials.data["{{ $.LoggingPasswordKey }}"]
   }
+  {{- if $.HasCABundle }}
+  tls_config {
+    ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
+  }
+  {{- end }}
   loki_namespace_prefix = "{{ $.ClusterID }}"
   tenant_id = "{{ . }}"
   rule_selector {
@@ -324,9 +329,11 @@ loki.write "default" {
     remote_timeout     = "{{ .RemoteTimeout }}"
     tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ .LoggingTenantIDKey }}"])
 
+    {{- if .HasCABundle }}
     tls_config {
-      insecure_skip_verify = {{ .InsecureSkipVerify }}
+      ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
     }
+    {{- end }}
   }
   external_labels = {
     cluster_id       = "{{ .ClusterID }}",

@@ -30,7 +30,7 @@ type Service struct {
 	AuthManager             auth.AuthManager
 }
 
-func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
+func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, caBundle string) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-metrics-service - ensuring alloy metrics is configured")
 
@@ -47,7 +47,7 @@ func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	}
 
 	// Generate Secret data
-	secretData, err := s.GenerateAlloyMonitoringSecretData(ctx, cluster)
+	secretData, err := s.GenerateAlloyMonitoringSecretData(ctx, cluster, caBundle)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy monitoring secret: %w", err)
 	}

@@ -2,7 +2,6 @@ package logs
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
@@ -23,25 +22,27 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool) (map[string]string, error) {
+func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, caBundle string) (map[string]string, error) {
 	secrets := map[string]string{}
-	// Add Loki credentials if logging is enabled
+
 	if loggingEnabled {
 		lokiURL := fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
 		lokiRulerAPIURL := fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
 
-		// Get Loki password
 		logsPassword, err := s.LogsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
 		}
 
-		// Build secret environment variables map
 		secrets[common.LokiURLKey] = lokiURL
 		secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
 		secrets[common.LokiUsernameKey] = cluster.Name
 		secrets[common.LokiPasswordKey] = logsPassword
 		secrets[common.LokiRulerAPIURLKey] = lokiRulerAPIURL
+	}
+
+	if caBundle != "" {
+		secrets[common.CABundleKey] = caBundle
 	}
 
 	return secrets, nil

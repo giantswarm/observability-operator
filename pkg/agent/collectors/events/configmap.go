@@ -121,7 +121,7 @@ func (s *Service) generateAlloyEventsConfig(
 		ClusterType            string
 		Organization           string
 		Provider               string
-		InsecureSkipVerify     string
+		HasCABundle            bool
 		MaxBackoffPeriod       string
 		RemoteTimeout          string
 		IncludeNamespaces      []string
@@ -151,7 +151,7 @@ func (s *Service) generateAlloyEventsConfig(
 		ClusterType:            clusterType,
 		Organization:           organization,
 		Provider:               provider,
-		InsecureSkipVerify:     fmt.Sprintf("%t", s.Config.Cluster.InsecureCA),
+		HasCABundle:            s.Config.Cluster.CASecretName != "",
 		MaxBackoffPeriod:       s.Config.Logging.LokiMaxBackoffPeriod,
 		RemoteTimeout:          s.Config.Logging.LokiRemoteTimeout,
 		IncludeNamespaces:      s.Config.Logging.IncludeEventsNamespaces,
@@ -190,11 +190,13 @@ func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bo
 
 	data := struct {
 		AlloyConfig       string
+		HasCABundle       bool
 		LoggingEnabled    bool
 		TracingEnabled    bool
 		MonitoringEnabled bool
 	}{
 		AlloyConfig:       alloyConfig,
+		HasCABundle:       s.Config.Cluster.CASecretName != "",
 		LoggingEnabled:    loggingEnabled,
 		TracingEnabled:    tracingEnabled,
 		MonitoringEnabled: monitoringEnabled,
