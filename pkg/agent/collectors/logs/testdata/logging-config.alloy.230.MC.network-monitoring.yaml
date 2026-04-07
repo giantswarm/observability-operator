@@ -317,9 +317,6 @@ alloy:
             max_backoff_period = "10m"
             remote_timeout     = "60s"
             tenant_id          = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-tenant-id"])
-            tls_config {
-              insecure_skip_verify = false
-            }
           }
           external_labels = {
             cluster_id       = "test-installation",

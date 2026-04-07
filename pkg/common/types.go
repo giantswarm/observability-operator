@@ -40,8 +40,11 @@ type ManagementCluster struct {
 	BaseDomain string
 	// Customer is the customer name of the management cluster.
 	Customer string
-	// InsecureCA is a flag to indicate if the management cluster has an insecure CA that should be truster
-	InsecureCA bool
+	// CASecretNamespace is the namespace of the cert-manager CA Secret.
+	CASecretNamespace string
+	// CASecretName is the name of the cert-manager CA Secret (key: tls.crt).
+	// Empty means public CA — Alloy uses the system trust store.
+	CASecretName string
 	// Name is the name of the management cluster.
 	Name string
 	// Pipeline is the pipeline name of the management cluster.

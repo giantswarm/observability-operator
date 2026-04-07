@@ -125,13 +125,13 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		AlloySecretName      string
 		AlloySecretNamespace string
 
-		MimirRulerAPIURLKey                   string
-		MimirUsernameKey                      string
-		MimirPasswordKey                      string
-		MimirRemoteWriteAPIURLKey             string
-		MimirRemoteWriteAPINameKey            string
-		MimirRemoteWriteTimeout               string
-		MimirRemoteWriteTLSInsecureSkipVerify bool
+		MimirRulerAPIURLKey        string
+		MimirUsernameKey           string
+		MimirPasswordKey           string
+		MimirRemoteWriteAPIURLKey  string
+		MimirRemoteWriteAPINameKey string
+		MimirRemoteWriteTimeout    string
+		HasCABundle                bool
 
 		ClusterID         string
 		IsWorkloadCluster bool
@@ -159,13 +159,13 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		AlloySecretName:      apps.AlloyMetricsAppName,
 		AlloySecretNamespace: apps.AlloyNamespace,
 
-		MimirRulerAPIURLKey:                   common.MimirRulerAPIURLKey,
-		MimirUsernameKey:                      common.MimirUsernameKey,
-		MimirPasswordKey:                      common.MimirPasswordKey,
-		MimirRemoteWriteAPIURLKey:             common.MimirRemoteWriteAPIURLKey,
-		MimirRemoteWriteAPINameKey:            common.MimirRemoteWriteAPINameKey,
-		MimirRemoteWriteTimeout:               s.Config.Monitoring.MimirRemoteWriteTimeout,
-		MimirRemoteWriteTLSInsecureSkipVerify: s.Config.Cluster.InsecureCA,
+		MimirRulerAPIURLKey:        common.MimirRulerAPIURLKey,
+		MimirUsernameKey:           common.MimirUsernameKey,
+		MimirPasswordKey:           common.MimirPasswordKey,
+		MimirRemoteWriteAPIURLKey:  common.MimirRemoteWriteAPIURLKey,
+		MimirRemoteWriteAPINameKey: common.MimirRemoteWriteAPINameKey,
+		MimirRemoteWriteTimeout:    s.Config.Monitoring.MimirRemoteWriteTimeout,
+		HasCABundle:                s.Config.Cluster.CASecretName != "",
 
 		ClusterID: cluster.Name,
 

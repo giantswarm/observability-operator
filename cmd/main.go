@@ -64,12 +64,13 @@ const (
 	flagGrafanaDatasourceTempoURL             = "grafana-datasource-tempo-url"
 
 	// Management cluster configuration flag names
-	flagManagementClusterBaseDomain = "management-cluster-base-domain"
-	flagManagementClusterCustomer   = "management-cluster-customer"
-	flagManagementClusterInsecureCA = "management-cluster-insecure-ca"
-	flagManagementClusterName       = "management-cluster-name"
-	flagManagementClusterPipeline   = "management-cluster-pipeline"
-	flagManagementClusterRegion     = "management-cluster-region"
+	flagManagementClusterBaseDomain   = "management-cluster-base-domain"
+	flagManagementClusterCustomer     = "management-cluster-customer"
+	flagManagementClusterCASecretName = "management-cluster-ca-secret-name"
+	flagManagementClusterCASecretNS   = "management-cluster-ca-secret-namespace"
+	flagManagementClusterName         = "management-cluster-name"
+	flagManagementClusterPipeline     = "management-cluster-pipeline"
+	flagManagementClusterRegion       = "management-cluster-region"
 
 	// Monitoring configuration flag names
 	flagAlertmanagerEnabled                   = "alertmanager-enabled"
@@ -226,8 +227,10 @@ func parseFlags() (err error) {
 		"The base domain of the management cluster.")
 	pflag.StringVar(&cfg.Cluster.Customer, flagManagementClusterCustomer, "",
 		"The customer of the management cluster.")
-	pflag.BoolVar(&cfg.Cluster.InsecureCA, flagManagementClusterInsecureCA, false,
-		"Flag to indicate if the management cluster has an insecure CA that should be trusted")
+	pflag.StringVar(&cfg.Cluster.CASecretNamespace, flagManagementClusterCASecretNS, "kube-system",
+		"Namespace of the cert-manager CA Secret.")
+	pflag.StringVar(&cfg.Cluster.CASecretName, flagManagementClusterCASecretName, "",
+		"Name of the cert-manager CA Secret (key: tls.crt). Empty = public CA, Alloy uses system trust store.")
 	pflag.StringVar(&cfg.Cluster.Name, flagManagementClusterName, "",
 		"The name of the management cluster.")
 	pflag.StringVar(&cfg.Cluster.Pipeline, flagManagementClusterPipeline, "",
