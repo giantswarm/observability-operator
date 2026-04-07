@@ -28,6 +28,7 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 		clusterID      string
 		listStatus     int
 		listBody       any
+		listBodyRaw    []byte         // overrides listBody when set; written verbatim
 		deleteStatuses map[string]int // namespace → status to return on DELETE
 		wantErr        bool
 	}{
@@ -88,6 +89,13 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 			listStatus: http.StatusInternalServerError,
 			wantErr:    true,
 		},
+		{
+			name:        "returns error on non-JSON 200 response (e.g. YAML from Mimir)",
+			clusterID:   "my-cluster",
+			listStatus:  http.StatusOK,
+			listBodyRaw: []byte("groups:\n- name: test\n"),
+			wantErr:     true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -99,8 +107,11 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 
 				switch r.Method {
 				case http.MethodGet:
+					assert.Equal(t, "application/json", r.Header.Get("Accept"))
 					w.WriteHeader(tt.listStatus)
-					if tt.listBody != nil {
+					if tt.listBodyRaw != nil {
+						_, _ = w.Write(tt.listBodyRaw)
+					} else if tt.listBody != nil {
 						require.NoError(t, json.NewEncoder(w).Encode(tt.listBody))
 					}
 				case http.MethodDelete:

@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Allow `kube-apiserver` ingress in `CiliumNetworkPolicy` so validating webhooks can be called by the control plane.
 
+## [0.67.1] - 2026-04-07
+
 ### Changed
 
 - Replace `insecure_skip_verify` in Alloy TLS configs with proper CA bundle propagation from a configurable cert-manager CA Secret (`managementCluster.caSecretName`). On CA rotation, all clusters re-reconcile automatically. On public-CA installations (default), no CA is configured and Alloy uses the system trust store.
@@ -1050,7 +1052,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.67.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.67.1...HEAD
+[0.67.1]: https://github.com/giantswarm/observability-operator/compare/v0.67.0...v0.67.1
 [0.67.0]: https://github.com/giantswarm/observability-operator/compare/v0.66.1...v0.67.0
 [0.66.1]: https://github.com/giantswarm/observability-operator/compare/v0.66.0...v0.66.1
 [0.66.0]: https://github.com/giantswarm/observability-operator/compare/v0.65.0...v0.66.0
