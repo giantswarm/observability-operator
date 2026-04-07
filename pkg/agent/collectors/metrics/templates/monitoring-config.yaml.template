@@ -60,26 +60,9 @@ alloy:
         memory: 512Mi
     ## Needed to to be able to support ScrapeConfig CRs
     stabilityLevel: experimental
-    {{- if .HasCABundle }}
-    mounts:
-      extra:
-      - name: ca-bundle
-        mountPath: /etc/alloy/tls
-        readOnly: true
-    {{- end }}
   controller:
     type: statefulset
     replicas: {{ .Replicas }}
-    {{- if .HasCABundle }}
-    volumes:
-      extra:
-      - name: ca-bundle
-        secret:
-          secretName: alloy-metrics
-          items:
-          - key: ca-bundle
-            path: ca-bundle.pem
-    {{- end }}
     priorityClassName: {{ .PriorityClassName }}
   crds:
     create: false

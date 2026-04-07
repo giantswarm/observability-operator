@@ -67,7 +67,7 @@ loki.rules.kubernetes "{{ . }}" {
   }
   {{- if $.HasCABundle }}
   tls_config {
-    ca_file = "/etc/alloy/tls/ca-bundle.pem"
+    ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
   }
   {{- end }}
   loki_namespace_prefix = "{{ $.ClusterID }}"
@@ -331,7 +331,7 @@ loki.write "default" {
 
     {{- if .HasCABundle }}
     tls_config {
-      ca_file = "/etc/alloy/tls/ca-bundle.pem"
+      ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
     }
     {{- end }}
   }

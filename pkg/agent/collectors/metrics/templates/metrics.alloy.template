@@ -18,7 +18,7 @@ mimir.rules.kubernetes "{{ . }}" {
   }
   {{- if $.HasCABundle }}
   tls_config {
-    ca_file = "/etc/alloy/tls/ca-bundle.pem"
+    ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
   }
   {{- end }}
   {{- if $.IsWorkloadCluster }}
@@ -220,7 +220,7 @@ prometheus.remote_write "{{ . }}" {
     }
     {{- if $.HasCABundle }}
     tls_config {
-      ca_file = "/etc/alloy/tls/ca-bundle.pem"
+      ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
     }
     {{- end }}
     {{- if or $.QueueConfigBatchSendDeadline $.QueueConfigCapacity $.QueueConfigMaxBackoff $.QueueConfigMaxSamplesPerSend $.QueueConfigMaxShards $.QueueConfigMinBackoff $.QueueConfigMinShards $.QueueConfigRetryOnHttp429 $.QueueConfigSampleAgeLimit }}

@@ -82,26 +82,9 @@ alloy:
       runAsNonRoot: true
       seccompProfile:
         type: RuntimeDefault
-    {{- if .HasCABundle }}
-    mounts:
-      extra:
-      - name: ca-bundle
-        mountPath: /etc/alloy/tls
-        readOnly: true
-    {{- end }}
   controller:
     type: deployment
     replicas: 1
-    {{- if .HasCABundle }}
-    volumes:
-      extra:
-      - name: ca-bundle
-        secret:
-          secretName: alloy-events
-          items:
-          - key: ca-bundle
-            path: ca-bundle.pem
-    {{- end }}
   crds:
     create: false
 
