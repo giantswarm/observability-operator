@@ -12,7 +12,7 @@ spec:
     kind: Deployment
     name: {{ include "resource.default.name" . }}
   updatePolicy:
-    updateMode: {{ .Values.verticalPodAutoscaler.updateMode }}
+    updateMode: {{ .Values.verticalPodAutoscaler.updateMode | quote }}
   resourcePolicy:
     containerPolicies:
     - containerName: {{ include "name" . }}
