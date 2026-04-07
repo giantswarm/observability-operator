@@ -467,6 +467,45 @@
                     }
                 }
             }
+        },
+        "verticalPodAutoscaler": {
+            "type": "object",
+            "description": "Vertical Pod Autoscaler configuration for the operator deployment",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable VPA for the operator deployment"
+                },
+                "updateMode": {
+                    "type": "string",
+                    "description": "VPA update mode: Off, Initial, Recreate, or Auto",
+                    "enum": ["Off", "Initial", "Recreate", "Auto"]
+                },
+                "resourcePolicy": {
+                    "type": "object",
+                    "description": "Resource policy for VPA recommendations",
+                    "properties": {
+                        "controlledResources": {
+                            "type": "array",
+                            "description": "Resources to control (e.g. cpu, memory)",
+                            "items": { "type": "string" }
+                        },
+                        "controlledValues": {
+                            "type": "string",
+                            "description": "Whether to control RequestsOnly or RequestsAndLimits",
+                            "enum": ["RequestsOnly", "RequestsAndLimits"]
+                        },
+                        "maxAllowed": {
+                            "type": "object",
+                            "description": "Maximum resource recommendations"
+                        },
+                        "minAllowed": {
+                            "type": "object",
+                            "description": "Minimum resource recommendations"
+                        }
+                    }
+                }
+            }
         }
     }
 }

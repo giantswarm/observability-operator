@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `VerticalPodAutoscaler` support for the operator deployment via `verticalPodAutoscaler.*` Helm values (`enabled`, `updateMode`, `resourcePolicy`).
+
+### Fixed
+
+- Allow `kube-apiserver` ingress in `CiliumNetworkPolicy` so validating webhooks can be called by the control plane.
+
 ## [0.67.1] - 2026-04-07
 
 ### Changed
