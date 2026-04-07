@@ -32,28 +32,24 @@ type Service struct {
 	MetricsAuthManager      auth.AuthManager
 }
 
-func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version) error {
+func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, caBundle string) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is configured")
 
-	// Determine if logging, tracing, and OTLP signals are enabled for this cluster
 	loggingEnabled := s.Config.Logging.IsLoggingEnabled(cluster)
 	tracingEnabled := s.Config.Tracing.IsTracingEnabled(cluster)
 	monitoringEnabled := s.Config.Monitoring.IsMonitoringEnabled(cluster)
 
-	// Generate ConfigMap data
 	configMapData, err := s.GenerateAlloyEventsConfigMapData(ctx, cluster, loggingEnabled, tracingEnabled, monitoringEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 	}
 
-	// Generate Secret data
-	secretData, err := s.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, monitoringEnabled)
+	secretData, err := s.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, monitoringEnabled, caBundle)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events secret: %w", err)
 	}
 
-	// Save configuration via repository
 	err = s.ConfigurationRepository.Save(ctx, &agent.AgentConfiguration{
 		ClusterName:      cluster.Name,
 		ClusterNamespace: cluster.Namespace,

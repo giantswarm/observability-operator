@@ -22,7 +22,7 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, monitoringEnabled bool) (map[string]string, error) {
+func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, monitoringEnabled bool, caBundle string) (map[string]string, error) {
 	secrets := map[string]string{}
 
 	if loggingEnabled {
@@ -38,28 +38,28 @@ func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 		secrets[common.LokiPasswordKey] = logsPassword
 	}
 
-	// Add Tempo OTLP credentials if trace ingestion is enabled
 	if tracingEnabled {
 		tracesPassword, err := s.TracesAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get tempo auth password for cluster %s: %w", cluster.Name, err)
 		}
-
 		secrets[common.TempoUsernameKey] = cluster.Name
 		secrets[common.TempoPasswordKey] = tracesPassword
 		secrets[common.TempoOTLPURLKey] = fmt.Sprintf("%s:443", fmt.Sprintf(common.TempoBaseURLFormat, s.Config.Cluster.BaseDomain))
 	}
 
-	// Add Mimir OTLP credentials when monitoring is enabled
 	if monitoringEnabled {
-		mimirOTLPURL := fmt.Sprintf(common.MimirOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
 		metricsPassword, err := s.MetricsAuthManager.GetClusterPassword(ctx, cluster)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get mimir otlp password for cluster %s: %w", cluster.Name, err)
 		}
-		secrets[common.MimirOTLPURLKey] = mimirOTLPURL
+		secrets[common.MimirOTLPURLKey] = fmt.Sprintf(common.MimirOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
 		secrets[common.MimirUsernameKey] = cluster.Name
 		secrets[common.MimirPasswordKey] = metricsPassword
+	}
+
+	if caBundle != "" {
+		secrets[common.CABundleKey] = caBundle
 	}
 
 	return secrets, nil

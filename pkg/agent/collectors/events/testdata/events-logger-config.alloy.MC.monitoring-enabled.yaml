@@ -190,9 +190,6 @@ alloy:
           client {
             auth     = otelcol.auth.basic.mimir_credentials.handler
             endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-otlp-url"])
-            tls {
-              insecure_skip_verify = false
-            }
             headers = {
               "X-Scope-OrgID" = "giantswarm",
             }

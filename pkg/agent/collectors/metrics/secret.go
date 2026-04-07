@@ -12,7 +12,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 )
 
-func (s *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster) (map[string]string, error) {
+func (s *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster, caBundle string) (map[string]string, error) {
 	remoteWriteUrl := fmt.Sprintf(common.MimirRemoteWriteEndpointURLFormat, s.Config.Cluster.BaseDomain)
 	password, err := s.AuthManager.GetClusterPassword(ctx, cluster)
 	if err != nil {
@@ -22,7 +22,6 @@ func (s *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 	mimirRulerUrl := fmt.Sprintf(common.MimirBaseURLFormat, s.Config.Cluster.BaseDomain)
 	mimirQueryUrl := fmt.Sprintf(common.MimirQueryEndpointURLFormat, s.Config.Cluster.BaseDomain)
 
-	// Build secret environment variables map
 	secrets := map[string]string{
 		common.MimirQueryAPIURLKey:        mimirQueryUrl,
 		common.MimirRulerAPIURLKey:        mimirRulerUrl,
@@ -30,6 +29,10 @@ func (s *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		common.MimirRemoteWriteAPINameKey: common.MimirRemoteWriteName,
 		common.MimirUsernameKey:           cluster.Name,
 		common.MimirPasswordKey:           password,
+	}
+
+	if caBundle != "" {
+		secrets[common.CABundleKey] = caBundle
 	}
 
 	return secrets, nil

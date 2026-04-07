@@ -67,9 +67,6 @@ alloy:
               username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-username"])
               password = remote.kubernetes.secret.credentials.data["logging-password"]
             }
-            tls_config {
-              insecure_skip_verify = false
-            }
           }
           external_labels = {
             cluster_id       = "test-cluster",
@@ -298,9 +295,6 @@ alloy:
           client {
             auth     = otelcol.auth.basic.tempo_credentials.handler
             endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["tracing-otlp-url"])
-            tls {
-              insecure_skip_verify = false
-            }
             headers = {
               "X-Scope-OrgID" = "giantswarm",
             }
@@ -313,9 +307,6 @@ alloy:
           client {
             auth     = otelcol.auth.basic.mimir_credentials.handler
             endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["metrics-otlp-url"])
-            tls {
-              insecure_skip_verify = false
-            }
             headers = {
               "X-Scope-OrgID" = "giantswarm",
             }
@@ -326,9 +317,6 @@ alloy:
           client {
             auth     = otelcol.auth.basic.loki_credentials.handler
             endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["logging-otlp-url"])
-            tls {
-              insecure_skip_verify = false
-            }
             headers = {
               "X-Scope-OrgID" = "giantswarm",
             }

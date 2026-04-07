@@ -213,9 +213,6 @@ alloy:
             headers = {
               "X-Scope-OrgID" = "tenant1",
             }
-            tls_config {
-              insecure_skip_verify = false
-            }
             queue_config {
               capacity             = 30000
               max_samples_per_send = 150000
@@ -337,9 +334,6 @@ alloy:
         
             headers = {
               "X-Scope-OrgID" = "tenant2",
-            }
-            tls_config {
-              insecure_skip_verify = false
             }
             queue_config {
               capacity             = 30000
