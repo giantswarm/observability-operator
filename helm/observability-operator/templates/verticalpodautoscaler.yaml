@@ -16,20 +16,19 @@ spec:
   resourcePolicy:
     containerPolicies:
     - containerName: {{ include "name" . }}
-      {{- with .Values.verticalPodAutoscaler.resourcePolicy.containerPolicies }}
-      {{- $policy := index . 0 }}
-      {{- with $policy.controlledResources }}
+      {{- with .Values.verticalPodAutoscaler.resourcePolicy }}
+      {{- with .controlledResources }}
       controlledResources:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $policy.controlledValues }}
+      {{- with .controlledValues }}
       controlledValues: {{ . }}
       {{- end }}
-      {{- with $policy.maxAllowed }}
+      {{- with .maxAllowed }}
       maxAllowed:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $policy.minAllowed }}
+      {{- with .minAllowed }}
       minAllowed:
         {{- toYaml . | nindent 8 }}
       {{- end }}

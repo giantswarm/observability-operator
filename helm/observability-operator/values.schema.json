@@ -485,9 +485,23 @@
                     "type": "object",
                     "description": "Resource policy for VPA recommendations",
                     "properties": {
-                        "containerPolicies": {
+                        "controlledResources": {
                             "type": "array",
-                            "description": "Per-container resource policies"
+                            "description": "Resources to control (e.g. cpu, memory)",
+                            "items": { "type": "string" }
+                        },
+                        "controlledValues": {
+                            "type": "string",
+                            "description": "Whether to control RequestsOnly or RequestsAndLimits",
+                            "enum": ["RequestsOnly", "RequestsAndLimits"]
+                        },
+                        "maxAllowed": {
+                            "type": "object",
+                            "description": "Maximum resource recommendations"
+                        },
+                        "minAllowed": {
+                            "type": "object",
+                            "description": "Minimum resource recommendations"
                         }
                     }
                 }

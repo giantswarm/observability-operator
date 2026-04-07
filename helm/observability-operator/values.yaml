@@ -296,10 +296,8 @@ verticalPodAutoscaler:
   updateMode: "Auto"
   # -- Resource policy for VPA recommendations
   resourcePolicy:
-    containerPolicies:
-    - containerName: observability-operator
-      controlledResources:
-      - memory
-      controlledValues: "RequestsAndLimits"
-      maxAllowed:
-        memory: 512Mi
+    controlledResources:
+    - memory
+    controlledValues: "RequestsAndLimits"
+    maxAllowed:
+      memory: 512Mi
