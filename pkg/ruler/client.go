@@ -94,6 +94,7 @@ func (c *client) listNamespaces(ctx context.Context, tenantID string) ([]string,
 		return nil, fmt.Errorf("failed to create list request: %w", err)
 	}
 	req.Header.Set(monitoring.OrgIDHeader, tenantID)
+	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -110,9 +111,10 @@ func (c *client) listNamespaces(ctx context.Context, tenantID string) ([]string,
 		return nil, fmt.Errorf("unexpected status %d listing rules: %s", resp.StatusCode, string(body))
 	}
 
+	body, _ := io.ReadAll(resp.Body)
 	var result map[string]json.RawMessage
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode list response: %w", err)
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to decode list response (body: %s): %w", body, err)
 	}
 
 	namespaces := make([]string, 0, len(result))
