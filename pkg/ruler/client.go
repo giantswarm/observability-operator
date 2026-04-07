@@ -2,7 +2,6 @@ package ruler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,13 +11,14 @@ import (
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 )
 
 const (
-	mimirRulesAPIPath = "/api/prom/rules"
+	mimirRulesAPIPath = "/prometheus/config/v1/rules"
 	lokiRulesAPIPath  = "/loki/api/v1/rules"
 )
 
@@ -112,8 +112,8 @@ func (c *client) listNamespaces(ctx context.Context, tenantID string) ([]string,
 	}
 
 	body, _ := io.ReadAll(resp.Body)
-	var result map[string]json.RawMessage
-	if err := json.Unmarshal(body, &result); err != nil {
+	var result map[string]any
+	if err := yaml.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to decode list response (body: %s): %w", body, err)
 	}
 

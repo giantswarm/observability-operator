@@ -2,7 +2,6 @@ package ruler_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/ruler"
@@ -90,11 +90,22 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 			wantErr:    true,
 		},
 		{
-			name:        "returns error on non-JSON 200 response (e.g. YAML from Mimir)",
+			name:        "handles YAML response from Mimir (no matching namespaces)",
 			clusterID:   "my-cluster",
 			listStatus:  http.StatusOK,
 			listBodyRaw: []byte("groups:\n- name: test\n"),
-			wantErr:     true,
+			wantErr:     false,
+		},
+		{
+			// Real Mimir response: top-level keys are namespace names in YAML format.
+			name:      "handles real Mimir YAML response with matching namespace",
+			clusterID: "my-cluster",
+			listStatus: http.StatusOK,
+			listBodyRaw: []byte("my-cluster/rules:\n- name: group1\n  rules: []\nother-cluster/rules:\n- name: group2\n  rules: []\n"),
+			deleteStatuses: map[string]int{
+				"my-cluster/rules": http.StatusNoContent,
+			},
+			wantErr: false,
 		},
 	}
 
@@ -112,11 +123,13 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 					if tt.listBodyRaw != nil {
 						_, _ = w.Write(tt.listBodyRaw)
 					} else if tt.listBody != nil {
-						require.NoError(t, json.NewEncoder(w).Encode(tt.listBody))
+						b, err := yaml.Marshal(tt.listBody)
+						require.NoError(t, err)
+						_, _ = w.Write(b)
 					}
 				case http.MethodDelete:
-					// extract namespace from path: /api/prom/rules/{namespace}
-					ns := r.URL.Path[len("/api/prom/rules/"):]
+					// extract namespace from path: /prometheus/config/v1/rules/{namespace}
+					ns := r.URL.Path[len("/prometheus/config/v1/rules/"):]
 					status, ok := tt.deleteStatuses[ns]
 					if !ok {
 						t.Errorf("unexpected DELETE for namespace %q", ns)
