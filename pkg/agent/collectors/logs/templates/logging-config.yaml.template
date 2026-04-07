@@ -98,6 +98,11 @@ alloy:
       # This is needed to allow alloy to create files when using readOnlyRootFilesystem
       - name: alloy-tmp
         mountPath: /tmp/alloy
+      {{- if .HasCABundle }}
+      - name: ca-bundle
+        mountPath: /etc/alloy/tls
+        readOnly: true
+      {{- end }}
     {{- end }}
     # We decided to configure the alloy-logs resources as such after some investigation done https://github.com/giantswarm/giantswarm/issues/32655
     resources:
@@ -162,6 +167,14 @@ alloy:
           path: /run/log/journal
       - name: alloy-tmp
         emptyDir: {}
+      {{- if .HasCABundle }}
+      - name: ca-bundle
+        secret:
+          secretName: alloy-logs
+          items:
+          - key: ca-bundle
+            path: ca-bundle.pem
+      {{- end }}
   {{- if .AlloyImageTag }}
   image:
     tag: {{ .AlloyImageTag }}

@@ -190,11 +190,13 @@ func (s *Service) generateEventsYAMLConfig(alloyConfig string, loggingEnabled bo
 
 	data := struct {
 		AlloyConfig       string
+		HasCABundle       bool
 		LoggingEnabled    bool
 		TracingEnabled    bool
 		MonitoringEnabled bool
 	}{
 		AlloyConfig:       alloyConfig,
+		HasCABundle:       s.Config.Cluster.CASecretName != "",
 		LoggingEnabled:    loggingEnabled,
 		TracingEnabled:    tracingEnabled,
 		MonitoringEnabled: monitoringEnabled,

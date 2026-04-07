@@ -91,7 +91,7 @@ loki.write "default" {
 
     {{- if .HasCABundle }}
     tls_config {
-      ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
+      ca_file = "/etc/alloy/tls/ca-bundle.pem"
     }
     {{- end }}
   }
@@ -376,7 +376,7 @@ otelcol.exporter.otlp "{{ . }}_tempo" {
     endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.TempoEndpointKey }}"])
     {{- if $.HasCABundle }}
     tls {
-      ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
+      ca_file = "/etc/alloy/tls/ca-bundle.pem"
     }
     {{- end }}
 
@@ -397,7 +397,7 @@ otelcol.exporter.otlphttp "{{ . }}_mimir" {
     endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirOTLPURLKey }}"])
     {{- if $.HasCABundle }}
     tls {
-      ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
+      ca_file = "/etc/alloy/tls/ca-bundle.pem"
     }
     {{- end }}
 
@@ -416,7 +416,7 @@ otelcol.exporter.otlphttp "{{ . }}_loki" {
     endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.LokiOTLPURLKey }}"])
     {{- if $.HasCABundle }}
     tls {
-      ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
+      ca_file = "/etc/alloy/tls/ca-bundle.pem"
     }
     {{- end }}
 

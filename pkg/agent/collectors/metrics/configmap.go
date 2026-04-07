@@ -88,10 +88,12 @@ func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	data := struct {
 		AlloyConfig       string
+		HasCABundle       bool
 		PriorityClassName string
 		Replicas          int
 	}{
 		AlloyConfig:       alloyConfig,
+		HasCABundle:       s.Config.Cluster.CASecretName != "",
 		PriorityClassName: common.PriorityClassName,
 		Replicas:          shards,
 	}

@@ -134,6 +134,7 @@ func generateAlloyLoggingConfig(
 		AlloyImageTag                    *string
 		DefaultWorkloadClusterNamespaces []string
 		DefaultWriteTenant               string
+		HasCABundle                      bool
 		LoggingEnabled                   bool
 		NetworkMonitoringEnabled         bool
 		NodeFilteringEnabled             bool
@@ -143,6 +144,7 @@ func generateAlloyLoggingConfig(
 		AlloyConfig:                      alloyConfig,
 		DefaultWorkloadClusterNamespaces: defaultWorkloadClusterNamespaces,
 		DefaultWriteTenant:               defaultTenant,
+		HasCABundle:                      clusterConfig.CASecretName != "",
 		LoggingEnabled:                   enableLogging,
 		NetworkMonitoringEnabled:         enableNetworkMonitoring,
 		NodeFilteringEnabled:             enableNodeFiltering,
