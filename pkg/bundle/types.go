@@ -7,12 +7,12 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 )
 
-// BundleService is the interface implemented by BundleConfigurationService.
+// ObservabilityBundleService is the interface used to managed the observability bundle.
 // The controller depends on this interface so it can be tested without a real k8s cluster.
-type BundleService interface {
+type ObservabilityBundleService interface {
 	Configure(ctx context.Context, cluster *clusterv1.Cluster) error
 	RemoveConfiguration(ctx context.Context, cluster *clusterv1.Cluster) error
-	GetObservabilityBundleAppVersion(ctx context.Context, cluster *clusterv1.Cluster) (semver.Version, error)
+	GetBundleVersion(ctx context.Context, cluster *clusterv1.Cluster) (semver.Version, error)
 }
 
 type bundleConfiguration struct {

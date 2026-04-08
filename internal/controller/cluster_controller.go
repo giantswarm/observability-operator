@@ -61,17 +61,17 @@ type ClusterMonitoringReconciler struct {
 	Config config.Config
 	// collectors is the ordered list of Alloy signal collectors (metrics, logs, events).
 	collectors []collectorEntry
-	// HeartbeatRepositories is the list of repositories for managing heartbeats.
-	HeartbeatRepositories []heartbeat.HeartbeatRepository
+	// heartbeatRepositories is the list of repositories for managing heartbeats.
+	heartbeatRepositories []heartbeat.HeartbeatRepository
 	// authManagers contains all authentication managers with their feature checks.
 	authManagers map[auth.AuthType]authManagerEntry
-	// BundleConfigurationService is the service for configuring the observability bundle.
-	BundleConfigurationService bundle.BundleService
-	// RulerClient deletes ruler rules on cluster deletion.
-	RulerClient ruler.Client
-	// TenantRepository provides the list of all active tenants for ruler cleanup.
-	TenantRepository tenancy.TenantRepository
-	// FinalizerHelper is the helper for managing finalizers.
+	// observabilityBundleService is the service for configuring the observability bundle.
+	observabilityBundleService bundle.ObservabilityBundleService
+	// rulerClient deletes ruler rules on cluster deletion.
+	rulerClient ruler.Client
+	// tenantRepository provides the list of all active tenants for ruler cleanup.
+	tenantRepository tenancy.TenantRepository
+	// finalizerHelper is the helper for managing finalizers.
 	finalizerHelper FinalizerHelper
 }
 
@@ -206,11 +206,11 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 		Client:                     managerClient,
 		Config:                     cfg,
 		collectors:                 alloyCollectors,
-		HeartbeatRepositories:      heartbeatRepositories,
+		heartbeatRepositories:      heartbeatRepositories,
 		authManagers:               authManagers,
-		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
-		RulerClient:                rulerClient,
-		TenantRepository:           tenantRepository,
+		observabilityBundleService: bundle.New(managerClient, cfg),
+		rulerClient:                rulerClient,
+		tenantRepository:           tenantRepository,
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
 
@@ -358,7 +358,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	var errs []error
 
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
-	err = r.BundleConfigurationService.Configure(ctx, cluster)
+	err = r.observabilityBundleService.Configure(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to configure the observability-bundle")
 		errs = append(errs, fmt.Errorf("bundle configuration: %w", err))
@@ -413,7 +413,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 	}
 
 	// Get bundle version - this is required for all alloy service operations
-	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
+	observabilityBundleVersion, err := r.observabilityBundleService.GetBundleVersion(ctx, cluster)
 	if err != nil {
 		return fmt.Errorf("failed to get observability-bundle version: %w", err)
 	}
@@ -456,7 +456,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 	var errs []error
 
 	// We always remove the bundle configure, even if monitoring is disabled for the cluster.
-	err := r.BundleConfigurationService.RemoveConfiguration(ctx, cluster)
+	err := r.observabilityBundleService.RemoveConfiguration(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to remove the observability-bundle configuration")
 		errs = append(errs, fmt.Errorf("remove bundle configuration: %w", err))
@@ -483,13 +483,13 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 	}
 	// Delete ruler rules scoped to this cluster for every active tenant.
-	tenants, err := r.TenantRepository.List(ctx)
+	tenants, err := r.tenantRepository.List(ctx)
 	if err != nil {
 		logger.Error(err, "failed to list tenants for ruler cleanup")
 		errs = append(errs, fmt.Errorf("list tenants for ruler cleanup: %w", err))
 	} else {
 		for _, tenantID := range tenants {
-			if err := r.RulerClient.DeleteClusterRulesForTenant(ctx, tenantID, cluster.Name); err != nil {
+			if err := r.rulerClient.DeleteClusterRulesForTenant(ctx, tenantID, cluster.Name); err != nil {
 				logger.Error(err, "failed to delete ruler rules", "tenant", tenantID)
 				errs = append(errs, fmt.Errorf("delete ruler rules for tenant %s: %w", tenantID, err))
 			}
@@ -530,11 +530,11 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
 	if r.Config.Monitoring.Enabled {
-		if len(r.HeartbeatRepositories) == 0 {
+		if len(r.heartbeatRepositories) == 0 {
 			logger.Info("no heartbeat repositories configured, skipping this feature")
 		}
 
-		for i, heartbeatRepo := range r.HeartbeatRepositories {
+		for i, heartbeatRepo := range r.heartbeatRepositories {
 			err := heartbeatRepo.CreateOrUpdate(ctx)
 			if err != nil {
 				logger.Error(err, "failed to create or update heartbeat", "repository_index", i)
@@ -559,7 +559,7 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 // tearDown tears down the monitoring stack management cluster specific components like the hearbeat, gateway secrets and so on.
 func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
-	for i, heartbeatRepo := range r.HeartbeatRepositories {
+	for i, heartbeatRepo := range r.heartbeatRepositories {
 		err := heartbeatRepo.Delete(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to delete heartbeat (repository %d): %w", i, err)

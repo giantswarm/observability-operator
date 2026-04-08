@@ -38,13 +38,13 @@ var ociRepositoryGVK = schema.GroupVersionKind{
 	Kind:    "OCIRepository",
 }
 
-type BundleConfigurationService struct {
+type service struct {
 	client client.Client
 	config config.Config
 }
 
-func NewBundleConfigurationService(client client.Client, config config.Config) *BundleConfigurationService {
-	return &BundleConfigurationService{
+func New(client client.Client, config config.Config) ObservabilityBundleService {
+	return &service{
 		client: client,
 		config: config,
 	}
@@ -67,7 +67,7 @@ func getBundleObjectKey(cluster *clusterv1.Cluster) types.NamespacedName {
 // Configure creates or updates the observability-bundle configuration based on
 // cluster feature flags and links it to the bundle CR (HelmRelease or App) via
 // valuesFrom or extraConfigs respectively.
-func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (s service) Configure(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
 
 	bundleConfig := s.buildBundleConfiguration(cluster)
@@ -91,7 +91,7 @@ func (s BundleConfigurationService) Configure(ctx context.Context, cluster *clus
 }
 
 // buildBundleConfiguration creates the bundle configuration based on cluster feature flags.
-func (s BundleConfigurationService) buildBundleConfiguration(cluster *clusterv1.Cluster) bundleConfiguration {
+func (s service) buildBundleConfiguration(cluster *clusterv1.Cluster) bundleConfiguration {
 	return bundleConfiguration{
 		Apps: map[string]app{
 			apps.AlloyMetricsHelmValueKey: {
@@ -112,11 +112,11 @@ func (s BundleConfigurationService) buildBundleConfiguration(cluster *clusterv1.
 
 // isEventsEnabled returns true if events logging should be enabled.
 // Events are enabled when either logging or tracing is enabled.
-func (s BundleConfigurationService) isEventsEnabled(cluster *clusterv1.Cluster) bool {
+func (s service) isEventsEnabled(cluster *clusterv1.Cluster) bool {
 	return s.config.Logging.IsLoggingEnabled(cluster) || s.config.Tracing.IsTracingEnabled(cluster)
 }
 
-func (s BundleConfigurationService) createOrUpdateConfigMap(ctx context.Context, cluster *clusterv1.Cluster, configuration bundleConfiguration) error {
+func (s service) createOrUpdateConfigMap(ctx context.Context, cluster *clusterv1.Cluster, configuration bundleConfiguration) error {
 	configMapObjectKey := getConfigMapObjectKey(cluster)
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -151,7 +151,7 @@ func (s BundleConfigurationService) createOrUpdateConfigMap(ctx context.Context,
 // configureBundle detects whether the cluster uses a Flux HelmRelease or a
 // Giant Swarm App CR for the observability-bundle, and configures the
 // appropriate resource. It tries HelmRelease first, falling back to App CR.
-func (s BundleConfigurationService) configureBundle(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (s service) configureBundle(ctx context.Context, cluster *clusterv1.Cluster) error {
 	bundleObjectKey := getBundleObjectKey(cluster)
 
 	// Try HelmRelease first
@@ -168,7 +168,7 @@ func (s BundleConfigurationService) configureBundle(ctx context.Context, cluster
 }
 
 // getHelmRelease fetches a HelmRelease as an unstructured object.
-func (s BundleConfigurationService) getHelmRelease(ctx context.Context, key types.NamespacedName) (*unstructured.Unstructured, error) {
+func (s service) getHelmRelease(ctx context.Context, key types.NamespacedName) (*unstructured.Unstructured, error) {
 	hr := &unstructured.Unstructured{}
 	hr.SetGroupVersionKind(helmReleaseGVK)
 	err := s.client.Get(ctx, key, hr)
@@ -180,7 +180,7 @@ func (s BundleConfigurationService) getHelmRelease(ctx context.Context, key type
 
 // configureHelmRelease updates the HelmRelease's spec.valuesFrom to reference
 // the observability-platform-configuration ConfigMap.
-func (s BundleConfigurationService) configureHelmRelease(ctx context.Context, cluster *clusterv1.Cluster, hr *unstructured.Unstructured) error {
+func (s service) configureHelmRelease(ctx context.Context, cluster *clusterv1.Cluster, hr *unstructured.Unstructured) error {
 	configMapObjectKey := getConfigMapObjectKey(cluster)
 
 	desiredEntry := map[string]interface{}{
@@ -228,7 +228,7 @@ func (s BundleConfigurationService) configureHelmRelease(ctx context.Context, cl
 	return nil
 }
 
-func (s BundleConfigurationService) configureApp(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (s service) configureApp(ctx context.Context, cluster *clusterv1.Cluster) error {
 	configMapObjectKey := getConfigMapObjectKey(cluster)
 	appObjectKey := getBundleObjectKey(cluster)
 
@@ -270,7 +270,7 @@ func (s BundleConfigurationService) configureApp(ctx context.Context, cluster *c
 	return nil
 }
 
-func (s BundleConfigurationService) RemoveConfiguration(ctx context.Context, cluster *clusterv1.Cluster) error {
+func (s service) RemoveConfiguration(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
 
 	logger.Info("deleting observability-bundle configmap")
@@ -291,10 +291,10 @@ func (s BundleConfigurationService) RemoveConfiguration(ctx context.Context, clu
 	return nil
 }
 
-// GetObservabilityBundleAppVersion retrieves the version of the observability-bundle
+// GetBundleVersion retrieves the version of the observability-bundle
 // installed in the cluster. It supports both Flux HelmRelease and Giant Swarm App CRs,
 // trying HelmRelease first and falling back to App CR.
-func (s BundleConfigurationService) GetObservabilityBundleAppVersion(ctx context.Context, cluster *clusterv1.Cluster) (version semver.Version, err error) {
+func (s service) GetBundleVersion(ctx context.Context, cluster *clusterv1.Cluster) (version semver.Version, err error) {
 	bundleObjectKey := getBundleObjectKey(cluster)
 
 	// Try HelmRelease first
@@ -317,7 +317,7 @@ func (s BundleConfigurationService) GetObservabilityBundleAppVersion(ctx context
 
 // getHelmReleaseVersion extracts the chart version from a HelmRelease by following
 // its spec.chartRef to the referenced OCIRepository and reading spec.ref.tag.
-func (s BundleConfigurationService) getHelmReleaseVersion(ctx context.Context, hr *unstructured.Unstructured) (semver.Version, error) {
+func (s service) getHelmReleaseVersion(ctx context.Context, hr *unstructured.Unstructured) (semver.Version, error) {
 	spec, ok := hr.Object["spec"].(map[string]interface{})
 	if !ok {
 		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec", hr.GetNamespace(), hr.GetName())
