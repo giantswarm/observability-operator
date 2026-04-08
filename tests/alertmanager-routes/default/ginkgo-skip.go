@@ -1,3 +1,5 @@
+//go:build integration
+
 // Package main provides integration tests for default alertmanager routes
 //
 // NOTE: This file is required to prevent Ginkgo test compilation failures.

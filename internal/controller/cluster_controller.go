@@ -369,19 +369,21 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
 
-	// Handle authentication for all observability backends (independent tasks)
+	// Handle authentication for all observability backends (independent tasks, all attempted)
+	var authErrs []error
 	for authType, entry := range r.authManagers {
 		if entry.isEnabled(cluster) {
-			err := entry.authManager.EnsureClusterAuth(ctx, cluster)
-			if err != nil {
-				return fmt.Errorf("failed to ensure cluster auth for %s: %w", authType, err)
+			if err := entry.authManager.EnsureClusterAuth(ctx, cluster); err != nil {
+				authErrs = append(authErrs, fmt.Errorf("failed to ensure cluster auth for %s: %w", authType, err))
 			}
 		} else {
-			err := entry.authManager.DeleteClusterAuth(ctx, cluster)
-			if err != nil {
-				return fmt.Errorf("failed to delete cluster auth for %s: %w", authType, err)
+			if err := entry.authManager.DeleteClusterAuth(ctx, cluster); err != nil {
+				authErrs = append(authErrs, fmt.Errorf("failed to delete cluster auth for %s: %w", authType, err))
 			}
 		}
+	}
+	if err := errors.Join(authErrs...); err != nil {
+		return err
 	}
 
 	// Get bundle version - this is required for all alloy service operations

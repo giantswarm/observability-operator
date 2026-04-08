@@ -1,3 +1,5 @@
+//go:build integration
+
 // Package main provides integration tests for pipeline-stable-testing alertmanager routes
 //
 // NOTE: This file is required to prevent Ginkgo test compilation failures.
