@@ -89,7 +89,7 @@ var _ = Describe("Cluster Controller", func() {
 			// Setup reconciler with actual services instead of mocks
 			organizationRepository := organization.NewNamespaceRepository(k8sClient)
 
-			bundleService := bundle.NewBundleConfigurationService(k8sClient, config.Config{
+			bundleService := bundle.New(k8sClient, config.Config{
 				Monitoring: config.MonitoringConfig{
 					Enabled: true,
 				},
@@ -181,11 +181,11 @@ var _ = Describe("Cluster Controller", func() {
 						return testCfg.Logging.IsLoggingEnabled(c) || testCfg.Tracing.IsTracingEnabled(c) || testCfg.Monitoring.IsMonitoringEnabled(c)
 					}},
 				},
-				BundleConfigurationService: bundleService,
-				authManagers:               authManagers,
-				RulerClient:                ruler.NewNoop(),
-				TenantRepository:           tenancy.NewTenantRepository(k8sClient),
-				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
+				observabilityBundleService: bundleService,
+				authManagers:     authManagers,
+				rulerClient:      ruler.NewNoop(),
+				tenantRepository: tenancy.NewTenantRepository(k8sClient),
+				finalizerHelper:  NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
 			}
 		})
 
