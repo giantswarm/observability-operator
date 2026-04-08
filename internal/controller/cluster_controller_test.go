@@ -177,7 +177,9 @@ var _ = Describe("Cluster Controller", func() {
 				collectors: []collectorEntry{
 					{name: "metrics", service: alloyMetricsService, isEnabled: testCfg.Monitoring.IsMonitoringEnabled},
 					{name: "logs", service: alloyLogsService, isEnabled: testCfg.Logging.IsLoggingEnabled},
-					{name: "events", service: alloyEventsService, isEnabled: testCfg.Logging.IsLoggingEnabled},
+					{name: "events", service: alloyEventsService, isEnabled: func(c *clusterv1.Cluster) bool {
+						return testCfg.Logging.IsLoggingEnabled(c) || testCfg.Tracing.IsTracingEnabled(c) || testCfg.Monitoring.IsMonitoringEnabled(c)
+					}},
 				},
 				BundleConfigurationService: bundleService,
 				authManagers:               authManagers,
