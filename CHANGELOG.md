@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `VerticalPodAutoscaler` support for the operator deployment via `verticalPodAutoscaler.*` Helm values (`enabled`, `updateMode`, `resourcePolicy`).
 
+### Changed
+
+- Auth reconciliation in `ClusterMonitoringReconciler` now collects all per-signal errors before returning instead of failing fast on the first error, so Mimir/Loki/Tempo auth are all attempted independently.
+- `DashboardReconciler` private methods (`reconcileCreate`, `reconcileDelete`, `cleanupOrphanedFolders`, `collectRequiredFolderUIDs`) changed from value to pointer receivers for consistency.
+- Metric operation label strings (`push_config`, `delete_config`, `configure_org`, etc.) extracted to named constants in `pkg/metrics`.
+- `reflect.DeepEqual` replaced with `equality.Semantic.DeepEqual` in bundle service to avoid spurious updates on typed-nil Kubernetes objects.
+
 ### Fixed
 
 - Allow `kube-apiserver` ingress in `CiliumNetworkPolicy` so validating webhooks can be called by the control plane.
