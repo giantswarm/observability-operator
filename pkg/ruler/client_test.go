@@ -118,7 +118,7 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 
 				switch r.Method {
 				case http.MethodGet:
-					assert.Equal(t, "application/json", r.Header.Get("Accept"))
+					assert.Equal(t, "application/yaml", r.Header.Get("Accept"))
 					w.WriteHeader(tt.listStatus)
 					if tt.listBodyRaw != nil {
 						_, _ = w.Write(tt.listBodyRaw)
