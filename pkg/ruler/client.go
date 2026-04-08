@@ -95,7 +95,7 @@ func (c *client) listNamespaces(ctx context.Context, tenantID string) ([]string,
 	}
 	req.Header.Set(monitoring.OrgIDHeader, tenantID)
 	// The Mimir ruler API always responds with Content-Type: application/yaml regardless of the
-	// Accept header — confirmed empirically. We set the header to signal intent, but always decode
+	// Accept header. We set the header to signal intent, but always decode
 	// the response as YAML (which is also a superset of JSON, so this handles both formats).
 	req.Header.Set("Accept", "application/yaml")
 
