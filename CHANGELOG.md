@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.67.2] - 2026-04-08
+
 ### Added
 
 - Added `VerticalPodAutoscaler` support for the operator deployment via `verticalPodAutoscaler.*` Helm values (`enabled`, `updateMode`, `resourcePolicy`).
@@ -21,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Allow `kube-apiserver` ingress in `CiliumNetworkPolicy` so validating webhooks can be called by the control plane.
+- Use proper path to delete mimir rules.
 
 ## [0.67.1] - 2026-04-07
 
@@ -1059,7 +1062,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.67.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.67.2...HEAD
+[0.67.2]: https://github.com/giantswarm/observability-operator/compare/v0.67.1...v0.67.2
 [0.67.1]: https://github.com/giantswarm/observability-operator/compare/v0.67.0...v0.67.1
 [0.67.0]: https://github.com/giantswarm/observability-operator/compare/v0.66.1...v0.67.0
 [0.66.1]: https://github.com/giantswarm/observability-operator/compare/v0.66.0...v0.66.1
