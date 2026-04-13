@@ -182,10 +182,10 @@ var _ = Describe("Cluster Controller", func() {
 					}},
 				},
 				observabilityBundleService: bundleService,
-				authManagers:     authManagers,
-				rulerClient:      ruler.NewNoop(),
-				tenantRepository: tenancy.NewTenantRepository(k8sClient),
-				finalizerHelper:  NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
+				authManagers:               authManagers,
+				rulerClient:                ruler.NewNoop(),
+				tenantRepository:           tenancy.NewTenantRepository(k8sClient),
+				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
 			}
 		})
 
