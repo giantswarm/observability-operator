@@ -57,7 +57,7 @@ func (c *client) DeleteClusterRulesForTenant(ctx context.Context, tenantID, clus
 
 	namespaces, err := c.listNamespaces(ctx, tenantID)
 	if err != nil {
-		metrics.RulerAPIErrors.WithLabelValues("delete_rules").Inc()
+		metrics.RulerAPIErrors.WithLabelValues(metrics.OpDeleteRules).Inc()
 		return fmt.Errorf("failed to list ruler namespaces: %w", err)
 	}
 
@@ -80,7 +80,7 @@ func (c *client) DeleteClusterRulesForTenant(ctx context.Context, tenantID, clus
 	}
 
 	if err := errors.Join(errs...); err != nil {
-		metrics.RulerAPIErrors.WithLabelValues("delete_rules").Inc()
+		metrics.RulerAPIErrors.WithLabelValues(metrics.OpDeleteRules).Inc()
 		return err
 	}
 	return nil

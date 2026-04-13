@@ -162,7 +162,7 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // reconcileCreate ensures the Grafana dashboard described in configmap is created in Grafana.
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
-func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboardConfigMap *v1.ConfigMap) error { // nolint:unparam
+func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboardConfigMap *v1.ConfigMap) error {
 	logger := log.FromContext(ctx)
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
@@ -223,7 +223,7 @@ func (r DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService
 }
 
 // reconcileDelete deletes the grafana dashboard.
-func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error {
+func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error {
 	logger := log.FromContext(ctx)
 	// We do not need to delete anything if there is no finalizer on the grafana dashboard
 	if !controllerutil.ContainsFinalizer(dashboard, DashboardFinalizer) {
@@ -284,7 +284,7 @@ func (r DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService
 
 // cleanupOrphanedFolders resolves the organization, computes which folder UIDs are still
 // needed by dashboard ConfigMaps, and delegates deletion of orphans to the Grafana service.
-func (r DashboardReconciler) cleanupOrphanedFolders(ctx context.Context, grafanaService *grafana.Service, orgName string) error {
+func (r *DashboardReconciler) cleanupOrphanedFolders(ctx context.Context, grafanaService *grafana.Service, orgName string) error {
 	org, err := grafanaService.FindOrgByName(orgName)
 	if err != nil {
 		return fmt.Errorf("failed to find organization %q: %w", orgName, err)
@@ -299,7 +299,7 @@ func (r DashboardReconciler) cleanupOrphanedFolders(ctx context.Context, grafana
 }
 
 // collectRequiredFolderUIDs lists all dashboard ConfigMaps for the given organization and computes the set of folder UIDs they reference.
-func (r DashboardReconciler) collectRequiredFolderUIDs(ctx context.Context, orgName string) (map[string]struct{}, error) {
+func (r *DashboardReconciler) collectRequiredFolderUIDs(ctx context.Context, orgName string) (map[string]struct{}, error) {
 	var configMaps v1.ConfigMapList
 	err := r.List(ctx, &configMaps, client.MatchingLabels{
 		labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,

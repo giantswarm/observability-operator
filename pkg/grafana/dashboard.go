@@ -16,7 +16,7 @@ import (
 func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
 	org, err := s.FindOrgByName(dashboard.Organization())
 	if err != nil {
-		metrics.GrafanaAPIErrors.WithLabelValues("configure_dashboard").Inc()
+		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpConfigureDashboard).Inc()
 		return fmt.Errorf("failed to find organization: %w", err)
 	}
 
@@ -46,7 +46,7 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 		return nil
 	})
 	if err != nil {
-		metrics.GrafanaAPIErrors.WithLabelValues("configure_dashboard").Inc()
+		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpConfigureDashboard).Inc()
 	}
 	return err
 }
@@ -54,7 +54,7 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
 	org, err := s.FindOrgByName(dashboard.Organization())
 	if err != nil {
-		metrics.GrafanaAPIErrors.WithLabelValues("delete_dashboard").Inc()
+		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpDeleteDashboard).Inc()
 		return fmt.Errorf("failed to find organization: %w", err)
 	}
 
@@ -75,7 +75,7 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 		return nil
 	})
 	if err != nil {
-		metrics.GrafanaAPIErrors.WithLabelValues("delete_dashboard").Inc()
+		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpDeleteDashboard).Inc()
 	}
 	return err
 }

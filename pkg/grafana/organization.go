@@ -14,7 +14,7 @@ func (s *Service) DeleteOrganization(ctx context.Context, organization *organiza
 	// Delete organization in Grafana if it exists
 	if organization.ID() > 0 {
 		if err := s.deleteOrganization(ctx, organization); err != nil {
-			metrics.GrafanaAPIErrors.WithLabelValues("delete_org").Inc()
+			metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpDeleteOrg).Inc()
 			return err
 		}
 	}
@@ -26,7 +26,7 @@ func (s *Service) DeleteOrganization(ctx context.Context, organization *organiza
 func (s *Service) ConfigureOrganization(ctx context.Context, organization *organization.Organization) (int64, error) {
 	err := s.UpsertOrganization(ctx, organization)
 	if err != nil {
-		metrics.GrafanaAPIErrors.WithLabelValues("configure_org").Inc()
+		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpConfigureOrg).Inc()
 		return -1, fmt.Errorf("ConfigureOrganization: failed to configure organization: %w", err)
 	}
 
@@ -43,7 +43,7 @@ func (s *Service) ConfigureDatasources(ctx context.Context, organization *organi
 	// Configure the datasources for the organization
 	datasources, err := s.ConfigureDatasource(ctx, organization)
 	if err != nil {
-		metrics.GrafanaAPIErrors.WithLabelValues("configure_datasources").Inc()
+		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpConfigureDatasources).Inc()
 		return nil, fmt.Errorf("ConfigureDatasources: failed to configure default datasources: %w", err)
 	}
 

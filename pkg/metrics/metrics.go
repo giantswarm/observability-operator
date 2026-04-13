@@ -67,6 +67,26 @@ const (
 	OrgStatusError   = "error"
 )
 
+// Operation label values for GrafanaAPIErrors.
+const (
+	OpConfigureOrg         = "configure_org"
+	OpDeleteOrg            = "delete_org"
+	OpConfigureDatasources = "configure_datasources"
+	OpConfigureDashboard   = "configure_dashboard"
+	OpDeleteDashboard      = "delete_dashboard"
+)
+
+// Operation label values for MimirAlertmanagerAPIErrors.
+const (
+	OpPushConfig   = "push_config"
+	OpDeleteConfig = "delete_config"
+)
+
+// Operation label values for RulerAPIErrors.
+const (
+	OpDeleteRules = "delete_rules"
+)
+
 func init() {
 	metrics.Registry.MustRegister(
 		MimirQueryErrors,

@@ -3,12 +3,12 @@ package bundle
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"slices"
 
 	"github.com/blang/semver/v4"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -212,7 +212,7 @@ func (s BundleConfigurationService) configureHelmRelease(ctx context.Context, cl
 	if foundIndex == -1 {
 		valuesFrom = append(valuesFrom, desiredEntry)
 	} else {
-		if reflect.DeepEqual(valuesFrom[foundIndex], desiredEntry) {
+		if equality.Semantic.DeepEqual(valuesFrom[foundIndex], desiredEntry) {
 			return nil // Already up to date
 		}
 		valuesFrom[foundIndex] = desiredEntry
@@ -260,7 +260,7 @@ func (s BundleConfigurationService) configureApp(ctx context.Context, cluster *c
 		desired.Spec.ExtraConfigs[foundIndex] = desiredExtraConfig
 	}
 
-	if !reflect.DeepEqual(current, *desired) {
+	if !equality.Semantic.DeepEqual(current, *desired) {
 		err := s.client.Update(ctx, desired)
 		if err != nil {
 			return fmt.Errorf("failed to update observability-bundle app: %w", err)
