@@ -43,6 +43,11 @@ import (
 
 const (
 	// Operator configuration flag names
+	flagOperatorControllersAlertmanagerEnabled        = "controllers-alertmanager-enabled"
+	flagOperatorControllersClusterEnabled             = "controllers-cluster-enabled"
+	flagOperatorControllersDashboardEnabled           = "controllers-dashboard-enabled"
+	flagOperatorControllersGrafanaOrganizationEnabled = "controllers-grafana-organization-enabled"
+
 	flagMetricsBindAddress     = "metrics-bind-address"
 	flagMetricsCertPath        = "metrics-cert-path"
 	flagMetricsSecure          = "metrics-secure"
@@ -73,7 +78,6 @@ const (
 	flagManagementClusterRegion       = "management-cluster-region"
 
 	// Monitoring configuration flag names
-	flagAlertmanagerEnabled                   = "alertmanager-enabled"
 	flagAlertmanagerSecretName                = "alertmanager-secret-name"
 	flagAlertmanagerURL                       = "alertmanager-url"
 	flagMonitoringEnabled                     = "monitoring-enabled"
@@ -189,6 +193,14 @@ func runner() error {
 // parseFlags parses all command line flags and updates the configuration.
 func parseFlags() (err error) {
 	// Operator configuration flags
+	pflag.BoolVar(&cfg.Operator.Controllers.Alertmanager.Enabled, flagOperatorControllersAlertmanagerEnabled, true,
+		"Enable the alertmanager controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.Cluster.Enabled, flagOperatorControllersClusterEnabled, true,
+		"Enable the cluster controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.Dashboard.Enabled, flagOperatorControllersDashboardEnabled, true,
+		"Enable the dashboard controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.GrafanaOrganization.Enabled, flagOperatorControllersGrafanaOrganizationEnabled, true,
+		"Enable the grafana organization controller.")
 	pflag.StringVar(&cfg.Operator.MetricsAddr, flagMetricsBindAddress, ":8080",
 		"The address the metric endpoint binds to.")
 	pflag.StringVar(&cfg.Operator.ProbeAddr, flagHealthProbeBindAddress, ":8081",
@@ -239,8 +251,6 @@ func parseFlags() (err error) {
 		"The region of the management cluster.")
 
 	// Monitoring configuration flags
-	pflag.BoolVar(&cfg.Monitoring.AlertmanagerEnabled, flagAlertmanagerEnabled, false,
-		"Enable Alertmanager controller.")
 	pflag.StringVar(&cfg.Monitoring.AlertmanagerSecretName, flagAlertmanagerSecretName, "",
 		"The name of the secret containing the Alertmanager configuration.")
 	pflag.StringVar(&cfg.Monitoring.AlertmanagerURL, flagAlertmanagerURL, "",
@@ -496,19 +506,24 @@ func setupApplication() error {
 
 	// Create Grafana client generator for dependency injection
 	grafanaClientGen := grafanaclient.NewDefaultGrafanaClientGenerator(cfg.Grafana)
-	// Setup controller for the Cluster resource.
-	err = controller.SetupClusterMonitoringReconciler(mgr, cfg, logger)
-	if err != nil {
-		return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
+
+	if cfg.Operator.Controllers.Cluster.Enabled {
+		// Setup controller for the Cluster resource.
+		err = controller.SetupClusterMonitoringReconciler(mgr, cfg, logger)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
+		}
 	}
 
-	// Setup controller for the GrafanaOrganization resource.
-	err = controller.SetupGrafanaOrganizationReconciler(mgr, cfg, grafanaClientGen)
-	if err != nil {
-		return fmt.Errorf("unable to setup controller (GrafanaOrganizationReconciler): %w", err)
+	if cfg.Operator.Controllers.GrafanaOrganization.Enabled {
+		// Setup controller for the GrafanaOrganization resource.
+		err = controller.SetupGrafanaOrganizationReconciler(mgr, cfg, grafanaClientGen)
+		if err != nil {
+			return fmt.Errorf("unable to setup controller (GrafanaOrganizationReconciler): %w", err)
+		}
 	}
 
-	if cfg.Monitoring.AlertmanagerEnabled {
+	if cfg.Operator.Controllers.Alertmanager.Enabled {
 		// Setup controller for Alertmanager
 		err = controller.SetupAlertmanagerReconciler(mgr, cfg)
 		if err != nil {
@@ -516,10 +531,12 @@ func setupApplication() error {
 		}
 	}
 
-	// Setup controller for the Dashboard resource.
-	err = controller.SetupDashboardReconciler(mgr, cfg, grafanaClientGen)
-	if err != nil {
-		return fmt.Errorf("unable to create controller (Dashboard): %w", err)
+	if cfg.Operator.Controllers.Dashboard.Enabled {
+		// Setup controller for the Dashboard resource.
+		err = controller.SetupDashboardReconciler(mgr, cfg, grafanaClientGen)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (Dashboard): %w", err)
+		}
 	}
 
 	// nolint:goconst

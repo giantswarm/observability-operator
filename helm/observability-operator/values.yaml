@@ -27,8 +27,6 @@ managementCluster:
 
 # Controls Alertmanager config delivery, Grafana alerting, and Cronitor heartbeats.
 alerting:
-  # -- Enable alerting support
-  enabled: false
   # -- URL of the Mimir Alertmanager API
   alertmanagerURL: ""
   # -- Grafana instance address
@@ -194,6 +192,20 @@ logging:
 # Resource and security configuration for the operator pod.
 # Defaults are appropriate for most deployments.
 operator:
+  controllers:
+    alertmanager:
+      enabled: true
+    cluster:
+      enabled: true
+    dashboard:
+      enabled: true
+    grafanaOrganization:
+      enabled: true
+
+  networkPolicy:
+    enabled: true
+    flavor: kubernetes
+
   # -- Resource requests and limits for the operator deployment
   resources:
     requests:
