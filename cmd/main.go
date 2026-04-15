@@ -37,7 +37,6 @@ import (
 	webhookcorev1alpha1 "github.com/giantswarm/observability-operator/internal/webhook/v1alpha1"
 	webhookcorev1alpha2 "github.com/giantswarm/observability-operator/internal/webhook/v1alpha2"
 	"github.com/giantswarm/observability-operator/pkg/config"
-	"github.com/giantswarm/observability-operator/pkg/credential"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	//+kubebuilder:scaffold:imports
 )
@@ -144,9 +143,6 @@ const (
 	// Default tenant flag name
 	flagDefaultTenant = "default-tenant"
 
-	// Auth configuration flag name
-	flagAuthMode = "auth-mode"
-
 	// Alloy pipeline knob flag names
 	flagMonitoringMimirRemoteWriteTimeout = "monitoring-mimir-remote-write-timeout"
 	flagLoggingLokiMaxBackoffPeriod       = "logging-loki-max-backoff-period"
@@ -199,15 +195,15 @@ func runner() error {
 func parseFlags() (err error) {
 	// Operator configuration flags
 	pflag.BoolVar(&cfg.Operator.Controllers.AgentCredential.Enabled, flagOperatorControllersAgentCredentialEnabled, true,
-		"Enable the agent credential controller.")
+		"Enable the agent credential controller. Required by the cluster controller. Disabling this also disables the cluster controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.Alertmanager.Enabled, flagOperatorControllersAlertmanagerEnabled, true,
-		"Enable the agent credential controller.")
+		"Enable the alertmanager controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.Cluster.Enabled, flagOperatorControllersClusterEnabled, true,
-		"Enable the agent credential controller.")
+		"Enable the cluster controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.Dashboard.Enabled, flagOperatorControllersDashboardEnabled, true,
-		"Enable the agent credential controller.")
+		"Enable the dashboard controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.GrafanaOrganization.Enabled, flagOperatorControllersGrafanaOrganizationEnabled, true,
-		"Enable the agent credential controller.")
+		"Enable the grafana organization controller.")
 	pflag.StringVar(&cfg.Operator.MetricsAddr, flagMetricsBindAddress, ":8080",
 		"The address the metric endpoint binds to.")
 	pflag.StringVar(&cfg.Operator.ProbeAddr, flagHealthProbeBindAddress, ":8081",
@@ -363,10 +359,6 @@ func parseFlags() (err error) {
 	pflag.StringVar(&cfg.DefaultTenant, flagDefaultTenant, "giantswarm",
 		"Default tenant ID used when no tenant label is present.")
 
-	// Auth configuration flag
-	pflag.StringVar(&cfg.Auth.Mode, flagAuthMode, string(credential.ModeBasicAuth),
-		"Operator-wide authentication mode applied to AgentCredential CRs. One of: basicAuth, none.")
-
 	// Alloy pipeline knob flags
 	pflag.StringVar(&cfg.Monitoring.MimirRemoteWriteTimeout, flagMonitoringMimirRemoteWriteTimeout, "60s",
 		"Timeout for Alloy Mimir remote write operations.")
@@ -403,8 +395,14 @@ func parseFlags() (err error) {
 		return fmt.Errorf("failed to parse grafana URL: %w", err)
 	}
 
-	if _, err = credential.ValidateMode(cfg.Auth.Mode); err != nil {
-		return fmt.Errorf("invalid --%s value: %w", flagAuthMode, err)
+	// Soft dependency: the cluster controller declares AgentCredential CRs and
+	// the Alloy collectors read the rendered Secrets, so it cannot run without
+	// the agent-credential controller. Disabling AC therefore implicitly disables
+	// the cluster controller as well, with a warning so the operator can spot
+	// unexpected configurations from the logs.
+	if !cfg.Operator.Controllers.AgentCredential.Enabled && cfg.Operator.Controllers.Cluster.Enabled {
+		setupLog.Info("agent credential controller is disabled; cluster controller cannot run without it and has been disabled too")
+		cfg.Operator.Controllers.Cluster.Enabled = false
 	}
 
 	// Apply queue configuration flags after parsing (only if explicitly set)
@@ -530,10 +528,7 @@ func setupApplication() error {
 		}
 	}
 
-	// Setup AgentCredential controller only in basicAuth mode. In `none` mode
-	// no controller is registered; operators are expected to clean up any
-	// leftover CRs and Secrets themselves.
-	if cfg.Operator.Controllers.AgentCredential.Enabled && cfg.Auth.Mode == string(credential.ModeBasicAuth) {
+	if cfg.Operator.Controllers.AgentCredential.Enabled {
 		err = controller.SetupAgentCredentialReconciler(mgr, cfg)
 		if err != nil {
 			return fmt.Errorf("unable to create controller (AgentCredentialReconciler): %w", err)

@@ -70,7 +70,7 @@ Five controllers run in a single binary:
 | Controller | Watches | Does |
 |---|---|---|
 | `ClusterReconciler` | `cluster.x-k8s.io/Cluster` | Provisions Alloy config (metrics→Mimir, logs→Loki, events→Loki, traces→Tempo), declares `AgentCredential` CRs per backend, observability-bundle App CR, Cronitor heartbeat |
-| `AgentCredentialReconciler` | `AgentCredential` (v1alpha1) | Mints per-credential basic-auth Secrets and aggregates htpasswd entries into per-backend gateway Secrets. Only registered when `--auth-mode=basicAuth` |
+| `AgentCredentialReconciler` | `AgentCredential` (v1alpha1) | Mints per-credential basic-auth Secrets and aggregates htpasswd entries into per-backend gateway Secrets. Required by the cluster controller |
 | `GrafanaOrganizationReconciler` | `GrafanaOrganization` (v1alpha2) | Creates/updates Grafana orgs, datasources, SSO settings |
 | `AlertmanagerController` | `Secret` with `observability.giantswarm.io/kind: alertmanager-config` | Assembles + pushes Alertmanager config to Mimir Alertmanager |
 | `DashboardController` | `ConfigMap` with `app.giantswarm.io/kind: dashboard` | Provisions dashboards into Grafana orgs via API |
@@ -104,7 +104,7 @@ The operator manages Grafana organizations via the `GrafanaOrganization` CRD. Se
 
 ### Agent credentials
 
-The operator mints one basic-auth credential per `(telemetry agent, observability backend)` pair, declared via the `AgentCredential` CRD. Three CRs are auto-created per CAPI cluster (metrics/logs/traces); additional CRs can be created for agents that are not backed by a managed cluster. See [docs/agent-credential.md](docs/agent-credential.md) for CRD reference, auth modes, and examples.
+The operator mints one basic-auth credential per `(telemetry agent, observability backend)` pair, declared via the `AgentCredential` CRD. Three CRs are auto-created per CAPI cluster (metrics/logs/traces); additional CRs can be created for agents that are not backed by a managed cluster. See [docs/agent-credential.md](docs/agent-credential.md) for CRD reference and examples.
 
 ### Per-cluster feature flags
 
@@ -154,7 +154,7 @@ See [docs/metrics.md](docs/metrics.md) for the full metrics reference.
 | Doc | Description |
 |---|---|
 | [docs/grafana-organization.md](docs/grafana-organization.md) | GrafanaOrganization CRD usage and examples |
-| [docs/agent-credential.md](docs/agent-credential.md) | AgentCredential CRD usage and auth modes |
+| [docs/agent-credential.md](docs/agent-credential.md) | AgentCredential CRD usage and examples |
 | [docs/alertmanager.md](docs/alertmanager.md) | Alertmanager config secret usage and examples |
 | [docs/dashboards.md](docs/dashboards.md) | Dashboard provisioning and folder support |
 | [docs/cluster.md](docs/cluster.md) | Per-cluster observability feature flags and sharding overrides |

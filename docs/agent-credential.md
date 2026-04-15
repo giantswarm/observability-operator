@@ -6,18 +6,17 @@ The `AgentCredential` CRD lets you declare a single basic-auth credential, scope
 
 ## How it works
 
-When an `AgentCredential` is created and the operator is running in `basicAuth` mode:
+When an `AgentCredential` is created:
 
-1. The controller renders a Secret (same namespace as the CR) of type `kubernetes.io/basic-auth` with keys `username`, `password`, and `htpasswd`. The password is generated once on create and preserved across reconciles.
+1. The controller renders a Secret (same namespace as the CR) with keys `username`, `password`, and `htpasswd`. The password is generated once on create and preserved across reconciles.
 2. It aggregates the htpasswd entries of every AgentCredential matching the same `spec.backend` into the per-backend gateway Secrets (Ingress and HTTPRoute).
 3. On deletion, the aggregator rewrites the gateway Secret without the entry before the finalizer is removed.
 
-## Auth mode
+## Enabling / disabling the controller
 
-The operator has a single, installation-wide flag — `--auth-mode`, wired via the Helm value `auth.mode`:
+The controller is toggled via the `--controllers-agent-credential-enabled` flag (Helm value `operator.controllers.agentCredential.enabled`, default `true`).
 
-- `basicAuth` (default): the AgentCredential controller runs and reconciles CRs as described above.
-- `none`: the AgentCredential controller is not registered, and the cluster controller does not create AgentCredential CRs. Use this when authentication is enforced at the gateway layer (for example, workload identity). Any existing CRs and Secrets are left alone; operators are expected to clean them up manually to avoid accidental deletion when flipping the mode.
+The cluster controller depends on the agent-credential controller — it declares AgentCredential CRs per cluster and reads the rendered Secrets through the Alloy collectors. If `controllers.agentCredential.enabled=false`, the operator implicitly disables the cluster controller too and logs a warning at startup.
 
 ## CRD Reference
 

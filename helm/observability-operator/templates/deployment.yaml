@@ -61,8 +61,6 @@ spec:
         - --mimir-query-timeout={{ $.Values.http.mimirQueryTimeout }}
         # Default tenant
         - --default-tenant={{ $.Values.defaultTenant }}
-        # Auth mode
-        - --auth-mode={{ $.Values.auth.mode }}
         # OTLP batch settings
         - --otlp-batch-send-batch-size={{ $.Values.otlp.batchSendBatchSize }}
         - --otlp-batch-max-size={{ $.Values.otlp.batchMaxSize }}

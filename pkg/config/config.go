@@ -31,26 +31,9 @@ type Config struct {
 	// Cronitor heartbeat monitor operational settings
 	Cronitor CronitorConfig
 
-	// Auth controls the operator-wide authentication mode applied to every
-	// AgentCredential it reconciles.
-	Auth AuthConfig
-
 	// DefaultTenant is the tenant ID used when no organisation is specified.
 	// Defaults to "giantswarm".
 	DefaultTenant string
-}
-
-// AuthConfig holds operator-wide authentication settings.
-type AuthConfig struct {
-	// Mode selects the authentication scheme used for AgentCredential
-	// reconciliation. Supported values: "basicAuth", "none".
-	//   - basicAuth: the operator mints per-credential basic-auth Secrets and
-	//     aggregates them into the per-backend gateway htpasswd Secrets.
-	//   - none:      the AgentCredential controller is not registered and the
-	//     cluster controller does not create AgentCredential CRs. Use this
-	//     when authentication is enforced at the gateway layer (for example,
-	//     workload identity).
-	Mode string
 }
 
 // HTTPConfig holds HTTP client timeout settings for outbound API calls.

@@ -177,10 +177,6 @@ var _ = Describe("Cluster Controller", func() {
 					Monitoring: config.MonitoringConfig{
 						Enabled: true,
 					},
-					// Tests run without the AgentCredential controller; disable
-					// credential reconciliation so the cluster controller does
-					// not try to create AgentCredential CRs.
-					Auth: config.AuthConfig{Mode: string(credential.ModeNone)},
 				},
 				BundleConfigurationService: bundleService,
 				AlloyMetricsService:        alloyMetricsService,

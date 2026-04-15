@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `AgentCredential` (v1alpha1) CRD and reconciler. One CR represents a single basic-auth credential scoped to one telemetry agent and one observability backend (metrics/logs/traces); the controller renders the Secret and aggregates the htpasswd entry into the per-backend gateway Secret. Three CRs are auto-created per CAPI cluster; additional CRs can be created for agents not backed by a managed cluster. Toggled via `--controllers-agent-credential-enabled` (default `true`); required by the cluster controller.
+- Added metrics `observability_operator_agent_credential_info` (info gauge; one series per active credential) and `observability_operator_agent_credential_reconcile_errors_total` (counter; labelled by `backend`, `step`).
+
+### Changed
+
+- Auth provisioning moved out of `ClusterReconciler` into the new `AgentCredentialReconciler` / `pkg/credential/` package; `pkg/auth/` removed. The cluster controller now declares `AgentCredential` CRs per enabled backend via owner reference; Alloy collectors read credentials through `credential.Reader`.
+
 ## [0.67.2] - 2026-04-08
 
 ### Added

@@ -407,13 +407,8 @@ func (r *ClusterReconciler) backendEnabledForCluster(cluster *clusterv1.Cluster,
 }
 
 // reconcileAgentCredentials ensures an AgentCredential CR exists per enabled
-// backend and is removed for disabled backends. No-op when the operator is
-// not configured for basicAuth.
+// backend and is removed for disabled backends.
 func (r *ClusterReconciler) reconcileAgentCredentials(ctx context.Context, cluster *clusterv1.Cluster) error {
-	if r.Config.Auth.Mode != string(credential.ModeBasicAuth) {
-		return nil
-	}
-
 	backends := []v1alpha1.CredentialBackend{
 		v1alpha1.CredentialBackendMetrics,
 		v1alpha1.CredentialBackendLogs,
@@ -459,11 +454,18 @@ func (r *ClusterReconciler) ensureAgentCredential(ctx context.Context, cluster *
 }
 
 func (r *ClusterReconciler) deleteAgentCredential(ctx context.Context, cluster *clusterv1.Cluster, backend v1alpha1.CredentialBackend) error {
-	cred := &v1alpha1.AgentCredential{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      credential.ClusterCredentialName(cluster.Name, backend),
-			Namespace: cluster.Namespace,
-		},
+	key := client.ObjectKey{
+		Name:      credential.ClusterCredentialName(cluster.Name, backend),
+		Namespace: cluster.Namespace,
+	}
+	cred := &v1alpha1.AgentCredential{}
+	// Get-then-Delete avoids a wasted API write per reconcile for backends that
+	// were never enabled on this cluster (which is the common steady state).
+	if err := r.Client.Get(ctx, key, cred); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to get agent credential: %w", err)
 	}
 	if err := client.IgnoreNotFound(r.Client.Delete(ctx, cred)); err != nil {
 		return fmt.Errorf("failed to delete agent credential: %w", err)
@@ -519,20 +521,23 @@ func (r *ClusterReconciler) reconcileDelete(ctx context.Context, cluster *cluste
 		}
 	}
 
-	// Explicitly delete per-backend AgentCredential CRs so their finalizers can
-	// re-aggregate the gateway htpasswd before the owning Cluster is removed.
-	// Cascade deletion via owner ref would also work but relying on it races
-	// the Cluster finalizer removal.
-	if r.Config.Auth.Mode == string(credential.ModeBasicAuth) {
-		for _, backend := range []v1alpha1.CredentialBackend{
-			v1alpha1.CredentialBackendMetrics,
-			v1alpha1.CredentialBackendLogs,
-			v1alpha1.CredentialBackendTraces,
-		} {
-			if err := r.deleteAgentCredential(ctx, cluster, backend); err != nil {
-				logger.Error(err, "failed to delete agent credential", "backend", backend)
-				errs = append(errs, err)
-			}
+	// Explicitly request deletion of the per-backend AgentCredential CRs.
+	//
+	// Ordering note: this returns as soon as the API server has acknowledged
+	// the delete request, but each AgentCredential carries its own finalizer
+	// and stays around until the AgentCredentialReconciler re-aggregates the
+	// gateway htpasswd. The Cluster's finalizer is removed below in the same
+	// reconcile pass, so the Cluster object can disappear while its child ACs
+	// are still terminating — that is intentional and safe: the AC reconciler
+	// owns gateway-secret cleanup independently.
+	for _, backend := range []v1alpha1.CredentialBackend{
+		v1alpha1.CredentialBackendMetrics,
+		v1alpha1.CredentialBackendLogs,
+		v1alpha1.CredentialBackendTraces,
+	} {
+		if err := r.deleteAgentCredential(ctx, cluster, backend); err != nil {
+			logger.Error(err, "failed to delete agent credential", "backend", backend)
+			errs = append(errs, err)
 		}
 	}
 

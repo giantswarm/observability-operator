@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,9 +56,6 @@ type AgentCredentialValidator struct {
 }
 
 var _ admission.Validator[*observabilityv1alpha1.AgentCredential] = &AgentCredentialValidator{}
-
-// Scheme wires the validator to the manager. Not used: present for interface completeness.
-func (v *AgentCredentialValidator) Scheme() *runtime.Scheme { return nil }
 
 // ValidateCreate enforces business rules beyond what kubebuilder markers can express.
 func (v *AgentCredentialValidator) ValidateCreate(ctx context.Context, obj *observabilityv1alpha1.AgentCredential) (admission.Warnings, error) {

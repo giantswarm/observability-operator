@@ -6,17 +6,6 @@
             "type": "string",
             "description": "Default tenant ID used when no tenant label is present"
         },
-        "auth": {
-            "type": "object",
-            "description": "Operator-wide authentication mode applied to AgentCredential CRs",
-            "properties": {
-                "mode": {
-                    "type": "string",
-                    "enum": ["basicAuth", "none"],
-                    "description": "Authentication mode: basicAuth mints per-credential Secrets and aggregates htpasswd entries; none disables the AgentCredential controller"
-                }
-            }
-        },
         "http": {
             "type": "object",
             "properties": {

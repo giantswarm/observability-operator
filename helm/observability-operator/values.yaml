@@ -55,16 +55,6 @@ cronitor:
 # Default tenant ID used when no tenant label is present on a cluster.
 defaultTenant: "giantswarm"
 
-# Operator-wide authentication mode applied to AgentCredential CRs.
-auth:
-  # -- Authentication mode. One of: basicAuth, none.
-  # basicAuth: the operator mints per-credential basic-auth Secrets and aggregates
-  #   them into the per-backend gateway htpasswd Secrets.
-  # none: the AgentCredential controller is not registered and the cluster
-  #   controller does not create AgentCredential CRs. Use when authentication
-  #   is enforced at the gateway layer (e.g. workload identity).
-  mode: "basicAuth"
-
 # HTTP client timeouts for external API calls.
 http:
   # -- Timeout for ruler (Mimir/Loki) HTTP requests

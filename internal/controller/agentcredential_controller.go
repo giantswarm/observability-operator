@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -111,16 +112,14 @@ func (r *AgentCredentialReconciler) reconcileCreate(ctx context.Context, cred *o
 	if err != nil {
 		operatormetrics.AgentCredentialReconcileErrors.WithLabelValues(string(cred.Spec.Backend), "render").Inc()
 		r.setCondition(cred, observabilityv1alpha1.AgentCredentialConditionReady, metav1.ConditionFalse, "RenderFailed", err.Error())
-		_ = r.Status().Update(ctx, cred)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, errors.Join(err, r.Status().Update(ctx, cred))
 	}
 	r.setCondition(cred, observabilityv1alpha1.AgentCredentialConditionReady, metav1.ConditionTrue, "Rendered", "Secret rendered")
 
 	if err := r.Aggregator.Aggregate(ctx, cred.Spec.Backend); err != nil {
 		operatormetrics.AgentCredentialReconcileErrors.WithLabelValues(string(cred.Spec.Backend), "aggregate").Inc()
 		r.setCondition(cred, observabilityv1alpha1.AgentCredentialConditionGatewaySynced, metav1.ConditionFalse, "AggregateFailed", err.Error())
-		_ = r.Status().Update(ctx, cred)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, errors.Join(err, r.Status().Update(ctx, cred))
 	}
 	r.setCondition(cred, observabilityv1alpha1.AgentCredentialConditionGatewaySynced, metav1.ConditionTrue, "Aggregated", "Gateway htpasswd aggregated")
 
