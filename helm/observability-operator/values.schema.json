@@ -6,6 +6,17 @@
             "type": "string",
             "description": "Default tenant ID used when no tenant label is present"
         },
+        "auth": {
+            "type": "object",
+            "description": "Operator-wide authentication mode applied to AgentCredential CRs",
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "enum": ["basicAuth", "none"],
+                    "description": "Authentication mode: basicAuth mints per-credential Secrets and aggregates htpasswd entries; none disables the AgentCredential controller"
+                }
+            }
+        },
         "http": {
             "type": "object",
             "properties": {
@@ -458,6 +469,15 @@
                         "grafanaOrganization": {
                             "type": "object",
                             "description": "Enable GrafanaOrganization validation webhook",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "agentCredential": {
+                            "type": "object",
+                            "description": "Enable AgentCredential validation webhook",
                             "properties": {
                                 "enabled": {
                                     "type": "boolean"

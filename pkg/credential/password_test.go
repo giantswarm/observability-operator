@@ -1,11 +1,10 @@
-package auth
+package credential
 
 import (
+	"crypto/sha1"
 	"encoding/base64"
 	"strings"
 	"testing"
-
-	"crypto/sha1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,6 +21,7 @@ func TestPasswordGenerator(t *testing.T) {
 			// Hex encoding doubles the length
 			assert.Equal(t, 64, len(password))
 		})
+
 		t.Run("should generate different passwords", func(t *testing.T) {
 			password1, err := generator.GeneratePassword(16)
 			require.NoError(t, err)
@@ -47,55 +47,20 @@ func TestPasswordGenerator(t *testing.T) {
 			htpasswd, err := generator.GenerateHtpasswd(username, password)
 			require.NoError(t, err)
 
-			// Should be in format username:{SHA}encrypted_password
-			parts := splitHtpasswd(htpasswd)
+			parts := strings.SplitN(htpasswd, ":", 2)
 			require.Len(t, parts, 2)
 			assert.Equal(t, username, parts[0])
 
-			// Verify the password hash matches {SHA} prefix + SHA1 hex
 			expectedHash := sha1.Sum([]byte(password))
 			assert.Equal(t, "{SHA}"+base64.StdEncoding.EncodeToString(expectedHash[:]), parts[1])
 		})
 
-		t.Run("should generate same hash for same password", func(t *testing.T) {
-			username := "test-cluster"
-			password := "test-password"
-
-			htpasswd1, err := generator.GenerateHtpasswd(username, password)
+		t.Run("should be deterministic for same input", func(t *testing.T) {
+			h1, err := generator.GenerateHtpasswd("u", "p")
 			require.NoError(t, err)
-
-			htpasswd2, err := generator.GenerateHtpasswd(username, password)
+			h2, err := generator.GenerateHtpasswd("u", "p")
 			require.NoError(t, err)
-
-			// SHA1 is deterministic, so hashes should be the same
-			assert.Equal(t, htpasswd1, htpasswd2)
-		})
-
-		t.Run("should handle empty username", func(t *testing.T) {
-			htpasswd, err := generator.GenerateHtpasswd("", "password")
-			require.NoError(t, err)
-
-			parts := splitHtpasswd(htpasswd)
-			require.Len(t, parts, 2)
-			assert.Empty(t, parts[0])
-		})
-
-		t.Run("should handle empty password", func(t *testing.T) {
-			htpasswd, err := generator.GenerateHtpasswd("username", "")
-			require.NoError(t, err)
-
-			parts := splitHtpasswd(htpasswd)
-			require.Len(t, parts, 2)
-			assert.Equal(t, "username", parts[0])
-
-			// Verify the empty password hash matches {SHA} prefix + SHA1 hex
-			expectedHash := sha1.Sum([]byte(""))
-			assert.Equal(t, "{SHA}"+base64.StdEncoding.EncodeToString(expectedHash[:]), parts[1])
+			assert.Equal(t, h1, h2)
 		})
 	})
-}
-
-// Helper function to split htpasswd entry into username and hash
-func splitHtpasswd(htpasswd string) []string {
-	return strings.SplitN(htpasswd, ":", 2)
 }

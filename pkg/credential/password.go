@@ -1,4 +1,4 @@
-package auth
+package credential
 
 import (
 	"crypto/rand"
@@ -8,7 +8,7 @@ import (
 	"fmt"
 )
 
-// PasswordGenerator generates passwords and htpasswd entries
+// PasswordGenerator generates passwords and htpasswd entries.
 type PasswordGenerator interface {
 	GeneratePassword(length int) (string, error)
 	GenerateHtpasswd(username, password string) (string, error)
@@ -16,7 +16,7 @@ type PasswordGenerator interface {
 
 type simplePasswordGenerator struct{}
 
-// NewPasswordGenerator creates a new password generator
+// NewPasswordGenerator creates a new password generator.
 func NewPasswordGenerator() PasswordGenerator {
 	return &simplePasswordGenerator{}
 }

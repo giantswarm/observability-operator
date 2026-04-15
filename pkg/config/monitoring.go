@@ -36,7 +36,6 @@ type MonitoringConfig struct {
 
 	AlertmanagerSecretName string
 	AlertmanagerURL        string
-	AlertmanagerEnabled    bool
 
 	DefaultShardingStrategy sharding.Strategy
 	// WALTruncateFrequency is the frequency at which the WAL segments should be truncated.

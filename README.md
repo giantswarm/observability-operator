@@ -26,7 +26,7 @@ observability-operator/
 │   └── observability-operator/         # Helm chart for deployment
 │       └── files/alertmanager/         # Alertmanager config templates
 ├── internal/
-│   ├── controller/                     # Reconcilers (cluster, dashboard, alertmanager, grafanaorg)
+│   ├── controller/                     # Reconcilers (agentcredential, cluster, dashboard, alertmanager, grafanaorganization)
 │   ├── mapper/                         # Watch event mappers (dashboard, organization)
 │   ├── predicates/                     # Event filter predicates
 │   └── webhook/                        # Validating & conversion webhooks
@@ -65,16 +65,17 @@ observability-operator/
 
 ## Architecture
 
-Four controllers run in a single binary:
+Five controllers run in a single binary:
 
 | Controller | Watches | Does |
 |---|---|---|
-| `ClusterMonitoringReconciler` | `cluster.x-k8s.io/Cluster` | Provisions Alloy config (metrics→Mimir, logs→Loki, events→Loki, traces→Tempo), gateway auth secrets, observability-bundle App CR, Cronitor heartbeat |
+| `ClusterReconciler` | `cluster.x-k8s.io/Cluster` | Provisions Alloy config (metrics→Mimir, logs→Loki, events→Loki, traces→Tempo), declares `AgentCredential` CRs per backend, observability-bundle App CR, Cronitor heartbeat |
+| `AgentCredentialReconciler` | `AgentCredential` (v1alpha1) | Mints per-credential basic-auth Secrets and aggregates htpasswd entries into per-backend gateway Secrets. Only registered when `--auth-mode=basicAuth` |
 | `GrafanaOrganizationReconciler` | `GrafanaOrganization` (v1alpha2) | Creates/updates Grafana orgs, datasources, SSO settings |
 | `AlertmanagerController` | `Secret` with `observability.giantswarm.io/kind: alertmanager-config` | Assembles + pushes Alertmanager config to Mimir Alertmanager |
 | `DashboardController` | `ConfigMap` with `app.giantswarm.io/kind: dashboard` | Provisions dashboards into Grafana orgs via API |
 
-Validating webhooks enforce constraints on alertmanager config secrets, dashboard configmaps, and `GrafanaOrganization` CRs. A conversion webhook handles `GrafanaOrganization` version conversion between v1alpha1 and v1alpha2.
+Validating webhooks enforce constraints on alertmanager config secrets, dashboard configmaps, `GrafanaOrganization`, and `AgentCredential` CRs. A conversion webhook handles `GrafanaOrganization` version conversion between v1alpha1 and v1alpha2.
 
 ## Features
 
@@ -100,6 +101,10 @@ See [docs/dashboards.md](docs/dashboards.md) for full usage and examples.
 ### Grafana organization management
 
 The operator manages Grafana organizations via the `GrafanaOrganization` CRD. See [docs/grafana-organization.md](docs/grafana-organization.md) for CRD reference and examples.
+
+### Agent credentials
+
+The operator mints one basic-auth credential per `(telemetry agent, observability backend)` pair, declared via the `AgentCredential` CRD. Three CRs are auto-created per CAPI cluster (metrics/logs/traces); additional CRs can be created for agents that are not backed by a managed cluster. See [docs/agent-credential.md](docs/agent-credential.md) for CRD reference, auth modes, and examples.
 
 ### Per-cluster feature flags
 
@@ -137,6 +142,8 @@ The operator exposes the following metrics (prefix: `observability_operator_`):
 | `observability_operator_grafana_api_errors_total` | Counter of Grafana API errors (label: `operation`) |
 | `observability_operator_mimir_alertmanager_api_errors_total` | Counter of Mimir Alertmanager API errors (label: `operation`) |
 | `observability_operator_ruler_api_errors_total` | Counter of ruler API errors (label: `operation`) |
+| `observability_operator_agent_credential_info` | Info gauge, 1 per active AgentCredential (labels: `namespace`, `name`, `backend`, `agent_name`) |
+| `observability_operator_agent_credential_reconcile_errors_total` | Counter of AgentCredential reconcile errors (labels: `backend`, `step`) |
 
 Self-monitoring via PodMonitor at `helm/observability-operator/templates/pod-monitor.yaml`. Alerts, dashboards, and runbooks live in the `prometheus-rules` and `dashboards` repositories.
 
@@ -147,6 +154,7 @@ See [docs/metrics.md](docs/metrics.md) for the full metrics reference.
 | Doc | Description |
 |---|---|
 | [docs/grafana-organization.md](docs/grafana-organization.md) | GrafanaOrganization CRD usage and examples |
+| [docs/agent-credential.md](docs/agent-credential.md) | AgentCredential CRD usage and auth modes |
 | [docs/alertmanager.md](docs/alertmanager.md) | Alertmanager config secret usage and examples |
 | [docs/dashboards.md](docs/dashboards.md) | Dashboard provisioning and folder support |
 | [docs/cluster.md](docs/cluster.md) | Per-cluster observability feature flags and sharding overrides |

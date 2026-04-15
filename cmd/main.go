@@ -37,12 +37,19 @@ import (
 	webhookcorev1alpha1 "github.com/giantswarm/observability-operator/internal/webhook/v1alpha1"
 	webhookcorev1alpha2 "github.com/giantswarm/observability-operator/internal/webhook/v1alpha2"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	//+kubebuilder:scaffold:imports
 )
 
 const (
 	// Operator configuration flag names
+	flagOperatorControllersAgentCredentialEnabled     = "controllers-agent-credential-enabled"
+	flagOperatorControllersAlertmanagerEnabled        = "controllers-alertmanager-enabled"
+	flagOperatorControllersClusterEnabled             = "controllers-cluster-enabled"
+	flagOperatorControllersDashboardEnabled           = "controllers-dashboard-enabled"
+	flagOperatorControllersGrafanaOrganizationEnabled = "controllers-grafana-organization-enabled"
+
 	flagMetricsBindAddress     = "metrics-bind-address"
 	flagMetricsCertPath        = "metrics-cert-path"
 	flagMetricsSecure          = "metrics-secure"
@@ -73,7 +80,6 @@ const (
 	flagManagementClusterRegion       = "management-cluster-region"
 
 	// Monitoring configuration flag names
-	flagAlertmanagerEnabled                   = "alertmanager-enabled"
 	flagAlertmanagerSecretName                = "alertmanager-secret-name"
 	flagAlertmanagerURL                       = "alertmanager-url"
 	flagMonitoringEnabled                     = "monitoring-enabled"
@@ -138,6 +144,9 @@ const (
 	// Default tenant flag name
 	flagDefaultTenant = "default-tenant"
 
+	// Auth configuration flag name
+	flagAuthMode = "auth-mode"
+
 	// Alloy pipeline knob flag names
 	flagMonitoringMimirRemoteWriteTimeout = "monitoring-mimir-remote-write-timeout"
 	flagLoggingLokiMaxBackoffPeriod       = "logging-loki-max-backoff-period"
@@ -189,6 +198,16 @@ func runner() error {
 // parseFlags parses all command line flags and updates the configuration.
 func parseFlags() (err error) {
 	// Operator configuration flags
+	pflag.BoolVar(&cfg.Operator.Controllers.AgentCredential.Enabled, flagOperatorControllersAgentCredentialEnabled, true,
+		"Enable the agent credential controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.Alertmanager.Enabled, flagOperatorControllersAlertmanagerEnabled, true,
+		"Enable the agent credential controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.Cluster.Enabled, flagOperatorControllersClusterEnabled, true,
+		"Enable the agent credential controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.Dashboard.Enabled, flagOperatorControllersDashboardEnabled, true,
+		"Enable the agent credential controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.GrafanaOrganization.Enabled, flagOperatorControllersGrafanaOrganizationEnabled, true,
+		"Enable the agent credential controller.")
 	pflag.StringVar(&cfg.Operator.MetricsAddr, flagMetricsBindAddress, ":8080",
 		"The address the metric endpoint binds to.")
 	pflag.StringVar(&cfg.Operator.ProbeAddr, flagHealthProbeBindAddress, ":8081",
@@ -239,8 +258,6 @@ func parseFlags() (err error) {
 		"The region of the management cluster.")
 
 	// Monitoring configuration flags
-	pflag.BoolVar(&cfg.Monitoring.AlertmanagerEnabled, flagAlertmanagerEnabled, false,
-		"Enable Alertmanager controller.")
 	pflag.StringVar(&cfg.Monitoring.AlertmanagerSecretName, flagAlertmanagerSecretName, "",
 		"The name of the secret containing the Alertmanager configuration.")
 	pflag.StringVar(&cfg.Monitoring.AlertmanagerURL, flagAlertmanagerURL, "",
@@ -346,6 +363,10 @@ func parseFlags() (err error) {
 	pflag.StringVar(&cfg.DefaultTenant, flagDefaultTenant, "giantswarm",
 		"Default tenant ID used when no tenant label is present.")
 
+	// Auth configuration flag
+	pflag.StringVar(&cfg.Auth.Mode, flagAuthMode, string(credential.ModeBasicAuth),
+		"Operator-wide authentication mode applied to AgentCredential CRs. One of: basicAuth, none.")
+
 	// Alloy pipeline knob flags
 	pflag.StringVar(&cfg.Monitoring.MimirRemoteWriteTimeout, flagMonitoringMimirRemoteWriteTimeout, "60s",
 		"Timeout for Alloy Mimir remote write operations.")
@@ -380,6 +401,10 @@ func parseFlags() (err error) {
 	cfg.Grafana.URL, err = url.Parse(grafanaURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse grafana URL: %w", err)
+	}
+
+	if _, err = credential.ValidateMode(cfg.Auth.Mode); err != nil {
+		return fmt.Errorf("invalid --%s value: %w", flagAuthMode, err)
 	}
 
 	// Apply queue configuration flags after parsing (only if explicitly set)
@@ -496,19 +521,34 @@ func setupApplication() error {
 
 	// Create Grafana client generator for dependency injection
 	grafanaClientGen := grafanaclient.NewDefaultGrafanaClientGenerator(cfg.Grafana)
-	// Setup controller for the Cluster resource.
-	err = controller.SetupClusterMonitoringReconciler(mgr, cfg, logger)
-	if err != nil {
-		return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
+
+	if cfg.Operator.Controllers.Cluster.Enabled {
+		// Setup controller for the Cluster resource.
+		err = controller.SetupClusterReconciler(mgr, cfg, logger)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (ClusterReconciler): %w", err)
+		}
 	}
 
-	// Setup controller for the GrafanaOrganization resource.
-	err = controller.SetupGrafanaOrganizationReconciler(mgr, cfg, grafanaClientGen)
-	if err != nil {
-		return fmt.Errorf("unable to setup controller (GrafanaOrganizationReconciler): %w", err)
+	// Setup AgentCredential controller only in basicAuth mode. In `none` mode
+	// no controller is registered; operators are expected to clean up any
+	// leftover CRs and Secrets themselves.
+	if cfg.Operator.Controllers.AgentCredential.Enabled && cfg.Auth.Mode == string(credential.ModeBasicAuth) {
+		err = controller.SetupAgentCredentialReconciler(mgr, cfg)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (AgentCredentialReconciler): %w", err)
+		}
 	}
 
-	if cfg.Monitoring.AlertmanagerEnabled {
+	if cfg.Operator.Controllers.GrafanaOrganization.Enabled {
+		// Setup controller for the GrafanaOrganization resource.
+		err = controller.SetupGrafanaOrganizationReconciler(mgr, cfg, grafanaClientGen)
+		if err != nil {
+			return fmt.Errorf("unable to setup controller (GrafanaOrganizationReconciler): %w", err)
+		}
+	}
+
+	if cfg.Operator.Controllers.Alertmanager.Enabled {
 		// Setup controller for Alertmanager
 		err = controller.SetupAlertmanagerReconciler(mgr, cfg)
 		if err != nil {
@@ -516,10 +556,12 @@ func setupApplication() error {
 		}
 	}
 
-	// Setup controller for the Dashboard resource.
-	err = controller.SetupDashboardReconciler(mgr, cfg, grafanaClientGen)
-	if err != nil {
-		return fmt.Errorf("unable to create controller (Dashboard): %w", err)
+	if cfg.Operator.Controllers.Dashboard.Enabled {
+		// Setup controller for the Dashboard resource.
+		err = controller.SetupDashboardReconciler(mgr, cfg, grafanaClientGen)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (Dashboard): %w", err)
+		}
 	}
 
 	// nolint:goconst
@@ -535,6 +577,9 @@ func setupApplication() error {
 		}
 		if err = webhookcorev1alpha2.SetupGrafanaOrganizationWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("unable to create webhook (GrafanaOrganization v1alpha2): %w", err)
+		}
+		if err = webhookcorev1alpha1.SetupAgentCredentialWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("unable to create webhook (AgentCredential v1alpha1): %w", err)
 		}
 	}
 	//+kubebuilder:scaffold:builder

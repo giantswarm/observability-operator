@@ -27,8 +27,6 @@ managementCluster:
 
 # Controls Alertmanager config delivery, Grafana alerting, and Cronitor heartbeats.
 alerting:
-  # -- Enable alerting support
-  enabled: false
   # -- URL of the Mimir Alertmanager API
   alertmanagerURL: ""
   # -- Grafana instance address
@@ -56,6 +54,16 @@ cronitor:
 
 # Default tenant ID used when no tenant label is present on a cluster.
 defaultTenant: "giantswarm"
+
+# Operator-wide authentication mode applied to AgentCredential CRs.
+auth:
+  # -- Authentication mode. One of: basicAuth, none.
+  # basicAuth: the operator mints per-credential basic-auth Secrets and aggregates
+  #   them into the per-backend gateway htpasswd Secrets.
+  # none: the AgentCredential controller is not registered and the cluster
+  #   controller does not create AgentCredential CRs. Use when authentication
+  #   is enforced at the gateway layer (e.g. workload identity).
+  mode: "basicAuth"
 
 # HTTP client timeouts for external API calls.
 http:
@@ -194,6 +202,22 @@ logging:
 # Resource and security configuration for the operator pod.
 # Defaults are appropriate for most deployments.
 operator:
+  controllers:
+    agentCredential:
+      enabled: true
+    alertmanager:
+      enabled: true
+    cluster:
+      enabled: true
+    dashboard:
+      enabled: true
+    grafanaOrganization:
+      enabled: true
+
+  networkPolicy:
+    enabled: true
+    flavor: kubernetes
+
   # -- Resource requests and limits for the operator deployment
   resources:
     requests:
@@ -286,6 +310,9 @@ webhook:
       enabled: true
     # -- Validate GrafanaOrganization CRs
     grafanaOrganization:
+      enabled: true
+    # -- Validate AgentCredential CRs
+    agentCredential:
       enabled: true
 
 # Vertical Pod Autoscaler configuration for the operator deployment

@@ -61,8 +61,6 @@ rules:
   resources:
   - clusters
   verbs:
-  - create
-  - delete
   - get
   - list
   - patch
@@ -88,7 +86,16 @@ rules:
   - leases
   verbs:
   - create
-  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - helm.toolkit.fluxcd.io
+  resources:
+  - helmreleases
+  verbs:
   - get
   - list
   - patch
@@ -105,6 +112,7 @@ rules:
 - apiGroups:
   - observability.giantswarm.io
   resources:
+  - agentcredentials
   - grafanaorganizations
   verbs:
   - create
@@ -117,12 +125,14 @@ rules:
 - apiGroups:
   - observability.giantswarm.io
   resources:
+  - agentcredentials/finalizers
   - grafanaorganizations/finalizers
   verbs:
   - update
 - apiGroups:
   - observability.giantswarm.io
   resources:
+  - agentcredentials/status
   - grafanaorganizations/status
   verbs:
   - get

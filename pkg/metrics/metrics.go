@@ -59,6 +59,21 @@ var (
 		Name: "observability_operator_monitored_cluster_info",
 		Help: "Info gauge for clusters being monitored; one series per active cluster",
 	}, []string{"cluster_name", "cluster_namespace"})
+
+	// AgentCredential metrics
+
+	// AgentCredentialInfo is an info gauge with one series per AgentCredential.
+	AgentCredentialInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "observability_operator_agent_credential_info",
+		Help: "Info gauge for AgentCredential resources; one series per active credential",
+	}, []string{"namespace", "name", "backend", "agent_name"})
+
+	// AgentCredentialReconcileErrors counts reconcile errors from the AgentCredential
+	// controller, labelled by backend and reconcile step (render, aggregate).
+	AgentCredentialReconcileErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "observability_operator_agent_credential_reconcile_errors_total",
+		Help: "Total number of AgentCredential reconcile errors, by backend and step",
+	}, []string{"backend", "step"})
 )
 
 const (
@@ -97,5 +112,7 @@ func init() {
 		MimirAlertmanagerAPIErrors,
 		RulerAPIErrors,
 		MonitoredClusterInfo,
+		AgentCredentialInfo,
+		AgentCredentialReconcileErrors,
 	)
 }
