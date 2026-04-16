@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Per-controller enable flags `--controllers-{alertmanager,cluster,dashboard,grafana-organization}-enabled` (all default `true`). Exposed via `operator.controllers.*.enabled` Helm values so individual reconcilers can be disabled at deploy time.
 - Helm chart now renders a Kubernetes `NetworkPolicy` for the operator pod by default. Flavor is selectable via `operator.networkPolicy.flavor` (`kubernetes` or `cilium`); the existing `CiliumNetworkPolicy` now only renders when `flavor=cilium`.
+- `AgentCredential` CRD (`observability.giantswarm.io/v1alpha1`): declares the desired basic-auth credential for a telemetry agent. Includes a validating webhook that enforces `(backend, agentName)` uniqueness and field immutability.
 
 ### Changed
 
