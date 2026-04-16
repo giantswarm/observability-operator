@@ -8,15 +8,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
+	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 )
 
 func (s *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster, caBundle string) (map[string]string, error) {
 	remoteWriteUrl := fmt.Sprintf(common.MimirRemoteWriteEndpointURLFormat, s.Config.Cluster.BaseDomain)
-	password, err := s.AuthManager.GetClusterPassword(ctx, cluster)
+	username, password, err := s.CredentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, observabilityv1alpha1.CredentialBackendMetrics))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get mimir auth password for cluster %s: %w", cluster.Name, err)
+		return nil, fmt.Errorf("failed to get mimir auth credentials for cluster %s: %w", cluster.Name, err)
 	}
 
 	mimirRulerUrl := fmt.Sprintf(common.MimirBaseURLFormat, s.Config.Cluster.BaseDomain)
@@ -27,7 +29,7 @@ func (s *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		common.MimirRulerAPIURLKey:        mimirRulerUrl,
 		common.MimirRemoteWriteAPIURLKey:  remoteWriteUrl,
 		common.MimirRemoteWriteAPINameKey: common.MimirRemoteWriteName,
-		common.MimirUsernameKey:           cluster.Name,
+		common.MimirUsernameKey:           username,
 		common.MimirPasswordKey:           password,
 	}
 

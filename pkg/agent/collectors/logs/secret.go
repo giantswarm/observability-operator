@@ -8,8 +8,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
+	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 )
 
 func Secret(cluster *clusterv1.Cluster) *v1.Secret {
@@ -29,15 +31,15 @@ func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clus
 		lokiURL := fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
 		lokiRulerAPIURL := fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
 
-		logsPassword, err := s.LogsAuthManager.GetClusterPassword(ctx, cluster)
+		username, password, err := s.CredentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, observabilityv1alpha1.CredentialBackendLogs))
 		if err != nil {
-			return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
+			return nil, fmt.Errorf("failed to get loki auth credentials for cluster %s: %w", cluster.Name, err)
 		}
 
 		secrets[common.LokiURLKey] = lokiURL
 		secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
-		secrets[common.LokiUsernameKey] = cluster.Name
-		secrets[common.LokiPasswordKey] = logsPassword
+		secrets[common.LokiUsernameKey] = username
+		secrets[common.LokiPasswordKey] = password
 		secrets[common.LokiRulerAPIURLKey] = lokiRulerAPIURL
 	}
 

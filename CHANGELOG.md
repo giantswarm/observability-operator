@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Cluster controller migrated from `pkg/auth.AuthManager` to `AgentCredential` CRs + `credential.Reader`. Each cluster now owns 3 AgentCredential CRs (one per enabled backend) instead of directly managing gateway htpasswd Secrets.
+- Renamed `ClusterMonitoringReconciler` → `ClusterReconciler` and `SetupClusterMonitoringReconciler` → `SetupClusterReconciler`.
+- Alloy collectors (`metrics`, `logs`, `events`) use `credential.Reader` interface instead of per-signal `AuthManager`.
+
+### Removed
+
+- `pkg/auth` package (replaced by `pkg/credential`).
+
 - **Breaking (Helm)**: removed the `--alertmanager-enabled` flag (formerly gated by `alerting.enabled`). Use `--controllers-alertmanager-enabled` / `operator.controllers.alertmanager.enabled` instead. Default flipped from `false` to `true` — the Alertmanager controller is now opt-out.
 
 ## [0.67.2] - 2026-04-08

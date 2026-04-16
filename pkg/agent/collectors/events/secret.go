@@ -8,8 +8,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
+	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 )
 
 func Secret(cluster *clusterv1.Cluster) *v1.Secret {
@@ -26,36 +28,36 @@ func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *cl
 	secrets := map[string]string{}
 
 	if loggingEnabled {
+		username, password, err := s.CredentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, observabilityv1alpha1.CredentialBackendLogs))
+		if err != nil {
+			return nil, fmt.Errorf("failed to get loki auth credentials for cluster %s: %w", cluster.Name, err)
+		}
 		secrets[common.LokiURLKey] = fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
 		secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
 		secrets[common.LokiRulerAPIURLKey] = fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
 		secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
-		logsPassword, err := s.LogsAuthManager.GetClusterPassword(ctx, cluster)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
-		}
-		secrets[common.LokiUsernameKey] = cluster.Name
-		secrets[common.LokiPasswordKey] = logsPassword
+		secrets[common.LokiUsernameKey] = username
+		secrets[common.LokiPasswordKey] = password
 	}
 
 	if tracingEnabled {
-		tracesPassword, err := s.TracesAuthManager.GetClusterPassword(ctx, cluster)
+		username, password, err := s.CredentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, observabilityv1alpha1.CredentialBackendTraces))
 		if err != nil {
-			return nil, fmt.Errorf("failed to get tempo auth password for cluster %s: %w", cluster.Name, err)
+			return nil, fmt.Errorf("failed to get tempo auth credentials for cluster %s: %w", cluster.Name, err)
 		}
-		secrets[common.TempoUsernameKey] = cluster.Name
-		secrets[common.TempoPasswordKey] = tracesPassword
+		secrets[common.TempoUsernameKey] = username
+		secrets[common.TempoPasswordKey] = password
 		secrets[common.TempoOTLPURLKey] = fmt.Sprintf("%s:443", fmt.Sprintf(common.TempoBaseURLFormat, s.Config.Cluster.BaseDomain))
 	}
 
 	if monitoringEnabled {
-		metricsPassword, err := s.MetricsAuthManager.GetClusterPassword(ctx, cluster)
+		username, password, err := s.CredentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, observabilityv1alpha1.CredentialBackendMetrics))
 		if err != nil {
-			return nil, fmt.Errorf("failed to get mimir otlp password for cluster %s: %w", cluster.Name, err)
+			return nil, fmt.Errorf("failed to get mimir otlp auth credentials for cluster %s: %w", cluster.Name, err)
 		}
 		secrets[common.MimirOTLPURLKey] = fmt.Sprintf(common.MimirOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
-		secrets[common.MimirUsernameKey] = cluster.Name
-		secrets[common.MimirPasswordKey] = metricsPassword
+		secrets[common.MimirUsernameKey] = username
+		secrets[common.MimirPasswordKey] = password
 	}
 
 	if caBundle != "" {
