@@ -21,6 +21,7 @@ func (c OperatorConfig) Validate() error {
 }
 
 type Controllers struct {
+	AgentCredential     ControllerConfig
 	Alertmanager        ControllerConfig
 	Cluster             ControllerConfig
 	Dashboard           ControllerConfig

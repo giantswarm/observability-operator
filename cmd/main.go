@@ -43,6 +43,7 @@ import (
 
 const (
 	// Operator configuration flag names
+	flagOperatorControllersAgentCredentialEnabled     = "controllers-agent-credential-enabled"
 	flagOperatorControllersAlertmanagerEnabled        = "controllers-alertmanager-enabled"
 	flagOperatorControllersClusterEnabled             = "controllers-cluster-enabled"
 	flagOperatorControllersDashboardEnabled           = "controllers-dashboard-enabled"
@@ -193,6 +194,8 @@ func runner() error {
 // parseFlags parses all command line flags and updates the configuration.
 func parseFlags() (err error) {
 	// Operator configuration flags
+	pflag.BoolVar(&cfg.Operator.Controllers.AgentCredential.Enabled, flagOperatorControllersAgentCredentialEnabled, true,
+		"Enable the agent credential controller. Required by the cluster controller. Disabling this also disables the cluster controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.Alertmanager.Enabled, flagOperatorControllersAlertmanagerEnabled, true,
 		"Enable the alertmanager controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.Cluster.Enabled, flagOperatorControllersClusterEnabled, true,
@@ -392,6 +395,16 @@ func parseFlags() (err error) {
 		return fmt.Errorf("failed to parse grafana URL: %w", err)
 	}
 
+	// Soft dependency: the cluster controller declares AgentCredential CRs and
+	// the Alloy collectors read the rendered Secrets, so it cannot run without
+	// the agent-credential controller. Disabling AC therefore implicitly disables
+	// the cluster controller as well, with a warning so the operator can spot
+	// unexpected configurations from the logs.
+	if !cfg.Operator.Controllers.AgentCredential.Enabled && cfg.Operator.Controllers.Cluster.Enabled {
+		setupLog.Info("agent credential controller is disabled; cluster controller cannot run without it and has been disabled too")
+		cfg.Operator.Controllers.Cluster.Enabled = false
+	}
+
 	// Apply queue configuration flags after parsing (only if explicitly set)
 	if pflag.CommandLine.Changed(flagQueueBatchSendDeadline) {
 		cfg.Monitoring.QueueConfig.BatchSendDeadline = &queueBatchSendDeadline
@@ -512,6 +525,13 @@ func setupApplication() error {
 		err = controller.SetupClusterMonitoringReconciler(mgr, cfg, logger)
 		if err != nil {
 			return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
+		}
+	}
+
+	if cfg.Operator.Controllers.AgentCredential.Enabled {
+		err = controller.SetupAgentCredentialReconciler(mgr, cfg)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (AgentCredentialReconciler): %w", err)
 		}
 	}
 

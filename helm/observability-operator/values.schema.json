@@ -272,6 +272,14 @@
                 "controllers": {
                     "type": "object",
                     "properties": {
+                        "agentCredential": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
                         "alertmanager": {
                             "type": "object",
                             "properties": {
