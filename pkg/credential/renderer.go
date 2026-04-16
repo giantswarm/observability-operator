@@ -51,6 +51,20 @@ func (r *Renderer) Render(ctx context.Context, cred *observabilityv1alpha1.Agent
 	}
 
 	result, err := ctrl.CreateOrUpdate(ctx, r.Client, secret, func() error {
+		// Remove any existing controller ownerReference pointing to a Cluster
+		// before setting the new one pointing to the AgentCredential CR.
+		// This handles adoption of Secrets that were previously owned by the
+		// old ClusterMonitoringReconciler's auth manager.
+		existing := secret.GetOwnerReferences()
+		var cleaned []metav1.OwnerReference
+		for _, ref := range existing {
+			if ref.Kind == "Cluster" && ref.Controller != nil && *ref.Controller {
+				continue // drop the old controller ref
+			}
+			cleaned = append(cleaned, ref)
+		}
+		secret.SetOwnerReferences(cleaned)
+
 		if err := controllerutil.SetControllerReference(cred, secret, r.Client.Scheme()); err != nil {
 			return fmt.Errorf("failed to set owner reference: %w", err)
 		}
