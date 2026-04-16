@@ -9,12 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Refactor cluster controller to use collector and bundle interfaces. ([#785](https://github.com/giantswarm/observability-operator/pull/785))                                                                                                                               
-  - Introduce `collectors.CollectorService` interface (`pkg/agent/collectors/collector.go`) formalizing the `ReconcileCreate`/`ReconcileDelete` contract shared by all three Alloy signal collectors (metrics, logs, events). No changes to the concrete `Service` structs.
-  - Introduce `bundle.BundleService` interface (`pkg/bundle/types.go`); the cluster controller now depends on the interface instead of the concrete `*bundle.BundleConfigurationService` pointer.
-  - Replace the three typed `AlloyMetricsService` / `AlloyLogsService` / `AlloyEventsService` fields on `ClusterReconciler` with a `[]collectorEntry` slice, where each entry carries a `CollectorService`, a feature-flag predicate, and a name for error messages.
-  - Collapse the per-signal `if/else` blocks in `reconcileAlloyServices` and `reconcileDelete` into a single `range r.collectors` loop — adding a fourth collector now requires only one new `collectorEntry`.
-  - Auth manager loop now collects all backends' errors with `errors.Join` before returning, consistent with the collector loop pattern.
+- internal code refactoring
 
 ## [0.67.2] - 2026-04-08
 
