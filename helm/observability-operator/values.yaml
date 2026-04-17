@@ -193,6 +193,8 @@ logging:
 # Defaults are appropriate for most deployments.
 operator:
   controllers:
+    agentCredential:
+      enabled: true
     alertmanager:
       enabled: true
     cluster:

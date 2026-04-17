@@ -24,6 +24,7 @@ spec:
         image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ default .Chart.AppVersion .Values.image.tag }}"
         args:
         - --leader-elect
+        - --controllers-agent-credential-enabled={{ $.Values.operator.controllers.agentCredential.enabled }}
         - --controllers-alertmanager-enabled={{ $.Values.operator.controllers.alertmanager.enabled }}
         - --controllers-cluster-enabled={{ $.Values.operator.controllers.cluster.enabled }}
         - --controllers-dashboard-enabled={{ $.Values.operator.controllers.dashboard.enabled }}

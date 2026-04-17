@@ -137,6 +137,8 @@ The operator exposes the following metrics (prefix: `observability_operator_`):
 | `observability_operator_grafana_api_errors_total` | Counter of Grafana API errors (label: `operation`) |
 | `observability_operator_mimir_alertmanager_api_errors_total` | Counter of Mimir Alertmanager API errors (label: `operation`) |
 | `observability_operator_ruler_api_errors_total` | Counter of ruler API errors (label: `operation`) |
+| `observability_operator_agent_credential_info` | Info gauge, 1 per active AgentCredential (labels: `namespace`, `name`, `backend`, `agent_name`) |
+| `observability_operator_agent_credential_reconcile_errors_total` | Counter of AgentCredential reconcile errors (labels: `backend`, `operation`) |
 
 Self-monitoring via PodMonitor at `helm/observability-operator/templates/pod-monitor.yaml`. Alerts, dashboards, and runbooks live in the `prometheus-rules` and `dashboards` repositories.
 
