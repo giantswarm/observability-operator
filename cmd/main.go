@@ -553,6 +553,9 @@ func setupApplication() error {
 		if err = webhookcorev1alpha2.SetupGrafanaOrganizationWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("unable to create webhook (GrafanaOrganization v1alpha2): %w", err)
 		}
+		if err = webhookcorev1alpha1.SetupAgentCredentialWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("unable to create webhook (AgentCredential v1alpha1): %w", err)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

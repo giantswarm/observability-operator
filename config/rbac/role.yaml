@@ -105,6 +105,7 @@ rules:
 - apiGroups:
   - observability.giantswarm.io
   resources:
+  - agentcredentials
   - grafanaorganizations
   verbs:
   - create
@@ -117,12 +118,14 @@ rules:
 - apiGroups:
   - observability.giantswarm.io
   resources:
+  - agentcredentials/finalizers
   - grafanaorganizations/finalizers
   verbs:
   - update
 - apiGroups:
   - observability.giantswarm.io
   resources:
+  - agentcredentials/status
   - grafanaorganizations/status
   verbs:
   - get

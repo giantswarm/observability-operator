@@ -300,6 +300,9 @@ webhook:
     # -- Validate GrafanaOrganization CRs
     grafanaOrganization:
       enabled: true
+    # -- Validate AgentCredential CRs
+    agentCredential:
+      enabled: true
 
 # Vertical Pod Autoscaler configuration for the operator deployment
 verticalPodAutoscaler:

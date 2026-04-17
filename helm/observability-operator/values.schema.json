@@ -509,6 +509,15 @@
                                     "type": "boolean"
                                 }
                             }
+                        },
+                        "agentCredential": {
+                            "type": "object",
+                            "description": "Enable AgentCredential validation webhook",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
                     }
                 }

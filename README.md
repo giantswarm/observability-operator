@@ -74,7 +74,7 @@ Four controllers run in a single binary:
 | `AlertmanagerController` | `Secret` with `observability.giantswarm.io/kind: alertmanager-config` | Assembles + pushes Alertmanager config to Mimir Alertmanager |
 | `DashboardController` | `ConfigMap` with `app.giantswarm.io/kind: dashboard` | Provisions dashboards into Grafana orgs via API |
 
-Validating webhooks enforce constraints on alertmanager config secrets, dashboard configmaps, and `GrafanaOrganization` CRs. A conversion webhook handles `GrafanaOrganization` version conversion between v1alpha1 and v1alpha2.
+Validating webhooks enforce constraints on alertmanager config secrets, dashboard configmaps, `GrafanaOrganization` CRs, and `AgentCredential` CRs. A conversion webhook handles `GrafanaOrganization` version conversion between v1alpha1 and v1alpha2.
 
 ## Features
 
@@ -149,6 +149,7 @@ See [docs/metrics.md](docs/metrics.md) for the full metrics reference.
 | [docs/grafana-organization.md](docs/grafana-organization.md) | GrafanaOrganization CRD usage and examples |
 | [docs/alertmanager.md](docs/alertmanager.md) | Alertmanager config secret usage and examples |
 | [docs/dashboards.md](docs/dashboards.md) | Dashboard provisioning and folder support |
+| [docs/agent-credential.md](docs/agent-credential.md) | AgentCredential CRD reference and self-service usage |
 | [docs/cluster.md](docs/cluster.md) | Per-cluster observability feature flags and sharding overrides |
 | [docs/metrics.md](docs/metrics.md) | Operator metrics reference and example queries |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, testing, and coding conventions |
