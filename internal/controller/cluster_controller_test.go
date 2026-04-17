@@ -14,6 +14,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/events"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/logs"
@@ -154,8 +155,12 @@ var _ = Describe("Cluster Controller", func() {
 						return testCfg.Logging.IsLoggingEnabled(c) || testCfg.Tracing.IsTracingEnabled(c) || testCfg.Monitoring.IsMonitoringEnabled(c)
 					}},
 				},
+				credentials: []credentialEntry{
+					{backend: v1alpha1.CredentialBackendMetrics, isEnabled: testCfg.Monitoring.IsMonitoringEnabled},
+					{backend: v1alpha1.CredentialBackendLogs, isEnabled: testCfg.Logging.IsLoggingEnabled},
+					{backend: v1alpha1.CredentialBackendTraces, isEnabled: testCfg.Tracing.IsTracingEnabled},
+				},
 				observabilityBundleService: bundleService,
-				authManagers:               authManagers,
 				rulerClient:                ruler.NewNoop(),
 				tenantRepository:           tenancy.NewTenantRepository(k8sClient),
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
