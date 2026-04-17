@@ -15,25 +15,14 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
 	"github.com/giantswarm/observability-operator/pkg/config"
-	"github.com/giantswarm/observability-operator/pkg/credential"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
 var managementClusterName = "dummy-cluster"
 
-// mockCredentialReader implements credential.Reader for testing
-type mockCredentialReader struct{}
-
-func (m *mockCredentialReader) ReadPassword(ctx context.Context, namespace, credentialName string) (string, string, error) {
-	return "test-user", "test-password", nil
-}
-
-var _ credential.Reader = &mockCredentialReader{}
-
 func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
 	return &Service{
 		OrganizationRepository: mocks.NewMockOrganizationRepository("dummy-org"),
-		CredentialReader:       &mockCredentialReader{},
 		Config: config.Config{
 			Cluster: config.ClusterConfig{
 				BaseDomain: "test.gigantic.io",

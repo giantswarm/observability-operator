@@ -66,6 +66,8 @@ type ClusterReconciler struct {
 	collectors []collectorEntry
 	// credentials is the ordered list of AgentCredential backends managed per cluster.
 	credentials []credentialEntry
+	// credentialReader resolves basic-auth credentials from AgentCredential Secrets.
+	credentialReader credential.Reader
 	// heartbeatRepositories is the list of repositories for managing heartbeats.
 	heartbeatRepositories []heartbeat.HeartbeatRepository
 	// observabilityBundleService is the service for configuring the observability bundle.
@@ -106,7 +108,6 @@ func SetupClusterReconciler(mgr manager.Manager, cfg config.Config, logger logr.
 		ConfigurationRepository: agentConfigurationRepository,
 		OrganizationRepository:  organizationRepository,
 		TenantRepository:        tenantRepository,
-		CredentialReader:        credentialReader,
 	}
 
 	alloyLogsService := &logs.Service{
@@ -114,7 +115,6 @@ func SetupClusterReconciler(mgr manager.Manager, cfg config.Config, logger logr.
 		ConfigurationRepository: agentConfigurationRepository,
 		OrganizationRepository:  organizationRepository,
 		TenantRepository:        tenantRepository,
-		CredentialReader:        credentialReader,
 	}
 
 	alloyEventsService := &events.Service{
@@ -122,7 +122,6 @@ func SetupClusterReconciler(mgr manager.Manager, cfg config.Config, logger logr.
 		ConfigurationRepository: agentConfigurationRepository,
 		OrganizationRepository:  organizationRepository,
 		TenantRepository:        tenantRepository,
-		CredentialReader:        credentialReader,
 	}
 
 	agentCredentials := []credentialEntry{
@@ -169,6 +168,7 @@ func SetupClusterReconciler(mgr manager.Manager, cfg config.Config, logger logr.
 		Config:                     cfg,
 		collectors:                 alloyCollectors,
 		credentials:                agentCredentials,
+		credentialReader:           credentialReader,
 		heartbeatRepositories:      heartbeatRepositories,
 		observabilityBundleService: bundle.New(managerClient, cfg),
 		rulerClient:                rulerClient,
@@ -326,11 +326,15 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, cluster *clusterv1.Cl
 		errs = append(errs, fmt.Errorf("bundle configuration: %w", err))
 	}
 
-	// Reconcile alloy services (bundled dependent tasks)
-	err = r.reconcileAlloyServices(ctx, cluster)
-	if err != nil {
-		logger.Error(err, "failed to reconcile alloy services")
-		errs = append(errs, fmt.Errorf("alloy services: %w", err))
+	// Reconcile alloy services (bundled dependent tasks). A bare
+	// credential.ErrCredentialNotReady is a transient first-reconcile signal;
+	// the controller turns it into a short requeue instead of a reconcile
+	// failure so the AgentCredentialReconciler has time to render the Secret.
+	alloyErr := r.reconcileAlloyServices(ctx, cluster)
+	alloyNotReadyOnly := alloyErr != nil && errors.Is(alloyErr, credential.ErrCredentialNotReady)
+	if alloyErr != nil && !alloyNotReadyOnly {
+		logger.Error(alloyErr, "failed to reconcile alloy services")
+		errs = append(errs, fmt.Errorf("alloy services: %w", alloyErr))
 	}
 
 	// Management cluster specific configuration
@@ -346,6 +350,11 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, cluster *clusterv1.Cl
 		return ctrl.Result{}, errors.Join(errs...)
 	}
 
+	if alloyNotReadyOnly {
+		logger.Info("agent credentials not yet ready, requeueing")
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+
 	operatormetrics.MonitoredClusterInfo.WithLabelValues(cluster.Name, cluster.Namespace).Set(1)
 
 	return ctrl.Result{}, nil
@@ -354,6 +363,12 @@ func (r *ClusterReconciler) reconcile(ctx context.Context, cluster *clusterv1.Cl
 // reconcileAlloyServices reconciles all alloy services. This is a bundled operation
 // where getting the observability bundle version is a dependency for configuring
 // all alloy services. If getting the version fails, all dependent tasks fail.
+//
+// Credentials for every enabled backend are resolved once here and passed into
+// the collectors, so the render layer has no credential-store I/O. When a
+// Secret has not been rendered yet, returns credential.ErrCredentialNotReady
+// unchanged so the caller can back off briefly instead of surfacing a spurious
+// reconcile failure.
 func (r *ClusterReconciler) reconcileAlloyServices(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
 
@@ -376,11 +391,19 @@ func (r *ClusterReconciler) reconcileAlloyServices(ctx context.Context, cluster 
 		return fmt.Errorf("failed to read CA bundle: %w", err)
 	}
 
+	// Resolve credentials for every enabled backend up front. A NotReady from
+	// any read propagates as-is so the caller can short-requeue without the
+	// individual collectors ever touching the credential store.
+	creds, err := r.resolveCredentials(ctx, cluster)
+	if err != nil {
+		return err
+	}
+
 	// Reconcile each collector: create if enabled, delete if disabled (independent tasks).
 	var errs []error
 	for _, c := range r.collectors {
 		if c.isEnabled(cluster) {
-			if err := c.service.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle); err != nil {
+			if err := c.service.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle, creds); err != nil {
 				logger.Error(err, "failed to create or update alloy config", "collector", c.name)
 				errs = append(errs, fmt.Errorf("alloy %s reconcile create: %w", c.name, err))
 			}
@@ -393,6 +416,28 @@ func (r *ClusterReconciler) reconcileAlloyServices(ctx context.Context, cluster 
 	}
 
 	return errors.Join(errs...)
+}
+
+// resolveCredentials reads basic-auth for every enabled backend. If any read
+// indicates the AgentCredential Secret has not been rendered yet, the sentinel
+// credential.ErrCredentialNotReady is returned unchanged so the caller can
+// translate it into a short requeue.
+func (r *ClusterReconciler) resolveCredentials(ctx context.Context, cluster *clusterv1.Cluster) (credential.BackendCredentials, error) {
+	creds := credential.BackendCredentials{}
+	for _, c := range r.credentials {
+		if !c.isEnabled(cluster) {
+			continue
+		}
+		username, password, err := r.credentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, c.backend))
+		if err != nil {
+			if errors.Is(err, credential.ErrCredentialNotReady) {
+				return nil, credential.ErrCredentialNotReady
+			}
+			return nil, fmt.Errorf("failed to read %s credentials for cluster %s: %w", c.backend, cluster.Name, err)
+		}
+		creds[c.backend] = credential.BasicAuth{Username: username, Password: password}
+	}
+	return creds, nil
 }
 
 // reconcileAgentCredentials ensures an AgentCredential CR exists per enabled

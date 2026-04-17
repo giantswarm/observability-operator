@@ -1,7 +1,6 @@
 package logs
 
 import (
-	"context"
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
@@ -24,23 +23,20 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, caBundle string) (map[string]string, error) {
+func (s *Service) GenerateAlloyLogsSecretData(cluster *clusterv1.Cluster, loggingEnabled bool, caBundle string, creds credential.BackendCredentials) (map[string]string, error) {
 	secrets := map[string]string{}
 
 	if loggingEnabled {
-		lokiURL := fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
-		lokiRulerAPIURL := fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
-
-		username, password, err := s.CredentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, observabilityv1alpha1.CredentialBackendLogs))
-		if err != nil {
-			return nil, fmt.Errorf("failed to get loki auth credentials for cluster %s: %w", cluster.Name, err)
+		auth, ok := creds.Get(observabilityv1alpha1.CredentialBackendLogs)
+		if !ok {
+			return nil, fmt.Errorf("logs credentials missing for cluster %s", cluster.Name)
 		}
 
-		secrets[common.LokiURLKey] = lokiURL
+		secrets[common.LokiURLKey] = fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
 		secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
-		secrets[common.LokiUsernameKey] = username
-		secrets[common.LokiPasswordKey] = password
-		secrets[common.LokiRulerAPIURLKey] = lokiRulerAPIURL
+		secrets[common.LokiUsernameKey] = auth.Username
+		secrets[common.LokiPasswordKey] = auth.Password
+		secrets[common.LokiRulerAPIURLKey] = fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
 	}
 
 	if caBundle != "" {
