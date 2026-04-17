@@ -4,3 +4,5 @@
 // Without a Go source file in this directory, Ginkgo will complain about
 // test compilation errors when attempting to discover and run tests.
 package main
+
+func main() {}
