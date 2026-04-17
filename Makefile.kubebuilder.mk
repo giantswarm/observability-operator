@@ -190,11 +190,13 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 # Testing
 # ==================================================================================
 
+GINKGO_NODES ?= 4
+
 .PHONY: test
 test: ginkgo envtest ## Run tests with Ginkgo and envtest
-	$(call log_build,"Running tests with Ginkgo")
+	$(call log_build,"Running tests with Ginkgo nodes=$(GINKGO_NODES)")
 	@KUBEBUILDER_ASSETS="$$($(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" \
-		$(GINKGO) -p --nodes 4 -randomize-all --randomize-suites --cover ./...
+		$(GINKGO) --nodes $(GINKGO_NODES) -randomize-all --randomize-suites --cover ./...
 	@$(call log_info,"Testing completed")
 
 # ==================================================================================
