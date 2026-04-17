@@ -24,6 +24,10 @@ spec:
         image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ default .Chart.AppVersion .Values.image.tag }}"
         args:
         - --leader-elect
+        - --controllers-alertmanager-enabled={{ $.Values.operator.controllers.alertmanager.enabled }}
+        - --controllers-cluster-enabled={{ $.Values.operator.controllers.cluster.enabled }}
+        - --controllers-dashboard-enabled={{ $.Values.operator.controllers.dashboard.enabled }}
+        - --controllers-grafana-organization-enabled={{ $.Values.operator.controllers.grafanaOrganization.enabled }}
         - --grafana-url={{ $.Values.grafana.url }}
         - --grafana-client-retries={{ $.Values.grafana.clientRetries }}
         - --grafana-admin-secret-namespace={{ $.Values.grafana.adminSecretNamespace }}
@@ -61,7 +65,6 @@ spec:
         - --otlp-batch-max-size={{ $.Values.otlp.batchMaxSize }}
         - --otlp-batch-timeout={{ $.Values.otlp.batchTimeout }}
         # Alerting configuration
-        - --alertmanager-enabled={{ $.Values.alerting.enabled }}
         - --alertmanager-secret-name={{ include "alertmanager-secret.name" . }}
         - --alertmanager-url={{ $.Values.alerting.alertmanagerURL }}
         # Monitoring configuration
