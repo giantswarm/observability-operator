@@ -40,10 +40,9 @@ func (s *Service) ConfigureSSOSettings(ctx context.Context, organizations []*org
 		return fmt.Errorf("received nil payload from SSO provider settings for %s", ssoProvider)
 	}
 
-	// Safe type assertion with error handling
-	settings, ok := resp.Payload.Settings.(map[string]any)
-	if !ok {
-		return fmt.Errorf("unexpected settings type for %s: expected map[string]any, got %T", ssoProvider, resp.Payload.Settings)
+	settings := resp.Payload.Settings
+	if settings == nil {
+		settings = make(map[string]any)
 	}
 
 	orgsMapping, err := generateGrafanaOrgsMapping(organizations)
