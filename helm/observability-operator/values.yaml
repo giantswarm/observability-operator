@@ -205,6 +205,7 @@ operator:
       enabled: true
 
   networkPolicy:
+    # Note: we provide networkPolicy for compatibility reasons, but it's currently an allow-all policy.
     enabled: true
     flavor: kubernetes
 

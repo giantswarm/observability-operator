@@ -98,7 +98,7 @@ var _ = Describe("Cluster Controller", func() {
 			// Setup reconciler with actual services instead of mocks
 			organizationRepository := organization.NewNamespaceRepository(k8sClient)
 
-			bundleService := bundle.NewBundleConfigurationService(k8sClient, config.Config{
+			bundleService := bundle.New(k8sClient, config.Config{
 				Monitoring: config.MonitoringConfig{
 					Enabled: true,
 				},
@@ -108,57 +108,36 @@ var _ = Describe("Cluster Controller", func() {
 			agentConfigurationRepository := agent.NewConfigurationRepository(k8sClient)
 			credentialReader := &mockCredentialReader{}
 
-			alloyMetricsService := metrics.Service{
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						Name:     "management-cluster",
-						Pipeline: "testing",
-						Region:   "eu-west-1",
-						Customer: "giantswarm",
-					},
-					Monitoring: config.MonitoringConfig{
-						Enabled: true,
-					},
+			testCfg := config.Config{
+				Cluster: config.ClusterConfig{
+					Name:     "management-cluster",
+					Pipeline: "testing",
+					Region:   "eu-west-1",
+					Customer: "giantswarm",
 				},
+				Monitoring: config.MonitoringConfig{Enabled: true},
+				Logging:    config.LoggingConfig{Enabled: true},
+				Tracing:    config.TracingConfig{Enabled: true},
+			}
+
+			alloyMetricsService := &metrics.Service{
+				Config:                  testCfg,
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
 				CredentialReader:        credentialReader,
 			}
 
-			alloyLogsService := logs.Service{
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						Name:     "management-cluster",
-						Pipeline: "testing",
-						Region:   "eu-west-1",
-						Customer: "giantswarm",
-					},
-					Logging: config.LoggingConfig{
-						Enabled: true,
-					},
-				},
+			alloyLogsService := &logs.Service{
+				Config:                  testCfg,
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
 				CredentialReader:        credentialReader,
 			}
 
-			alloyEventsService := events.Service{
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						Name:     "management-cluster",
-						Pipeline: "testing",
-						Region:   "eu-west-1",
-						Customer: "giantswarm",
-					},
-					Logging: config.LoggingConfig{
-						Enabled: true,
-					},
-					Tracing: config.TracingConfig{
-						Enabled: true,
-					},
-				},
+			alloyEventsService := &events.Service{
+				Config:                  testCfg,
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
@@ -167,23 +146,18 @@ var _ = Describe("Cluster Controller", func() {
 
 			reconciler = &ClusterReconciler{
 				Client: k8sClient,
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						Name:     "management-cluster",
-						Pipeline: "testing",
-						Region:   "eu-west-1",
-						Customer: "giantswarm",
-					},
-					Monitoring: config.MonitoringConfig{
-						Enabled: true,
-					},
+				Config: testCfg,
+				collectors: []collectorEntry{
+					{name: "metrics", service: alloyMetricsService, isEnabled: testCfg.Monitoring.IsMonitoringEnabled},
+					{name: "logs", service: alloyLogsService, isEnabled: testCfg.Logging.IsLoggingEnabled},
+					{name: "events", service: alloyEventsService, isEnabled: func(c *clusterv1.Cluster) bool {
+						return testCfg.Logging.IsLoggingEnabled(c) || testCfg.Tracing.IsTracingEnabled(c) || testCfg.Monitoring.IsMonitoringEnabled(c)
+					}},
 				},
-				BundleConfigurationService: bundleService,
-				AlloyMetricsService:        alloyMetricsService,
-				AlloyLogsService:           alloyLogsService,
-				AlloyEventsService:         alloyEventsService,
-				RulerClient:                ruler.NewNoop(),
-				TenantRepository:           tenancy.NewTenantRepository(k8sClient),
+				observabilityBundleService: bundleService,
+				authManagers:               authManagers,
+				rulerClient:                ruler.NewNoop(),
+				tenantRepository:           tenancy.NewTenantRepository(k8sClient),
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
 			}
 		})
