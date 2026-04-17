@@ -221,14 +221,6 @@ func (m *MockDashboardsClient) DeletePublicDashboardWithParams(params *dashboard
 	return nil, nil
 }
 
-func (m *MockDashboardsClient) GetDashboardPermissionsListByID(dashboardID int64, opts ...dashboards.ClientOption) (*dashboards.GetDashboardPermissionsListByIDOK, error) {
-	return nil, nil
-}
-
-func (m *MockDashboardsClient) GetDashboardPermissionsListByIDWithParams(params *dashboards.GetDashboardPermissionsListByIDParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardPermissionsListByIDOK, error) {
-	return nil, nil
-}
-
 func (m *MockDashboardsClient) GetDashboardPermissionsListByUID(uid string, opts ...dashboards.ClientOption) (*dashboards.GetDashboardPermissionsListByUIDOK, error) {
 	return nil, nil
 }
@@ -245,27 +237,11 @@ func (m *MockDashboardsClient) GetDashboardSnapshotWithParams(params *dashboards
 	return nil, nil
 }
 
-func (m *MockDashboardsClient) GetDashboardVersionByID(dashboardVersionID int64, dashboardID int64, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionByIDOK, error) {
-	return nil, nil
-}
-
-func (m *MockDashboardsClient) GetDashboardVersionByIDWithParams(params *dashboards.GetDashboardVersionByIDParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionByIDOK, error) {
-	return nil, nil
-}
-
 func (m *MockDashboardsClient) GetDashboardVersionByUID(uid string, dashboardVersionID int64, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionByUIDOK, error) {
 	return nil, nil
 }
 
 func (m *MockDashboardsClient) GetDashboardVersionByUIDWithParams(params *dashboards.GetDashboardVersionByUIDParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionByUIDOK, error) {
-	return nil, nil
-}
-
-func (m *MockDashboardsClient) GetDashboardVersionsByID(dashboardID int64, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionsByIDOK, error) {
-	return nil, nil
-}
-
-func (m *MockDashboardsClient) GetDashboardVersionsByIDWithParams(params *dashboards.GetDashboardVersionsByIDParams, opts ...dashboards.ClientOption) (*dashboards.GetDashboardVersionsByIDOK, error) {
 	return nil, nil
 }
 
@@ -278,10 +254,6 @@ func (m *MockDashboardsClient) GetHomeDashboard(opts ...dashboards.ClientOption)
 }
 
 func (m *MockDashboardsClient) GetHomeDashboardWithParams(params *dashboards.GetHomeDashboardParams, opts ...dashboards.ClientOption) (*dashboards.GetHomeDashboardOK, error) {
-	return nil, nil
-}
-
-func (m *MockDashboardsClient) SearchDashboards(opts ...dashboards.ClientOption) (interface{}, error) {
 	return nil, nil
 }
 
@@ -350,14 +322,6 @@ func (m *MockDashboardsClient) RestoreDashboardVersionByUIDWithParams(params *da
 }
 
 func (m *MockDashboardsClient) SearchDashboardSnapshots(params *dashboards.SearchDashboardSnapshotsParams, opts ...dashboards.ClientOption) (*dashboards.SearchDashboardSnapshotsOK, error) {
-	return nil, nil
-}
-
-func (m *MockDashboardsClient) UpdateDashboardPermissionsByID(dashboardID int64, body *models.UpdateDashboardACLCommand, opts ...dashboards.ClientOption) (*dashboards.UpdateDashboardPermissionsByIDOK, error) {
-	return nil, nil
-}
-
-func (m *MockDashboardsClient) UpdateDashboardPermissionsByIDWithParams(params *dashboards.UpdateDashboardPermissionsByIDParams, opts ...dashboards.ClientOption) (*dashboards.UpdateDashboardPermissionsByIDOK, error) {
 	return nil, nil
 }
 
@@ -437,15 +401,11 @@ func (m *MockDatasourcesClient) AddDataSourceWithParams(params *datasources.AddD
 	return nil, nil
 }
 
-func (m *MockDatasourcesClient) CheckDatasourceHealthByUID(uid string, opts ...datasources.ClientOption) (interface{}, error) {
+func (m *MockDatasourcesClient) CheckDatasourceHealthWithUID(uid string, opts ...datasources.ClientOption) (*datasources.CheckDatasourceHealthWithUIDOK, error) {
 	return nil, nil
 }
 
-func (m *MockDatasourcesClient) CheckDatasourceHealthByUIDWithParams(params interface{}, opts ...datasources.ClientOption) (interface{}, error) {
-	return nil, nil
-}
-
-func (m *MockDatasourcesClient) CheckDatasourceHealthByID(id string, opts ...datasources.ClientOption) (interface{}, error) {
+func (m *MockDatasourcesClient) CheckDatasourceHealthWithUIDWithParams(params *datasources.CheckDatasourceHealthWithUIDParams, opts ...datasources.ClientOption) (*datasources.CheckDatasourceHealthWithUIDOK, error) {
 	return nil, nil
 }
 
@@ -473,19 +433,87 @@ func (m *MockDatasourcesClient) GetDataSourceByUIDWithParams(params *datasources
 	return nil, nil
 }
 
-func (m *MockDatasourcesClient) CallDatasourceResourceByID(id string, resourcePath string, opts ...datasources.ClientOption) (*datasources.CallDatasourceResourceByIDOK, error) {
-	return nil, nil
-}
-
-func (m *MockDatasourcesClient) CallDatasourceResourceByIDWithParams(params *datasources.CallDatasourceResourceByIDParams, opts ...datasources.ClientOption) (*datasources.CallDatasourceResourceByIDOK, error) {
-	return nil, nil
-}
-
-func (m *MockDatasourcesClient) CallDatasourceResourceWithUID(uid string, resourcePath string, opts ...datasources.ClientOption) (*datasources.CallDatasourceResourceWithUIDOK, error) {
+func (m *MockDatasourcesClient) CallDatasourceResourceWithUID(uid string, datasourceProxyRoute string, opts ...datasources.ClientOption) (*datasources.CallDatasourceResourceWithUIDOK, error) {
 	return nil, nil
 }
 
 func (m *MockDatasourcesClient) CallDatasourceResourceWithUIDWithParams(params *datasources.CallDatasourceResourceWithUIDParams, opts ...datasources.ClientOption) (*datasources.CallDatasourceResourceWithUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) CreateCorrelation(sourceUID string, body *models.CreateCorrelationCommand, opts ...datasources.ClientOption) (*datasources.CreateCorrelationOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) CreateCorrelationWithParams(params *datasources.CreateCorrelationParams, opts ...datasources.ClientOption) (*datasources.CreateCorrelationOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) DatasourceProxyDELETEByUIDcalls(uid string, datasourceProxyRoute string, opts ...datasources.ClientOption) (*datasources.DatasourceProxyDELETEByUIDcallsAccepted, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) DatasourceProxyDELETEByUIDcallsWithParams(params *datasources.DatasourceProxyDELETEByUIDcallsParams, opts ...datasources.ClientOption) (*datasources.DatasourceProxyDELETEByUIDcallsAccepted, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) DatasourceProxyGETByUIDcalls(uid string, datasourceProxyRoute string, opts ...datasources.ClientOption) (*datasources.DatasourceProxyGETByUIDcallsOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) DatasourceProxyGETByUIDcallsWithParams(params *datasources.DatasourceProxyGETByUIDcallsParams, opts ...datasources.ClientOption) (*datasources.DatasourceProxyGETByUIDcallsOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) DatasourceProxyPOSTByUIDcalls(params *datasources.DatasourceProxyPOSTByUIDcallsParams, opts ...datasources.ClientOption) (*datasources.DatasourceProxyPOSTByUIDcallsCreated, *datasources.DatasourceProxyPOSTByUIDcallsAccepted, error) {
+	return nil, nil, nil
+}
+
+func (m *MockDatasourcesClient) DeleteCorrelation(uid string, correlationUID string, opts ...datasources.ClientOption) (*datasources.DeleteCorrelationOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) DeleteCorrelationWithParams(params *datasources.DeleteCorrelationParams, opts ...datasources.ClientOption) (*datasources.DeleteCorrelationOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) GetCorrelation(sourceUID string, correlationUID string, opts ...datasources.ClientOption) (*datasources.GetCorrelationOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) GetCorrelationWithParams(params *datasources.GetCorrelationParams, opts ...datasources.ClientOption) (*datasources.GetCorrelationOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) GetCorrelations(params *datasources.GetCorrelationsParams, opts ...datasources.ClientOption) (*datasources.GetCorrelationsOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) GetCorrelationsBySourceUID(sourceUID string, opts ...datasources.ClientOption) (*datasources.GetCorrelationsBySourceUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) GetCorrelationsBySourceUIDWithParams(params *datasources.GetCorrelationsBySourceUIDParams, opts ...datasources.ClientOption) (*datasources.GetCorrelationsBySourceUIDOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) GetDataSourceIDByName(name string, opts ...datasources.ClientOption) (*datasources.GetDataSourceIDByNameOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) GetDataSourceIDByNameWithParams(params *datasources.GetDataSourceIDByNameParams, opts ...datasources.ClientOption) (*datasources.GetDataSourceIDByNameOK, error) {
+	return nil, nil
+}
+
+func (m *MockDatasourcesClient) QueryMetricsWithExpressions(body *models.MetricRequest, opts ...datasources.ClientOption) (*datasources.QueryMetricsWithExpressionsOK, *datasources.QueryMetricsWithExpressionsMultiStatus, error) {
+	return nil, nil, nil
+}
+
+func (m *MockDatasourcesClient) QueryMetricsWithExpressionsWithParams(params *datasources.QueryMetricsWithExpressionsParams, opts ...datasources.ClientOption) (*datasources.QueryMetricsWithExpressionsOK, *datasources.QueryMetricsWithExpressionsMultiStatus, error) {
+	return nil, nil, nil
+}
+
+func (m *MockDatasourcesClient) UpdateCorrelation(params *datasources.UpdateCorrelationParams, opts ...datasources.ClientOption) (*datasources.UpdateCorrelationOK, error) {
 	return nil, nil
 }
 
@@ -513,14 +541,6 @@ func (m *MockSsoSettingsClient) UpdateProviderSettings(provider string, body *mo
 }
 
 // For all other methods, use a generic approach that returns nil/error
-func (m *MockSsoSettingsClient) DeleteProviderSettings(provider string, opts ...sso_settings.ClientOption) (interface{}, error) {
-	return nil, nil
-}
-
-func (m *MockSsoSettingsClient) GetSSOSettings(opts ...sso_settings.ClientOption) (interface{}, error) {
-	return nil, nil
-}
-
 func (m *MockSsoSettingsClient) GetProviderSettingsWithParams(params *sso_settings.GetProviderSettingsParams, opts ...sso_settings.ClientOption) (*sso_settings.GetProviderSettingsOK, error) {
 	return nil, nil
 }
@@ -533,11 +553,23 @@ func (m *MockSsoSettingsClient) ListAllProvidersSettingsWithParams(params *sso_s
 	return nil, nil
 }
 
+func (m *MockSsoSettingsClient) PatchProviderSettings(key string, body *models.PatchProviderSettingsParamsBody, opts ...sso_settings.ClientOption) (*sso_settings.PatchProviderSettingsNoContent, error) {
+	return nil, nil
+}
+
+func (m *MockSsoSettingsClient) PatchProviderSettingsWithParams(params *sso_settings.PatchProviderSettingsParams, opts ...sso_settings.ClientOption) (*sso_settings.PatchProviderSettingsNoContent, error) {
+	return nil, nil
+}
+
 func (m *MockSsoSettingsClient) RemoveProviderSettings(provider string, opts ...sso_settings.ClientOption) (*sso_settings.RemoveProviderSettingsNoContent, error) {
 	return nil, nil
 }
 
 func (m *MockSsoSettingsClient) RemoveProviderSettingsWithParams(params *sso_settings.RemoveProviderSettingsParams, opts ...sso_settings.ClientOption) (*sso_settings.RemoveProviderSettingsNoContent, error) {
+	return nil, nil
+}
+
+func (m *MockSsoSettingsClient) UpdateProviderSettingsWithParams(params *sso_settings.UpdateProviderSettingsParams, opts ...sso_settings.ClientOption) (*sso_settings.UpdateProviderSettingsNoContent, error) {
 	return nil, nil
 }
 
@@ -566,14 +598,6 @@ func (m *MockFoldersClient) DeleteFolder(params *folders.DeleteFolderParams, opt
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*folders.DeleteFolderOK), args.Error(1)
-}
-
-func (m *MockFoldersClient) GetFolderByID(folderID int64, opts ...folders.ClientOption) (*folders.GetFolderByIDOK, error) {
-	return nil, nil
-}
-
-func (m *MockFoldersClient) GetFolderByIDWithParams(params *folders.GetFolderByIDParams, opts ...folders.ClientOption) (*folders.GetFolderByIDOK, error) {
-	return nil, nil
 }
 
 func (m *MockFoldersClient) GetFolderByUID(folderUID string, opts ...folders.ClientOption) (*folders.GetFolderByUIDOK, error) {
@@ -645,3 +669,12 @@ func (m *MockFoldersClient) UpdateFolderPermissionsWithParams(params *folders.Up
 }
 
 func (m *MockFoldersClient) SetTransport(transport runtime.ClientTransport) {}
+
+// Ensure mock implementations comply with their client service interfaces
+var (
+	_ orgs.ClientService         = (*MockOrgsClient)(nil)
+	_ dashboards.ClientService   = (*MockDashboardsClient)(nil)
+	_ datasources.ClientService  = (*MockDatasourcesClient)(nil)
+	_ sso_settings.ClientService = (*MockSsoSettingsClient)(nil)
+	_ folders.ClientService      = (*MockFoldersClient)(nil)
+)
