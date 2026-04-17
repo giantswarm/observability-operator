@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -69,6 +70,7 @@ func newTestApp(name, namespace, version string) *appv1.App {
 
 func newScheme() *runtime.Scheme {
 	s := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(s)
 	_ = clusterv1.AddToScheme(s)
 	_ = appv1.AddToScheme(s)
 	return s
@@ -89,10 +91,10 @@ func TestConfigureBundle(t *testing.T) {
 			WithObjects(hr).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
-		err := svc.configureBundle(context.Background(), cluster)
+		err := svc.Configure(context.Background(), cluster)
 		require.NoError(t, err)
 
 		// Verify HelmRelease was updated with valuesFrom
@@ -118,10 +120,10 @@ func TestConfigureBundle(t *testing.T) {
 			WithObjects(app).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
-		err := svc.configureBundle(context.Background(), cluster)
+		err := svc.Configure(context.Background(), cluster)
 		require.NoError(t, err)
 
 		// Verify App was updated with ExtraConfigs
@@ -141,10 +143,10 @@ func TestConfigureBundle(t *testing.T) {
 			WithScheme(newScheme()).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
-		err := svc.configureBundle(context.Background(), cluster)
+		err := svc.Configure(context.Background(), cluster)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get observability-bundle app")
 	})
@@ -156,13 +158,13 @@ func TestConfigureBundle(t *testing.T) {
 			WithObjects(hr).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
 		// Configure twice
-		err := svc.configureBundle(context.Background(), cluster)
+		err := svc.Configure(context.Background(), cluster)
 		require.NoError(t, err)
-		err = svc.configureBundle(context.Background(), cluster)
+		err = svc.Configure(context.Background(), cluster)
 		require.NoError(t, err)
 
 		// Verify only one valuesFrom entry exists
@@ -192,10 +194,10 @@ func TestConfigureBundle(t *testing.T) {
 			WithObjects(hr).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
-		err := svc.configureBundle(context.Background(), cluster)
+		err := svc.Configure(context.Background(), cluster)
 		require.NoError(t, err)
 
 		// Verify both entries exist
@@ -220,7 +222,7 @@ func TestConfigureBundle(t *testing.T) {
 	})
 }
 
-func TestGetObservabilityBundleAppVersion(t *testing.T) {
+func TestGetBundleVersion(t *testing.T) {
 	const (
 		clusterName      = "test-cluster"
 		clusterNamespace = "test-ns"
@@ -236,10 +238,10 @@ func TestGetObservabilityBundleAppVersion(t *testing.T) {
 			WithObjects(hr, ociRepo).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
-		version, err := svc.GetObservabilityBundleAppVersion(context.Background(), cluster)
+		version, err := svc.GetBundleVersion(context.Background(), cluster)
 		require.NoError(t, err)
 		assert.Equal(t, semver.MustParse("1.2.3"), version)
 	})
@@ -251,10 +253,10 @@ func TestGetObservabilityBundleAppVersion(t *testing.T) {
 			WithObjects(app).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
-		version, err := svc.GetObservabilityBundleAppVersion(context.Background(), cluster)
+		version, err := svc.GetBundleVersion(context.Background(), cluster)
 		require.NoError(t, err)
 		assert.Equal(t, semver.MustParse("2.0.0"), version)
 	})
@@ -264,10 +266,10 @@ func TestGetObservabilityBundleAppVersion(t *testing.T) {
 			WithScheme(newScheme()).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
-		_, err := svc.GetObservabilityBundleAppVersion(context.Background(), cluster)
+		_, err := svc.GetBundleVersion(context.Background(), cluster)
 		assert.Error(t, err)
 	})
 
@@ -279,10 +281,10 @@ func TestGetObservabilityBundleAppVersion(t *testing.T) {
 			WithObjects(hr, ociRepo).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
-		_, err := svc.GetObservabilityBundleAppVersion(context.Background(), cluster)
+		_, err := svc.GetBundleVersion(context.Background(), cluster)
 		assert.Error(t, err)
 	})
 
@@ -293,10 +295,10 @@ func TestGetObservabilityBundleAppVersion(t *testing.T) {
 			WithObjects(hr).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
-		_, err := svc.GetObservabilityBundleAppVersion(context.Background(), cluster)
+		_, err := svc.GetBundleVersion(context.Background(), cluster)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get OCIRepository")
 	})
@@ -310,10 +312,10 @@ func TestGetObservabilityBundleAppVersion(t *testing.T) {
 			WithObjects(hr, ociRepo, app).
 			Build()
 
-		svc := NewBundleConfigurationService(client, config.Config{})
+		svc := New(client, config.Config{})
 		cluster := newTestCluster(clusterName, clusterNamespace)
 
-		version, err := svc.GetObservabilityBundleAppVersion(context.Background(), cluster)
+		version, err := svc.GetBundleVersion(context.Background(), cluster)
 		require.NoError(t, err)
 		assert.Equal(t, semver.MustParse("3.0.0"), version)
 	})

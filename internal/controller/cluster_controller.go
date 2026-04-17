@@ -24,6 +24,7 @@ import (
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent"
+	"github.com/giantswarm/observability-operator/pkg/agent/collectors"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/events"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/logs"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
@@ -39,10 +40,18 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/ruler"
 )
 
-// authManagerEntry pairs an auth manager with its feature check function
+// authManagerEntry pairs an auth manager with its feature check function.
 type authManagerEntry struct {
 	authManager auth.AuthManager
 	isEnabled   func(*clusterv1.Cluster) bool
+}
+
+// collectorEntry pairs a CollectorService with the feature-flag predicate
+// that determines whether that collector should be active for a given cluster.
+type collectorEntry struct {
+	name      string
+	service   collectors.CollectorService
+	isEnabled func(*clusterv1.Cluster) bool
 }
 
 // ClusterMonitoringReconciler reconciles a Cluster object
@@ -50,23 +59,19 @@ type ClusterMonitoringReconciler struct {
 	// Client is the controller client.
 	Client client.Client
 	Config config.Config
-	// AlloyMetricsService is the service which manages Alloy monitoring agent configuration.
-	AlloyMetricsService metrics.Service
-	// AlloyLogsService is the service which manages Alloy logs configuration.
-	AlloyLogsService logs.Service
-	// AlloyEventsService is the service which manages Alloy events configuration.
-	AlloyEventsService events.Service
-	// HeartbeatRepositories is the list of repositories for managing heartbeats.
-	HeartbeatRepositories []heartbeat.HeartbeatRepository
+	// collectors is the ordered list of Alloy signal collectors (metrics, logs, events).
+	collectors []collectorEntry
+	// heartbeatRepositories is the list of repositories for managing heartbeats.
+	heartbeatRepositories []heartbeat.HeartbeatRepository
 	// authManagers contains all authentication managers with their feature checks.
 	authManagers map[auth.AuthType]authManagerEntry
-	// BundleConfigurationService is the service for configuring the observability bundle.
-	BundleConfigurationService *bundle.BundleConfigurationService
-	// RulerClient deletes ruler rules on cluster deletion.
-	RulerClient ruler.Client
-	// TenantRepository provides the list of all active tenants for ruler cleanup.
-	TenantRepository tenancy.TenantRepository
-	// FinalizerHelper is the helper for managing finalizers.
+	// observabilityBundleService is the service for configuring the observability bundle.
+	observabilityBundleService bundle.ObservabilityBundleService
+	// rulerClient deletes ruler rules on cluster deletion.
+	rulerClient ruler.Client
+	// tenantRepository provides the list of all active tenants for ruler cleanup.
+	tenantRepository tenancy.TenantRepository
+	// finalizerHelper is the helper for managing finalizers.
 	finalizerHelper FinalizerHelper
 }
 
@@ -138,7 +143,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 	// Create agent configuration repository
 	agentConfigurationRepository := agent.NewConfigurationRepository(managerClient)
 
-	alloyMetricsService := metrics.Service{
+	alloyMetricsService := &metrics.Service{
 		Config:                  cfg,
 		ConfigurationRepository: agentConfigurationRepository,
 		OrganizationRepository:  organizationRepository,
@@ -146,8 +151,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 		AuthManager:             mimirAuthManager,
 	}
 
-	// Initialize logging services
-	alloyLogsService := logs.Service{
+	alloyLogsService := &logs.Service{
 		Config:                  cfg,
 		ConfigurationRepository: agentConfigurationRepository,
 		OrganizationRepository:  organizationRepository,
@@ -155,7 +159,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 		LogsAuthManager:         lokiAuthManager,
 	}
 
-	alloyEventsService := events.Service{
+	alloyEventsService := &events.Service{
 		Config:                  cfg,
 		ConfigurationRepository: agentConfigurationRepository,
 		OrganizationRepository:  organizationRepository,
@@ -163,6 +167,30 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 		LogsAuthManager:         lokiAuthManager,
 		TracesAuthManager:       tempoAuthManager,
 		MetricsAuthManager:      mimirAuthManager,
+	}
+
+	alloyCollectors := []collectorEntry{
+		{
+			name:      "metrics",
+			service:   alloyMetricsService,
+			isEnabled: cfg.Monitoring.IsMonitoringEnabled,
+		},
+		{
+			// alloy-logs handles logs and network monitoring (daemonset, one per node)
+			name:    "logs",
+			service: alloyLogsService,
+			isEnabled: func(c *clusterv1.Cluster) bool {
+				return cfg.Logging.IsLoggingEnabled(c) || cfg.Monitoring.IsNetworkMonitoringEnabled(c)
+			},
+		},
+		{
+			// alloy-events handles kube events, traces and OTLP (deployment, cluster-level)
+			name:    "events",
+			service: alloyEventsService,
+			isEnabled: func(c *clusterv1.Cluster) bool {
+				return cfg.Logging.IsLoggingEnabled(c) || cfg.Tracing.IsTracingEnabled(c) || cfg.Monitoring.IsMonitoringEnabled(c)
+			},
+		},
 	}
 
 	var rulerClients []ruler.Client
@@ -177,14 +205,12 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 	r := &ClusterMonitoringReconciler{
 		Client:                     managerClient,
 		Config:                     cfg,
-		HeartbeatRepositories:      heartbeatRepositories,
-		AlloyMetricsService:        alloyMetricsService,
-		AlloyLogsService:           alloyLogsService,
-		AlloyEventsService:         alloyEventsService,
+		collectors:                 alloyCollectors,
+		heartbeatRepositories:      heartbeatRepositories,
 		authManagers:               authManagers,
-		BundleConfigurationService: bundle.NewBundleConfigurationService(managerClient, cfg),
-		RulerClient:                rulerClient,
-		TenantRepository:           tenantRepository,
+		observabilityBundleService: bundle.New(managerClient, cfg),
+		rulerClient:                rulerClient,
+		tenantRepository:           tenantRepository,
 		finalizerHelper:            NewFinalizerHelper(managerClient, monitoring.MonitoringFinalizer),
 	}
 
@@ -332,7 +358,7 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 	var errs []error
 
 	// We always configure the bundle, even if monitoring is disabled for the cluster.
-	err = r.BundleConfigurationService.Configure(ctx, cluster)
+	err = r.observabilityBundleService.Configure(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to configure the observability-bundle")
 		errs = append(errs, fmt.Errorf("bundle configuration: %w", err))
@@ -387,7 +413,7 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 	}
 
 	// Get bundle version - this is required for all alloy service operations
-	observabilityBundleVersion, err := r.BundleConfigurationService.GetObservabilityBundleAppVersion(ctx, cluster)
+	observabilityBundleVersion, err := r.observabilityBundleService.GetBundleVersion(ctx, cluster)
 	if err != nil {
 		return fmt.Errorf("failed to get observability-bundle version: %w", err)
 	}
@@ -398,64 +424,23 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		return fmt.Errorf("failed to read CA bundle: %w", err)
 	}
 
-	// Collect errors for independent alloy service operations
+	// Reconcile each collector: create if enabled, delete if disabled (independent tasks).
 	var errs []error
-
-	// Metrics-specific: Alloy monitoring configuration
-	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-		err = r.AlloyMetricsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle)
-		if err != nil {
-			logger.Error(err, "failed to create or update alloy monitoring config")
-			errs = append(errs, fmt.Errorf("alloy metrics reconcile create: %w", err))
-		}
-	} else {
-		err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy monitoring config")
-			errs = append(errs, fmt.Errorf("alloy metrics reconcile delete: %w", err))
+	for _, c := range r.collectors {
+		if c.isEnabled(cluster) {
+			if err := c.service.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle); err != nil {
+				logger.Error(err, "failed to create or update alloy config", "collector", c.name)
+				errs = append(errs, fmt.Errorf("alloy %s reconcile create: %w", c.name, err))
+			}
+		} else {
+			if err := c.service.ReconcileDelete(ctx, cluster); err != nil {
+				logger.Error(err, "failed to delete alloy config", "collector", c.name)
+				errs = append(errs, fmt.Errorf("alloy %s reconcile delete: %w", c.name, err))
+			}
 		}
 	}
 
-	// alloy-logs specific: daemonset alloy config, that collects data from each node (not only logs) - TODO rename alloy-logs to alloy-node
-	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
-		// Create or update Alloy logs configuration
-		err = r.AlloyLogsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle)
-		if err != nil {
-			logger.Error(err, "failed to create or update alloy logs config")
-			errs = append(errs, fmt.Errorf("alloy logs reconcile create: %w", err))
-		}
-	} else {
-		// Clean up any existing alloy logs configuration
-		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy logs config")
-			errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
-		}
-	}
-
-	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs, traces and OTLP data - TODO rename alloy-events to alloy-cluster
-	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) || r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-		// Create or update Alloy events configuration
-		err = r.AlloyEventsService.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle)
-		if err != nil {
-			logger.Error(err, "failed to create or update alloy events config")
-			errs = append(errs, fmt.Errorf("alloy events reconcile create: %w", err))
-		}
-	} else {
-		// Clean up any existing alloy events configuration
-		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy events config")
-			errs = append(errs, fmt.Errorf("alloy events reconcile delete: %w", err))
-		}
-	}
-
-	// If any alloy service operations failed, combine them and return
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-
-	return nil
+	return errors.Join(errs...)
 }
 
 // reconcileDelete handles cluster deletion.
@@ -471,38 +456,19 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 	var errs []error
 
 	// We always remove the bundle configure, even if monitoring is disabled for the cluster.
-	err := r.BundleConfigurationService.RemoveConfiguration(ctx, cluster)
+	err := r.observabilityBundleService.RemoveConfiguration(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to remove the observability-bundle configuration")
 		errs = append(errs, fmt.Errorf("remove bundle configuration: %w", err))
 	}
 
-	// Metrics-specific: Delete Alloy monitoring configuration
-	if r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-		err = r.AlloyMetricsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy monitoring config")
-			errs = append(errs, fmt.Errorf("delete alloy metrics: %w", err))
-		}
-	}
-
-	// alloy-logs specific: daemonset alloy config, that collects data from each node (not only logs) - TODO rename alloy-logs to alloy-daemonset
-	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Monitoring.IsNetworkMonitoringEnabled(cluster) {
-		// Clean up any existing alloy logs configuration
-		err = r.AlloyLogsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy logs config")
-			errs = append(errs, fmt.Errorf("alloy logs reconcile delete: %w", err))
-		}
-	}
-
-	// alloy-event specific: Alloy events configuration - deployment that handles both kube event logs, traces and OTLP data - TODO rename alloy-events to alloy-cluster
-	if r.Config.Logging.IsLoggingEnabled(cluster) || r.Config.Tracing.IsTracingEnabled(cluster) || r.Config.Monitoring.IsMonitoringEnabled(cluster) {
-		// Clean up any existing alloy events configuration
-		err = r.AlloyEventsService.ReconcileDelete(ctx, cluster)
-		if err != nil {
-			logger.Error(err, "failed to delete alloy events config")
-			errs = append(errs, fmt.Errorf("alloy events reconcile delete: %w", err))
+	// Delete Alloy configuration for all enabled collectors.
+	for _, c := range r.collectors {
+		if c.isEnabled(cluster) {
+			if err := c.service.ReconcileDelete(ctx, cluster); err != nil {
+				logger.Error(err, "failed to delete alloy config", "collector", c.name)
+				errs = append(errs, fmt.Errorf("delete alloy %s: %w", c.name, err))
+			}
 		}
 	}
 
@@ -517,13 +483,13 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		}
 	}
 	// Delete ruler rules scoped to this cluster for every active tenant.
-	tenants, err := r.TenantRepository.List(ctx)
+	tenants, err := r.tenantRepository.List(ctx)
 	if err != nil {
 		logger.Error(err, "failed to list tenants for ruler cleanup")
 		errs = append(errs, fmt.Errorf("list tenants for ruler cleanup: %w", err))
 	} else {
 		for _, tenantID := range tenants {
-			if err := r.RulerClient.DeleteClusterRulesForTenant(ctx, tenantID, cluster.Name); err != nil {
+			if err := r.rulerClient.DeleteClusterRulesForTenant(ctx, tenantID, cluster.Name); err != nil {
 				logger.Error(err, "failed to delete ruler rules", "tenant", tenantID)
 				errs = append(errs, fmt.Errorf("delete ruler rules for tenant %s: %w", tenantID, err))
 			}
@@ -564,11 +530,11 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 	// If monitoring is enabled as the installation level, configure the monitoring stack, otherwise, tear it down.
 	if r.Config.Monitoring.Enabled {
-		if len(r.HeartbeatRepositories) == 0 {
+		if len(r.heartbeatRepositories) == 0 {
 			logger.Info("no heartbeat repositories configured, skipping this feature")
 		}
 
-		for i, heartbeatRepo := range r.HeartbeatRepositories {
+		for i, heartbeatRepo := range r.heartbeatRepositories {
 			err := heartbeatRepo.CreateOrUpdate(ctx)
 			if err != nil {
 				logger.Error(err, "failed to create or update heartbeat", "repository_index", i)
@@ -593,7 +559,7 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 
 // tearDown tears down the monitoring stack management cluster specific components like the hearbeat, gateway secrets and so on.
 func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
-	for i, heartbeatRepo := range r.HeartbeatRepositories {
+	for i, heartbeatRepo := range r.heartbeatRepositories {
 		err := heartbeatRepo.Delete(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to delete heartbeat (repository %d): %w", i, err)
