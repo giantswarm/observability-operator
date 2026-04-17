@@ -89,7 +89,7 @@ var _ = Describe("Cluster Controller", func() {
 			// Setup reconciler with actual services instead of mocks
 			organizationRepository := organization.NewNamespaceRepository(k8sClient)
 
-			bundleService := bundle.NewBundleConfigurationService(k8sClient, config.Config{
+			bundleService := bundle.New(k8sClient, config.Config{
 				Monitoring: config.MonitoringConfig{
 					Enabled: true,
 				},
@@ -128,57 +128,36 @@ var _ = Describe("Cluster Controller", func() {
 			// Create agent configuration repository
 			agentConfigurationRepository := agent.NewConfigurationRepository(k8sClient)
 
-			alloyMetricsService := metrics.Service{
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						Name:     "management-cluster",
-						Pipeline: "testing",
-						Region:   "eu-west-1",
-						Customer: "giantswarm",
-					},
-					Monitoring: config.MonitoringConfig{
-						Enabled: true,
-					},
+			testCfg := config.Config{
+				Cluster: config.ClusterConfig{
+					Name:     "management-cluster",
+					Pipeline: "testing",
+					Region:   "eu-west-1",
+					Customer: "giantswarm",
 				},
+				Monitoring: config.MonitoringConfig{Enabled: true},
+				Logging:    config.LoggingConfig{Enabled: true},
+				Tracing:    config.TracingConfig{Enabled: true},
+			}
+
+			alloyMetricsService := &metrics.Service{
+				Config:                  testCfg,
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
 				AuthManager:             mimirAuthManager,
 			}
 
-			alloyLogsService := logs.Service{
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						Name:     "management-cluster",
-						Pipeline: "testing",
-						Region:   "eu-west-1",
-						Customer: "giantswarm",
-					},
-					Logging: config.LoggingConfig{
-						Enabled: true,
-					},
-				},
+			alloyLogsService := &logs.Service{
+				Config:                  testCfg,
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
 				LogsAuthManager:         lokiAuthManager,
 			}
 
-			alloyEventsService := events.Service{
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						Name:     "management-cluster",
-						Pipeline: "testing",
-						Region:   "eu-west-1",
-						Customer: "giantswarm",
-					},
-					Logging: config.LoggingConfig{
-						Enabled: true,
-					},
-					Tracing: config.TracingConfig{
-						Enabled: true,
-					},
-				},
+			alloyEventsService := &events.Service{
+				Config:                  testCfg,
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
@@ -186,48 +165,26 @@ var _ = Describe("Cluster Controller", func() {
 				TracesAuthManager:       tempoAuthManager,
 			}
 
-			// Create auth managers map for the reconciler
 			authManagers := map[auth.AuthType]authManagerEntry{
-				auth.AuthTypeMetrics: {
-					authManager: mimirAuthManager,
-					isEnabled: func(c *clusterv1.Cluster) bool {
-						return config.Config{Monitoring: config.MonitoringConfig{Enabled: true}}.Monitoring.IsMonitoringEnabled(c)
-					},
-				},
-				auth.AuthTypeLogs: {
-					authManager: lokiAuthManager,
-					isEnabled: func(c *clusterv1.Cluster) bool {
-						return config.Config{Logging: config.LoggingConfig{Enabled: true}}.Logging.IsLoggingEnabled(c)
-					},
-				},
-				auth.AuthTypeTraces: {
-					authManager: tempoAuthManager,
-					isEnabled: func(c *clusterv1.Cluster) bool {
-						return config.Config{Tracing: config.TracingConfig{Enabled: true}}.Tracing.IsTracingEnabled(c)
-					},
-				},
+				auth.AuthTypeMetrics: {authManager: mimirAuthManager, isEnabled: testCfg.Monitoring.IsMonitoringEnabled},
+				auth.AuthTypeLogs:    {authManager: lokiAuthManager, isEnabled: testCfg.Logging.IsLoggingEnabled},
+				auth.AuthTypeTraces:  {authManager: tempoAuthManager, isEnabled: testCfg.Tracing.IsTracingEnabled},
 			}
 
 			reconciler = &ClusterMonitoringReconciler{
 				Client: k8sClient,
-				Config: config.Config{
-					Cluster: config.ClusterConfig{
-						Name:     "management-cluster",
-						Pipeline: "testing",
-						Region:   "eu-west-1",
-						Customer: "giantswarm",
-					},
-					Monitoring: config.MonitoringConfig{
-						Enabled: true,
-					},
+				Config: testCfg,
+				collectors: []collectorEntry{
+					{name: "metrics", service: alloyMetricsService, isEnabled: testCfg.Monitoring.IsMonitoringEnabled},
+					{name: "logs", service: alloyLogsService, isEnabled: testCfg.Logging.IsLoggingEnabled},
+					{name: "events", service: alloyEventsService, isEnabled: func(c *clusterv1.Cluster) bool {
+						return testCfg.Logging.IsLoggingEnabled(c) || testCfg.Tracing.IsTracingEnabled(c) || testCfg.Monitoring.IsMonitoringEnabled(c)
+					}},
 				},
-				BundleConfigurationService: bundleService,
-				AlloyMetricsService:        alloyMetricsService,
-				AlloyLogsService:           alloyLogsService,
-				AlloyEventsService:         alloyEventsService,
+				observabilityBundleService: bundleService,
 				authManagers:               authManagers,
-				RulerClient:                ruler.NewNoop(),
-				TenantRepository:           tenancy.NewTenantRepository(k8sClient),
+				rulerClient:                ruler.NewNoop(),
+				tenantRepository:           tenancy.NewTenantRepository(k8sClient),
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
 			}
 		})
