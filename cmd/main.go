@@ -535,6 +535,13 @@ func setupApplication() error {
 		}
 	}
 
+	if cfg.Operator.Controllers.AgentCredential.Enabled {
+		err = controller.SetupAgentCredentialReconciler(mgr, cfg)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (AgentCredentialReconciler): %w", err)
+		}
+	}
+
 	if cfg.Operator.Controllers.GrafanaOrganization.Enabled {
 		// Setup controller for the GrafanaOrganization resource.
 		err = controller.SetupGrafanaOrganizationReconciler(mgr, cfg, grafanaClientGen)
