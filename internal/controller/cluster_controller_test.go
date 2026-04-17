@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/blang/semver/v4"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +29,20 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/ruler"
 )
+
+// mockCollector is a testify-based stand-in for collectors.CollectorService
+// so tests can assert which collectors had their lifecycle hooks called.
+type mockCollector struct {
+	mock.Mock
+}
+
+func (m *mockCollector) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, version semver.Version, caBundle string) error {
+	return m.Called(ctx, cluster, version, caBundle).Error(0)
+}
+
+func (m *mockCollector) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
+	return m.Called(ctx, cluster).Error(0)
+}
 
 // mockCredentialReader returns fixed credentials for every request.
 type mockCredentialReader struct{}
@@ -223,6 +239,37 @@ var _ = Describe("Cluster Controller", func() {
 			// Should handle deletion gracefully with real services
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
+		})
+
+		It("should delete all collector configs on cluster deletion, even disabled ones", func() {
+			By("Seeding the reconciler with an always-enabled and an always-disabled mock collector")
+			enabledMock := &mockCollector{}
+			disabledMock := &mockCollector{}
+			enabledMock.On("ReconcileDelete", mock.Anything, mock.Anything).Return(nil)
+			disabledMock.On("ReconcileDelete", mock.Anything, mock.Anything).Return(nil)
+
+			reconciler.collectors = []collectorEntry{
+				{name: "enabled", service: enabledMock, isEnabled: func(*clusterv1.Cluster) bool { return true }},
+				{name: "disabled", service: disabledMock, isEnabled: func(*clusterv1.Cluster) bool { return false }},
+			}
+
+			By("Adding the finalizer and marking the cluster for deletion")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, namespaceName, cluster); err != nil {
+					return err
+				}
+				cluster.Finalizers = append(cluster.Finalizers, monitoring.MonitoringFinalizer)
+				return k8sClient.Update(ctx, cluster)
+			}, timeout, interval).Should(Succeed())
+			Expect(k8sClient.Delete(ctx, cluster)).To(Succeed())
+
+			By("Reconciling the delete")
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespaceName})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Both collectors' ReconcileDelete were invoked")
+			enabledMock.AssertCalled(GinkgoT(), "ReconcileDelete", mock.Anything, mock.Anything)
+			disabledMock.AssertCalled(GinkgoT(), "ReconcileDelete", mock.Anything, mock.Anything)
 		})
 
 		It("should handle non-existent cluster resources", func() {

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Cluster deletion: Alloy collector ConfigMaps/Secrets were leaked for collectors whose feature flag was flipped off between the previous reconcile and the delete. `reconcileDelete` now calls `ReconcileDelete` on every collector unconditionally.
+
 ### Added
 
 - Per-controller enable flags `--controllers-{alertmanager,cluster,dashboard,grafana-organization}-enabled` (all default `true`). Exposed via `operator.controllers.*.enabled` Helm values so individual reconcilers can be disabled at deploy time.
