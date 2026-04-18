@@ -111,7 +111,7 @@ func (s *Service) resolveShards(ctx context.Context, cluster *clusterv1.Cluster)
 		headSeries, err = s.MetricsQuerier.QueryHeadSeries(ctx, cluster)
 		if err != nil {
 			logger.Error(err, "alloy-metrics-service - failed to query head series")
-			metrics.MimirQueryErrors.WithLabelValues().Inc()
+			metrics.MimirQueryErrors.Inc()
 			headSeries = 0
 		}
 	}

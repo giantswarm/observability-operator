@@ -124,7 +124,9 @@ func (s *Service) findOrgByID(orgID int64) (*organization.Organization, error) {
 	org, err := s.grafanaClient.Orgs().GetOrgByID(orgID)
 	if err != nil {
 		if isNotFound(err) {
-			return nil, fmt.Errorf("%w: %w", organization.ErrOrganizationNotFound, err)
+			// Join so errors.Is can still match ErrOrganizationNotFound without
+			// the awkward `%w: %w` double-wrap that obscures the sentinel.
+			return nil, errors.Join(organization.ErrOrganizationNotFound, err)
 		}
 
 		return nil, fmt.Errorf("failed to get organization by id: %w", err)

@@ -169,7 +169,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 // - Adding the finalizer to the CR
 // - Updating the CR status field
 // - Renaming the Grafana Main Org.
-func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
+func (r *GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, grafanaOrganization)
 	if err != nil {
@@ -301,7 +301,7 @@ func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx conte
 }
 
 // configureGrafanaSSOSettings configures Grafana SSO settings based on all active GrafanaOrganizations
-func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
+func (r *GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
 	allOrganizations, err := r.listActiveGrafanaOrganizations(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get all organizations for SSO configuration: %w", err)
@@ -315,7 +315,7 @@ func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.C
 }
 
 // reconcileDelete deletes the grafana organization.
-func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) error {
+func (r *GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
 	// We do not need to delete anything if there is no finalizer on the grafana organization

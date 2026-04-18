@@ -6,10 +6,10 @@ import (
 )
 
 var (
-	MimirQueryErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+	MimirQueryErrors = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "observability_operator_mimir_head_series_query_errors_total",
-		Help: "Total number of reconciliations error",
-	}, nil)
+		Help: "Total number of errors returned by the Mimir head-series query used for Alloy sharding.",
+	})
 
 	// GrafanaOrganization metrics
 	GrafanaOrganizationTenantInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
