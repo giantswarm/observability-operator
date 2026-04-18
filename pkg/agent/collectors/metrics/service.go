@@ -31,7 +31,7 @@ type Service struct {
 	OrganizationRepository  organization.OrganizationRepository
 	TenantRepository        tenancy.TenantRepository
 	AuthManager             auth.AuthManager
-	MetricsQuerier MetricsQuerier
+	MetricsQuerier          MetricsQuerier
 }
 
 func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, caBundle string) error {
