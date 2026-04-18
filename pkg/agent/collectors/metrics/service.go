@@ -31,7 +31,6 @@ type Service struct {
 	OrganizationRepository  organization.OrganizationRepository
 	TenantRepository        tenancy.TenantRepository
 	AuthManager             auth.AuthManager
-	// MetricsQuerier resolves the Alloy head-series count for sharding.
 	// Keeping this on the service (not inside the renderer) lets
 	// GenerateAlloyMonitoringConfigMapData stay a pure transformation.
 	MetricsQuerier MetricsQuerier
