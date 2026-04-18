@@ -190,8 +190,10 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	// Convert to domain object
 	organization := r.organizationMapper.FromGrafanaOrganization(grafanaOrganization)
 
-	// Create or update the grafana organization
-	updatedID, err := grafanaService.ConfigureOrganization(ctx, organization)
+	// Create or update the grafana organization. ConfigureOrganization returns a new
+	// value object with the resolved ID — do not reuse the input `organization` after
+	// this point, it still carries the (possibly stale) status ID.
+	organization, err = grafanaService.ConfigureOrganization(ctx, organization)
 	if err != nil {
 		// Set error status and update metric before returning
 		orgStatus = metrics.OrgStatusError
@@ -200,9 +202,9 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Update CR status if anything was changed
-	if grafanaOrganization.Status.OrgID != updatedID {
+	if grafanaOrganization.Status.OrgID != organization.ID() {
 		logger.Info("updating orgID in the grafanaOrganization status")
-		grafanaOrganization.Status.OrgID = updatedID
+		grafanaOrganization.Status.OrgID = organization.ID()
 
 		err = r.Client.Status().Update(ctx, grafanaOrganization)
 		if err != nil {

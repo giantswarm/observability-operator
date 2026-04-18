@@ -149,6 +149,11 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 		OrganizationRepository:  organizationRepository,
 		TenantRepository:        tenantRepository,
 		AuthManager:             mimirAuthManager,
+		MetricsQuerier: metrics.MimirQuerier{
+			MetricsQueryURL: cfg.Monitoring.MetricsQueryURL,
+			DefaultTenant:   cfg.DefaultTenant,
+			QueryTimeout:    cfg.HTTP.MimirQueryTimeout,
+		},
 	}
 
 	alloyLogsService := &logs.Service{

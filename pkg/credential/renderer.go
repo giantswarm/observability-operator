@@ -26,15 +26,21 @@ func SecretName(cred *observabilityv1alpha1.AgentCredential) string {
 // Renderer creates or updates the per-credential basic-auth Secret backing
 // an AgentCredential.
 type Renderer struct {
-	Client            client.Client
-	PasswordGenerator PasswordGenerator
+	client            client.Client
+	passwordGenerator PasswordGenerator
 }
 
 // NewRenderer builds a Renderer with the default password generator.
 func NewRenderer(c client.Client) *Renderer {
+	return NewRendererWithGenerator(c, NewPasswordGenerator())
+}
+
+// NewRendererWithGenerator builds a Renderer with a caller-supplied password
+// generator. Intended for tests that need deterministic passwords.
+func NewRendererWithGenerator(c client.Client, pg PasswordGenerator) *Renderer {
 	return &Renderer{
-		Client:            c,
-		PasswordGenerator: NewPasswordGenerator(),
+		client:            c,
+		passwordGenerator: pg,
 	}
 }
 
@@ -50,7 +56,7 @@ func (r *Renderer) Render(ctx context.Context, cred *observabilityv1alpha1.Agent
 		},
 	}
 
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, secret, func() error {
+	result, err := ctrl.CreateOrUpdate(ctx, r.client, secret, func() error {
 		// Remove any existing controller ownerReference pointing to a Cluster
 		// before setting the new one pointing to the AgentCredential CR.
 		// This handles adoption of Secrets that were previously owned by the
@@ -65,7 +71,7 @@ func (r *Renderer) Render(ctx context.Context, cred *observabilityv1alpha1.Agent
 		}
 		secret.SetOwnerReferences(cleaned)
 
-		if err := controllerutil.SetControllerReference(cred, secret, r.Client.Scheme()); err != nil {
+		if err := controllerutil.SetControllerReference(cred, secret, r.client.Scheme()); err != nil {
 			return fmt.Errorf("failed to set owner reference: %w", err)
 		}
 
@@ -85,14 +91,14 @@ func (r *Renderer) Render(ctx context.Context, cred *observabilityv1alpha1.Agent
 		// old auth manager without rotating the password.
 		password := string(secret.Data[SecretKeyPassword])
 		if password == "" {
-			newPassword, err := r.PasswordGenerator.GeneratePassword(32)
+			newPassword, err := r.passwordGenerator.GeneratePassword(32)
 			if err != nil {
 				return fmt.Errorf("failed to generate password: %w", err)
 			}
 			password = newPassword
 		}
 
-		htpasswdEntry, err := r.PasswordGenerator.GenerateHtpasswd(cred.Spec.AgentName, password)
+		htpasswdEntry, err := r.passwordGenerator.GenerateHtpasswd(cred.Spec.AgentName, password)
 		if err != nil {
 			return fmt.Errorf("failed to generate htpasswd: %w", err)
 		}

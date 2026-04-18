@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking (Helm)**: removed the `--alertmanager-enabled` flag (formerly gated by `alerting.enabled`). Use `--controllers-alertmanager-enabled` / `operator.controllers.alertmanager.enabled` instead. Default flipped from `false` to `true` — the Alertmanager controller is now opt-out.
 - internal code refactoring
+- `pkg/domain/organization.Organization` is now treated as an immutable value object: `SetID` is replaced by `WithID`, which returns a copy. `grafana.Service.UpsertOrganization` / `ConfigureOrganization` return the resolved `*Organization` instead of mutating the caller's instance.
+- `pkg/credential.Aggregator` and `pkg/credential.Renderer` no longer expose their `client.Client` or `PasswordGenerator` fields; callers must go through `NewAggregator` / `NewRenderer` / `NewRendererWithGenerator`.
+- Alloy monitoring config generation is now a pure transformation: the Mimir head-series query and shard computation move from `GenerateAlloyMonitoringConfigMapData` into `metrics.Service.ReconcileCreate`, behind a new `MetricsQuerier` interface (production: `MimirQuerier`). Lets the renderer be unit-tested without a Mimir stub.
 
 ### Fixed
 

@@ -14,8 +14,11 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
-// UpsertOrganization creates or updates an organization in Grafana based on the provided domain organization.
-func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Organization) error {
+// UpsertOrganization creates or updates an organization in Grafana based on the provided
+// domain organization and returns the organization with its resolved Grafana ID.
+// The input organization is not mutated; callers should use the returned value for any
+// follow-up operations that depend on the (possibly newly assigned) ID.
+func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Organization) (*organization.Organization, error) {
 	logger := log.FromContext(ctx)
 	logger.Info("upserting organization")
 
@@ -27,8 +30,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Orga
 			if err == nil && foundOrgByName != nil {
 				// If the organization does not exist in Grafana, but we found it by name, we can use that ID.
 				logger.Info("found organization with the same name", "name", foundOrgByName.Name(), "id", foundOrgByName.ID())
-				org.SetID(foundOrgByName.ID())
-				return nil
+				return org.WithID(foundOrgByName.ID()), nil
 			}
 
 			logger.Info("organization name not found, creating")
@@ -38,21 +40,20 @@ func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Orga
 				Name: org.Name(),
 			})
 			if err != nil {
-				return fmt.Errorf("failed to create organization: %w", err)
+				return nil, fmt.Errorf("failed to create organization: %w", err)
 			}
 			logger.Info("created organization")
 
-			org.SetID(*createdOrg.Payload.OrgID)
-			return nil
+			return org.WithID(*createdOrg.Payload.OrgID), nil
 		}
 
-		return fmt.Errorf("failed to find organization with ID %d: %w", org.ID(), err)
+		return nil, fmt.Errorf("failed to find organization with ID %d: %w", org.ID(), err)
 	}
 
 	// If both name matches, there is nothing to do.
 	if currentOrg.Name() == org.Name() {
 		logger.Info("the organization already exists in Grafana and does not need to be updated.")
-		return nil
+		return org, nil
 	}
 
 	// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
@@ -60,12 +61,12 @@ func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Orga
 		Name: org.Name(),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to update organization name: %w", err)
+		return nil, fmt.Errorf("failed to update organization name: %w", err)
 	}
 
 	logger.Info("updated organization")
 
-	return nil
+	return org, nil
 }
 
 func (s *Service) deleteOrganization(ctx context.Context, org *organization.Organization) error {

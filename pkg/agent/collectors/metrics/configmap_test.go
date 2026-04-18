@@ -17,6 +17,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
+	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
 
 var managementClusterName = "dummy-cluster"
@@ -361,10 +362,10 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 
 			resultMap, err := service.GenerateAlloyMonitoringConfigMapData(
 				ctx,
-				nil, // currentState
 				tt.cluster,
 				tt.tenants,
 				tt.observabilityBundleVersion,
+				sharding.DefaultShards,
 			)
 
 			// Check if this is a "monitoring disabled" test case (no golden path)
