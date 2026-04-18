@@ -38,9 +38,7 @@ func init() {
 }
 
 // GenerateAlloyMonitoringConfigMapData renders the Alloy monitoring ConfigMap
-// payload. It is a pure transformation of the inputs: no I/O, no Mimir query,
-// no state reads. Shard resolution lives in Service.ReconcileCreate so tests
-// can exercise the template without a Mimir stub.
+// payload.
 func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version, shards int) (map[string]string, error) {
 	// Defensive validation: This method should only be called when monitoring is enabled.
 	// The controller ensures this, but we validate here to catch potential bugs.
