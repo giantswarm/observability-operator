@@ -10,8 +10,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/yaml"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/blang/semver/v4"
@@ -20,9 +18,6 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
-	"github.com/giantswarm/observability-operator/pkg/metrics"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
-	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
 
 var (
@@ -42,44 +37,14 @@ func init() {
 	alloyMonitoringConfigTemplate = template.Must(template.New("monitoring-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyMonitoringConfig))
 }
 
-func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, currentState *v1.ConfigMap, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version) (map[string]string, error) {
-	logger := log.FromContext(ctx)
-
+// GenerateAlloyMonitoringConfigMapData renders the Alloy monitoring ConfigMap
+// payload.
+func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, cluster *clusterv1.Cluster, tenants []string, observabilityBundleVersion semver.Version, shards int) (map[string]string, error) {
 	// Defensive validation: This method should only be called when monitoring is enabled.
 	// The controller ensures this, but we validate here to catch potential bugs.
 	if !s.Config.Monitoring.IsMonitoringEnabled(cluster) {
 		return nil, fmt.Errorf("cannot generate alloy monitoring config: monitoring is not enabled for cluster %s", cluster.Name)
 	}
-
-	// Get current number of shards from Alloy's config.
-	// Shards here is equivalent to replicas in the Alloy controller deployment.
-	var currentShards = sharding.DefaultShards
-	if currentState != nil && currentState.Data != nil && currentState.Data["values"] != "" {
-		var monitoringConfig monitoringConfig
-		err := yaml.Unmarshal([]byte(currentState.Data["values"]), &monitoringConfig)
-		if err != nil {
-			logger.Info("alloy-service - failed to unmarshal current monitoring config", "error", err)
-		} else {
-			currentShards = monitoringConfig.Alloy.Controller.Replicas
-			logger.Info("alloy-service - current number of shards", "shards", currentShards)
-		}
-	}
-
-	// Compute the number of shards based on the number of series.
-	query := fmt.Sprintf(`sum(max_over_time((sum(prometheus_remote_write_wal_storage_active_series{cluster_id="%s", service="%s"})by(pod))[6h:1h]))`, cluster.Name, apps.AlloyMetricsAppName)
-	headSeries, err := querier.QueryTSDBHeadSeries(ctx, query, s.Config.Monitoring.MetricsQueryURL, s.Config.DefaultTenant, s.Config.HTTP.MimirQueryTimeout)
-	if err != nil {
-		logger.Error(err, "alloy-service - failed to query head series")
-		metrics.MimirQueryErrors.WithLabelValues().Inc()
-	}
-
-	clusterShardingStrategy, err := monitoring.GetClusterShardingStrategy(cluster)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get cluster sharding strategy: %w", err)
-	}
-
-	shardingStrategy := s.Config.Monitoring.DefaultShardingStrategy.Merge(clusterShardingStrategy)
-	shards := shardingStrategy.ComputeShards(currentShards, headSeries)
 
 	alloyConfig, err := s.generateAlloyConfig(ctx, cluster, tenants, observabilityBundleVersion)
 	if err != nil {

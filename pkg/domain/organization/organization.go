@@ -84,9 +84,13 @@ func (o *Organization) GetAlertingTenants() []TenantConfig {
 	return alertingTenants
 }
 
-// SetID updates the organization ID (used when the organization is created in Grafana)
-func (o *Organization) SetID(id int64) {
-	o.id = id
+// WithID returns a copy of the organization with the given ID.
+// Use this after Grafana assigns (or resolves) an organization ID rather than
+// mutating the receiver — Organization is a value object and should stay immutable.
+func (o *Organization) WithID(id int64) *Organization {
+	copy := *o
+	copy.id = id
+	return &copy
 }
 
 // String provides a string representation for debugging

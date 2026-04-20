@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alloy collector services (`metrics`, `logs`, `events`) no longer depend on `credential.Reader`. The cluster controller resolves credentials once per reconcile and passes them into `ReconcileCreate` as a `credential.BackendCredentials` bag, keeping the render path free of credential-store I/O.
 - **Breaking (Helm)**: removed the `--alertmanager-enabled` flag (formerly gated by `alerting.enabled`). Use `--controllers-alertmanager-enabled` / `operator.controllers.alertmanager.enabled` instead. Default flipped from `false` to `true` — the Alertmanager controller is now opt-out.
 - internal code refactoring
+- `pkg/domain/organization.Organization` is now treated as an immutable value object: `SetID` is replaced by `WithID`, which returns a copy. `grafana.Service.UpsertOrganization` / `ConfigureOrganization` return the resolved `*Organization` instead of mutating the caller's instance.
+- `pkg/credential.Aggregator` and `pkg/credential.Renderer` no longer expose their `client.Client` or `PasswordGenerator` fields; callers must go through `NewAggregator` / `NewRenderer` / `NewRendererWithGenerator`.
+- Alloy monitoring config generation is now a pure transformation: the Mimir head-series query and shard computation move from `GenerateAlloyMonitoringConfigMapData` into `metrics.Service.ReconcileCreate`, behind a new `MetricsQuerier` interface (production: `MimirQuerier`). Lets the renderer be unit-tested without a Mimir stub.
+- `observability_operator_mimir_head_series_query_errors_total` is now a plain `Counter` (was a `CounterVec` with no labels). Help text corrected.
+- `pkg/grafana.Service.findOrgByID` now joins `ErrOrganizationNotFound` with the upstream error via `errors.Join` instead of `fmt.Errorf("%w: %w", ...)` — `errors.Is` chains are easier to read.
+- `GrafanaOrganizationReconciler.reconcileCreate` / `reconcileDelete` / `configureGrafanaSSOSettings` now use pointer receivers, matching `Reconcile` and the rest of the codebase.
+- `GrafanaOrganization.Spec.RBAC.Admins` is now marked `+kubebuilder:validation:Required`. Documentation-only: the field was already required in the generated CRD (non-pointer, non-`+optional`), this just makes the intent explicit in both API versions.
+- Regenerated `config/rbac/role.yaml` to match current kubebuilder markers: removed stale `create`/`delete` verbs on `clusters` and `leases`, added rules for `helmreleases.helm.toolkit.fluxcd.io`. The controllers did not have matching markers; this only syncs the generated manifest.
 
 ### Fixed
 

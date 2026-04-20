@@ -73,6 +73,7 @@ type TenantID string
 // More info on Grafana org attribute and role mapping at [Configure role mapping](https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/#configure-role-mapping)
 type RBAC struct {
 	// Admins is a list of user organizations that have admin access to the grafanaorganization.
+	// +kubebuilder:validation:Required
 	Admins []string `json:"admins"`
 
 	// Editors is a list of user organizations that have editor access to the grafanaorganization.

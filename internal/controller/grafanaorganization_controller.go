@@ -169,7 +169,7 @@ func (r *GrafanaOrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error
 // - Adding the finalizer to the CR
 // - Updating the CR status field
 // - Renaming the Grafana Main Org.
-func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
+func (r *GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) (ctrl.Result, error) { // nolint:unparam
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, grafanaOrganization)
 	if err != nil {
@@ -190,8 +190,10 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	// Convert to domain object
 	organization := r.organizationMapper.FromGrafanaOrganization(grafanaOrganization)
 
-	// Create or update the grafana organization
-	updatedID, err := grafanaService.ConfigureOrganization(ctx, organization)
+	// Create or update the grafana organization. ConfigureOrganization returns a new
+	// value object with the resolved ID — do not reuse the input `organization` after
+	// this point, it still carries the (possibly stale) status ID.
+	organization, err = grafanaService.ConfigureOrganization(ctx, organization)
 	if err != nil {
 		// Set error status and update metric before returning
 		orgStatus = metrics.OrgStatusError
@@ -200,9 +202,9 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Update CR status if anything was changed
-	if grafanaOrganization.Status.OrgID != updatedID {
+	if grafanaOrganization.Status.OrgID != organization.ID() {
 		logger.Info("updating orgID in the grafanaOrganization status")
-		grafanaOrganization.Status.OrgID = updatedID
+		grafanaOrganization.Status.OrgID = organization.ID()
 
 		err = r.Client.Status().Update(ctx, grafanaOrganization)
 		if err != nil {
@@ -299,7 +301,7 @@ func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx conte
 }
 
 // configureGrafanaSSOSettings configures Grafana SSO settings based on all active GrafanaOrganizations
-func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
+func (r *GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
 	allOrganizations, err := r.listActiveGrafanaOrganizations(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get all organizations for SSO configuration: %w", err)
@@ -313,7 +315,7 @@ func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.C
 }
 
 // reconcileDelete deletes the grafana organization.
-func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) error {
+func (r *GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
 
 	// We do not need to delete anything if there is no finalizer on the grafana organization

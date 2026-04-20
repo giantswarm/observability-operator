@@ -56,7 +56,7 @@ func TestRender_CreatesSecret(t *testing.T) {
 	cred := newAgentCredential("c1", "ns1", "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred).Build()
 
-	r := &Renderer{Client: c, PasswordGenerator: &fixedPasswordGenerator{password: "p1"}}
+	r := NewRendererWithGenerator(c, &fixedPasswordGenerator{password: "p1"})
 	secret, err := r.Render(context.Background(), cred)
 	require.NoError(t, err)
 
@@ -85,7 +85,7 @@ func TestRender_PreservesExistingPassword(t *testing.T) {
 	}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred, existing).Build()
 
-	r := &Renderer{Client: c, PasswordGenerator: &fixedPasswordGenerator{password: "should-not-be-used"}}
+	r := NewRendererWithGenerator(c, &fixedPasswordGenerator{password: "should-not-be-used"})
 	secret, err := r.Render(context.Background(), cred)
 	require.NoError(t, err)
 
@@ -99,7 +99,7 @@ func TestRender_UsesSpecSecretName(t *testing.T) {
 	cred.Spec.SecretName = "custom-secret-name"
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred).Build()
 
-	r := &Renderer{Client: c, PasswordGenerator: &fixedPasswordGenerator{password: "p1"}}
+	r := NewRendererWithGenerator(c, &fixedPasswordGenerator{password: "p1"})
 	secret, err := r.Render(context.Background(), cred)
 	require.NoError(t, err)
 

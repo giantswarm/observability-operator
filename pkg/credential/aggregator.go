@@ -19,19 +19,19 @@ import (
 // Aggregator rebuilds the per-backend gateway htpasswd Secrets by concatenating
 // entries from every AgentCredential matching a given backend.
 type Aggregator struct {
-	Client         client.Client
-	GatewayConfigs GatewayConfigs
+	client         client.Client
+	gatewayConfigs GatewayConfigs
 }
 
 // NewAggregator builds an Aggregator.
 func NewAggregator(c client.Client, configs GatewayConfigs) *Aggregator {
-	return &Aggregator{Client: c, GatewayConfigs: configs}
+	return &Aggregator{client: c, gatewayConfigs: configs}
 }
 
 // Aggregate rewrites both gateway secrets (ingress and HTTPRoute) for the given
 // backend to reflect the current set of AgentCredentials.
 func (a *Aggregator) Aggregate(ctx context.Context, backend observabilityv1alpha1.CredentialBackend) error {
-	cfg, ok := a.GatewayConfigs[backend]
+	cfg, ok := a.gatewayConfigs[backend]
 	if !ok {
 		return fmt.Errorf("no gateway configuration for backend %q", backend)
 	}
@@ -57,7 +57,7 @@ func (a *Aggregator) Aggregate(ctx context.Context, backend observabilityv1alpha
 // CRs being deleted are ignored so the gateway drops them immediately.
 func (a *Aggregator) buildHtpasswdContent(ctx context.Context, backend observabilityv1alpha1.CredentialBackend) (string, error) {
 	credentials := &observabilityv1alpha1.AgentCredentialList{}
-	if err := a.Client.List(ctx, credentials); err != nil {
+	if err := a.client.List(ctx, credentials); err != nil {
 		return "", fmt.Errorf("failed to list agent credentials: %w", err)
 	}
 
@@ -73,7 +73,7 @@ func (a *Aggregator) buildHtpasswdContent(ctx context.Context, backend observabi
 
 		secret := &corev1.Secret{}
 		key := client.ObjectKey{Namespace: cred.Namespace, Name: SecretName(cred)}
-		if err := a.Client.Get(ctx, key, secret); err != nil {
+		if err := a.client.Get(ctx, key, secret); err != nil {
 			if apierrors.IsNotFound(err) {
 				// Secret hasn't been rendered yet; skip it — the owning reconcile
 				// will aggregate again once it exists.
@@ -100,7 +100,7 @@ func (a *Aggregator) writeGatewaySecret(ctx context.Context, namespace, name, da
 	// install or tear-down) is not fatal, while still letting any NotFound
 	// surfaced by the write itself propagate as a real error.
 	ns := &corev1.Namespace{}
-	if err := a.Client.Get(ctx, client.ObjectKey{Name: namespace}, ns); err != nil {
+	if err := a.client.Get(ctx, client.ObjectKey{Name: namespace}, ns); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("gateway namespace not found, skipping", "namespace", namespace, "secret", name)
 			return nil
@@ -115,7 +115,7 @@ func (a *Aggregator) writeGatewaySecret(ctx context.Context, namespace, name, da
 		},
 	}
 
-	result, err := ctrl.CreateOrUpdate(ctx, a.Client, secret, func() error {
+	result, err := ctrl.CreateOrUpdate(ctx, a.client, secret, func() error {
 		if secret.Data == nil {
 			secret.Data = make(map[string][]byte)
 		}

@@ -22,15 +22,17 @@ func (s *Service) DeleteOrganization(ctx context.Context, organization *organiza
 	return nil
 }
 
-// ConfigureOrganization creates or updates the organization in Grafana and returns the organization ID.
-func (s *Service) ConfigureOrganization(ctx context.Context, organization *organization.Organization) (int64, error) {
-	err := s.UpsertOrganization(ctx, organization)
+// ConfigureOrganization creates or updates the organization in Grafana and returns
+// the organization with its resolved ID. The input is not mutated; callers must use
+// the returned organization for any follow-up calls that depend on the ID.
+func (s *Service) ConfigureOrganization(ctx context.Context, org *organization.Organization) (*organization.Organization, error) {
+	resolved, err := s.UpsertOrganization(ctx, org)
 	if err != nil {
 		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpConfigureOrg).Inc()
-		return -1, fmt.Errorf("ConfigureOrganization: failed to configure organization: %w", err)
+		return nil, fmt.Errorf("ConfigureOrganization: failed to configure organization: %w", err)
 	}
 
-	return organization.ID(), nil
+	return resolved, nil
 }
 
 // ConfigureDatasources ensures the datasources for the given organization are up to date.
