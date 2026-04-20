@@ -15,7 +15,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
-  "github.com/giantswarm/observability-operator/pkg/credential"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
