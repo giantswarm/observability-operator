@@ -100,7 +100,7 @@ func (a *Aggregator) writeGatewaySecret(ctx context.Context, namespace, name, da
 	// install or tear-down) is not fatal, while still letting any NotFound
 	// surfaced by the write itself propagate as a real error.
 	ns := &corev1.Namespace{}
-	if err := a.Client.Get(ctx, client.ObjectKey{Name: namespace}, ns); err != nil {
+	if err := a.client.Get(ctx, client.ObjectKey{Name: namespace}, ns); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("gateway namespace not found, skipping", "namespace", namespace, "secret", name)
 			return nil
