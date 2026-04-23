@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking (Helm)**: removed the `--alertmanager-enabled` flag (formerly gated by `alerting.enabled`). Use `--controllers-alertmanager-enabled` / `operator.controllers.alertmanager.enabled` instead. Default flipped from `false` to `true` — the Alertmanager controller is now opt-out.
 - internal code refactoring
+- Cronitor alerts: update ops-recipe URL
 
 ### Fixed
 
