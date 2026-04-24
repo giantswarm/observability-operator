@@ -53,8 +53,13 @@ func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Orga
 	// different one (stale-ID / collision case).
 	if org.ID() > 0 {
 		currentOrg, err := s.findOrgByID(org.ID())
-		switch {
-		case err == nil:
+
+		if err != nil && !errors.Is(err, organization.ErrOrganizationNotFound) {
+			return fmt.Errorf("Error when trying to find organization with ID %d: %w", org.ID(), err)
+		}
+		// If err is ErrOrganizationNotFound, we fall through to CreateOrg below.
+
+		if currentOrg != nil {
 			if previousName != "" && currentOrg.Name() == previousName {
 				logger.Info("renaming organization", "id", org.ID(), "from", currentOrg.Name(), "to", org.Name())
 				if _, err := s.grafanaClient.Orgs().UpdateOrg(org.ID(), &models.UpdateOrgForm{Name: org.Name()}); err != nil {
@@ -64,11 +69,6 @@ func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Orga
 			}
 			logger.Info("cached orgID points to an organization we no longer own; creating a new one",
 				"staleID", org.ID(), "currentName", currentOrg.Name(), "previousName", previousName)
-			// fall through to CreateOrg
-		case errors.Is(err, organization.ErrOrganizationNotFound):
-			// cached ID is gone; fall through to CreateOrg
-		default:
-			return fmt.Errorf("failed to find organization with ID %d: %w", org.ID(), err)
 		}
 	}
 
