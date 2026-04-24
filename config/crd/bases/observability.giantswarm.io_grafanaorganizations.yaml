@@ -137,6 +137,11 @@ spec:
                   - name
                   type: object
                 type: array
+              displayName:
+                description: |-
+                  DisplayName records the last display name successfully applied to the Grafana
+                  organization referenced by OrgID.
+                type: string
               orgID:
                 description: OrgID is the actual organisation ID in grafana.
                 format: int64
@@ -269,6 +274,13 @@ spec:
                   - name
                   type: object
                 type: array
+              displayName:
+                description: |-
+                  DisplayName records the last display name successfully applied to the Grafana
+                  organization referenced by OrgID. The reconciler uses it to tell a legitimate
+                  CR rename (status.displayName matches what is currently in Grafana at that ID)
+                  apart from a stale OrgID that now points to an organization owned by another CR.
+                type: string
               orgID:
                 description: OrgID is the actual organisation ID in grafana.
                 format: int64
