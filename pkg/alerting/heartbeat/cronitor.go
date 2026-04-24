@@ -119,7 +119,7 @@ func (r *CronitorHeartbeatRepository) makeMonitor() *cronitorMonitor {
 		Schedule:        r.cfg.schedule,
 		Notify:          []string{r.cfg.pipeline},
 		Tags:            tags,
-		Note:            "📗 Runbook: https://intranet.giantswarm.io/docs/support-and-ops/ops-recipes/heartbeat-expired/",
+		Note:            "📗 Runbook: https://intranet.giantswarm.io/docs/support-and-ops/runbooks/install-heartbeat/",
 		RealertInterval: r.cfg.realertInterval,
 	}
 }
