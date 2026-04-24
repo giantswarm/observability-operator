@@ -203,7 +203,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 
 	// Update CR status if anything was changed
 	if grafanaOrganization.Status.OrgID != updatedID || grafanaOrganization.Status.DisplayName != grafanaOrganization.Spec.DisplayName {
-		logger.Info("updating orgID/displayName in the grafanaOrganization status")
+		logger.Info("updating grafanaOrganization status")
 		grafanaOrganization.Status.OrgID = updatedID
 		grafanaOrganization.Status.DisplayName = grafanaOrganization.Spec.DisplayName
 
@@ -214,7 +214,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 			return ctrl.Result{}, fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 		}
 		orgStatus = metrics.OrgStatusActive
-		logger.Info("updated orgID/displayName in the grafanaOrganization status")
+		logger.Info("updated grafanaOrganization status")
 	}
 
 	// Collect all errors to ensure all independent tasks have a chance to run
