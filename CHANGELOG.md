@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Align Grafana client mocks and SSO settings payload handling with the latest `grafana-openapi-client-go` interface so `go build ./...` passes.
+- Fix Ginkgo version mismatch in tests
 
 ## [0.67.2] - 2026-04-08
 
