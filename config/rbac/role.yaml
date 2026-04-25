@@ -61,8 +61,6 @@ rules:
   resources:
   - clusters
   verbs:
-  - create
-  - delete
   - get
   - list
   - patch
@@ -88,7 +86,16 @@ rules:
   - leases
   verbs:
   - create
-  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - helm.toolkit.fluxcd.io
+  resources:
+  - helmreleases
+  verbs:
   - get
   - list
   - patch
