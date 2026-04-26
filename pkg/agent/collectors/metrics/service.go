@@ -10,11 +10,11 @@ import (
 	"github.com/blang/semver/v4"
 
 	"github.com/giantswarm/observability-operator/pkg/agent"
-	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 )
 
 const (
@@ -27,7 +27,7 @@ type Service struct {
 	ConfigurationRepository agent.ConfigurationRepository
 	OrganizationRepository  organization.OrganizationRepository
 	TenantRepository        tenancy.TenantRepository
-	AuthManager             auth.AuthManager
+	CredentialReader        credential.Reader
 }
 
 func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, caBundle string) error {

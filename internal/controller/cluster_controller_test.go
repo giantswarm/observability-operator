@@ -14,18 +14,28 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/events"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/logs"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
-	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/ruler"
 )
+
+// mockCredentialReader returns fixed credentials for every request.
+type mockCredentialReader struct{}
+
+func (m *mockCredentialReader) ReadPassword(ctx context.Context, namespace, credentialName string) (string, string, error) {
+	return "test-user", "test-password", nil
+}
+
+var _ credential.Reader = &mockCredentialReader{}
 
 var _ = Describe("Cluster Controller", func() {
 	Context("When reconciling a CAPI Cluster resource", func() {
@@ -38,7 +48,7 @@ var _ = Describe("Cluster Controller", func() {
 		var (
 			ctx              context.Context
 			cluster          *clusterv1.Cluster
-			reconciler       *ClusterMonitoringReconciler
+			reconciler       *ClusterReconciler
 			namespaceName    types.NamespacedName
 			clusterNamespace string
 		)
@@ -95,38 +105,9 @@ var _ = Describe("Cluster Controller", func() {
 				},
 			})
 
-			mimirAuthManager := auth.NewAuthManager(
-				k8sClient,
-				auth.NewConfig(
-					auth.AuthTypeMetrics,
-					"mimir",
-					"mimir-gateway-ingress-auth",
-					"mimir-gateway-httproute-auth",
-				),
-			)
-
-			lokiAuthManager := auth.NewAuthManager(
-				k8sClient,
-				auth.NewConfig(
-					auth.AuthTypeLogs,
-					"loki",
-					"loki-gateway-ingress-auth",
-					"loki-gateway-httproute-auth",
-				),
-			)
-
-			tempoAuthManager := auth.NewAuthManager(
-				k8sClient,
-				auth.NewConfig(
-					auth.AuthTypeTraces,
-					"tempo",
-					"tempo-gateway-ingress-auth",
-					"tempo-gateway-httproute-auth",
-				),
-			)
-
 			// Create agent configuration repository
 			agentConfigurationRepository := agent.NewConfigurationRepository(k8sClient)
+			credentialReader := &mockCredentialReader{}
 
 			testCfg := config.Config{
 				Cluster: config.ClusterConfig{
@@ -145,7 +126,7 @@ var _ = Describe("Cluster Controller", func() {
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
-				AuthManager:             mimirAuthManager,
+				CredentialReader:        credentialReader,
 			}
 
 			alloyLogsService := &logs.Service{
@@ -153,7 +134,7 @@ var _ = Describe("Cluster Controller", func() {
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
-				LogsAuthManager:         lokiAuthManager,
+				CredentialReader:        credentialReader,
 			}
 
 			alloyEventsService := &events.Service{
@@ -161,17 +142,10 @@ var _ = Describe("Cluster Controller", func() {
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
-				LogsAuthManager:         lokiAuthManager,
-				TracesAuthManager:       tempoAuthManager,
+				CredentialReader:        credentialReader,
 			}
 
-			authManagers := map[auth.AuthType]authManagerEntry{
-				auth.AuthTypeMetrics: {authManager: mimirAuthManager, isEnabled: testCfg.Monitoring.IsMonitoringEnabled},
-				auth.AuthTypeLogs:    {authManager: lokiAuthManager, isEnabled: testCfg.Logging.IsLoggingEnabled},
-				auth.AuthTypeTraces:  {authManager: tempoAuthManager, isEnabled: testCfg.Tracing.IsTracingEnabled},
-			}
-
-			reconciler = &ClusterMonitoringReconciler{
+			reconciler = &ClusterReconciler{
 				Client: k8sClient,
 				Config: testCfg,
 				collectors: []collectorEntry{
@@ -181,8 +155,12 @@ var _ = Describe("Cluster Controller", func() {
 						return testCfg.Logging.IsLoggingEnabled(c) || testCfg.Tracing.IsTracingEnabled(c) || testCfg.Monitoring.IsMonitoringEnabled(c)
 					}},
 				},
+				credentials: []credentialEntry{
+					{backend: v1alpha1.CredentialBackendMetrics, isEnabled: testCfg.Monitoring.IsMonitoringEnabled},
+					{backend: v1alpha1.CredentialBackendLogs, isEnabled: testCfg.Logging.IsLoggingEnabled},
+					{backend: v1alpha1.CredentialBackendTraces, isEnabled: testCfg.Tracing.IsTracingEnabled},
+				},
 				observabilityBundleService: bundleService,
-				authManagers:               authManagers,
 				rulerClient:                ruler.NewNoop(),
 				tenantRepository:           tenancy.NewTenantRepository(k8sClient),
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
