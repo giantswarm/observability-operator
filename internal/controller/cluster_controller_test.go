@@ -11,7 +11,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/giantswarm/observability-operator/pkg/agent"
@@ -72,15 +72,15 @@ var _ = Describe("Cluster Controller", func() {
 					Namespace: clusterNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
-						APIVersion: "infrastructure.cluster.x-k8s.io/v1beta1",
-						Kind:       "AWSCluster",
-						Name:       "test-aws-cluster",
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						APIGroup: "infrastructure.cluster.x-k8s.io",
+						Kind:     "AWSCluster",
+						Name:     "test-aws-cluster",
 					},
-					ControlPlaneRef: &corev1.ObjectReference{
-						APIVersion: "controlplane.cluster.x-k8s.io/v1beta1",
-						Kind:       "KubeadmControlPlane",
-						Name:       "test-control-plane",
+					ControlPlaneRef: clusterv1.ContractVersionedObjectReference{
+						APIGroup: "controlplane.cluster.x-k8s.io",
+						Kind:     "KubeadmControlPlane",
+						Name:     "test-control-plane",
 					},
 				},
 			}

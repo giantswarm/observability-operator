@@ -1,7 +1,7 @@
 package config
 
 import (
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 const TracingLabel = "observability.giantswarm.io/tracing"

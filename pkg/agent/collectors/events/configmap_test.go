@@ -8,10 +8,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
@@ -48,7 +47,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -70,7 +69,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -92,7 +91,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -115,7 +114,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -138,7 +137,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -160,7 +159,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -182,7 +181,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -204,7 +203,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -226,7 +225,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -249,7 +248,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -272,7 +271,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -295,7 +294,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
