@@ -27,10 +27,9 @@ type Service struct {
 	ConfigurationRepository agent.ConfigurationRepository
 	OrganizationRepository  organization.OrganizationRepository
 	TenantRepository        tenancy.TenantRepository
-	CredentialReader        credential.Reader
 }
 
-func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, caBundle string) error {
+func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, caBundle string, creds credential.BackendCredentials) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-events-service - ensuring alloy events is configured")
 
@@ -43,7 +42,7 @@ func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 		return fmt.Errorf("failed to generate alloy events configmap: %w", err)
 	}
 
-	secretData, err := s.GenerateAlloyEventsSecretData(ctx, cluster, loggingEnabled, tracingEnabled, monitoringEnabled, caBundle)
+	secretData, err := s.GenerateAlloyEventsSecretData(cluster, loggingEnabled, tracingEnabled, monitoringEnabled, caBundle, creds)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy events secret: %w", err)
 	}

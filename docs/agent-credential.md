@@ -35,6 +35,10 @@ The cluster controller depends on the agent-credential controller — it declare
 | `status.secretRef` | Reference to the rendered Secret in the same namespace. |
 | `status.conditions` | `Ready` (secret rendered) and `GatewaySynced` (htpasswd aggregated). |
 
+## Password rotation
+
+Passwords are generated once on first reconcile and preserved across subsequent reconciles so existing agents keep working. To rotate a password, delete the rendered `Secret` (the CR keeps its name, status, and owner references). The controller regenerates the `Secret` on the next reconcile and re-aggregates the gateway htpasswd.
+
 ## Uniqueness and immutability
 
 The validating webhook rejects:

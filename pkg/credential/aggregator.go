@@ -96,6 +96,18 @@ func (a *Aggregator) buildHtpasswdContent(ctx context.Context, backend observabi
 func (a *Aggregator) writeGatewaySecret(ctx context.Context, namespace, name, dataKey, content string) error {
 	logger := log.FromContext(ctx)
 
+	// Check namespace existence up front so a missing gateway namespace (fresh
+	// install or tear-down) is not fatal, while still letting any NotFound
+	// surfaced by the write itself propagate as a real error.
+	ns := &corev1.Namespace{}
+	if err := a.Client.Get(ctx, client.ObjectKey{Name: namespace}, ns); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("gateway namespace not found, skipping", "namespace", namespace, "secret", name)
+			return nil
+		}
+		return fmt.Errorf("failed to check gateway namespace %s: %w", namespace, err)
+	}
+
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -111,12 +123,6 @@ func (a *Aggregator) writeGatewaySecret(ctx context.Context, namespace, name, da
 		return nil
 	})
 	if err != nil {
-		// Namespace may be missing on a fresh install or a tear-down path; do
-		// not fail the reconcile in that case.
-		if apierrors.IsNotFound(err) {
-			logger.Info("gateway namespace not found, skipping", "namespace", namespace, "secret", name)
-			return nil
-		}
 		return fmt.Errorf("failed to upsert gateway secret %s/%s: %w", namespace, name, err)
 	}
 
