@@ -1,24 +1,25 @@
 package metrics
 
 import (
-	"context"
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
+	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 )
 
-func (s *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster *clusterv1.Cluster, caBundle string) (map[string]string, error) {
-	remoteWriteUrl := fmt.Sprintf(common.MimirRemoteWriteEndpointURLFormat, s.Config.Cluster.BaseDomain)
-	password, err := s.AuthManager.GetClusterPassword(ctx, cluster)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get mimir auth password for cluster %s: %w", cluster.Name, err)
+func (s *Service) GenerateAlloyMonitoringSecretData(cluster *clusterv1.Cluster, caBundle string, creds credential.BackendCredentials) (map[string]string, error) {
+	auth, ok := creds.Get(observabilityv1alpha1.CredentialBackendMetrics)
+	if !ok {
+		return nil, fmt.Errorf("metrics credentials missing for cluster %s", cluster.Name)
 	}
 
+	remoteWriteUrl := fmt.Sprintf(common.MimirRemoteWriteEndpointURLFormat, s.Config.Cluster.BaseDomain)
 	mimirRulerUrl := fmt.Sprintf(common.MimirBaseURLFormat, s.Config.Cluster.BaseDomain)
 	mimirQueryUrl := fmt.Sprintf(common.MimirQueryEndpointURLFormat, s.Config.Cluster.BaseDomain)
 
@@ -27,8 +28,8 @@ func (s *Service) GenerateAlloyMonitoringSecretData(ctx context.Context, cluster
 		common.MimirRulerAPIURLKey:        mimirRulerUrl,
 		common.MimirRemoteWriteAPIURLKey:  remoteWriteUrl,
 		common.MimirRemoteWriteAPINameKey: common.MimirRemoteWriteName,
-		common.MimirUsernameKey:           cluster.Name,
-		common.MimirPasswordKey:           password,
+		common.MimirUsernameKey:           auth.Username,
+		common.MimirPasswordKey:           auth.Password,
 	}
 
 	if caBundle != "" {

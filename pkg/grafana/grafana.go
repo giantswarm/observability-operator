@@ -14,57 +14,70 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
-// UpsertOrganization creates or updates an organization in Grafana based on the provided domain organization.
-func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Organization) error {
+// UpsertOrganization reconciles the Grafana organization described by org with Grafana's current state.
+//
+// previousName is the last display name this CR successfully applied to its Grafana organization
+// (typically GrafanaOrganization.Status.DisplayName). It lets the reconciler tell apart:
+//
+//   - a CR rename: Grafana still has the org at org.ID() under previousName → rename it to org.Name().
+//   - a stale cached orgID: the org at org.ID() has a different name (and that name is not what we
+//     last wrote there), so it now belongs to someone else (e.g., Grafana's DB was reset and the ID
+//     got reassigned to another CR). We must not rename it; create a new org instead.
+//
+// Pass an empty previousName for a first-time reconcile. In that case a mismatched current name
+// is always treated as a collision (safer than assuming ownership).
+//
+// On success org.ID() is set to the current Grafana org ID.
+func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Organization, previousName string) error {
 	logger := log.FromContext(ctx)
 	logger.Info("upserting organization")
 
-	// Get the current organization stored in Grafana
-	currentOrg, err := s.findOrgByID(org.ID())
-	if err != nil {
-		if errors.Is(err, organization.ErrOrganizationNotFound) {
-			foundOrgByName, err := s.FindOrgByName(org.Name())
-			if err == nil && foundOrgByName != nil {
-				// If the organization does not exist in Grafana, but we found it by name, we can use that ID.
-				logger.Info("found organization with the same name", "name", foundOrgByName.Name(), "id", foundOrgByName.ID())
-				org.SetID(foundOrgByName.ID())
-				return nil
-			}
-
-			logger.Info("organization name not found, creating")
-
-			// If organization does not exist in Grafana, create it
-			createdOrg, err := s.grafanaClient.Orgs().CreateOrg(&models.CreateOrgCommand{
-				Name: org.Name(),
-			})
-			if err != nil {
-				return fmt.Errorf("failed to create organization: %w", err)
-			}
-			logger.Info("created organization")
-
-			org.SetID(*createdOrg.Payload.OrgID)
-			return nil
-		}
-
-		return fmt.Errorf("failed to find organization with ID %d: %w", org.ID(), err)
+	// Prefer matching by name. If Grafana already has an org with our desired display name,
+	// adopt its ID — this handles first reconcile, a CR re-creation, and the case where
+	// Grafana's DB was reset and existing IDs no longer match status.orgID.
+	foundByName, err := s.FindOrgByName(org.Name())
+	if err != nil && !errors.Is(err, organization.ErrOrganizationNotFound) {
+		return fmt.Errorf("failed to look up organization by name: %w", err)
 	}
-
-	// If both name matches, there is nothing to do.
-	if currentOrg.Name() == org.Name() {
-		logger.Info("the organization already exists in Grafana and does not need to be updated.")
+	if foundByName != nil {
+		if org.ID() != foundByName.ID() {
+			logger.Info("adopting existing Grafana organization matching display name",
+				"name", foundByName.Name(), "newID", foundByName.ID(), "previousID", org.ID())
+		}
+		org.SetID(foundByName.ID())
 		return nil
 	}
 
-	// if the name of the CR is different from the name of the org in Grafana, update the name of the org in Grafana using the CR's display name.
-	_, err = s.grafanaClient.Orgs().UpdateOrg(org.ID(), &models.UpdateOrgForm{
-		Name: org.Name(),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update organization name: %w", err)
+	// No org with our desired name exists. If we have a cached ID, check whether the
+	// org still sitting at that ID is the one we previously owned (rename case) or a
+	// different one (stale-ID / collision case).
+	if org.ID() > 0 {
+		currentOrg, err := s.findOrgByID(org.ID())
+
+		if err != nil && !errors.Is(err, organization.ErrOrganizationNotFound) {
+			return fmt.Errorf("Error when trying to find organization with ID %d: %w", org.ID(), err)
+		}
+		// If err is ErrOrganizationNotFound, we fall through to CreateOrg below.
+
+		if currentOrg != nil {
+			if previousName != "" && currentOrg.Name() == previousName {
+				logger.Info("renaming organization", "id", org.ID(), "from", currentOrg.Name(), "to", org.Name())
+				if _, err := s.grafanaClient.Orgs().UpdateOrg(org.ID(), &models.UpdateOrgForm{Name: org.Name()}); err != nil {
+					return fmt.Errorf("failed to update organization name: %w", err)
+				}
+				return nil
+			}
+			logger.Info("cached orgID points to an organization we no longer own; creating a new one",
+				"staleID", org.ID(), "currentName", currentOrg.Name(), "previousName", previousName)
+		}
 	}
 
-	logger.Info("updated organization")
-
+	logger.Info("creating organization", "name", org.Name())
+	createdOrg, err := s.grafanaClient.Orgs().CreateOrg(&models.CreateOrgCommand{Name: org.Name()})
+	if err != nil {
+		return fmt.Errorf("failed to create organization: %w", err)
+	}
+	org.SetID(*createdOrg.Payload.OrgID)
 	return nil
 }
 
@@ -104,10 +117,15 @@ func isNotFound(err error) bool {
 	return false
 }
 
-// FindOrgByName is a wrapper function used to find a Grafana organization by its name
+// FindOrgByName is a wrapper function used to find a Grafana organization by its name.
+// It returns organization.ErrOrganizationNotFound (wrapped) when Grafana returns 404,
+// letting callers distinguish a missing organization from other API failures.
 func (s *Service) FindOrgByName(name string) (*organization.Organization, error) {
 	org, err := s.grafanaClient.Orgs().GetOrgByName(name)
 	if err != nil {
+		if isNotFound(err) {
+			return nil, fmt.Errorf("%w: %w", organization.ErrOrganizationNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to get organization by name: %w", err)
 	}
 

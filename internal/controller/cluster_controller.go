@@ -8,6 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
@@ -30,21 +31,15 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
 	agentcommon "github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/alerting/heartbeat"
-	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 	operatormetrics "github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/ruler"
 )
-
-// authManagerEntry pairs an auth manager with its feature check function.
-type authManagerEntry struct {
-	authManager auth.AuthManager
-	isEnabled   func(*clusterv1.Cluster) bool
-}
 
 // collectorEntry pairs a CollectorService with the feature-flag predicate
 // that determines whether that collector should be active for a given cluster.
@@ -54,17 +49,27 @@ type collectorEntry struct {
 	isEnabled func(*clusterv1.Cluster) bool
 }
 
-// ClusterMonitoringReconciler reconciles a Cluster object
-type ClusterMonitoringReconciler struct {
+// credentialEntry pairs an AgentCredential backend with the feature-flag
+// predicate that determines whether a credential for that backend should
+// exist for a given cluster.
+type credentialEntry struct {
+	backend   v1alpha1.CredentialBackend
+	isEnabled func(*clusterv1.Cluster) bool
+}
+
+// ClusterReconciler reconciles a Cluster object
+type ClusterReconciler struct {
 	// Client is the controller client.
 	Client client.Client
 	Config config.Config
 	// collectors is the ordered list of Alloy signal collectors (metrics, logs, events).
 	collectors []collectorEntry
+	// credentials is the ordered list of AgentCredential backends managed per cluster.
+	credentials []credentialEntry
+	// credentialReader resolves basic-auth credentials from AgentCredential Secrets.
+	credentialReader credential.Reader
 	// heartbeatRepositories is the list of repositories for managing heartbeats.
 	heartbeatRepositories []heartbeat.HeartbeatRepository
-	// authManagers contains all authentication managers with their feature checks.
-	authManagers map[auth.AuthType]authManagerEntry
 	// observabilityBundleService is the service for configuring the observability bundle.
 	observabilityBundleService bundle.ObservabilityBundleService
 	// rulerClient deletes ruler rules on cluster deletion.
@@ -75,7 +80,7 @@ type ClusterMonitoringReconciler struct {
 	finalizerHelper FinalizerHelper
 }
 
-func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, logger logr.Logger) error {
+func SetupClusterReconciler(mgr manager.Manager, cfg config.Config, logger logr.Logger) error {
 	managerClient := mgr.GetClient()
 
 	// Create list of heartbeat repositories
@@ -94,61 +99,15 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 	organizationRepository := organization.NewNamespaceRepository(managerClient)
 	tenantRepository := tenancy.NewTenantRepository(managerClient)
 
-	mimirAuthManager := auth.NewAuthManager(
-		managerClient,
-		auth.NewConfig(
-			auth.AuthTypeMetrics,
-			cfg.Monitoring.Gateway.Namespace,
-			cfg.Monitoring.Gateway.IngressSecretName,
-			cfg.Monitoring.Gateway.HTTPRouteSecretName,
-		),
-	)
-
-	lokiAuthManager := auth.NewAuthManager(
-		managerClient,
-		auth.NewConfig(
-			auth.AuthTypeLogs,
-			cfg.Logging.Gateway.Namespace,
-			cfg.Logging.Gateway.IngressSecretName,
-			cfg.Logging.Gateway.HTTPRouteSecretName,
-		),
-	)
-
-	tempoAuthManager := auth.NewAuthManager(
-		managerClient,
-		auth.NewConfig(
-			auth.AuthTypeTraces,
-			cfg.Tracing.Gateway.Namespace,
-			cfg.Tracing.Gateway.IngressSecretName,
-			cfg.Tracing.Gateway.HTTPRouteSecretName,
-		),
-	)
-
-	// Build map of auth managers with their feature checks
-	authManagers := map[auth.AuthType]authManagerEntry{
-		auth.AuthTypeMetrics: {
-			authManager: mimirAuthManager,
-			isEnabled:   cfg.Monitoring.IsMonitoringEnabled,
-		},
-		auth.AuthTypeLogs: {
-			authManager: lokiAuthManager,
-			isEnabled:   cfg.Logging.IsLoggingEnabled,
-		},
-		auth.AuthTypeTraces: {
-			authManager: tempoAuthManager,
-			isEnabled:   cfg.Tracing.IsTracingEnabled,
-		},
-	}
-
 	// Create agent configuration repository
 	agentConfigurationRepository := agent.NewConfigurationRepository(managerClient)
+	credentialReader := credential.NewReader(managerClient)
 
 	alloyMetricsService := &metrics.Service{
 		Config:                  cfg,
 		ConfigurationRepository: agentConfigurationRepository,
 		OrganizationRepository:  organizationRepository,
 		TenantRepository:        tenantRepository,
-		AuthManager:             mimirAuthManager,
 	}
 
 	alloyLogsService := &logs.Service{
@@ -156,7 +115,6 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 		ConfigurationRepository: agentConfigurationRepository,
 		OrganizationRepository:  organizationRepository,
 		TenantRepository:        tenantRepository,
-		LogsAuthManager:         lokiAuthManager,
 	}
 
 	alloyEventsService := &events.Service{
@@ -164,9 +122,12 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 		ConfigurationRepository: agentConfigurationRepository,
 		OrganizationRepository:  organizationRepository,
 		TenantRepository:        tenantRepository,
-		LogsAuthManager:         lokiAuthManager,
-		TracesAuthManager:       tempoAuthManager,
-		MetricsAuthManager:      mimirAuthManager,
+	}
+
+	agentCredentials := []credentialEntry{
+		{backend: v1alpha1.CredentialBackendMetrics, isEnabled: cfg.Monitoring.IsMonitoringEnabled},
+		{backend: v1alpha1.CredentialBackendLogs, isEnabled: cfg.Logging.IsLoggingEnabled},
+		{backend: v1alpha1.CredentialBackendTraces, isEnabled: cfg.Tracing.IsTracingEnabled},
 	}
 
 	alloyCollectors := []collectorEntry{
@@ -202,12 +163,13 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 	}
 	rulerClient := ruler.NewMulti(rulerClients...)
 
-	r := &ClusterMonitoringReconciler{
+	r := &ClusterReconciler{
 		Client:                     managerClient,
 		Config:                     cfg,
 		collectors:                 alloyCollectors,
+		credentials:                agentCredentials,
+		credentialReader:           credentialReader,
 		heartbeatRepositories:      heartbeatRepositories,
-		authManagers:               authManagers,
 		observabilityBundleService: bundle.New(managerClient, cfg),
 		rulerClient:                rulerClient,
 		tenantRepository:           tenantRepository,
@@ -218,7 +180,7 @@ func SetupClusterMonitoringReconciler(mgr manager.Manager, cfg config.Config, lo
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	err := ctrl.NewControllerManagedBy(mgr).
 		Named("cluster").
 		For(&clusterv1.Cluster{}).
@@ -301,7 +263,7 @@ func (r *ClusterMonitoringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
-func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	// Fetch the Cluster instance.
 	cluster := &clusterv1.Cluster{}
 	if err := r.Client.Get(ctx, req.NamespacedName, cluster); err != nil {
@@ -341,7 +303,7 @@ func (r *ClusterMonitoringReconciler) Reconcile(ctx context.Context, req ctrl.Re
 }
 
 // reconcile handles cluster reconciliation.
-func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *clusterv1.Cluster) (ctrl.Result, error) {
+func (r *ClusterReconciler) reconcile(ctx context.Context, cluster *clusterv1.Cluster) (ctrl.Result, error) {
 	var err error
 	logger := log.FromContext(ctx)
 
@@ -364,11 +326,15 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		errs = append(errs, fmt.Errorf("bundle configuration: %w", err))
 	}
 
-	// Reconcile alloy services (bundled dependent tasks)
-	err = r.reconcileAlloyServices(ctx, cluster)
-	if err != nil {
-		logger.Error(err, "failed to reconcile alloy services")
-		errs = append(errs, fmt.Errorf("alloy services: %w", err))
+	// Reconcile alloy services (bundled dependent tasks). A bare
+	// credential.ErrCredentialNotReady is a transient first-reconcile signal;
+	// the controller turns it into a short requeue instead of a reconcile
+	// failure so the AgentCredentialReconciler has time to render the Secret.
+	alloyErr := r.reconcileAlloyServices(ctx, cluster)
+	alloyNotReadyOnly := alloyErr != nil && errors.Is(alloyErr, credential.ErrCredentialNotReady)
+	if alloyErr != nil && !alloyNotReadyOnly {
+		logger.Error(alloyErr, "failed to reconcile alloy services")
+		errs = append(errs, fmt.Errorf("alloy services: %w", alloyErr))
 	}
 
 	// Management cluster specific configuration
@@ -384,6 +350,11 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 		return ctrl.Result{}, errors.Join(errs...)
 	}
 
+	if alloyNotReadyOnly {
+		logger.Info("agent credentials not yet ready, requeueing")
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+
 	operatormetrics.MonitoredClusterInfo.WithLabelValues(cluster.Name, cluster.Namespace).Set(1)
 
 	return ctrl.Result{}, nil
@@ -392,23 +363,19 @@ func (r *ClusterMonitoringReconciler) reconcile(ctx context.Context, cluster *cl
 // reconcileAlloyServices reconciles all alloy services. This is a bundled operation
 // where getting the observability bundle version is a dependency for configuring
 // all alloy services. If getting the version fails, all dependent tasks fail.
-func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context, cluster *clusterv1.Cluster) error {
+//
+// Credentials for every enabled backend are resolved once here and passed into
+// the collectors, so the render layer has no credential-store I/O. When a
+// Secret has not been rendered yet, returns credential.ErrCredentialNotReady
+// unchanged so the caller can back off briefly instead of surfacing a spurious
+// reconcile failure.
+func (r *ClusterReconciler) reconcileAlloyServices(ctx context.Context, cluster *clusterv1.Cluster) error {
 	logger := log.FromContext(ctx)
 
-	// Handle authentication for all observability backends (independent tasks, all attempted)
-	var authErrs []error
-	for authType, entry := range r.authManagers {
-		if entry.isEnabled(cluster) {
-			if err := entry.authManager.EnsureClusterAuth(ctx, cluster); err != nil {
-				authErrs = append(authErrs, fmt.Errorf("failed to ensure cluster auth for %s: %w", authType, err))
-			}
-		} else {
-			if err := entry.authManager.DeleteClusterAuth(ctx, cluster); err != nil {
-				authErrs = append(authErrs, fmt.Errorf("failed to delete cluster auth for %s: %w", authType, err))
-			}
-		}
-	}
-	if err := errors.Join(authErrs...); err != nil {
+	// Reconcile per-backend AgentCredential CRs. Each CR is owned by the Cluster;
+	// the AgentCredentialReconciler mints the Secret and keeps the gateway
+	// htpasswd in sync.
+	if err := r.reconcileAgentCredentials(ctx, cluster); err != nil {
 		return err
 	}
 
@@ -424,11 +391,19 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 		return fmt.Errorf("failed to read CA bundle: %w", err)
 	}
 
+	// Resolve credentials for every enabled backend up front. A NotReady from
+	// any read propagates as-is so the caller can short-requeue without the
+	// individual collectors ever touching the credential store.
+	creds, err := r.resolveCredentials(ctx, cluster)
+	if err != nil {
+		return err
+	}
+
 	// Reconcile each collector: create if enabled, delete if disabled (independent tasks).
 	var errs []error
 	for _, c := range r.collectors {
 		if c.isEnabled(cluster) {
-			if err := c.service.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle); err != nil {
+			if err := c.service.ReconcileCreate(ctx, cluster, observabilityBundleVersion, caBundle, creds); err != nil {
 				logger.Error(err, "failed to create or update alloy config", "collector", c.name)
 				errs = append(errs, fmt.Errorf("alloy %s reconcile create: %w", c.name, err))
 			}
@@ -443,8 +418,91 @@ func (r *ClusterMonitoringReconciler) reconcileAlloyServices(ctx context.Context
 	return errors.Join(errs...)
 }
 
+// resolveCredentials reads basic-auth for every enabled backend. If any read
+// indicates the AgentCredential Secret has not been rendered yet, the sentinel
+// credential.ErrCredentialNotReady is returned unchanged so the caller can
+// translate it into a short requeue.
+func (r *ClusterReconciler) resolveCredentials(ctx context.Context, cluster *clusterv1.Cluster) (credential.BackendCredentials, error) {
+	creds := credential.BackendCredentials{}
+	for _, c := range r.credentials {
+		if !c.isEnabled(cluster) {
+			continue
+		}
+		username, password, err := r.credentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, c.backend))
+		if err != nil {
+			if errors.Is(err, credential.ErrCredentialNotReady) {
+				return nil, credential.ErrCredentialNotReady
+			}
+			return nil, fmt.Errorf("failed to read %s credentials for cluster %s: %w", c.backend, cluster.Name, err)
+		}
+		creds[c.backend] = credential.BasicAuth{Username: username, Password: password}
+	}
+	return creds, nil
+}
+
+// reconcileAgentCredentials ensures an AgentCredential CR exists per enabled
+// backend and is removed for disabled backends.
+func (r *ClusterReconciler) reconcileAgentCredentials(ctx context.Context, cluster *clusterv1.Cluster) error {
+	var errs []error
+	for _, c := range r.credentials {
+		if c.isEnabled(cluster) {
+			if err := r.ensureAgentCredential(ctx, cluster, c.backend); err != nil {
+				errs = append(errs, fmt.Errorf("ensure agent credential for %s: %w", c.backend, err))
+			}
+		} else {
+			if err := r.deleteAgentCredential(ctx, cluster, c.backend); err != nil {
+				errs = append(errs, fmt.Errorf("delete agent credential for %s: %w", c.backend, err))
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (r *ClusterReconciler) ensureAgentCredential(ctx context.Context, cluster *clusterv1.Cluster, backend v1alpha1.CredentialBackend) error {
+	cred := &v1alpha1.AgentCredential{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      credential.ClusterCredentialName(cluster.Name, backend),
+			Namespace: cluster.Namespace,
+		},
+	}
+
+	_, err := ctrl.CreateOrUpdate(ctx, r.Client, cred, func() error {
+		if err := controllerutil.SetControllerReference(cluster, cred, r.Client.Scheme()); err != nil {
+			return fmt.Errorf("failed to set owner reference: %w", err)
+		}
+		cred.Spec.Backend = backend
+		cred.Spec.AgentName = cluster.Name
+		cred.Spec.SecretName = credential.ClusterSecretName(cluster.Name, backend)
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upsert agent credential: %w", err)
+	}
+	return nil
+}
+
+func (r *ClusterReconciler) deleteAgentCredential(ctx context.Context, cluster *clusterv1.Cluster, backend v1alpha1.CredentialBackend) error {
+	key := client.ObjectKey{
+		Name:      credential.ClusterCredentialName(cluster.Name, backend),
+		Namespace: cluster.Namespace,
+	}
+	cred := &v1alpha1.AgentCredential{}
+	// Get-then-Delete avoids a wasted API write per reconcile for backends that
+	// were never enabled on this cluster (which is the common steady state).
+	if err := r.Client.Get(ctx, key, cred); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to get agent credential: %w", err)
+	}
+	if err := client.IgnoreNotFound(r.Client.Delete(ctx, cred)); err != nil {
+		return fmt.Errorf("failed to delete agent credential: %w", err)
+	}
+	return nil
+}
+
 // reconcileDelete handles cluster deletion.
-func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) (reconcile.Result, error) {
+func (r *ClusterReconciler) reconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) (reconcile.Result, error) {
 	logger := log.FromContext(ctx)
 
 	// We do not need to delete anything if there is no finalizer on the cluster
@@ -462,26 +520,33 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 		errs = append(errs, fmt.Errorf("remove bundle configuration: %w", err))
 	}
 
-	// Delete Alloy configuration for all enabled collectors.
+	// Delete Alloy configuration for every collector unconditionally. A feature
+	// flag flipped off between the previous reconcile and the delete would
+	// otherwise leak that collector's ConfigMap/Secret. Each ReconcileDelete
+	// uses client.IgnoreNotFound internally, so deleting "nothing" is a no-op.
 	for _, c := range r.collectors {
-		if c.isEnabled(cluster) {
-			if err := c.service.ReconcileDelete(ctx, cluster); err != nil {
-				logger.Error(err, "failed to delete alloy config", "collector", c.name)
-				errs = append(errs, fmt.Errorf("delete alloy %s: %w", c.name, err))
-			}
+		if err := c.service.ReconcileDelete(ctx, cluster); err != nil {
+			logger.Error(err, "failed to delete alloy config", "collector", c.name)
+			errs = append(errs, fmt.Errorf("delete alloy %s: %w", c.name, err))
 		}
 	}
 
-	// Delete cluster auth for all enabled observability backends
-	for authType, entry := range r.authManagers {
-		if entry.isEnabled(cluster) {
-			err = entry.authManager.DeleteClusterAuth(ctx, cluster)
-			if err != nil {
-				logger.Error(err, "failed to delete cluster auth", "auth_type", authType)
-				errs = append(errs, fmt.Errorf("delete cluster auth for %s: %w", authType, err))
-			}
+	// Explicitly request deletion of the per-backend AgentCredential CRs.
+	//
+	// Ordering note: this returns as soon as the API server has acknowledged
+	// the delete request, but each AgentCredential carries its own finalizer
+	// and stays around until the AgentCredentialReconciler re-aggregates the
+	// gateway htpasswd. The Cluster's finalizer is removed below in the same
+	// reconcile pass, so the Cluster object can disappear while its child ACs
+	// are still terminating — that is intentional and safe: the AC reconciler
+	// owns gateway-secret cleanup independently.
+	for _, c := range r.credentials {
+		if err := r.deleteAgentCredential(ctx, cluster, c.backend); err != nil {
+			logger.Error(err, "failed to delete agent credential", "backend", c.backend)
+			errs = append(errs, err)
 		}
 	}
+
 	// Delete ruler rules scoped to this cluster for every active tenant.
 	tenants, err := r.tenantRepository.List(ctx)
 	if err != nil {
@@ -522,7 +587,7 @@ func (r *ClusterMonitoringReconciler) reconcileDelete(ctx context.Context, clust
 	return ctrl.Result{}, nil
 }
 
-func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Context) (ctrl.Result, error) {
+func (r *ClusterReconciler) reconcileManagementCluster(ctx context.Context) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	// Collect all errors to ensure all tasks have a chance to run
@@ -557,22 +622,16 @@ func (r *ClusterMonitoringReconciler) reconcileManagementCluster(ctx context.Con
 	return ctrl.Result{}, nil
 }
 
-// tearDown tears down the monitoring stack management cluster specific components like the hearbeat, gateway secrets and so on.
-func (r *ClusterMonitoringReconciler) tearDown(ctx context.Context) error {
+// tearDown tears down management-cluster-specific components (heartbeat).
+// Gateway htpasswd entries are cleaned up implicitly by the AgentCredential
+// reconciler as each per-cluster credential is deleted: the aggregated gateway
+// Secret is rewritten with the remaining entries (empty once the last CR is gone).
+func (r *ClusterReconciler) tearDown(ctx context.Context) error {
 	for i, heartbeatRepo := range r.heartbeatRepositories {
 		err := heartbeatRepo.Delete(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to delete heartbeat (repository %d): %w", i, err)
 		}
 	}
-
-	// Delete all gateway secrets for all observability backends
-	for authType, entry := range r.authManagers {
-		err := entry.authManager.DeleteGatewaySecrets(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to delete %s secrets: %w", authType, err)
-		}
-	}
-
 	return nil
 }
