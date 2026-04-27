@@ -190,8 +190,10 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	// Convert to domain object
 	organization := r.organizationMapper.FromGrafanaOrganization(grafanaOrganization)
 
-	// Create or update the grafana organization
-	updatedID, err := grafanaService.ConfigureOrganization(ctx, organization)
+	// Create or update the grafana organization. Status.DisplayName is the last name we
+	// successfully applied; the Grafana service uses it to distinguish a CR rename from
+	// a stale orgID pointing to someone else's org.
+	updatedID, err := grafanaService.ConfigureOrganization(ctx, organization, grafanaOrganization.Status.DisplayName)
 	if err != nil {
 		// Set error status and update metric before returning
 		orgStatus = metrics.OrgStatusError
@@ -200,9 +202,10 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	}
 
 	// Update CR status if anything was changed
-	if grafanaOrganization.Status.OrgID != updatedID {
-		logger.Info("updating orgID in the grafanaOrganization status")
+	if grafanaOrganization.Status.OrgID != updatedID || grafanaOrganization.Status.DisplayName != grafanaOrganization.Spec.DisplayName {
+		logger.Info("updating grafanaOrganization status")
 		grafanaOrganization.Status.OrgID = updatedID
+		grafanaOrganization.Status.DisplayName = grafanaOrganization.Spec.DisplayName
 
 		err = r.Client.Status().Update(ctx, grafanaOrganization)
 		if err != nil {
@@ -211,7 +214,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 			return ctrl.Result{}, fmt.Errorf("failed to update grafanaOrganization status: %w", err)
 		}
 		orgStatus = metrics.OrgStatusActive
-		logger.Info("updated orgID in the grafanaOrganization status")
+		logger.Info("updated grafanaOrganization status")
 	}
 
 	// Collect all errors to ensure all independent tasks have a chance to run

@@ -2,6 +2,7 @@ package credential
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,14 +35,15 @@ func TestReader_ReadsCredentials(t *testing.T) {
 	assert.Equal(t, "hunter2", password)
 }
 
-func TestReader_FailsWhenSecretMissing(t *testing.T) {
+func TestReader_ReturnsNotReadyWhenSecretMissing(t *testing.T) {
 	scheme := newScheme(t)
 	cred := newAgentCredential("c1", "ns1", "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred).Build()
 	r := NewReader(c)
 
 	_, _, err := r.ReadPassword(context.Background(), "ns1", "c1")
-	assert.Error(t, err)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrCredentialNotReady), "expected ErrCredentialNotReady, got %v", err)
 }
 
 func TestReader_FailsWhenCredentialMissing(t *testing.T) {
@@ -53,7 +55,7 @@ func TestReader_FailsWhenCredentialMissing(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestReader_FailsWhenPasswordEmpty(t *testing.T) {
+func TestReader_ReturnsNotReadyWhenPasswordEmpty(t *testing.T) {
 	scheme := newScheme(t)
 	cred := newAgentCredential("c1", "ns1", "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
 	secret := &corev1.Secret{
@@ -66,7 +68,8 @@ func TestReader_FailsWhenPasswordEmpty(t *testing.T) {
 	r := NewReader(c)
 
 	_, _, err := r.ReadPassword(context.Background(), "ns1", "c1")
-	assert.Error(t, err)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrCredentialNotReady), "expected ErrCredentialNotReady, got %v", err)
 }
 
 func TestClusterCredentialAndSecretNames(t *testing.T) {

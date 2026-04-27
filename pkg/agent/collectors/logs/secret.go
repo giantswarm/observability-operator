@@ -1,15 +1,16 @@
 package logs
 
 import (
-	"context"
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 
+	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent/common"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 )
 
 func Secret(cluster *clusterv1.Cluster) *v1.Secret {
@@ -22,23 +23,20 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (s *Service) GenerateAlloyLogsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, caBundle string) (map[string]string, error) {
+func (s *Service) GenerateAlloyLogsSecretData(cluster *clusterv1.Cluster, loggingEnabled bool, caBundle string, creds credential.BackendCredentials) (map[string]string, error) {
 	secrets := map[string]string{}
 
 	if loggingEnabled {
-		lokiURL := fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
-		lokiRulerAPIURL := fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
-
-		logsPassword, err := s.LogsAuthManager.GetClusterPassword(ctx, cluster)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get loki auth password for cluster %s: %w", cluster.Name, err)
+		auth, ok := creds.Get(observabilityv1alpha1.CredentialBackendLogs)
+		if !ok {
+			return nil, fmt.Errorf("logs credentials missing for cluster %s", cluster.Name)
 		}
 
-		secrets[common.LokiURLKey] = lokiURL
+		secrets[common.LokiURLKey] = fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
 		secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
-		secrets[common.LokiUsernameKey] = cluster.Name
-		secrets[common.LokiPasswordKey] = logsPassword
-		secrets[common.LokiRulerAPIURLKey] = lokiRulerAPIURL
+		secrets[common.LokiUsernameKey] = auth.Username
+		secrets[common.LokiPasswordKey] = auth.Password
+		secrets[common.LokiRulerAPIURLKey] = fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
 	}
 
 	if caBundle != "" {
