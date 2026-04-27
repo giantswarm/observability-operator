@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `credential.Aggregator` no longer silently swallows write errors to gateway htpasswd secrets. A missing gateway namespace is detected explicitly up front; any `NotFound` surfaced by the write itself propagates as a real error so the `AgentCredential` finalizer stays until both the ingress and HTTPRoute secrets are updated.
 - Cluster reconcile no longer emits a spurious error on the first reconcile of a new cluster while the `AgentCredential` Secret is still being rendered. Credentials are now resolved once by the controller and passed into the Alloy collectors; if any backing Secret is not ready yet the reconcile short-requeues instead of failing.
 - Align Grafana client mocks and SSO settings payload handling with the latest `grafana-openapi-client-go` interface so `go build ./...` passes.
+- Fix Ginkgo version mismatch in tests
 - `GrafanaOrganization` reconciler: improved management of orgID conflicts.
 - Cluster deletion: Alloy collector ConfigMaps/Secrets were leaked for collectors whose feature flag was flipped off between the previous reconcile and the delete. `reconcileDelete` now calls `ReconcileDelete` on every collector unconditionally.
 - `credential.Aggregator` no longer silently swallows write errors to gateway htpasswd secrets. A missing gateway namespace is detected explicitly up front; any `NotFound` surfaced by the write itself propagates as a real error so the `AgentCredential` finalizer stays until both the ingress and HTTPRoute secrets are updated.

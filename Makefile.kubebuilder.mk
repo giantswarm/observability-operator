@@ -26,7 +26,7 @@ ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api 2>/dev/
 
 # Code quality and development tool versions
 GOLANGCI_LINT_VERSION ?= v2.4.0
-GINKGO_VERSION ?= v2.26.0
+GINKGO_VERSION ?= $(shell go list -m -f "{{ .Version }}" github.com/onsi/ginkgo/v2)
 
 # Directories
 API_DIR := $(shell [ -d api ] && echo api || echo pkg/apis)
