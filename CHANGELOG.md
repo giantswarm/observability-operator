@@ -32,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cluster deletion: Alloy collector ConfigMaps/Secrets were leaked for collectors whose feature flag was flipped off between the previous reconcile and the delete. `reconcileDelete` now calls `ReconcileDelete` on every collector unconditionally.
 - `credential.Aggregator` no longer silently swallows write errors to gateway htpasswd secrets. A missing gateway namespace is detected explicitly up front; any `NotFound` surfaced by the write itself propagates as a real error so the `AgentCredential` finalizer stays until both the ingress and HTTPRoute secrets are updated.
 
-
 ## [0.67.2] - 2026-04-08
 
 ### Added
