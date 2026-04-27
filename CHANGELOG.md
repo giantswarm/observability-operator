@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.68.0] - 2026-04-27
+
 ### Added
 
 - Per-controller enable flags `--controllers-{alertmanager,cluster,dashboard,grafana-organization}-enabled` (all default `true`). Exposed via `operator.controllers.*.enabled` Helm values so individual reconcilers can be disabled at deploy time.
@@ -1090,7 +1092,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.67.2...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.68.0...HEAD
+[0.68.0]: https://github.com/giantswarm/observability-operator/compare/v0.67.2...v0.68.0
 [0.67.2]: https://github.com/giantswarm/observability-operator/compare/v0.67.1...v0.67.2
 [0.67.1]: https://github.com/giantswarm/observability-operator/compare/v0.67.0...v0.67.1
 [0.67.0]: https://github.com/giantswarm/observability-operator/compare/v0.66.1...v0.67.0
