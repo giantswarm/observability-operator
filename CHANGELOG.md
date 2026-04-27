@@ -7,11 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Cluster deletion: Alloy collector ConfigMaps/Secrets were leaked for collectors whose feature flag was flipped off between the previous reconcile and the delete. `reconcileDelete` now calls `ReconcileDelete` on every collector unconditionally.
-- `credential.Aggregator` no longer silently swallows write errors to gateway htpasswd secrets. A missing gateway namespace is detected explicitly up front; any `NotFound` surfaced by the write itself propagates as a real error so the `AgentCredential` finalizer stays until both the ingress and HTTPRoute secrets are updated.
-
 ### Added
 
 - Per-controller enable flags `--controllers-{alertmanager,cluster,dashboard,grafana-organization}-enabled` (all default `true`). Exposed via `operator.controllers.*.enabled` Helm values so individual reconcilers can be disabled at deploy time.
@@ -28,10 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alloy collectors (`metrics`, `logs`, `events`) use `credential.Reader` interface instead of per-signal `AuthManager`.
 - **Breaking (Helm)**: removed the `--alertmanager-enabled` flag (formerly gated by `alerting.enabled`). Use `--controllers-alertmanager-enabled` / `operator.controllers.alertmanager.enabled` instead. Default flipped from `false` to `true` — the Alertmanager controller is now opt-out.
 - internal code refactoring
+- Cronitor alerts: update ops-recipe URL
 
 ### Fixed
 
 - Align Grafana client mocks and SSO settings payload handling with the latest `grafana-openapi-client-go` interface so `go build ./...` passes.
+- `GrafanaOrganization` reconciler: improved management of orgID conflicts.
+- Cluster deletion: Alloy collector ConfigMaps/Secrets were leaked for collectors whose feature flag was flipped off between the previous reconcile and the delete. `reconcileDelete` now calls `ReconcileDelete` on every collector unconditionally.
+- `credential.Aggregator` no longer silently swallows write errors to gateway htpasswd secrets. A missing gateway namespace is detected explicitly up front; any `NotFound` surfaced by the write itself propagates as a real error so the `AgentCredential` finalizer stays until both the ingress and HTTPRoute secrets are updated.
+
 
 ## [0.67.2] - 2026-04-08
 
