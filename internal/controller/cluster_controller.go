@@ -475,13 +475,14 @@ func (r *ClusterReconciler) reconcileDelete(ctx context.Context, cluster *cluste
 		errs = append(errs, fmt.Errorf("remove bundle configuration: %w", err))
 	}
 
-	// Delete Alloy configuration for all enabled collectors.
+	// Delete Alloy configuration for every collector unconditionally. A feature
+	// flag flipped off between the previous reconcile and the delete would
+	// otherwise leak that collector's ConfigMap/Secret. Each ReconcileDelete
+	// uses client.IgnoreNotFound internally, so deleting "nothing" is a no-op.
 	for _, c := range r.collectors {
-		if c.isEnabled(cluster) {
-			if err := c.service.ReconcileDelete(ctx, cluster); err != nil {
-				logger.Error(err, "failed to delete alloy config", "collector", c.name)
-				errs = append(errs, fmt.Errorf("delete alloy %s: %w", c.name, err))
-			}
+		if err := c.service.ReconcileDelete(ctx, cluster); err != nil {
+			logger.Error(err, "failed to delete alloy config", "collector", c.name)
+			errs = append(errs, fmt.Errorf("delete alloy %s: %w", c.name, err))
 		}
 	}
 

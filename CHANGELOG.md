@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Align Grafana client mocks and SSO settings payload handling with the latest `grafana-openapi-client-go` interface so `go build ./...` passes.
 - `GrafanaOrganization` reconciler: improved management of orgID conflicts.
+- Cluster deletion: Alloy collector ConfigMaps/Secrets were leaked for collectors whose feature flag was flipped off between the previous reconcile and the delete. `reconcileDelete` now calls `ReconcileDelete` on every collector unconditionally
 
 ## [0.67.2] - 2026-04-08
 
