@@ -36,8 +36,8 @@ type mockCollector struct {
 	mock.Mock
 }
 
-func (m *mockCollector) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, version semver.Version, caBundle string) error {
-	return m.Called(ctx, cluster, version, caBundle).Error(0)
+func (m *mockCollector) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, version semver.Version, caBundle string, creds credential.BackendCredentials) error {
+	return m.Called(ctx, cluster, version, caBundle, creds).Error(0)
 }
 
 func (m *mockCollector) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
@@ -142,7 +142,6 @@ var _ = Describe("Cluster Controller", func() {
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
-				CredentialReader:        credentialReader,
 			}
 
 			alloyLogsService := &logs.Service{
@@ -150,7 +149,6 @@ var _ = Describe("Cluster Controller", func() {
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
-				CredentialReader:        credentialReader,
 			}
 
 			alloyEventsService := &events.Service{
@@ -158,7 +156,6 @@ var _ = Describe("Cluster Controller", func() {
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
-				CredentialReader:        credentialReader,
 			}
 
 			reconciler = &ClusterReconciler{
@@ -176,6 +173,7 @@ var _ = Describe("Cluster Controller", func() {
 					{backend: v1alpha1.CredentialBackendLogs, isEnabled: testCfg.Logging.IsLoggingEnabled},
 					{backend: v1alpha1.CredentialBackendTraces, isEnabled: testCfg.Tracing.IsTracingEnabled},
 				},
+				credentialReader:           credentialReader,
 				observabilityBundleService: bundleService,
 				rulerClient:                ruler.NewNoop(),
 				tenantRepository:           tenancy.NewTenantRepository(k8sClient),

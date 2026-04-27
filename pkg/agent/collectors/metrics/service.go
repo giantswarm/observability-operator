@@ -27,10 +27,9 @@ type Service struct {
 	ConfigurationRepository agent.ConfigurationRepository
 	OrganizationRepository  organization.OrganizationRepository
 	TenantRepository        tenancy.TenantRepository
-	CredentialReader        credential.Reader
 }
 
-func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, caBundle string) error {
+func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, observabilityBundleVersion semver.Version, caBundle string, creds credential.BackendCredentials) error {
 	logger := log.FromContext(ctx)
 	logger.Info("alloy-metrics-service - ensuring alloy metrics is configured")
 
@@ -47,7 +46,7 @@ func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	}
 
 	// Generate Secret data
-	secretData, err := s.GenerateAlloyMonitoringSecretData(ctx, cluster, caBundle)
+	secretData, err := s.GenerateAlloyMonitoringSecretData(cluster, caBundle, creds)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy monitoring secret: %w", err)
 	}

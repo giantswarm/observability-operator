@@ -1,7 +1,6 @@
 package events
 
 import (
-	"context"
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
@@ -24,40 +23,40 @@ func Secret(cluster *clusterv1.Cluster) *v1.Secret {
 	}
 }
 
-func (s *Service) GenerateAlloyEventsSecretData(ctx context.Context, cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, monitoringEnabled bool, caBundle string) (map[string]string, error) {
+func (s *Service) GenerateAlloyEventsSecretData(cluster *clusterv1.Cluster, loggingEnabled bool, tracingEnabled bool, monitoringEnabled bool, caBundle string, creds credential.BackendCredentials) (map[string]string, error) {
 	secrets := map[string]string{}
 
 	if loggingEnabled {
-		username, password, err := s.CredentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, observabilityv1alpha1.CredentialBackendLogs))
-		if err != nil {
-			return nil, fmt.Errorf("failed to get loki auth credentials for cluster %s: %w", cluster.Name, err)
+		auth, ok := creds.Get(observabilityv1alpha1.CredentialBackendLogs)
+		if !ok {
+			return nil, fmt.Errorf("logs credentials missing for cluster %s", cluster.Name)
 		}
 		secrets[common.LokiURLKey] = fmt.Sprintf(common.LokiPushURLFormat, s.Config.Cluster.BaseDomain)
 		secrets[common.LokiTenantIDKey] = s.Config.DefaultTenant
 		secrets[common.LokiRulerAPIURLKey] = fmt.Sprintf(common.LokiBaseURLFormat, s.Config.Cluster.BaseDomain)
 		secrets[common.LokiOTLPURLKey] = fmt.Sprintf(common.LokiOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
-		secrets[common.LokiUsernameKey] = username
-		secrets[common.LokiPasswordKey] = password
+		secrets[common.LokiUsernameKey] = auth.Username
+		secrets[common.LokiPasswordKey] = auth.Password
 	}
 
 	if tracingEnabled {
-		username, password, err := s.CredentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, observabilityv1alpha1.CredentialBackendTraces))
-		if err != nil {
-			return nil, fmt.Errorf("failed to get tempo auth credentials for cluster %s: %w", cluster.Name, err)
+		auth, ok := creds.Get(observabilityv1alpha1.CredentialBackendTraces)
+		if !ok {
+			return nil, fmt.Errorf("traces credentials missing for cluster %s", cluster.Name)
 		}
-		secrets[common.TempoUsernameKey] = username
-		secrets[common.TempoPasswordKey] = password
+		secrets[common.TempoUsernameKey] = auth.Username
+		secrets[common.TempoPasswordKey] = auth.Password
 		secrets[common.TempoOTLPURLKey] = fmt.Sprintf("%s:443", fmt.Sprintf(common.TempoBaseURLFormat, s.Config.Cluster.BaseDomain))
 	}
 
 	if monitoringEnabled {
-		username, password, err := s.CredentialReader.ReadPassword(ctx, cluster.Namespace, credential.ClusterCredentialName(cluster.Name, observabilityv1alpha1.CredentialBackendMetrics))
-		if err != nil {
-			return nil, fmt.Errorf("failed to get mimir otlp auth credentials for cluster %s: %w", cluster.Name, err)
+		auth, ok := creds.Get(observabilityv1alpha1.CredentialBackendMetrics)
+		if !ok {
+			return nil, fmt.Errorf("metrics credentials missing for cluster %s", cluster.Name)
 		}
 		secrets[common.MimirOTLPURLKey] = fmt.Sprintf(common.MimirOTLPBaseURLFormat, s.Config.Cluster.BaseDomain)
-		secrets[common.MimirUsernameKey] = username
-		secrets[common.MimirPasswordKey] = password
+		secrets[common.MimirUsernameKey] = auth.Username
+		secrets[common.MimirPasswordKey] = auth.Password
 	}
 
 	if caBundle != "" {
