@@ -18,8 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -38,8 +36,7 @@ var _ = Describe("AgentCredential Validation", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		ns = fmt.Sprintf("ac-webhook-ns-%d", time.Now().UnixNano())
-		Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})).To(Succeed())
+		ns = createNamespace(ctx, "ac-webhook-ns-")
 	})
 
 	newAC := func(name, agentName string, backend observabilityv1alpha1.CredentialBackend) *observabilityv1alpha1.AgentCredential {
@@ -98,8 +95,7 @@ var _ = Describe("AgentCredential Validation", func() {
 			first := newAC("first", "shared-agent", observabilityv1alpha1.CredentialBackendMetrics)
 			Expect(k8sClient.Create(ctx, first)).To(Succeed())
 
-			otherNs := fmt.Sprintf("%s-other", ns)
-			Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: otherNs}})).To(Succeed())
+			otherNs := createNamespace(ctx, "ac-webhook-ns-other-")
 
 			dup := &observabilityv1alpha1.AgentCredential{
 				ObjectMeta: metav1.ObjectMeta{Name: "dup", Namespace: otherNs},
@@ -175,14 +171,26 @@ var _ = Describe("AgentCredential Validation", func() {
 	})
 
 	AfterEach(func() {
-		// Best-effort: drop every AC in the per-test namespace so later tests don't
-		// hit uniqueness collisions against stragglers.
+		// Drop every AC cluster-wide so later tests don't hit uniqueness
+		// collisions on (backend, agentName) against stragglers — including
+		// ACs created in extra namespaces by individual specs.
 		list := &observabilityv1alpha1.AgentCredentialList{}
 		if err := k8sClient.List(ctx, list); err == nil {
 			for i := range list.Items {
 				_ = k8sClient.Delete(ctx, &list.Items[i])
 			}
 		}
-		_ = k8sClient.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
 	})
 })
+
+// createNamespace creates a namespace with a generated name, registers a
+// DeferCleanup to delete it at the end of the spec, and returns the name.
+func createNamespace(ctx context.Context, prefix string) string {
+	GinkgoHelper()
+	nsObj := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{GenerateName: prefix}}
+	Expect(k8sClient.Create(ctx, nsObj)).To(Succeed())
+	DeferCleanup(func(ctx SpecContext) {
+		_ = k8sClient.Delete(ctx, nsObj)
+	})
+	return nsObj.Name
+}
