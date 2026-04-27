@@ -18,8 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
