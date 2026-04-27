@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/blang/semver/v4"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,18 +16,42 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/events"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/logs"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
-	"github.com/giantswarm/observability-operator/pkg/auth"
 	"github.com/giantswarm/observability-operator/pkg/bundle"
 	"github.com/giantswarm/observability-operator/pkg/common/organization"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/credential"
 	"github.com/giantswarm/observability-operator/pkg/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/ruler"
 )
+
+// mockCollector is a testify-based stand-in for collectors.CollectorService
+// so tests can assert which collectors had their lifecycle hooks called.
+type mockCollector struct {
+	mock.Mock
+}
+
+func (m *mockCollector) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluster, version semver.Version, caBundle string, creds credential.BackendCredentials) error {
+	return m.Called(ctx, cluster, version, caBundle, creds).Error(0)
+}
+
+func (m *mockCollector) ReconcileDelete(ctx context.Context, cluster *clusterv1.Cluster) error {
+	return m.Called(ctx, cluster).Error(0)
+}
+
+// mockCredentialReader returns fixed credentials for every request.
+type mockCredentialReader struct{}
+
+func (m *mockCredentialReader) ReadPassword(ctx context.Context, namespace, credentialName string) (string, string, error) {
+	return "test-user", "test-password", nil
+}
+
+var _ credential.Reader = &mockCredentialReader{}
 
 var _ = Describe("Cluster Controller", func() {
 	Context("When reconciling a CAPI Cluster resource", func() {
@@ -38,7 +64,7 @@ var _ = Describe("Cluster Controller", func() {
 		var (
 			ctx              context.Context
 			cluster          *clusterv1.Cluster
-			reconciler       *ClusterMonitoringReconciler
+			reconciler       *ClusterReconciler
 			namespaceName    types.NamespacedName
 			clusterNamespace string
 		)
@@ -95,38 +121,9 @@ var _ = Describe("Cluster Controller", func() {
 				},
 			})
 
-			mimirAuthManager := auth.NewAuthManager(
-				k8sClient,
-				auth.NewConfig(
-					auth.AuthTypeMetrics,
-					"mimir",
-					"mimir-gateway-ingress-auth",
-					"mimir-gateway-httproute-auth",
-				),
-			)
-
-			lokiAuthManager := auth.NewAuthManager(
-				k8sClient,
-				auth.NewConfig(
-					auth.AuthTypeLogs,
-					"loki",
-					"loki-gateway-ingress-auth",
-					"loki-gateway-httproute-auth",
-				),
-			)
-
-			tempoAuthManager := auth.NewAuthManager(
-				k8sClient,
-				auth.NewConfig(
-					auth.AuthTypeTraces,
-					"tempo",
-					"tempo-gateway-ingress-auth",
-					"tempo-gateway-httproute-auth",
-				),
-			)
-
 			// Create agent configuration repository
 			agentConfigurationRepository := agent.NewConfigurationRepository(k8sClient)
+			credentialReader := &mockCredentialReader{}
 
 			testCfg := config.Config{
 				Cluster: config.ClusterConfig{
@@ -145,7 +142,6 @@ var _ = Describe("Cluster Controller", func() {
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
-				AuthManager:             mimirAuthManager,
 			}
 
 			alloyLogsService := &logs.Service{
@@ -153,7 +149,6 @@ var _ = Describe("Cluster Controller", func() {
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
-				LogsAuthManager:         lokiAuthManager,
 			}
 
 			alloyEventsService := &events.Service{
@@ -161,17 +156,9 @@ var _ = Describe("Cluster Controller", func() {
 				ConfigurationRepository: agentConfigurationRepository,
 				OrganizationRepository:  organizationRepository,
 				TenantRepository:        tenancy.NewTenantRepository(k8sClient),
-				LogsAuthManager:         lokiAuthManager,
-				TracesAuthManager:       tempoAuthManager,
 			}
 
-			authManagers := map[auth.AuthType]authManagerEntry{
-				auth.AuthTypeMetrics: {authManager: mimirAuthManager, isEnabled: testCfg.Monitoring.IsMonitoringEnabled},
-				auth.AuthTypeLogs:    {authManager: lokiAuthManager, isEnabled: testCfg.Logging.IsLoggingEnabled},
-				auth.AuthTypeTraces:  {authManager: tempoAuthManager, isEnabled: testCfg.Tracing.IsTracingEnabled},
-			}
-
-			reconciler = &ClusterMonitoringReconciler{
+			reconciler = &ClusterReconciler{
 				Client: k8sClient,
 				Config: testCfg,
 				collectors: []collectorEntry{
@@ -181,8 +168,13 @@ var _ = Describe("Cluster Controller", func() {
 						return testCfg.Logging.IsLoggingEnabled(c) || testCfg.Tracing.IsTracingEnabled(c) || testCfg.Monitoring.IsMonitoringEnabled(c)
 					}},
 				},
+				credentials: []credentialEntry{
+					{backend: v1alpha1.CredentialBackendMetrics, isEnabled: testCfg.Monitoring.IsMonitoringEnabled},
+					{backend: v1alpha1.CredentialBackendLogs, isEnabled: testCfg.Logging.IsLoggingEnabled},
+					{backend: v1alpha1.CredentialBackendTraces, isEnabled: testCfg.Tracing.IsTracingEnabled},
+				},
+				credentialReader:           credentialReader,
 				observabilityBundleService: bundleService,
-				authManagers:               authManagers,
 				rulerClient:                ruler.NewNoop(),
 				tenantRepository:           tenancy.NewTenantRepository(k8sClient),
 				finalizerHelper:            NewFinalizerHelper(k8sClient, monitoring.MonitoringFinalizer),
@@ -245,6 +237,37 @@ var _ = Describe("Cluster Controller", func() {
 			// Should handle deletion gracefully with real services
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
+		})
+
+		It("should delete all collector configs on cluster deletion, even disabled ones", func() {
+			By("Seeding the reconciler with an always-enabled and an always-disabled mock collector")
+			enabledMock := &mockCollector{}
+			disabledMock := &mockCollector{}
+			enabledMock.On("ReconcileDelete", mock.Anything, mock.Anything).Return(nil)
+			disabledMock.On("ReconcileDelete", mock.Anything, mock.Anything).Return(nil)
+
+			reconciler.collectors = []collectorEntry{
+				{name: "enabled", service: enabledMock, isEnabled: func(*clusterv1.Cluster) bool { return true }},
+				{name: "disabled", service: disabledMock, isEnabled: func(*clusterv1.Cluster) bool { return false }},
+			}
+
+			By("Adding the finalizer and marking the cluster for deletion")
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, namespaceName, cluster); err != nil {
+					return err
+				}
+				cluster.Finalizers = append(cluster.Finalizers, monitoring.MonitoringFinalizer)
+				return k8sClient.Update(ctx, cluster)
+			}, timeout, interval).Should(Succeed())
+			Expect(k8sClient.Delete(ctx, cluster)).To(Succeed())
+
+			By("Reconciling the delete")
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespaceName})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Both collectors' ReconcileDelete were invoked")
+			enabledMock.AssertCalled(GinkgoT(), "ReconcileDelete", mock.Anything, mock.Anything)
+			disabledMock.AssertCalled(GinkgoT(), "ReconcileDelete", mock.Anything, mock.Anything)
 		})
 
 		It("should handle non-existent cluster resources", func() {
