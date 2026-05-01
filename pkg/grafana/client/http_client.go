@@ -9,51 +9,37 @@ import (
 	"github.com/grafana/grafana-openapi-client-go/client/sso_settings"
 )
 
-// grafanaHTTPClient implements the GrafanaClient interface by wrapping
-// the original GrafanaHTTPAPI and exposing all operations through client services.
+// grafanaHTTPClient adapts the upstream GrafanaHTTPAPI to the GrafanaClient interface.
 type grafanaHTTPClient struct {
 	api *grafana.GrafanaHTTPAPI
 }
 
 // NewGrafanaClient creates a new GrafanaClient implementation wrapping the provided GrafanaHTTPAPI
 func NewGrafanaClient(api *grafana.GrafanaHTTPAPI) GrafanaClient {
-	return &grafanaHTTPClient{
-		api: api,
-	}
+	return &grafanaHTTPClient{api: api}
 }
 
-// OrgID returns the current organization ID
-func (g *grafanaHTTPClient) OrgID() int64 {
-	return g.api.OrgID()
-}
-
-// WithOrgID sets the organization ID for subsequent requests and returns the client
+// WithOrgID returns a new GrafanaClient scoped to orgID. The receiver is not modified.
 func (g *grafanaHTTPClient) WithOrgID(orgID int64) GrafanaClient {
-	g.api = g.api.WithOrgID(orgID)
-	return g
+	return &grafanaHTTPClient{api: g.api.WithOrgID(orgID)}
 }
 
-// Datasources returns the datasources client service
 func (g *grafanaHTTPClient) Datasources() datasources.ClientService {
 	return g.api.Datasources
 }
 
-// Orgs returns the organizations client service
 func (g *grafanaHTTPClient) Orgs() orgs.ClientService {
 	return g.api.Orgs
 }
 
-// Dashboards returns the dashboards client service
 func (g *grafanaHTTPClient) Dashboards() dashboards.ClientService {
 	return g.api.Dashboards
 }
 
-// Folders returns the folders client service
 func (g *grafanaHTTPClient) Folders() folders.ClientService {
 	return g.api.Folders
 }
 
-// SsoSettings returns the SSO settings client service
 func (g *grafanaHTTPClient) SsoSettings() sso_settings.ClientService {
 	return g.api.SsoSettings
 }

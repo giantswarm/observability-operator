@@ -27,7 +27,7 @@ func TestEnsureFolderHierarchy_EmptyPath(t *testing.T) {
 	mockClient := &mocks.MockGrafanaClient{}
 	svc := newTestService(mockClient)
 
-	uid, err := svc.ensureFolderHierarchy(context.Background(), "")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestEnsureFolderHierarchy_SingleFolder_AlreadyExists(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestEnsureFolderHierarchy_SingleFolder_DoesNotExist(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestEnsureFolderHierarchy_NestedPath(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), "team-a/networking")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a/networking")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestEnsureFolderHierarchy_Rename(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestEnsureFolderHierarchy_CreateFolderError(t *testing.T) {
 	mockFolders.On("CreateFolder", mock.Anything).Return(nil, errors.New("grafana unavailable"))
 
 	svc := newTestService(mockClient)
-	_, err := svc.ensureFolderHierarchy(context.Background(), "team-a")
+	_, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -211,7 +211,7 @@ func TestEnsureFolderHierarchy_ThreeLevel(t *testing.T) {
 	})).Return(&folders.CreateFolderOK{Payload: &models.Folder{UID: uid3}}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), "a/b/c")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "a/b/c")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestEnsureFolderHierarchy_GetFolderNon404Error(t *testing.T) {
 		goruntime.NewAPIError("internal server error", nil, http.StatusInternalServerError))
 
 	svc := newTestService(mockClient)
-	_, err := svc.ensureFolderHierarchy(context.Background(), "team-a")
+	_, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a")
 	if err == nil {
 		t.Fatal("expected error for 500 response, got nil")
 	}
@@ -245,11 +245,10 @@ func testOrg() *organization.Organization {
 	return organization.NewFromGrafana(1, "test-org")
 }
 
-// setupOrgContextMocks sets up the org context switching mocks for CleanupOrphanedFoldersForOrg tests.
+// setupOrgContextMocks wires WithOrgID to return the same mock so the mock
+// can play the role of both base and per-org client in CleanupOrphanedFoldersForOrg tests.
 func setupOrgContextMocks(mockClient *mocks.MockGrafanaClient) {
-	mockClient.On("OrgID").Return(int64(0))
 	mockClient.On("WithOrgID", int64(1)).Return(mockClient)
-	mockClient.On("WithOrgID", int64(0)).Return(mockClient)
 }
 
 func TestCleanupOrphanedFoldersForOrg_DeletesEmptyOrphanedFolder(t *testing.T) {

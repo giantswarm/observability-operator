@@ -20,15 +20,13 @@ type MockGrafanaClient struct {
 	mock.Mock
 }
 
-func (m *MockGrafanaClient) OrgID() int64 {
-	args := m.Called()
-	return args.Get(0).(int64)
-}
-
+// WithOrgID returns the receiver by default so tests can use a single mock for
+// every org context. Override with mock.On("WithOrgID", id).Return(otherMock)
+// when a test needs to distinguish org contexts.
 func (m *MockGrafanaClient) WithOrgID(orgID int64) grafanaclient.GrafanaClient {
 	args := m.Called(orgID)
 	if args.Get(0) == nil {
-		return m // Return self if mock returns nil
+		return m
 	}
 	return args.Get(0).(grafanaclient.GrafanaClient)
 }

@@ -12,7 +12,7 @@ require (
 	github.com/go-logr/logr v1.4.3
 	github.com/go-openapi/runtime v0.29.4
 	github.com/goccy/go-yaml v1.19.2
-	github.com/grafana/grafana-openapi-client-go v0.0.0-20260414120814-5b95bb183fae
+	github.com/grafana/grafana-openapi-client-go v0.0.0-20260430175825-547a3b5a00a5
 	github.com/onsi/ginkgo/v2 v2.28.2
 	github.com/onsi/gomega v1.39.1
 	github.com/prometheus/alertmanager v0.32.0
