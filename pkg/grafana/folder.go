@@ -11,12 +11,13 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
+	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
 
 // ensureFolderHierarchy ensures that the full folder hierarchy exists for the given path.
 // Returns the leaf folder UID, or empty string if path is empty (General folder).
-// Must be called within an organization context (see withinOrganization).
-func (s *Service) ensureFolderHierarchy(ctx context.Context, path string) (string, error) {
+// The provided client must already be scoped to the target organization.
+func (s *Service) ensureFolderHierarchy(ctx context.Context, client grafanaclient.GrafanaClient, path string) (string, error) {
 	if path == "" {
 		return "", nil
 	}
@@ -29,7 +30,7 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, path string) (strin
 	for _, seg := range segments {
 		leafUID = seg.UID()
 
-		existing, err := s.grafanaClient.Folders().GetFolderByUID(seg.UID())
+		existing, err := client.Folders().GetFolderByUID(seg.UID())
 		if err != nil {
 			if !isFolderNotFound(err) {
 				return "", fmt.Errorf("failed to get folder %q: %w", seg.FullPath(), err)
@@ -37,7 +38,7 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, path string) (strin
 
 			// Folder doesn't exist - create it
 			logger.Info("creating folder", "uid", seg.UID(), "title", seg.Title(), "parentUID", seg.ParentUID())
-			_, err = s.grafanaClient.Folders().CreateFolder(&models.CreateFolderCommand{
+			_, err = client.Folders().CreateFolder(&models.CreateFolderCommand{
 				UID:         seg.UID(),
 				Title:       seg.Title(),
 				ParentUID:   seg.ParentUID(),
@@ -53,7 +54,7 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, path string) (strin
 		// The UID is derived from the path so it stays the same, but the title could have been changed.
 		if existing.Payload.Title != seg.Title() {
 			logger.Info("renaming folder", "uid", seg.UID(), "oldTitle", existing.Payload.Title, "newTitle", seg.Title())
-			_, err = s.grafanaClient.Folders().UpdateFolder(seg.UID(), &models.UpdateFolderCommand{
+			_, err = client.Folders().UpdateFolder(seg.UID(), &models.UpdateFolderCommand{
 				Title:     seg.Title(),
 				Overwrite: true,
 			})
@@ -70,11 +71,11 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, path string) (strin
 // operator-managed folders that are no longer referenced by any dashboard.
 // requiredUIDs is the set of folder UIDs still needed by dashboard ConfigMaps.
 func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organization.Organization, requiredUIDs map[string]struct{}) error {
-	return s.withinOrganization(ctx, org, func(ctx context.Context) error {
+	return s.withinOrganization(ctx, org, func(ctx context.Context, client grafanaclient.GrafanaClient) error {
 		logger := log.FromContext(ctx)
 
 		// List all folders in the current org
-		allFolders, err := s.grafanaClient.Folders().GetFolders(folders.NewGetFoldersParams())
+		allFolders, err := client.Folders().GetFolders(folders.NewGetFoldersParams())
 		if err != nil {
 			return fmt.Errorf("failed to list folders: %w", err)
 		}
@@ -91,7 +92,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			}
 
 			// Check if folder is empty before deleting
-			counts, err := s.grafanaClient.Folders().GetFolderDescendantCounts(f.UID)
+			counts, err := client.Folders().GetFolderDescendantCounts(f.UID)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("failed to get descendant counts for folder %q: %w", f.UID, err))
 				continue
@@ -111,7 +112,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			}
 
 			logger.Info("deleting orphaned folder", "uid", f.UID, "title", f.Title)
-			_, err = s.grafanaClient.Folders().DeleteFolder(folders.NewDeleteFolderParams().WithFolderUID(f.UID))
+			_, err = client.Folders().DeleteFolder(folders.NewDeleteFolderParams().WithFolderUID(f.UID))
 			if err != nil {
 				errs = append(errs, fmt.Errorf("failed to delete orphaned folder %q: %w", f.UID, err))
 			}

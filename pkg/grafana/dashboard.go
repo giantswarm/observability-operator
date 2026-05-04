@@ -9,6 +9,7 @@ import (
 
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
+	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 )
 
@@ -20,11 +21,11 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 		return fmt.Errorf("failed to find organization: %w", err)
 	}
 
-	err = s.withinOrganization(ctx, org, func(ctx context.Context) error {
+	err = s.withinOrganization(ctx, org, func(ctx context.Context, client grafanaclient.GrafanaClient) error {
 		logger := log.FromContext(ctx)
 
 		// Ensure folder hierarchy exists and get the leaf folder UID
-		folderUID, err := s.ensureFolderHierarchy(ctx, dashboard.FolderPath())
+		folderUID, err := s.ensureFolderHierarchy(ctx, client, dashboard.FolderPath())
 		if err != nil {
 			return fmt.Errorf("failed to ensure folder hierarchy: %w", err)
 		}
@@ -36,9 +37,7 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 		// Inject the managed tag so operator dashboards are distinguishable
 		injectManagedTag(dashboardContent)
 
-		// Create or update dashboard in the target folder
-		err = s.PublishDashboard(dashboardContent, folderUID)
-		if err != nil {
+		if err := publishDashboard(client, dashboardContent, folderUID); err != nil {
 			return fmt.Errorf("failed to update dashboard: %w", err)
 		}
 
@@ -58,15 +57,15 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 		return fmt.Errorf("failed to find organization: %w", err)
 	}
 
-	err = s.withinOrganization(ctx, org, func(ctx context.Context) error {
+	err = s.withinOrganization(ctx, org, func(ctx context.Context, client grafanaclient.GrafanaClient) error {
 		logger := log.FromContext(ctx)
 
-		_, err := s.grafanaClient.Dashboards().GetDashboardByUID(dashboard.UID())
+		_, err := client.Dashboards().GetDashboardByUID(dashboard.UID())
 		if err != nil {
 			return fmt.Errorf("failed to get dashboard: %w", err)
 		}
 
-		_, err = s.grafanaClient.Dashboards().DeleteDashboardByUID(dashboard.UID())
+		_, err = client.Dashboards().DeleteDashboardByUID(dashboard.UID())
 		if err != nil {
 			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
@@ -99,10 +98,10 @@ func injectManagedTag(content map[string]any) {
 	content["tags"] = append(tags, managedDashboardTag)
 }
 
-// PublishDashboard creates or updates a dashboard in Grafana.
+// publishDashboard creates or updates a dashboard in Grafana.
 // folderUID specifies the target folder; empty string means the General folder.
-func (s *Service) PublishDashboard(dashboard map[string]any, folderUID string) error {
-	_, err := s.grafanaClient.Dashboards().PostDashboard(&models.SaveDashboardCommand{
+func publishDashboard(client grafanaclient.GrafanaClient, dashboard map[string]any, folderUID string) error {
+	_, err := client.Dashboards().PostDashboard(&models.SaveDashboardCommand{
 		Dashboard: any(dashboard),
 		FolderUID: folderUID,
 		Message:   "Added by observability-operator",
@@ -114,16 +113,15 @@ func (s *Service) PublishDashboard(dashboard map[string]any, folderUID string) e
 	return nil
 }
 
-// withinOrganization executes the given function within the context of the given organization.
-// NOTE: The WithOrgID pattern mutates shared state on the Grafana client. If two reconciliations
-// run concurrently for different orgs, they will clobber each other's org context.
-func (s *Service) withinOrganization(ctx context.Context, org *organization.Organization, fn func(ctx context.Context) error) error {
-	logger := log.FromContext(ctx)
-
-	currentOrgID := s.grafanaClient.OrgID()
-	s.grafanaClient.WithOrgID(org.ID())
-	defer s.grafanaClient.WithOrgID(currentOrgID)
-	ctx = log.IntoContext(ctx, logger.WithValues("organization", org.Name()))
-
-	return fn(ctx)
+// withinOrganization runs fn against a Grafana client scoped to org. The cloned
+// client is local to this call, so concurrent invocations for different orgs do
+// not interfere with each other.
+func (s *Service) withinOrganization(
+	ctx context.Context,
+	org *organization.Organization,
+	fn func(ctx context.Context, client grafanaclient.GrafanaClient) error,
+) error {
+	logger := log.FromContext(ctx).WithValues("organization", org.Name())
+	ctx = log.IntoContext(ctx, logger)
+	return fn(ctx, s.grafanaClient.WithOrgID(org.ID()))
 }

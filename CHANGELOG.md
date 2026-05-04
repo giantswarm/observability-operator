@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `github.com/grafana/grafana-openapi-client-go` to `v0.0.0-20260430175825-547a3b5a00a5`. The new release makes `WithOrgID` non-mutating (returns a clone) and stops mutating the package-level `http.DefaultTransport` — the latter was a real data race in the previous transport setup.
+- `GrafanaClient.WithOrgID` now returns a fresh client; `OrgID()` was removed from the interface. Service helpers (`ConfigureDashboard`, `DeleteDashboard`, `ConfigureDatasource`, `CleanupOrphanedFoldersForOrg`) thread the per-org client through `withinOrganization` instead of mutating shared state with a save/restore dance.
+
 ## [0.68.0] - 2026-04-27
 
 ### Added

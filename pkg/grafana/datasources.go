@@ -13,56 +13,44 @@ import (
 
 	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
+	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
 
-// ConfigureDatasources ensures the datasources for the given organization are up to date.
+// ConfigureDatasource ensures the datasources for the given organization are up to date.
 // It creates, updates, or deletes datasources as necessary to match the desired state.
 func (s *Service) ConfigureDatasource(ctx context.Context, organization *organization.Organization) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
-	// Generate the desired datasources for the organization
 	desiredDatasources := s.generateDatasources(organization)
+	client := s.grafanaClient.WithOrgID(organization.ID())
 
-	// Configure Grafana client to use the correct organization
-	currentOrgID := s.grafanaClient.OrgID()
-	s.grafanaClient.WithOrgID(organization.ID())
-	defer s.grafanaClient.WithOrgID(currentOrgID)
-
-	// Fetch the currently configured datasources in Grafana
-	resp, err := s.grafanaClient.Datasources().GetDataSources()
+	resp, err := client.Datasources().GetDataSources()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get configured datasources: %w", err)
 	}
 
 	// Update or delete existing datasources
 	for _, currentDatasource := range resp.GetPayload() {
-		// Check if the current datasource exists in the desired datasources
 		index := slices.IndexFunc(desiredDatasources, func(d Datasource) bool {
 			return d.UID == currentDatasource.UID
 		})
 
 		if index >= 0 {
-			// Update the existing datasource
 			desiredDatasource := desiredDatasources[index]
 
 			logger.Info("updating datasource", "datasource", desiredDatasource.UID)
-			desiredDatasource, err = s.updateDatasource(desiredDatasource)
+			desiredDatasource, err = updateDatasource(client, desiredDatasource)
 			if err != nil {
 				return nil, err
 			}
-			// Set the ID of the updated datasource
 			desiredDatasources[index] = desiredDatasource
 			logger.Info("updated datasource", "datasource", desiredDatasource.UID)
-		} else {
-			if strings.HasPrefix(currentDatasource.UID, datasourceUIDPrefix) {
-				// Delete the datasource as it is no longer desired
-				logger.Info("deleting datasource", "datasource", currentDatasource.UID)
-				err := s.deleteDatasource(currentDatasource.UID)
-				if err != nil {
-					return nil, err
-				}
-				logger.Info("deleted datasource", "datasource", currentDatasource.UID)
+		} else if strings.HasPrefix(currentDatasource.UID, datasourceUIDPrefix) {
+			logger.Info("deleting datasource", "datasource", currentDatasource.UID)
+			if err := deleteDatasource(client, currentDatasource.UID); err != nil {
+				return nil, err
 			}
+			logger.Info("deleted datasource", "datasource", currentDatasource.UID)
 		}
 	}
 
@@ -70,16 +58,15 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization *organiz
 	for index := range desiredDatasources {
 		desiredDatasource := desiredDatasources[index]
 
-		// If the datasource ID is 0, it means it does not exist yet and needs to be created
-		// We already took care of updating existing datasources ID in the previous loop
+		// ID == 0 means it doesn't exist yet — the update loop above already
+		// stamped IDs on the ones that did.
 		if desiredDatasource.ID == 0 {
 			logger.Info("creating datasource", "datasource", desiredDatasource.UID)
-			desiredDatasource, err = s.createDatasource(desiredDatasource)
+			desiredDatasource, err = createDatasource(client, desiredDatasource)
 			if err != nil {
 				return nil, err
 			}
 			logger.Info("datasource created", "datasource", desiredDatasource.UID)
-			// Set the ID of the created datasource
 			desiredDatasources[index] = desiredDatasource
 		}
 	}
@@ -283,8 +270,8 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 
 // createDatasource creates the given datasource in Grafana.
 // It returns the created datasource with its ID set.
-func (s *Service) createDatasource(datasource Datasource) (Datasource, error) {
-	created, err := s.grafanaClient.Datasources().AddDataSource(&models.AddDataSourceCommand{
+func createDatasource(client grafanaclient.GrafanaClient, datasource Datasource) (Datasource, error) {
+	created, err := client.Datasources().AddDataSource(&models.AddDataSourceCommand{
 		UID:            datasource.UID,
 		Name:           datasource.Name,
 		Type:           datasource.Type,
@@ -310,8 +297,8 @@ func (s *Service) createDatasource(datasource Datasource) (Datasource, error) {
 // updateDatasource updates the given datasource in Grafana.
 // The datasource is identified by its UID.
 // It returns the updated datasource with its ID set.
-func (s *Service) updateDatasource(datasource Datasource) (Datasource, error) {
-	resp, err := s.grafanaClient.Datasources().UpdateDataSourceByUID(datasource.UID, &models.UpdateDataSourceCommand{
+func updateDatasource(client grafanaclient.GrafanaClient, datasource Datasource) (Datasource, error) {
+	resp, err := client.Datasources().UpdateDataSourceByUID(datasource.UID, &models.UpdateDataSourceCommand{
 		UID:            datasource.UID,
 		Name:           datasource.Name,
 		Type:           datasource.Type,
@@ -336,8 +323,8 @@ func (s *Service) updateDatasource(datasource Datasource) (Datasource, error) {
 
 // deleteDatasource deletes the datasource with the given UID.
 // If the datasource does not exist, no error is returned.
-func (s *Service) deleteDatasource(uid string) error {
-	_, err := s.grafanaClient.Datasources().DeleteDataSourceByUID(uid)
+func deleteDatasource(client grafanaclient.GrafanaClient, uid string) error {
+	_, err := client.Datasources().DeleteDataSourceByUID(uid)
 	if err != nil {
 		var notFound *datasources.DeleteDataSourceByUIDNotFound
 		if !errors.As(err, &notFound) {
