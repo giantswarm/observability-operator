@@ -26,6 +26,13 @@ jobs:
     - run:
         name: Validate Alertmanager Config
         command: make validate-alertmanager-config
+  verify-generate:
+    executor: architect/architect
+    steps:
+    - checkout
+    - run:
+        name: Validate generated files
+        command: make verify-generate
 workflows:
   build:
     jobs:
@@ -43,6 +50,13 @@ workflows:
         name: validate-alertmanager-config
         requires:
         - template-chart
+        filters:
+          tags:
+            only: /^v.*/
+
+    # This job validates that generated files (CRDs, RBAC, deepcopy, etc.) are up to date.
+    - verify-generate:
+        name: verify-generate
         filters:
           tags:
             only: /^v.*/
