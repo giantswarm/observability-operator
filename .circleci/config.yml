@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  architect: giantswarm/architect@dev:a4d8e1e21a163ffcb6e46d85aab186b224de7de5
+  architect: giantswarm/architect@dev:8db824b2b666b886099c49dce6942b5b0a4d3deb
 
 jobs:
   go-tests:
