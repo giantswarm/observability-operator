@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  architect: giantswarm/architect@dev:feat-v8.1-multiarch-simplification
+  architect: giantswarm/architect@dev:537df66c95f79fe6699d2f8b5f3d9622e3bc8416
 
 jobs:
   go-tests:
