@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Build and publish a multi-architecture container image for `linux/amd64` and `linux/arm64`.
+
 ### Changed
 
 - Bump `github.com/grafana/grafana-openapi-client-go` to `v0.0.0-20260430175825-547a3b5a00a5`. The new release makes `WithOrgID` non-mutating (returns a clone) and stops mutating the package-level `http.DefaultTransport` — the latter was a real data race in the previous transport setup.

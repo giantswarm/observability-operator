@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  architect: giantswarm/architect@8.0.0
+  architect: giantswarm/architect@dev:feat-v8.1-multiarch-simplification
 
 jobs:
   go-tests:
@@ -60,6 +60,7 @@ workflows:
         - validate-alertmanager-config
         path: ./cmd
         binary: observability-operator
+        architectures: "linux/amd64,linux/arm64"
         filters:
           tags:
             only: /^v.*/
@@ -69,6 +70,7 @@ workflows:
         name: push-to-registries
         requires:
         - go-build
+        multiarch: true
         filters:
           tags:
             only: /^v.*/
