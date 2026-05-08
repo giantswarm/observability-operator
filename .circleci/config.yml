@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  architect: giantswarm/architect@dev:767c375ecec2218f2db54a477f8c78bfcb1ea12f
+  architect: giantswarm/architect@dev:e24dce94bc0180684adc76ed19d8b5d0a10d88a6
 
 jobs:
   go-tests:
@@ -70,7 +70,6 @@ workflows:
         name: push-to-registries
         requires:
         - go-build
-        multiarch: true
         filters:
           tags:
             only: /^v.*/
