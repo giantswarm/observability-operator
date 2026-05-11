@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/blang/semver/v4"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 
 	"github.com/giantswarm/observability-operator/pkg/credential"
 )

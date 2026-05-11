@@ -9,9 +9,8 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/google/go-cmp/cmp"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 
 	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
 	"github.com/giantswarm/observability-operator/pkg/config"
@@ -70,7 +69,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -89,7 +88,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -108,7 +107,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AzureCluster",
 					},
 				},
@@ -127,7 +126,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AzureCluster",
 					},
 				},
@@ -146,7 +145,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AzureCluster",
 					},
 				},
@@ -165,7 +164,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AzureCluster",
 					},
 				},
@@ -186,7 +185,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -205,7 +204,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -224,7 +223,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AzureCluster",
 					},
 				},
@@ -243,7 +242,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AzureCluster",
 					},
 				},
@@ -262,7 +261,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AzureCluster",
 					},
 				},
@@ -281,7 +280,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AzureCluster",
 					},
 				},
@@ -300,7 +299,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
@@ -319,7 +318,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: clusterv1.ClusterSpec{
-					InfrastructureRef: &corev1.ObjectReference{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
 						Kind: "AWSCluster",
 					},
 				},
