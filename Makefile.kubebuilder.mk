@@ -27,6 +27,8 @@ ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api 2>/dev/
 # Code quality and development tool versions
 GOLANGCI_LINT_VERSION ?= v2.4.0
 GINKGO_VERSION ?= $(shell go list -m -f "{{ .Version }}" github.com/onsi/ginkgo/v2)
+GOIMPORTS_VERSION ?= v0.45.0
+GOIMPORTS_LOCAL_PREFIX ?= github.com/giantswarm/observability-operator
 
 # Directories
 API_DIR := $(shell [ -d api ] && echo api || echo pkg/apis)
@@ -45,6 +47,7 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 GINKGO ?= $(LOCALBIN)/ginkgo
+GOIMPORTS ?= $(LOCALBIN)/goimports
 
 # Generation options
 BOILERPLATE := $(SCRIPTS_DIR)/boilerplate.go.txt
@@ -89,7 +92,7 @@ generate-all: generate manifests ## Generate everything (code + manifests)
 # ==================================================================================
 
 .PHONY: generate-deepcopy
-generate-deepcopy: $(CONTROLLER_GEN) ## Generate deepcopy methods for API types
+generate-deepcopy: $(CONTROLLER_GEN) $(GOIMPORTS) ## Generate deepcopy methods for API types
 	@$(log_build) "Generating deepcopy methods"
 	@if [ ! -d "$(API_DIR)" ]; then \
 		$(log_warn) "API directory $(API_DIR) not found, skipping deepcopy generation"; \
@@ -99,6 +102,8 @@ generate-deepcopy: $(CONTROLLER_GEN) ## Generate deepcopy methods for API types
 		$(log_warn) "Failed to generate deepcopy methods"; \
 		exit 1; \
 	}
+	# Formatting with goimports ensure Go imports are in the same format expected by the 'ci/circleci: go-build' CI job.
+	@$(GOIMPORTS) -local $(GOIMPORTS_LOCAL_PREFIX) -w .
 	@$(log_info) "Deepcopy generation completed"
 
 .PHONY: generate-client
@@ -275,8 +280,13 @@ ginkgo: $(GINKGO) ## Download ginkgo locally if necessary.
 $(GINKGO): $(LOCALBIN)
 	$(call go-install-tool,$(GINKGO),github.com/onsi/ginkgo/v2/ginkgo,$(GINKGO_VERSION))
 
+.PHONY: goimports
+goimports: $(GOIMPORTS) ## Download goimports locally if necessary.
+$(GOIMPORTS): $(LOCALBIN)
+	$(call go-install-tool,$(GOIMPORTS),golang.org/x/tools/cmd/goimports,$(GOIMPORTS_VERSION))
+
 .PHONY: install-tools
-install-tools: controller-gen kustomize envtest golangci-lint ginkgo ## Install all development tools
+install-tools: controller-gen kustomize envtest golangci-lint ginkgo goimports ## Install all development tools
 	@$(log_info) "All development tools installed successfully"
 
 .PHONY: update-tools
@@ -387,6 +397,7 @@ help-kubebuilder: ## Show help for Kubebuilder targets
 	@echo "    setup-envtest        Setup envtest binaries for testing"
 	@echo "    golangci-lint        Install golangci-lint linting tool"
 	@echo "    ginkgo               Install Ginkgo testing framework"
+	@echo "    goimports            Install goimports tool"
 	@echo ""
 	@echo "  $(GEN_COLOR)Cleanup:$(NO_COLOR)"
 	@echo "    clean-generated      Clean generated code files"
