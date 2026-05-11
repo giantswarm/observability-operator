@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  architect: giantswarm/architect@dev:8210a03f7ebfc85e9dd84ba8a63d0e347fc4073b
+  architect: giantswarm/architect@dev:62276e55b72762d5b223f9f24e4c0576c7055c00
 
 jobs:
   go-tests:
@@ -105,3 +105,17 @@ workflows:
             - main
         requires:
         - push-to-app-catalog
+
+    # Upload signed Go binaries (and their cosign .bundle siblings) to the GitHub
+    # release for the tag. Tag-only: never runs on a branch push.
+    - architect/upload-release-assets:
+        context: architect
+        name: upload-release-assets
+        binary: observability-operator
+        requires:
+        - go-build
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore: /.*/
