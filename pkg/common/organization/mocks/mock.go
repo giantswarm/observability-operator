@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 // MockOrganizationRepository implements a minimal OrganizationRepository with call tracking.
