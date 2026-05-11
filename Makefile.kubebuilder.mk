@@ -92,7 +92,7 @@ generate-all: generate manifests ## Generate everything (code + manifests)
 # ==================================================================================
 
 .PHONY: generate-deepcopy
-generate-deepcopy: $(CONTROLLER_GEN) ## Generate deepcopy methods for API types
+generate-deepcopy: $(CONTROLLER_GEN) $(GOIMPORTS) ## Generate deepcopy methods for API types
 	@$(log_build) "Generating deepcopy methods"
 	@if [ ! -d "$(API_DIR)" ]; then \
 		$(log_warn) "API directory $(API_DIR) not found, skipping deepcopy generation"; \
