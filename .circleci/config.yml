@@ -54,6 +54,7 @@ workflows:
             only: /^v.*/
 
     - architect/go-build:
+        context: architect
         name: go-build
         requires:
         - go-tests
