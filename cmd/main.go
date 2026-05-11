@@ -522,9 +522,9 @@ func setupApplication() error {
 
 	if cfg.Operator.Controllers.Cluster.Enabled {
 		// Setup controller for the Cluster resource.
-		err = controller.SetupClusterMonitoringReconciler(mgr, cfg, logger)
+		err = controller.SetupClusterReconciler(mgr, cfg, logger)
 		if err != nil {
-			return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
+			return fmt.Errorf("unable to create controller (ClusterReconciler): %w", err)
 		}
 	}
 

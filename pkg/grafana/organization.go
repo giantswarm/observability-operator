@@ -23,8 +23,10 @@ func (s *Service) DeleteOrganization(ctx context.Context, organization *organiza
 }
 
 // ConfigureOrganization creates or updates the organization in Grafana and returns the organization ID.
-func (s *Service) ConfigureOrganization(ctx context.Context, organization *organization.Organization) (int64, error) {
-	err := s.UpsertOrganization(ctx, organization)
+// previousName is the last display name the caller persisted for this organization (typically
+// GrafanaOrganization.Status.DisplayName); see UpsertOrganization for how it is used.
+func (s *Service) ConfigureOrganization(ctx context.Context, organization *organization.Organization, previousName string) (int64, error) {
+	err := s.UpsertOrganization(ctx, organization, previousName)
 	if err != nil {
 		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpConfigureOrg).Inc()
 		return -1, fmt.Errorf("ConfigureOrganization: failed to configure organization: %w", err)

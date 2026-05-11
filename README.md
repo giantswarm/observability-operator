@@ -69,7 +69,7 @@ Four controllers run in a single binary:
 
 | Controller | Watches | Does |
 |---|---|---|
-| `ClusterMonitoringReconciler` | `cluster.x-k8s.io/Cluster` | Provisions Alloy config (metrics→Mimir, logs→Loki, events→Loki, traces→Tempo), gateway auth secrets, observability-bundle App CR, Cronitor heartbeat |
+| `ClusterReconciler` | `cluster.x-k8s.io/Cluster` | Provisions Alloy config (metrics→Mimir, logs→Loki, events→Loki, traces→Tempo), gateway auth secrets, observability-bundle App CR, Cronitor heartbeat |
 | `GrafanaOrganizationReconciler` | `GrafanaOrganization` (v1alpha2) | Creates/updates Grafana orgs, datasources, SSO settings |
 | `AlertmanagerController` | `Secret` with `observability.giantswarm.io/kind: alertmanager-config` | Assembles + pushes Alertmanager config to Mimir Alertmanager |
 | `DashboardController` | `ConfigMap` with `app.giantswarm.io/kind: dashboard` | Provisions dashboards into Grafana orgs via API |

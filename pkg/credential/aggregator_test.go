@@ -2,15 +2,18 @@ package credential
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 )
@@ -94,6 +97,45 @@ func TestAggregate_NoCredentials_WritesEmpty(t *testing.T) {
 	ingress := &corev1.Secret{}
 	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
 	assert.Empty(t, string(ingress.Data[IngressDataKey]))
+}
+
+func TestAggregate_MissingNamespace_ReturnsNil(t *testing.T) {
+	scheme := newScheme(t)
+	cred, secret := credentialWithSecret("a", "ns1", "a", observabilityv1alpha1.CredentialBackendMetrics, "a:{SHA}yy")
+
+	// Deliberately omit the gateway namespace — the aggregator must log and
+	// return nil rather than attempting the write and swallowing the error.
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred, secret).Build()
+	a := NewAggregator(c, newGatewayConfigs())
+
+	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
+
+	ingress := &corev1.Secret{}
+	err := c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress)
+	assert.True(t, apierrors.IsNotFound(err), "gateway secret should not have been created in a missing namespace")
+}
+
+func TestAggregate_PropagatesWriteErrors(t *testing.T) {
+	scheme := newScheme(t)
+	gwNs := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: gatewayNamespace}}
+	cred, secret := credentialWithSecret("a", "ns1", "a", observabilityv1alpha1.CredentialBackendMetrics, "a:{SHA}yy")
+
+	// Intercept Create on Secret so the write itself fails — previously this
+	// was silently masked by the blanket IsNotFound swallow; it must surface now.
+	boom := errors.New("synthetic write failure")
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(gwNs, cred, secret).WithInterceptorFuncs(interceptor.Funcs{
+		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			if _, ok := obj.(*corev1.Secret); ok && obj.GetNamespace() == gatewayNamespace {
+				return boom
+			}
+			return cl.Create(ctx, obj, opts...)
+		},
+	}).Build()
+
+	a := NewAggregator(c, newGatewayConfigs())
+	err := a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, boom)
 }
 
 func TestAggregate_SkipsCredentialsWithoutSecret(t *testing.T) {

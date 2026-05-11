@@ -36,6 +36,7 @@ func (src *GrafanaOrganization) ConvertTo(dstRaw conversion.Hub) error {
 
 	// Convert status
 	dst.Status.OrgID = src.Status.OrgID
+	dst.Status.DisplayName = src.Status.DisplayName
 	dst.Status.DataSources = make([]v1alpha2.DataSource, len(src.Status.DataSources))
 	for i, ds := range src.Status.DataSources {
 		dst.Status.DataSources[i] = v1alpha2.DataSource{
@@ -74,6 +75,7 @@ func (dst *GrafanaOrganization) ConvertFrom(srcRaw conversion.Hub) error {
 
 	// Convert status
 	dst.Status.OrgID = src.Status.OrgID
+	dst.Status.DisplayName = src.Status.DisplayName
 	dst.Status.DataSources = make([]DataSource, len(src.Status.DataSources))
 	for i, ds := range src.Status.DataSources {
 		dst.Status.DataSources[i] = DataSource{

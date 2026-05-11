@@ -16,6 +16,8 @@ Set these labels on the `cluster.x-k8s.io/Cluster` object to control which featu
 
 Both the installation-level `enabled` flag (Helm value) and the per-cluster label must allow the feature for it to be active.
 
+When a backend is enabled for a cluster, the cluster controller declares an `AgentCredential` CR per backend under the cluster's namespace: `<cluster-name>-observability-{metrics,logs,traces}`. The [AgentCredential controller](agent-credential.md) mints the Secret and aggregates the htpasswd entries into the per-backend gateway Secrets. Disabling a backend on a cluster deletes the corresponding CR and removes its entry from the aggregated htpasswd.
+
 ### OTLP signals
 
 OTLP metrics and OTLP logs are always active when the corresponding feature is enabled — there is no separate opt-in flag.
