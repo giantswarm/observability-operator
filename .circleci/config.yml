@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  architect: giantswarm/architect@8.0.2
+  architect: giantswarm/architect@dev:62276e55b72762d5b223f9f24e4c0576c7055c00
 
 jobs:
   go-tests:
@@ -68,12 +68,14 @@ workflows:
             only: /^v.*/
 
     - architect/go-build:
+        context: architect
         name: go-build
         requires:
         - go-tests
         - validate-alertmanager-config
         path: ./cmd
         binary: observability-operator
+        architectures: "linux/amd64,linux/arm64"
         filters:
           tags:
             only: /^v.*/
@@ -118,3 +120,17 @@ workflows:
             - main
         requires:
         - push-to-app-catalog
+
+    # Upload signed Go binaries (and their cosign .bundle siblings) to the GitHub
+    # release for the tag. Tag-only: never runs on a branch push.
+    - architect/upload-release-assets:
+        context: architect
+        name: upload-release-assets
+        binary: observability-operator
+        requires:
+        - go-build
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore: /.*/
