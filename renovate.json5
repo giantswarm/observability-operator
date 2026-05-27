@@ -5,9 +5,9 @@
     // Go specific config - https://github.com/giantswarm/renovate-presets/blob/main/lang-go.json5
     "github>giantswarm/renovate-presets:lang-go.json5"
   ],
-  "regexManagers": [
+  "customManagers": [
     {
-      "fileMatch": ["^go\\.mod$"],
+      "managerFilePatterns": ["^go\\.mod$"],
       "matchStrings": [
         // Match the alertmanager replace directive in go.mod to track version alignment with Mimir
         // Pattern matches: github.com/prometheus/alertmanager => github.com/grafana/prometheus-alertmanager v0.25.1-0.20250305143719-fa9fa7096626
