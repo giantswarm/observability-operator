@@ -31,8 +31,8 @@ func TestDatasourceTempo(t *testing.T) {
 						"enabled": true,
 					},
 					"streamingEnabled": map[string]any{
-						"metrics": true,
-						"search":  true,
+						"metrics": false,
+						"search":  false,
 					},
 					"tracesToLogsV2": map[string]any{
 						"datasourceUid":      LokiDatasourceUID,

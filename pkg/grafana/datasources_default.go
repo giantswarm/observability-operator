@@ -125,10 +125,10 @@ var (
 					"enabled": true,
 				},
 
-				// Streaming configuration for better performance with metrics
+				// Streaming is disabled for metrics and search queries.
 				"streamingEnabled": map[string]any{
-					"metrics": true,
-					"search":  true,
+					"metrics": false,
+					"search":  false,
 				},
 
 				// Traces to Logs correlation V2 - allows jumping from trace spans
