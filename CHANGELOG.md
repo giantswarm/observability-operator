@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `kubernetes.io/arch=arm64:NoSchedule` toleration to the generated alloy-logs daemonset values so the DaemonSet schedules on ARM worker nodes.
+
 ### Changed
 
 - Tempo datasource: disable streaming for metrics and search queries (`streamingEnabled.metrics` and `streamingEnabled.search` now default to `false`).
@@ -1209,3 +1213,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.0.3]: https://github.com/giantswarm/observability-operator/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/giantswarm/observability-operator/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/giantswarm/observability-operator/releases/tag/v0.0.1
+

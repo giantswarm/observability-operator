@@ -378,6 +378,10 @@ alloy:
     - effect: NoSchedule
       key: node-role.kubernetes.io/control-plane
       operator: Exists
+    - effect: NoSchedule
+      key: kubernetes.io/arch
+      operator: Equal
+      value: arm64
     volumes:
       extra:
       - name: runlogjournal
