@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added support for Azure ASO (AKS) clusters.
+
 ## [0.69.0] - 2026-05-28
 
 ### Added
@@ -1216,4 +1220,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.0.3]: https://github.com/giantswarm/observability-operator/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/giantswarm/observability-operator/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/giantswarm/observability-operator/releases/tag/v0.0.1
-

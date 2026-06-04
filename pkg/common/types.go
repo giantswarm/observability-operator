@@ -19,6 +19,9 @@ const (
 	AzureManagedClusterKind         = "AzureManagedCluster"
 	AzureManagedClusterKindProvider = "aks"
 
+	AzureASOManagedClusterKind         = "AzureASOManagedCluster"
+	AzureASOManagedClusterKindProvider = "aks"
+
 	VCDClusterKind         = "VCDCluster"
 	VCDClusterKindProvider = "cloud-director"
 
@@ -74,6 +77,8 @@ func GetClusterProvider(cluster *clusterv1.Cluster) (string, error) {
 		return AzureClusterKindProvider, nil
 	case AzureManagedClusterKind:
 		return AzureManagedClusterKindProvider, nil
+	case AzureASOManagedClusterKind:
+		return AzureASOManagedClusterKindProvider, nil
 	case VCDClusterKind:
 		return VCDClusterKindProvider, nil
 	case VSphereClusterKind:
