@@ -61,6 +61,15 @@ data:
     }
 ```
 
+## Dashboard schema
+
+Both Grafana dashboard schemas are supported:
+
+- **Classic flat JSON** — the top-level `uid` field identifies the dashboard.
+- **App Platform schema** (`apiVersion: dashboard.grafana.app/v2`) — a Kubernetes-style envelope where the dashboard is identified by `metadata.name` and its body lives under `spec`.
+
+The operator detects the schema automatically and extracts the UID from the appropriate field (`uid` for the flat schema, `metadata.name` for v2). The `managed-by: observability-operator` tag is injected at the correct location for each schema (top-level `tags` for the flat schema, `spec.tags` for v2).
+
 ## Notes
 
 - A ConfigMap targets exactly one `GrafanaOrganization`. You can have multiple ConfigMaps per org.

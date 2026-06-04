@@ -98,4 +98,67 @@ func TestInjectManagedTag(t *testing.T) {
 			t.Fatalf("Expected 1 tag, got %d", len(tags))
 		}
 	})
+
+	t.Run("v2 schema adds tag under spec.tags", func(t *testing.T) {
+		content := map[string]any{
+			"apiVersion": "dashboard.grafana.app/v2",
+			"kind":       "Dashboard",
+			"metadata":   map[string]any{"name": "gs_cluster-overview"},
+			"spec": map[string]any{
+				"title": "Cluster Overview",
+				"tags":  []any{"existing-tag"},
+			},
+		}
+
+		injectManagedTag(content)
+
+		// The managed tag must land under spec.tags, not at the top level.
+		if _, topLevel := content["tags"]; topLevel {
+			t.Error("v2 dashboard should not get a top-level tags field")
+		}
+		spec := content["spec"].(map[string]any)
+		tags, ok := spec["tags"].([]any)
+		if !ok {
+			t.Fatal("spec.tags should be a []any")
+		}
+		if len(tags) != 2 {
+			t.Fatalf("Expected 2 tags, got %d", len(tags))
+		}
+		if tags[1] != managedDashboardTag {
+			t.Errorf("Expected last tag %q, got %q", managedDashboardTag, tags[1])
+		}
+	})
+
+	t.Run("v2 schema is idempotent", func(t *testing.T) {
+		content := map[string]any{
+			"apiVersion": "dashboard.grafana.app/v2",
+			"metadata":   map[string]any{"name": "gs_cluster-overview"},
+			"spec":       map[string]any{"tags": []any{managedDashboardTag}},
+		}
+
+		injectManagedTag(content)
+		injectManagedTag(content)
+
+		spec := content["spec"].(map[string]any)
+		tags := spec["tags"].([]any)
+		if len(tags) != 1 {
+			t.Fatalf("Expected 1 tag (not duplicated), got %d", len(tags))
+		}
+	})
+
+	t.Run("v2 schema with missing spec is a no-op", func(t *testing.T) {
+		content := map[string]any{
+			"apiVersion": "dashboard.grafana.app/v2",
+			"metadata":   map[string]any{"name": "gs_cluster-overview"},
+		}
+
+		injectManagedTag(content)
+
+		if _, ok := content["spec"]; ok {
+			t.Error("injectManagedTag should not create a spec on a malformed v2 dashboard")
+		}
+		if _, ok := content["tags"]; ok {
+			t.Error("injectManagedTag should not add top-level tags to a v2 dashboard")
+		}
+	})
 }

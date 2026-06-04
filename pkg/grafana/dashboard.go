@@ -83,8 +83,21 @@ const managedDashboardTag = "managed-by: observability-operator"
 
 // injectManagedTag ensures the managed tag is present in the dashboard content's tags array.
 // This is idempotent - if the tag already exists, it does nothing.
+//
+// The tags live at the top level for the classic flat schema and under "spec" for
+// the App Platform schema (dashboard.grafana.app/v2).
 func injectManagedTag(content map[string]any) {
-	tags, ok := content["tags"].([]any)
+	tagsHolder := content
+	if dashboard.IsV2(content) {
+		spec, ok := content["spec"].(map[string]any)
+		if !ok {
+			// Malformed v2 dashboard without a spec; nothing we can safely tag.
+			return
+		}
+		tagsHolder = spec
+	}
+
+	tags, ok := tagsHolder["tags"].([]any)
 	if !ok {
 		tags = []any{}
 	}
@@ -95,7 +108,7 @@ func injectManagedTag(content map[string]any) {
 		}
 	}
 
-	content["tags"] = append(tags, managedDashboardTag)
+	tagsHolder["tags"] = append(tags, managedDashboardTag)
 }
 
 // publishDashboard creates or updates a dashboard in Grafana.

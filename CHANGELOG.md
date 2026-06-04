@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added support for Azure ASO (AKS) clusters.
+- Dashboard provisioning now accepts the Grafana App Platform schema (`apiVersion: dashboard.grafana.app/v2`) in addition to the classic flat dashboard JSON. The dashboard UID is read from `metadata.name` and the managed tag is injected under `spec.tags` for v2 dashboards.
 
 ## [0.69.0] - 2026-05-28
 
