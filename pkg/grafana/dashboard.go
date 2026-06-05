@@ -85,7 +85,7 @@ const managedDashboardTag = "managed-by: observability-operator"
 // This is idempotent - if the tag already exists, it does nothing.
 //
 // The tags live at the top level for the classic flat schema and under "spec" for
-// the App Platform schema (dashboard.grafana.app/v2).
+// the Grafana Dashboard schema (dashboard.grafana.app/v2).
 func injectManagedTag(content map[string]any) {
 	tagsHolder := content
 	if dashboard.IsV2(content) {

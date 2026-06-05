@@ -74,7 +74,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			"panels": []
 		}`
 
-		// Create an App Platform (v2) dashboard ConfigMap for v2-specific tests.
+		// Create a Grafana Dashboard (v2) dashboard ConfigMap for v2-specific tests.
 		// Shares the same labels/annotations as obj; only the dashboard body differs.
 		v2Obj = obj.DeepCopy()
 		v2Obj.Data["dashboard.json"] = `{
@@ -178,7 +178,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Should validate App Platform (v2) dashboards via metadata.name", func() {
+		It("Should validate Grafana Dashboard (v2) dashboards via metadata.name", func() {
 			By("Testing v2 dashboard validation on create")
 			_, err := validator.ValidateCreate(ctx, v2Obj)
 			Expect(err).NotTo(HaveOccurred())

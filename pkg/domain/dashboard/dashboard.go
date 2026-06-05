@@ -7,7 +7,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 )
 
-// v2APIVersion identifies dashboards using the Grafana App Platform schema
+// v2APIVersion identifies dashboards using the Grafana Dashboard schema
 // ("dashboard.grafana.app/v2"), as opposed to the classic flat schema.
 const v2APIVersion = "dashboard.grafana.app/v2"
 
@@ -29,7 +29,7 @@ func New(organization string, folderPath string, content map[string]any) *Dashbo
 	}
 }
 
-// IsV2 reports whether the dashboard content uses the Grafana App Platform schema
+// IsV2 reports whether the dashboard content uses the Grafana Dashboard schema
 // (apiVersion "dashboard.grafana.app/v2"), as opposed to the classic flat schema.
 func IsV2(content map[string]any) bool {
 	apiVersion, _ := content["apiVersion"].(string)
@@ -37,7 +37,7 @@ func IsV2(content map[string]any) bool {
 }
 
 // extractUID reads the dashboard UID, supporting both the classic flat schema
-// (top-level "uid") and the App Platform schema (metadata.name). Grafana derives
+// (top-level "uid") and the Grafana Dashboard schema (metadata.name). Grafana derives
 // the stored dashboard UID from metadata.name for v2 dashboards.
 func extractUID(content map[string]any) string {
 	if content == nil {
