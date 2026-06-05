@@ -17,7 +17,7 @@ require (
 	github.com/onsi/gomega v1.41.0
 	github.com/prometheus/alertmanager v0.32.1
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/common v0.68.0
+	github.com/prometheus/common v0.68.1
 	github.com/sanity-io/litter v1.5.8
 	github.com/stretchr/testify v1.11.1
 	k8s.io/api v0.36.1
