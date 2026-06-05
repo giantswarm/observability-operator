@@ -35,6 +35,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		validator *DashboardConfigMapValidator
 		obj       *corev1.ConfigMap
 		oldObj    *corev1.ConfigMap
+		v2Obj     *corev1.ConfigMap
 	)
 
 	BeforeEach(func() {
@@ -71,6 +72,16 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			"uid": "test-dashboard",
 			"title": "Old Test Dashboard",
 			"panels": []
+		}`
+
+		// Create a Grafana Dashboard (v2) dashboard ConfigMap for v2-specific tests.
+		// Shares the same labels/annotations as obj; only the dashboard body differs.
+		v2Obj = obj.DeepCopy()
+		v2Obj.Data["dashboard.json"] = `{
+			"apiVersion": "dashboard.grafana.app/v2",
+			"kind": "Dashboard",
+			"metadata": {"name": "gs_cluster-overview"},
+			"spec": {"title": "Cluster Overview"}
 		}`
 	})
 
@@ -165,6 +176,25 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			By("Testing basic dashboard validation")
 			_, err := validator.ValidateCreate(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should validate Grafana Dashboard (v2) dashboards via metadata.name", func() {
+			By("Testing v2 dashboard validation on create")
+			_, err := validator.ValidateCreate(ctx, v2Obj)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should reject v2 dashboards missing metadata.name", func() {
+			By("Creating a v2 dashboard without metadata.name")
+			invalidConfigMap := v2Obj.DeepCopy()
+			invalidConfigMap.Data["dashboard.json"] = `{
+				"apiVersion": "dashboard.grafana.app/v2",
+				"kind": "Dashboard",
+				"metadata": {},
+				"spec": {"title": "Cluster Overview"}
+			}`
+			_, err := validator.ValidateCreate(ctx, invalidConfigMap)
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("Should reject dashboard ConfigMaps with missing UID", func() {

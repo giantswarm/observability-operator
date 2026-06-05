@@ -45,6 +45,17 @@ func TestValidate(t *testing.T) {
 			expectedErrs: nil,
 		},
 		{
+			name:         "valid v2 dashboard",
+			organization: "test-org",
+			content: map[string]any{
+				"apiVersion": "dashboard.grafana.app/v2",
+				"kind":       "Dashboard",
+				"metadata":   map[string]any{"name": "gs_cluster-overview"},
+				"spec":       map[string]any{"title": "Cluster Overview"},
+			},
+			expectedErrs: nil,
+		},
+		{
 			name:         "missing UID",
 			organization: "test-org",
 			content:      map[string]any{"key": "value"}, // No UID in content
@@ -129,6 +140,33 @@ func TestUIDExtraction(t *testing.T) {
 		{
 			name:        "empty UID string",
 			content:     map[string]any{"uid": "", "title": "Dashboard"},
+			expectedUID: "",
+		},
+		{
+			name: "v2 schema reads UID from metadata.name",
+			content: map[string]any{
+				"apiVersion": "dashboard.grafana.app/v2",
+				"kind":       "Dashboard",
+				"metadata":   map[string]any{"name": "gs_cluster-overview"},
+				"spec":       map[string]any{"title": "Cluster Overview"},
+			},
+			expectedUID: "gs_cluster-overview",
+		},
+		{
+			name: "v2 schema ignores top-level uid",
+			content: map[string]any{
+				"apiVersion": "dashboard.grafana.app/v2",
+				"uid":        "should-be-ignored",
+				"metadata":   map[string]any{"name": "gs_cluster-overview"},
+			},
+			expectedUID: "gs_cluster-overview",
+		},
+		{
+			name: "v2 schema missing metadata.name",
+			content: map[string]any{
+				"apiVersion": "dashboard.grafana.app/v2",
+				"metadata":   map[string]any{},
+			},
 			expectedUID: "",
 		},
 	}

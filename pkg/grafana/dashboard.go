@@ -35,7 +35,9 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 		delete(dashboardContent, "id")
 
 		// Inject the managed tag so operator dashboards are distinguishable
-		injectManagedTag(dashboardContent)
+		if err := injectManagedTag(dashboardContent); err != nil {
+			return fmt.Errorf("failed to inject managed tag: %w", err)
+		}
 
 		if err := publishDashboard(client, dashboardContent, folderUID); err != nil {
 			return fmt.Errorf("failed to update dashboard: %w", err)
@@ -83,19 +85,32 @@ const managedDashboardTag = "managed-by: observability-operator"
 
 // injectManagedTag ensures the managed tag is present in the dashboard content's tags array.
 // This is idempotent - if the tag already exists, it does nothing.
-func injectManagedTag(content map[string]any) {
-	tags, ok := content["tags"].([]any)
+//
+// The tags live at the top level for the classic flat schema and under "spec" for
+// the Grafana Dashboard schema (dashboard.grafana.app/v2).
+func injectManagedTag(content map[string]any) error {
+	tagsHolder := content
+	if dashboard.IsV2(content) {
+		spec, ok := content["spec"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("malformed v2 dashboard: missing spec")
+		}
+		tagsHolder = spec
+	}
+
+	tags, ok := tagsHolder["tags"].([]any)
 	if !ok {
 		tags = []any{}
 	}
 
 	for _, tag := range tags {
 		if tag == managedDashboardTag {
-			return
+			return nil
 		}
 	}
 
-	content["tags"] = append(tags, managedDashboardTag)
+	tagsHolder["tags"] = append(tags, managedDashboardTag)
+	return nil
 }
 
 // publishDashboard creates or updates a dashboard in Grafana.
