@@ -3,14 +3,13 @@ package dashboard
 import (
 	"fmt"
 	"maps"
-	"strings"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 )
 
-// v2APIVersionPrefix identifies dashboards using the Grafana App Platform schema
-// (e.g. "dashboard.grafana.app/v2"), as opposed to the classic flat schema.
-const v2APIVersionPrefix = "dashboard.grafana.app/"
+// v2APIVersion identifies dashboards using the Grafana App Platform schema
+// ("dashboard.grafana.app/v2"), as opposed to the classic flat schema.
+const v2APIVersion = "dashboard.grafana.app/v2"
 
 // Dashboard represents a Grafana dashboard domain object
 type Dashboard struct {
@@ -31,10 +30,10 @@ func New(organization string, folderPath string, content map[string]any) *Dashbo
 }
 
 // IsV2 reports whether the dashboard content uses the Grafana App Platform schema
-// (apiVersion "dashboard.grafana.app/..."), as opposed to the classic flat schema.
+// (apiVersion "dashboard.grafana.app/v2"), as opposed to the classic flat schema.
 func IsV2(content map[string]any) bool {
 	apiVersion, _ := content["apiVersion"].(string)
-	return strings.HasPrefix(apiVersion, v2APIVersionPrefix)
+	return apiVersion == v2APIVersion
 }
 
 // extractUID reads the dashboard UID, supporting both the classic flat schema
