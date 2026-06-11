@@ -43,7 +43,6 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 			return fmt.Errorf("failed to update dashboard: %w", err)
 		}
 
-		logger.Info("updated dashboard", "folderPath", dashboard.FolderPath(), "folderUID", folderUID)
 		return nil
 	})
 	if err != nil {
@@ -72,7 +71,6 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
 
-		logger.Info("deleted dashboard")
 		return nil
 	})
 	if err != nil {
