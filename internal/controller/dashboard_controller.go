@@ -70,9 +70,6 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	logger := log.FromContext(ctx).WithValues("configmap", req.NamespacedName)
 	ctx = log.IntoContext(ctx, logger)
 
-	logger.Info("started reconciling Grafana dashboard ConfigMap")
-	defer logger.Info("finished reconciling Grafana dashboard ConfigMap")
-
 	dashboard := &v1.ConfigMap{}
 	err := r.Get(ctx, req.NamespacedName, dashboard)
 	if err != nil {
