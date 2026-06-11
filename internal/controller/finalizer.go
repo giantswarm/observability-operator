@@ -51,6 +51,7 @@ func (fh FinalizerHelper) EnsureAdded(ctx context.Context, object client.Object)
 	}
 
 	logger.Info("added finalizer", "finalizer", fh.finalizer)
+
 	return true, nil
 }
 
