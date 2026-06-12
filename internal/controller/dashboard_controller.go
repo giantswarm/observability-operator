@@ -175,7 +175,8 @@ func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaServic
 
 	org, err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
 		if err := grafanaService.ConfigureDashboard(ctx, dash); err != nil {
-			return fmt.Errorf("failed to configure dashboard: %w", err)
+			log.FromContext(ctx).Error(err, "failed to configure dashboard")
+			return fmt.Errorf("failed to configure dashboard uid %s: %w", dash.UID(), err)
 		}
 		log.FromContext(ctx).Info("dashboard configured in Grafana")
 		return nil
@@ -203,7 +204,8 @@ func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaServic
 
 	org, err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
 		if err := grafanaService.DeleteDashboard(ctx, dash); err != nil {
-			return fmt.Errorf("failed to delete dashboard: %w", err)
+			log.FromContext(ctx).Error(err, "failed to delete dashboard")
+			return fmt.Errorf("failed to delete dashboard uid %s: %w", dash.UID(), err)
 		}
 		log.FromContext(ctx).Info("dashboard deleted from Grafana")
 		return nil
@@ -233,9 +235,10 @@ func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaServic
 // shared by the dashboards (empty if the ConfigMap holds none) along with the
 // joined errors.
 //
-// Validation and error logging live here because controller-runtime's own error
-// logging is disabled (see Reconcile): this is the only place per-dashboard
-// failures get logged.
+// The op is responsible for logging its own success/failure with a specific
+// message, since controller-runtime's own error logging is disabled (see
+// Reconcile); the returned error exists only to drive requeue. Validation
+// failures are logged here as they short-circuit before op runs.
 func (r *DashboardReconciler) processDashboards(
 	ctx context.Context,
 	dashboardConfigMap *v1.ConfigMap,
@@ -265,8 +268,7 @@ func (r *DashboardReconciler) processDashboards(
 		}
 
 		if err := op(log.IntoContext(ctx, dl), dash); err != nil {
-			dl.Error(err, "failed to reconcile dashboard")
-			errs = append(errs, fmt.Errorf("uid %s: %w", dash.UID(), err))
+			errs = append(errs, err)
 		}
 	}
 
