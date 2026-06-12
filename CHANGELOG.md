@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Changed
+
+- Update dashboard controller log entries
+  - Simplify per dashboard logging
+  - Remove redundant log lines
+  - Remove started/finished log entries
+
 ## [0.70.0] - 2026-06-05
 
 ### Added
