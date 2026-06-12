@@ -24,6 +24,7 @@ import (
 	"github.com/giantswarm/observability-operator/internal/mapper"
 	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
@@ -163,8 +164,6 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
 func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboardConfigMap *v1.ConfigMap) error {
-	logger := log.FromContext(ctx)
-
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboardConfigMap)
 	if err != nil {
@@ -174,44 +173,15 @@ func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaServic
 		return nil
 	}
 
-	// Convert ConfigMap to domain objects using mapper
-	dashboards := r.dashboardMapper.FromConfigMap(dashboardConfigMap)
-
-	// Collect all errors to ensure all dashboards have a chance to be processed
-	var errs []error
-
-	org := ""
-	// Process each dashboard
-	for _, dashboard := range dashboards {
-		// org is the same for all dashboards in the same configmap, so we can just take it from the first one
-		org = dashboard.Organization()
-
-		// Create a unique logger for the current dashboard
-		dl := logger.WithValues(
-			"uid", dashboard.UID(),
-			"organization", dashboard.Organization(),
-			"folder", dashboard.FolderPath(),
-		)
-
-		// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
-		if validationErrors := dashboard.Validate(); len(validationErrors) > 0 {
-			dl.Error(nil, "dashboard validation failed during reconciliation - webhook may have been bypassed", "errors", validationErrors)
-			errs = append(errs, fmt.Errorf("dashboard validation failed for uid %s: %v", dashboard.UID(), validationErrors))
-			continue
+	org, err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
+		if err := grafanaService.ConfigureDashboard(ctx, dash); err != nil {
+			return fmt.Errorf("failed to configure dashboard: %w", err)
 		}
-
-		err = grafanaService.ConfigureDashboard(ctx, dashboard)
-		if err != nil {
-			dl.Error(err, "failed to configure dashboard")
-			errs = append(errs, fmt.Errorf("failed to configure dashboard uid %s: %w", dashboard.UID(), err))
-			continue
-		}
-		dl.Info("dashboard configured in Grafana")
-	}
-
-	// If any errors occurred, combine them and return
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+		log.FromContext(ctx).Info("dashboard configured in Grafana")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Cleanup orphaned folders after all dashboards are processed
@@ -226,50 +196,20 @@ func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaServic
 
 // reconcileDelete deletes the grafana dashboard.
 func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboardConfigMap *v1.ConfigMap) error {
-	logger := log.FromContext(ctx)
-
 	// We do not need to delete anything if there is no finalizer on the grafana dashboard
 	if !controllerutil.ContainsFinalizer(dashboardConfigMap, DashboardFinalizer) {
 		return nil
 	}
 
-	// Convert ConfigMap to dashboard domain objects using mapper
-	dashboards := r.dashboardMapper.FromConfigMap(dashboardConfigMap)
-
-	// Collect all errors to ensure all dashboards have a chance to be processed
-	var errs []error
-	org := ""
-	// Process each dashboard: validate and delete in the same loop
-	for _, dash := range dashboards {
-		// org is the same for all dashboards in the same configmap, so we can just take it from the first one
-		org = dash.Organization()
-
-		// Create a unique logger for the current dashboard
-		dl := logger.WithValues(
-			"uid", dash.UID(),
-			"organization", dash.Organization(),
-			"folder", dash.FolderPath(),
-		)
-
-		// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
-		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
-			dl.Error(nil, "dashboard validation failed during reconciliation - webhook may have been bypassed", "errors", validationErrors)
-			errs = append(errs, fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors))
-			continue
+	org, err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
+		if err := grafanaService.DeleteDashboard(ctx, dash); err != nil {
+			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
-
-		err := grafanaService.DeleteDashboard(ctx, dash)
-		if err != nil {
-			dl.Error(err, "failed to delete dashboard")
-			errs = append(errs, fmt.Errorf("failed to delete dashboard uid %s: %w", dash.UID(), err))
-			continue
-		}
-		dl.Info("dashboard deleted from Grafana")
-	}
-
-	// If any errors occurred, combine them and return
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+		log.FromContext(ctx).Info("dashboard deleted from Grafana")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Cleanup orphaned folders after all dashboards are deleted
@@ -280,12 +220,57 @@ func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaServic
 	}
 
 	// Finalizer handling needs to come last.
-	err := r.finalizerHelper.EnsureRemoved(ctx, dashboardConfigMap)
-	if err != nil {
+	if err := r.finalizerHelper.EnsureRemoved(ctx, dashboardConfigMap); err != nil {
 		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return nil
+}
+
+// processDashboards applies op to every dashboard parsed from the ConfigMap.
+// Errors are collected per dashboard so that a single failure does not prevent
+// the remaining dashboards from being processed. It returns the organization
+// shared by the dashboards (empty if the ConfigMap holds none) along with the
+// joined errors.
+//
+// Validation and error logging live here because controller-runtime's own error
+// logging is disabled (see Reconcile): this is the only place per-dashboard
+// failures get logged.
+func (r *DashboardReconciler) processDashboards(
+	ctx context.Context,
+	dashboardConfigMap *v1.ConfigMap,
+	op func(ctx context.Context, dash *dashboard.Dashboard) error,
+) (string, error) {
+	logger := log.FromContext(ctx)
+	dashboards := r.dashboardMapper.FromConfigMap(dashboardConfigMap)
+
+	org := ""
+	var errs []error
+	for _, dash := range dashboards {
+		// org is the same for all dashboards in the same configmap.
+		org = dash.Organization()
+
+		// Create a unique logger for the current dashboard.
+		dl := logger.WithValues(
+			"uid", dash.UID(),
+			"organization", dash.Organization(),
+			"folder", dash.FolderPath(),
+		)
+
+		// Defensive validation: ensure dashboards are valid even if webhook was bypassed.
+		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
+			dl.Error(nil, "dashboard validation failed during reconciliation - webhook may have been bypassed", "errors", validationErrors)
+			errs = append(errs, fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors))
+			continue
+		}
+
+		if err := op(log.IntoContext(ctx, dl), dash); err != nil {
+			dl.Error(err, "failed to reconcile dashboard")
+			errs = append(errs, fmt.Errorf("uid %s: %w", dash.UID(), err))
+		}
+	}
+
+	return org, errors.Join(errs...)
 }
 
 // cleanupOrphanedFolders resolves the organization, computes which folder UIDs are still
