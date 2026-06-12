@@ -68,10 +68,6 @@ func SetupDashboardReconciler(mgr manager.Manager, cfg config.Config, grafanaCli
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.0/pkg/reconcile
 func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	// Update logger with configmap name and namespace.
-	logger := log.FromContext(ctx).WithValues("configmap", req.NamespacedName)
-	ctx = log.IntoContext(ctx, logger)
-
 	// Read ConfigMap from Kubernetes API.
 	dashboardConfigMap := &v1.ConfigMap{}
 	err := r.Get(ctx, req.NamespacedName, dashboardConfigMap)
