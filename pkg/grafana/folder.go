@@ -111,11 +111,13 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 				continue
 			}
 
-			logger.Info("deleting orphaned folder", "uid", f.UID, "title", f.Title)
 			_, err = client.Folders().DeleteFolder(folders.NewDeleteFolderParams().WithFolderUID(f.UID))
 			if err != nil {
 				errs = append(errs, fmt.Errorf("failed to delete orphaned folder %q: %w", f.UID, err))
+				continue
 			}
+
+			logger.Info("deleted orphaned folder", "uid", f.UID, "title", f.Title)
 		}
 
 		return errors.Join(errs...)
