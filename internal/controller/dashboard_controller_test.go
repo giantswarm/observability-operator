@@ -197,12 +197,13 @@ var _ = Describe("Dashboard Controller", func() {
 						},
 					}, nil)
 
-				// Mock the Folders service for cleanup
+				// Folder cleanup now runs asynchronously in the debounced folderCleaner,
+				// not during Reconcile, so these calls are optional in these tests.
 				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient).Maybe()
 				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
 					Payload: []*models.FolderSearchHit{},
-				}, nil)
+				}, nil).Maybe()
 			})
 
 			AfterEach(func() {
@@ -340,12 +341,13 @@ var _ = Describe("Dashboard Controller", func() {
 					return false
 				})).Return(dashboardResponse, nil)
 
-				// Mock the Folders service for cleanup
+				// Folder cleanup now runs asynchronously in the debounced folderCleaner,
+				// not during Reconcile, so these calls are optional in these tests.
 				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient).Maybe()
 				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
 					Payload: []*models.FolderSearchHit{},
-				}, nil)
+				}, nil).Maybe()
 
 				By("Creating a dashboard ConfigMap")
 				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
@@ -565,12 +567,13 @@ var _ = Describe("Dashboard Controller", func() {
 				}
 				mockDashboardsClient.On("DeleteDashboardByUID", "test-dashboard-uid").Return(deleteResponse, nil)
 
-				// Mock the Folders service for cleanup
+				// Folder cleanup now runs asynchronously in the debounced folderCleaner,
+				// not during Reconcile, so these calls are optional in these tests.
 				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient).Maybe()
 				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
 					Payload: []*models.FolderSearchHit{},
-				}, nil)
+				}, nil).Maybe()
 
 				By("Marking the dashboard ConfigMap for deletion")
 				createdConfigMap := &v1.ConfigMap{}
@@ -682,12 +685,13 @@ var _ = Describe("Dashboard Controller", func() {
 				}
 				mockDashboardsClient.On("PostDashboard", mock.Anything).Return(dashboardResponse, nil)
 
-				// Mock the Folders service for cleanup
+				// Folder cleanup now runs asynchronously in the debounced folderCleaner,
+				// not during Reconcile, so these calls are optional in these tests.
 				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient).Maybe()
 				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
 					Payload: []*models.FolderSearchHit{},
-				}, nil)
+				}, nil).Maybe()
 
 				// Test ConfigMap with organization in labels instead of annotations
 				// Note: Using a valid Kubernetes label value (no spaces, alphanumeric + dashes/dots/underscores)
@@ -843,12 +847,13 @@ var _ = Describe("Dashboard Controller", func() {
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
 				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
 
-				// Mock the Folders service for cleanup
+				// Folder cleanup now runs asynchronously in the debounced folderCleaner,
+				// not during Reconcile, so these calls are optional in these tests.
 				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient).Maybe()
 				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
 					Payload: []*models.FolderSearchHit{},
-				}, nil)
+				}, nil).Maybe()
 
 				configMapWithID := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -985,12 +990,13 @@ var _ = Describe("Dashboard Controller", func() {
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
 				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
 
-				// Mock the Folders service for cleanup
+				// Folder cleanup now runs asynchronously in the debounced folderCleaner,
+				// not during Reconcile, so these calls are optional in these tests.
 				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
+				mockGrafanaClient.On("Folders").Return(mockFoldersClient).Maybe()
 				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
 					Payload: []*models.FolderSearchHit{},
-				}, nil)
+				}, nil).Maybe()
 
 				// Mock the organization lookup to succeed
 				orgResponse := &orgs.GetOrgByNameOK{
