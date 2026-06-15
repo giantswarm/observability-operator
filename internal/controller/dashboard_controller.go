@@ -25,7 +25,6 @@ import (
 	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
-	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
@@ -40,6 +39,7 @@ type DashboardReconciler struct {
 	dashboardMapper  *mapper.DashboardMapper
 	grafanaClientGen grafanaclient.GrafanaClientGenerator
 	cfg              config.Config
+	cleaner          *folderCleaner
 }
 
 const DashboardFinalizer = "observability.giantswarm.io/grafanadashboard"
@@ -54,6 +54,13 @@ func SetupDashboardReconciler(mgr manager.Manager, cfg config.Config, grafanaCli
 		dashboardMapper:  mapper.New(),
 		grafanaClientGen: grafanaClientGen,
 		cfg:              cfg,
+		cleaner:          newFolderCleaner(mgr.GetClient(), grafanaClientGen, cfg.Grafana.URL, cfg),
+	}
+
+	// The cleaner runs orphaned-folder cleanup asynchronously, debounced after
+	// the last reconciliation. The manager owns its lifecycle.
+	if err := mgr.Add(r.cleaner); err != nil {
+		return fmt.Errorf("failed to add dashboard folder cleaner: %w", err)
 	}
 
 	return r.SetupWithManager(mgr)
@@ -180,12 +187,8 @@ func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaServic
 		return err
 	}
 
-	// Cleanup orphaned folders after all dashboards are processed
-	if org != "" {
-		if err := r.cleanupOrphanedFolders(ctx, grafanaService, org); err != nil {
-			return fmt.Errorf("failed to cleanup orphaned folders: %w", err)
-		}
-	}
+	// Request asynchronous, debounced cleanup of orphaned folders for this org.
+	r.cleaner.Trigger(org)
 
 	return nil
 }
@@ -208,12 +211,8 @@ func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaServic
 		return err
 	}
 
-	// Cleanup orphaned folders after all dashboards are deleted
-	if org != "" {
-		if err := r.cleanupOrphanedFolders(ctx, grafanaService, org); err != nil {
-			return fmt.Errorf("failed to cleanup orphaned folders: %w", err)
-		}
-	}
+	// Request asynchronous, debounced cleanup of orphaned folders for this org.
+	r.cleaner.Trigger(org)
 
 	// Finalizer handling needs to come last.
 	if err := r.finalizerHelper.EnsureRemoved(ctx, dashboardConfigMap); err != nil {
@@ -261,50 +260,4 @@ func (r *DashboardReconciler) processDashboards(
 	}
 
 	return org, errors.Join(errs...)
-}
-
-// cleanupOrphanedFolders resolves the organization, computes which folder UIDs are still
-// needed by dashboard ConfigMaps, and delegates deletion of orphans to the Grafana service.
-func (r *DashboardReconciler) cleanupOrphanedFolders(ctx context.Context, grafanaService *grafana.Service, orgName string) error {
-	org, err := grafanaService.FindOrgByName(orgName)
-	if err != nil {
-		return fmt.Errorf("failed to find organization %q: %w", orgName, err)
-	}
-
-	requiredUIDs, err := r.collectRequiredFolderUIDs(ctx, orgName)
-	if err != nil {
-		return fmt.Errorf("failed to collect required folder UIDs: %w", err)
-	}
-
-	return grafanaService.CleanupOrphanedFoldersForOrg(ctx, org, requiredUIDs)
-}
-
-// collectRequiredFolderUIDs lists all dashboard ConfigMaps for the given organization and computes the set of folder UIDs they reference.
-func (r *DashboardReconciler) collectRequiredFolderUIDs(ctx context.Context, orgName string) (map[string]struct{}, error) {
-	var configMaps v1.ConfigMapList
-	err := r.List(ctx, &configMaps, client.MatchingLabels{
-		labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list dashboard configmaps: %w", err)
-	}
-
-	requiredUIDs := make(map[string]struct{})
-	for i := range configMaps.Items {
-		dashboards := r.dashboardMapper.FromConfigMap(&configMaps.Items[i])
-		for _, dash := range dashboards {
-			if dash.Organization() != orgName {
-				continue
-			}
-			if dash.FolderPath() == "" {
-				continue
-			}
-			segments := folder.ParsePath(dash.FolderPath())
-			for _, seg := range segments {
-				requiredUIDs[seg.UID()] = struct{}{}
-			}
-		}
-	}
-
-	return requiredUIDs, nil
 }
