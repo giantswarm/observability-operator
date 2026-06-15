@@ -22,6 +22,10 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, client grafanaclien
 		return "", nil
 	}
 
+	if leafUID, ok := s.foldersByPath[path]; ok {
+		return leafUID, nil
+	}
+
 	logger := log.FromContext(ctx)
 
 	segments := folder.ParsePath(path)
@@ -64,6 +68,7 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, client grafanaclien
 		}
 	}
 
+	s.foldersByPath[path] = leafUID
 	return leafUID, nil
 }
 

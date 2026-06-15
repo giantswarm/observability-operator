@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Cache Grafana organization lookups per reconcile so dashboards sharing an organization no longer trigger a `GetOrgByName` API call each
+- Speed up dashboard reconciliation by caching Grafana lookups per reconcile:
+  - Organization lookups are memoized, so dashboards sharing an organization no longer trigger a `GetOrgByName` API call each
+  - Folder hierarchies are ensured once per folder path, so dashboards sharing a folder no longer re-issue `GetFolderByUID` calls each
 - Update dashboard controller log entries
   - Simplify per dashboard logging
   - Remove redundant log lines
