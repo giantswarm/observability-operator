@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## Changed
+### Changed
 
 - Update dashboard controller log entries
   - Simplify per dashboard logging
   - Remove redundant log lines
   - Remove started/finished log entries
+
+### Fixed
+
+- Fix 12 CVEs related to golang.org/x/crypto
 
 ## [0.70.0] - 2026-06-05
 
