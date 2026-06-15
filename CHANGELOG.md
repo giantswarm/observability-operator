@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Organization lookups are memoized, so dashboards sharing an organization no longer trigger a `GetOrgByName` API call each
   - Folder hierarchies are ensured once per folder path, so dashboards sharing a folder no longer re-issue `GetFolderByUID` calls each
 - Run orphaned-folder cleanup asynchronously off the reconcile path. Reconciliations now only request a cleanup; the cleanup itself is debounced and runs once after a burst of reconciliations settles, instead of on every dashboard create/delete.
+- Reconcile dashboard ConfigMaps concurrently (`MaxConcurrentReconciles: 10`) so large batches of dashboards are processed in parallel instead of one at a time.
 - Update dashboard controller log entries
   - Simplify per dashboard logging
   - Remove redundant log lines

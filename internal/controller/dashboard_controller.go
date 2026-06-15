@@ -13,6 +13,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -43,6 +44,11 @@ type DashboardReconciler struct {
 }
 
 const DashboardFinalizer = "observability.giantswarm.io/grafanadashboard"
+
+// dashboardMaxConcurrentReconciles is the number of dashboard ConfigMaps that
+// can be reconciled concurrently. Each reconcile uses its own Grafana client and
+// service, so concurrent reconciles do not share state.
+const dashboardMaxConcurrentReconciles = 10
 
 func SetupDashboardReconciler(mgr manager.Manager, cfg config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &DashboardReconciler{
@@ -155,6 +161,9 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			}),
 			builder.WithPredicates(grafanaPodPredicate, predicates.GrafanaPodRecreatedPredicate{}),
 		).
+		WithOptions(controller.Options{
+			MaxConcurrentReconciles: dashboardMaxConcurrentReconciles,
+		}).
 		Complete(r)
 	if err != nil {
 		return fmt.Errorf("failed to build controller: %w", err)
