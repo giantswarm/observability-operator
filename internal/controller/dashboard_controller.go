@@ -171,8 +171,7 @@ func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaServic
 
 	org, err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
 		if err := grafanaService.ConfigureDashboard(ctx, dash); err != nil {
-			log.FromContext(ctx).Error(err, "failed to configure dashboard")
-			return fmt.Errorf("failed to configure dashboard uid %s: %w", dash.UID(), err)
+			return fmt.Errorf("failed to configure dashboard uid=%s from configMap=%s/%s: %w", dash.UID(), dashboardConfigMap.GetNamespace(), dashboardConfigMap.GetName(), err)
 		}
 		log.FromContext(ctx).Info("dashboard configured in Grafana")
 		return nil
@@ -200,8 +199,7 @@ func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaServic
 
 	org, err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
 		if err := grafanaService.DeleteDashboard(ctx, dash); err != nil {
-			log.FromContext(ctx).Error(err, "failed to delete dashboard")
-			return fmt.Errorf("failed to delete dashboard uid %s: %w", dash.UID(), err)
+			return fmt.Errorf("failed to delete dashboard uid=%s from configMap=%s/%s: %w", dash.UID(), dashboardConfigMap.GetNamespace(), dashboardConfigMap.GetName(), err)
 		}
 		log.FromContext(ctx).Info("dashboard deleted from Grafana")
 		return nil
@@ -258,8 +256,7 @@ func (r *DashboardReconciler) processDashboards(
 
 		// Defensive validation: ensure dashboards are valid even if webhook was bypassed.
 		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
-			dl.Error(nil, "dashboard validation failed during reconciliation - webhook may have been bypassed", "errors", validationErrors)
-			errs = append(errs, fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors))
+			errs = append(errs, fmt.Errorf("dashboard validation failed - webhook may have been bypassed - for uid=%s from configMap=%s/%s: %v", dash.UID(), dashboardConfigMap.GetNamespace(), dashboardConfigMap.GetName(), validationErrors))
 			continue
 		}
 
