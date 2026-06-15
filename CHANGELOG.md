@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Simplify per dashboard logging
   - Remove redundant log lines
   - Remove started/finished log entries
+- Update dashboard validation webhook logs
 
 ### Fixed
 
