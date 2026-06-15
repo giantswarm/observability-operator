@@ -121,6 +121,10 @@ func isNotFound(err error) bool {
 // It returns organization.ErrOrganizationNotFound (wrapped) when Grafana returns 404,
 // letting callers distinguish a missing organization from other API failures.
 func (s *Service) FindOrgByName(name string) (*organization.Organization, error) {
+	if cached, ok := s.orgsByName[name]; ok {
+		return cached, nil
+	}
+
 	org, err := s.grafanaClient.Orgs().GetOrgByName(name)
 	if err != nil {
 		if isNotFound(err) {
@@ -129,7 +133,9 @@ func (s *Service) FindOrgByName(name string) (*organization.Organization, error)
 		return nil, fmt.Errorf("failed to get organization by name: %w", err)
 	}
 
-	return organization.NewFromGrafana(org.Payload.ID, org.Payload.Name), nil
+	result := organization.NewFromGrafana(org.Payload.ID, org.Payload.Name)
+	s.orgsByName[name] = result
+	return result, nil
 }
 
 // findOrgByID is a wrapper function used to find a Grafana organization by its id

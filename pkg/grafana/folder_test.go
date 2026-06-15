@@ -20,6 +20,7 @@ import (
 func newTestService(mockClient *mocks.MockGrafanaClient) *Service {
 	return &Service{
 		grafanaClient: mockClient,
+		orgsByName:    make(map[string]*organization.Organization),
 	}
 }
 
