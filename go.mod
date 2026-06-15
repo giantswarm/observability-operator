@@ -13,6 +13,7 @@ require (
 	github.com/go-openapi/runtime v0.32.3
 	github.com/goccy/go-yaml v1.19.2
 	github.com/grafana/grafana-openapi-client-go v0.0.0-20260604125106-9550bcd4956c
+	github.com/jellydator/ttlcache/v3 v3.4.0
 	github.com/onsi/ginkgo/v2 v2.31.0
 	github.com/onsi/gomega v1.42.0
 	github.com/prometheus/alertmanager v0.32.1

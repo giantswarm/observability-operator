@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Improve log messages
-  - Normalize per dashboard logging (with uid, organization and folder keys)
+- Improve dashboard controller speed
+  - Cache Grafana organization lookups
+- Update dashboard controller log entries
+  - Simplify per dashboard logging
   - Remove redundant log lines
   - Remove started/finished log entries
   - Add ConfigMap information in errors

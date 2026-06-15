@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	goruntime "github.com/go-openapi/runtime"
 	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/models"
+	ttlcache "github.com/jellydator/ttlcache/v3"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
@@ -18,8 +20,12 @@ import (
 )
 
 func newTestService(mockClient *mocks.MockGrafanaClient) *Service {
+	organizationCache := ttlcache.New(
+		ttlcache.WithTTL[string, *organization.Organization](1 * time.Minute),
+	)
 	return &Service{
-		grafanaClient: mockClient,
+		grafanaClient:     mockClient,
+		organizationCache: organizationCache,
 	}
 }
 
