@@ -228,11 +228,6 @@ func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaServic
 // the remaining dashboards from being processed. It returns the organization
 // shared by the dashboards (empty if the ConfigMap holds none) along with the
 // joined errors.
-//
-// The op is responsible for logging its own success/failure with a specific
-// message, since controller-runtime's own error logging is disabled (see
-// Reconcile); the returned error exists only to drive requeue. Validation
-// failures are logged here as they short-circuit before op runs.
 func (r *DashboardReconciler) processDashboards(
 	ctx context.Context,
 	dashboardConfigMap *v1.ConfigMap,
