@@ -108,7 +108,7 @@ func (v *DashboardConfigMapValidator) validateDashboard(ctx context.Context, con
 	for _, dash := range dashboards {
 		errs := dash.Validate()
 		if len(errs) > 0 {
-			return nil, fmt.Errorf("dashboard validation failed for uid=%s in configMap=%s/%s:%w", dash.UID(), configmap.GetNamespace(), configmap.GetName(), errors.Join(errs...))
+			return nil, fmt.Errorf("dashboard validation failed for uid=%s in configMap=%s/%s: %w", dash.UID(), configmap.GetNamespace(), configmap.GetName(), errors.Join(errs...))
 		}
 	}
 
