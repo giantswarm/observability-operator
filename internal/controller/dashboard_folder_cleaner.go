@@ -104,33 +104,45 @@ func (c *folderCleaner) Start(ctx context.Context) error {
 			// Timer fired, meaning no new requests have arrived for the debounce interval. Run the cleanup for all pending organizations.
 			orgs := pending
 			pending = make(map[string]struct{})
-			c.runCleanup(ctx, logger, orgs)
+			// Carry forward any orgs whose cleanup failed so a transient error
+			// (e.g. Grafana briefly unavailable) is retried after the next
+			// debounce window instead of being silently dropped.
+			pending = c.runCleanup(ctx, logger, orgs)
+			if len(pending) > 0 {
+				timer.Reset(c.interval)
+			}
 		}
 	}
 }
 
 // runCleanup performs the actual cleanup of orphaned folders for the given organizations.
 // It generates a Grafana client and delegates the cleanup to the Grafana service.
-func (c *folderCleaner) runCleanup(ctx context.Context, logger logr.Logger, orgs map[string]struct{}) {
+// It returns the set of organizations whose cleanup failed so the caller can retry
+// them on a later debounce window instead of dropping them.
+func (c *folderCleaner) runCleanup(ctx context.Context, logger logr.Logger, orgs map[string]struct{}) map[string]struct{} {
 	if len(orgs) == 0 {
-		return
+		return nil
 	}
 
 	// Create a Grafana API client for the cleanup operation.
 	grafanaAPI, err := c.grafanaClientGen.GenerateGrafanaClient(ctx, c.client, c.grafanaURL)
 	if err != nil {
+		// No org could be processed without a client, so retry all of them.
 		logger.Error(err, "failed to generate Grafana client for folder cleanup")
-		return
+		return orgs
 	}
 
 	grafanaService := grafana.NewService(grafanaAPI, c.cfg)
 
 	// Perform cleanup for each given organization.
+	failed := make(map[string]struct{})
 	for orgName := range orgs {
 		if err := c.cleanupOrphanedFolders(ctx, grafanaService, orgName); err != nil {
 			logger.Error(err, "failed to cleanup orphaned folders", "organization", orgName)
+			failed[orgName] = struct{}{}
 		}
 	}
+	return failed
 }
 
 // cleanupOrphanedFolders resolves the organization, computes which folder UIDs are still
