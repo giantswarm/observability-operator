@@ -39,7 +39,10 @@ type DashboardReconciler struct {
 	dashboardMapper  *mapper.DashboardMapper
 	grafanaClientGen grafanaclient.GrafanaClientGenerator
 	cfg              config.Config
-	cleaner          *folderCleaner
+
+	// cleaner is responsible for cleaning up orphaned Grafana folders that are no longer referenced by any dashboard configmap.
+	// It runs asynchronously, debounced after the last reconciliation.
+	cleaner *folderCleaner
 }
 
 const DashboardFinalizer = "observability.giantswarm.io/grafanadashboard"
@@ -57,8 +60,7 @@ func SetupDashboardReconciler(mgr manager.Manager, cfg config.Config, grafanaCli
 		cleaner:          newFolderCleaner(mgr.GetClient(), grafanaClientGen, cfg.Grafana.URL, cfg),
 	}
 
-	// The cleaner runs orphaned-folder cleanup asynchronously, debounced after
-	// the last reconciliation. The manager owns its lifecycle.
+	// Add the cleaner to the manager so that it can be started and stopped with the manager.
 	if err := mgr.Add(r.cleaner); err != nil {
 		return fmt.Errorf("failed to add dashboard folder cleaner: %w", err)
 	}

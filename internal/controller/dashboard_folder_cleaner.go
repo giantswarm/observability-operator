@@ -26,13 +26,13 @@ const folderCleanupDebounceInterval = 10 * time.Second
 
 // folderCleaner debounces orphaned Grafana folder cleanup.
 //
-// Dashboard reconciliations can arrive in bursts (e.g. a Grafana pod restart
-// re-enqueues every dashboard ConfigMap at once). Running the cleanup — which
-// lists all folders and dashboards for an organization — after each reconcile
-// would be wasteful, so reconciliations only call Trigger to request one. The
-// actual cleanup runs once the burst settles: each Trigger resets a debounce
-// timer, and cleanup runs only after no Trigger has arrived for the debounce
-// interval. The cleaner stays idle until triggered — it never runs on its own.
+// Running the cleanup is expensive at is needs to lists all folders and
+// dashboards for an organization. Since dashboard reconciliations can arrive
+// in bursts (e.g. a Grafana pod restart re-enqueues every dashboard ConfigMap
+// at once), this cleaner runs the actual cleanup once the burst settles: each
+// Trigger resets a debounce timer, and cleanup runs only after no Trigger has
+// arrived for the debounce interval. The cleaner stays idle until triggered —
+// it never runs on its own.
 type folderCleaner struct {
 	client           client.Client
 	grafanaClientGen grafanaclient.GrafanaClientGenerator
@@ -60,9 +60,11 @@ func newFolderCleaner(c client.Client, grafanaClientGen grafanaclient.GrafanaCli
 // safe to call from any reconcile goroutine and never blocks: it only schedules
 // work — the cleanup itself runs asynchronously in Start.
 func (c *folderCleaner) Trigger(orgName string) {
+	// Do not enqueue a cleanup if the cleaner is not initialized or the organization name is empty.
 	if c == nil || orgName == "" {
 		return
 	}
+
 	select {
 	case c.requests <- orgName:
 	default:
@@ -81,6 +83,7 @@ func (c *folderCleaner) Start(ctx context.Context) error {
 	// Trigger arms it.
 	timer := time.NewTimer(c.interval)
 	if !timer.Stop() {
+		// If we can't stop the timer, it means it has already fired. Drain the channel to ensure we don't receive a spurious event later.
 		<-timer.C
 	}
 
@@ -89,13 +92,16 @@ func (c *folderCleaner) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			// Context cancellation was triggered, stop the timer and exit the loop.
 			timer.Stop()
 			return nil
 		case org := <-c.requests:
+			// A cleanup request was received for an organization.
+			// Add it to the pending set and reset the debounce timer, so cleanup will run after the interval if no new requests arrive.
 			pending[org] = struct{}{}
-			// Reset the debounce window: cleanup only fires once reconciles stop.
 			timer.Reset(c.interval)
 		case <-timer.C:
+			// Timer fired, meaning no new requests have arrived for the debounce interval. Run the cleanup for all pending organizations.
 			orgs := pending
 			pending = make(map[string]struct{})
 			c.runCleanup(ctx, logger, orgs)
@@ -103,18 +109,23 @@ func (c *folderCleaner) Start(ctx context.Context) error {
 	}
 }
 
+// runCleanup performs the actual cleanup of orphaned folders for the given organizations.
+// It generates a Grafana client and delegates the cleanup to the Grafana service.
 func (c *folderCleaner) runCleanup(ctx context.Context, logger logr.Logger, orgs map[string]struct{}) {
 	if len(orgs) == 0 {
 		return
 	}
 
+	// Create a Grafana API client for the cleanup operation.
 	grafanaAPI, err := c.grafanaClientGen.GenerateGrafanaClient(ctx, c.client, c.grafanaURL)
 	if err != nil {
 		logger.Error(err, "failed to generate Grafana client for folder cleanup")
 		return
 	}
+
 	grafanaService := grafana.NewService(grafanaAPI, c.cfg)
 
+	// Perform cleanup for each given organization.
 	for orgName := range orgs {
 		if err := c.cleanupOrphanedFolders(ctx, grafanaService, orgName); err != nil {
 			logger.Error(err, "failed to cleanup orphaned folders", "organization", orgName)
