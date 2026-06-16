@@ -30,12 +30,14 @@ type Service struct {
 func NewService(grafanaClient grafanaClient.GrafanaClient, cfg config.Config) *Service {
 	// Initializing organization cache with a TTL of 1 minute.
 	organizationCache := ttlcache.New(
-		ttlcache.WithTTL[string, *organization.Organization](1 * time.Minute),
+		// TODO: adjust cache TTL when sharing the grafana service at the controller level.
+		ttlcache.WithTTL[string, *organization.Organization](10 * time.Second),
 	)
 
 	// Initializing folder path cache with a TTL of 1 minute.
 	foldersCache := ttlcache.New(
-		ttlcache.WithTTL[string, string](1 * time.Minute),
+		// TODO: adjust cache TTL when sharing the grafana service at the controller level.
+		ttlcache.WithTTL[string, string](10 * time.Second),
 	)
 
 	return &Service{
