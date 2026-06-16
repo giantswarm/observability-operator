@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improve dashboard controller speed
   - Cache Grafana organization lookups
+  - Cache dashboard folder hierarchies lookups
 - Update dashboard controller log entries
   - Simplify per dashboard logging
   - Remove redundant log lines

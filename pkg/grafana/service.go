@@ -18,6 +18,13 @@ type Service struct {
 	// same "get org by name" Grafana API call. The short TTL keeps
 	// it fresh enough to pick up organizations created or renamed out-of-band.
 	organizationCache *ttlcache.Cache[string, *organization.Organization]
+
+	// foldersCache memoizes the leaf folder UID for a given folder path. Resolving a
+	// path otherwise issues a Grafana API call per segment to check/create each folder;
+	// caching the resolved UID avoids re-walking unchanged hierarchies.
+	// The short TTL bounds how long a folder deleted out-of-band stays
+	// "resolved" in the cache.
+	foldersCache *ttlcache.Cache[string, string]
 }
 
 func NewService(grafanaClient grafanaClient.GrafanaClient, cfg config.Config) *Service {
@@ -26,9 +33,15 @@ func NewService(grafanaClient grafanaClient.GrafanaClient, cfg config.Config) *S
 		ttlcache.WithTTL[string, *organization.Organization](1 * time.Minute),
 	)
 
+	// Initializing folder path cache with a TTL of 1 minute.
+	foldersCache := ttlcache.New(
+		ttlcache.WithTTL[string, string](1 * time.Minute),
+	)
+
 	return &Service{
 		grafanaClient:     grafanaClient,
 		cfg:               cfg,
 		organizationCache: organizationCache,
+		foldersCache:      foldersCache,
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/models"
+	ttlcache "github.com/jellydator/ttlcache/v3"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
@@ -20,6 +21,13 @@ import (
 func (s *Service) ensureFolderHierarchy(ctx context.Context, client grafanaclient.GrafanaClient, path string) (string, error) {
 	if path == "" {
 		return "", nil
+	}
+
+	// Return cached folder UID if the folder hierarchy for this path has already been
+	// processed, skipping the per-segment Grafana API calls needed to walk it again.
+	cachedUID := s.foldersCache.Get(path)
+	if cachedUID != nil {
+		return cachedUID.Value(), nil
 	}
 
 	logger := log.FromContext(ctx)
@@ -63,6 +71,9 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, client grafanaclien
 			}
 		}
 	}
+
+	// Cache the folder UID for this path for future lookups.
+	s.foldersCache.Set(path, leafUID, ttlcache.DefaultTTL)
 
 	return leafUID, nil
 }

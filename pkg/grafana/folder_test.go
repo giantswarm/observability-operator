@@ -23,9 +23,14 @@ func newTestService(mockClient *mocks.MockGrafanaClient) *Service {
 	organizationCache := ttlcache.New(
 		ttlcache.WithTTL[string, *organization.Organization](1 * time.Minute),
 	)
+	foldersCache := ttlcache.New(
+		ttlcache.WithTTL[string, string](1 * time.Minute),
+	)
+
 	return &Service{
 		grafanaClient:     mockClient,
 		organizationCache: organizationCache,
+		foldersCache:      foldersCache,
 	}
 }
 
