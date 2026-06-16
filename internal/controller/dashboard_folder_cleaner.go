@@ -3,11 +3,13 @@ package controller
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/url"
 	"time"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -23,6 +25,25 @@ import (
 // reconciliations to settle before running orphaned-folder cleanup. Every
 // Trigger resets this window, so cleanup runs once after the last reconcile.
 const folderCleanupDebounceInterval = 10 * time.Second
+
+// folderCleanupMaxRetryInterval caps the exponential backoff applied between
+// retries when cleanup keeps failing (e.g. Grafana unavailable).
+const folderCleanupMaxRetryInterval = 5 * time.Minute
+
+// newFolderCleanupBackoff returns the retry schedule used when a cleanup fails:
+// jittered exponential growth from interval up to folderCleanupMaxRetryInterval.
+// Steps is effectively unbounded so the schedule keeps stepping until it caps
+// out rather than exhausting. A fresh value is created on each new burst and
+// after a successful run, which resets the backoff to interval.
+func newFolderCleanupBackoff(interval time.Duration) wait.Backoff {
+	return wait.Backoff{
+		Duration: interval,
+		Factor:   2,
+		Jitter:   0.5,
+		Steps:    math.MaxInt32,
+		Cap:      folderCleanupMaxRetryInterval,
+	}
+}
 
 // folderCleaner debounces orphaned Grafana folder cleanup.
 //
@@ -88,6 +109,7 @@ func (c *folderCleaner) Start(ctx context.Context) error {
 	}
 
 	pending := make(map[string]struct{})
+	retry := newFolderCleanupBackoff(c.interval)
 
 	for {
 		select {
@@ -100,16 +122,21 @@ func (c *folderCleaner) Start(ctx context.Context) error {
 			// Add it to the pending set and reset the debounce timer, so cleanup will run after the interval if no new requests arrive.
 			pending[org] = struct{}{}
 			timer.Reset(c.interval)
+
+			// Reset the retry backoff to the initial interval, so if the next cleanup fails, it will start from the base interval again.
+			retry = newFolderCleanupBackoff(c.interval)
 		case <-timer.C:
 			// Timer fired, meaning no new requests have arrived for the debounce interval. Run the cleanup for all pending organizations.
 			orgs := pending
-			pending = make(map[string]struct{})
 			// Carry forward any orgs whose cleanup failed so a transient error
-			// (e.g. Grafana briefly unavailable) is retried after the next
-			// debounce window instead of being silently dropped.
+			// (e.g. Grafana briefly unavailable) is retried instead of being
+			// silently dropped. runCleanup returns a fresh map (or nil on full
+			// success), so reassigning pending here resets it for the next window.
 			pending = c.runCleanup(ctx, logger, orgs)
 			if len(pending) > 0 {
-				timer.Reset(c.interval)
+				// Cleanup failed for some orgs: back off exponentially before
+				// retrying so a sustained Grafana outage is not hammered.
+				timer.Reset(retry.Step())
 			}
 		}
 	}
