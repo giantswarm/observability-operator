@@ -24,7 +24,15 @@ type Service struct {
 	// caching the resolved UID avoids re-walking unchanged hierarchies.
 	// The short TTL bounds how long a folder deleted out-of-band stays
 	// "resolved" in the cache.
-	foldersCache *ttlcache.Cache[string, string]
+	// Keyed by organization ID as well as path: folders live per organization, so the
+	// same path must not resolve (or skip creation) across different organizations.
+	foldersCache *ttlcache.Cache[folderCacheKey, string]
+}
+
+// folderCacheKey scopes a cached folder UID to the organization it was resolved in.
+type folderCacheKey struct {
+	orgID int64
+	path  string
 }
 
 func NewService(grafanaClient grafanaClient.GrafanaClient, cfg config.Config) *Service {
@@ -35,7 +43,7 @@ func NewService(grafanaClient grafanaClient.GrafanaClient, cfg config.Config) *S
 
 	// Initializing folder path cache with a TTL of 1 minute.
 	foldersCache := ttlcache.New(
-		ttlcache.WithTTL[string, string](1 * time.Minute),
+		ttlcache.WithTTL[folderCacheKey, string](1 * time.Minute),
 	)
 
 	return &Service{

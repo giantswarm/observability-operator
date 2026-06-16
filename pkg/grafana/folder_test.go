@@ -19,12 +19,16 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
 
+// testFolderCacheOrgID is an arbitrary organization ID used to scope folder cache
+// entries in tests.
+const testFolderCacheOrgID int64 = 1
+
 func newTestService(mockClient *mocks.MockGrafanaClient) *Service {
 	organizationCache := ttlcache.New(
 		ttlcache.WithTTL[string, *organization.Organization](1 * time.Minute),
 	)
 	foldersCache := ttlcache.New(
-		ttlcache.WithTTL[string, string](1 * time.Minute),
+		ttlcache.WithTTL[folderCacheKey, string](1 * time.Minute),
 	)
 
 	return &Service{
@@ -38,7 +42,7 @@ func TestEnsureFolderHierarchy_EmptyPath(t *testing.T) {
 	mockClient := &mocks.MockGrafanaClient{}
 	svc := newTestService(mockClient)
 
-	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -62,7 +66,7 @@ func TestEnsureFolderHierarchy_SingleFolder_AlreadyExists(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -95,7 +99,7 @@ func TestEnsureFolderHierarchy_SingleFolder_DoesNotExist(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -133,7 +137,7 @@ func TestEnsureFolderHierarchy_NestedPath(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a/networking")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a/networking")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -164,7 +168,7 @@ func TestEnsureFolderHierarchy_Rename(t *testing.T) {
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -187,7 +191,7 @@ func TestEnsureFolderHierarchy_CreateFolderError(t *testing.T) {
 	mockFolders.On("CreateFolder", mock.Anything).Return(nil, errors.New("grafana unavailable"))
 
 	svc := newTestService(mockClient)
-	_, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a")
+	_, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -222,7 +226,7 @@ func TestEnsureFolderHierarchy_ThreeLevel(t *testing.T) {
 	})).Return(&folders.CreateFolderOK{Payload: &models.Folder{UID: uid3}}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "a/b/c")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "a/b/c")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -245,7 +249,7 @@ func TestEnsureFolderHierarchy_GetFolderNon404Error(t *testing.T) {
 		goruntime.NewAPIError("internal server error", nil, http.StatusInternalServerError))
 
 	svc := newTestService(mockClient)
-	_, err := svc.ensureFolderHierarchy(context.Background(), mockClient, "team-a")
+	_, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a")
 	if err == nil {
 		t.Fatal("expected error for 500 response, got nil")
 	}
