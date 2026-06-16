@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Remove started/finished log entries
   - Add ConfigMap information in errors
   - Extract common dashboard processing logic from `reconcileCreate` and `reconcileDelete`
+  - Hide finalizer log by default
 
 ### Fixed
 
