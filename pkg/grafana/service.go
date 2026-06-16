@@ -37,13 +37,17 @@ type folderCacheKey struct {
 
 func NewService(grafanaClient grafanaClient.GrafanaClient, cfg config.Config) *Service {
 	// Initializing organization cache with a TTL of 1 minute.
+	// DisableTouchOnHit keeps the TTL an absolute expiry so reads do not extend an
+	// entry's lifetime, which would otherwise let a hot entry outlive the freshness window.
 	organizationCache := ttlcache.New(
-		ttlcache.WithTTL[string, *organization.Organization](1 * time.Minute),
+		ttlcache.WithTTL[string, *organization.Organization](1*time.Minute),
+		ttlcache.WithDisableTouchOnHit[string, *organization.Organization](),
 	)
 
 	// Initializing folder path cache with a TTL of 1 minute.
 	foldersCache := ttlcache.New(
-		ttlcache.WithTTL[folderCacheKey, string](1 * time.Minute),
+		ttlcache.WithTTL[folderCacheKey, string](1*time.Minute),
+		ttlcache.WithDisableTouchOnHit[folderCacheKey, string](),
 	)
 
 	return &Service{

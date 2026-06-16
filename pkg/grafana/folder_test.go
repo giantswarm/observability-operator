@@ -25,10 +25,12 @@ const testFolderCacheOrgID int64 = 1
 
 func newTestService(mockClient *mocks.MockGrafanaClient) *Service {
 	organizationCache := ttlcache.New(
-		ttlcache.WithTTL[string, *organization.Organization](1 * time.Minute),
+		ttlcache.WithTTL[string, *organization.Organization](1*time.Minute),
+		ttlcache.WithDisableTouchOnHit[string, *organization.Organization](),
 	)
 	foldersCache := ttlcache.New(
-		ttlcache.WithTTL[folderCacheKey, string](1 * time.Minute),
+		ttlcache.WithTTL[folderCacheKey, string](1*time.Minute),
+		ttlcache.WithDisableTouchOnHit[folderCacheKey, string](),
 	)
 
 	return &Service{
