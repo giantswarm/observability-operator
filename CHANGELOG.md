@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Improve log messages
+  - Normalize per dashboard logging (with uid, organization and folder keys)
+  - Remove redundant log lines
+  - Remove started/finished log entries
+  - Add ConfigMap information in errors
+  - Extract common dashboard processing logic from `reconcileCreate` and `reconcileDelete`
+
+### Fixed
+
+- Fix 12 CVEs related to golang.org/x/crypto
+
 ## [0.70.0] - 2026-06-05
 
 ### Added

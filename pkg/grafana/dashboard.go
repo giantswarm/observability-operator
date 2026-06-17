@@ -22,8 +22,6 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 	}
 
 	err = s.withinOrganization(ctx, org, func(ctx context.Context, client grafanaclient.GrafanaClient) error {
-		logger := log.FromContext(ctx)
-
 		// Ensure folder hierarchy exists and get the leaf folder UID
 		folderUID, err := s.ensureFolderHierarchy(ctx, client, dashboard.FolderPath())
 		if err != nil {
@@ -43,7 +41,6 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 			return fmt.Errorf("failed to update dashboard: %w", err)
 		}
 
-		logger.Info("updated dashboard", "folderPath", dashboard.FolderPath(), "folderUID", folderUID)
 		return nil
 	})
 	if err != nil {
@@ -60,8 +57,6 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 	}
 
 	err = s.withinOrganization(ctx, org, func(ctx context.Context, client grafanaclient.GrafanaClient) error {
-		logger := log.FromContext(ctx)
-
 		_, err := client.Dashboards().GetDashboardByUID(dashboard.UID())
 		if err != nil {
 			return fmt.Errorf("failed to get dashboard: %w", err)
@@ -72,7 +67,6 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
 
-		logger.Info("deleted dashboard")
 		return nil
 	})
 	if err != nil {

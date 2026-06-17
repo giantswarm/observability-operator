@@ -108,7 +108,7 @@ func (v *DashboardConfigMapValidator) validateDashboard(ctx context.Context, con
 	for _, dash := range dashboards {
 		errs := dash.Validate()
 		if len(errs) > 0 {
-			return nil, fmt.Errorf("dashboard validation failed for uid %s: %w", dash.UID(), errors.Join(errs...))
+			return nil, fmt.Errorf("dashboard validation failed for uid=%s in configMap=%s/%s: %w", dash.UID(), configmap.GetNamespace(), configmap.GetName(), errors.Join(errs...))
 		}
 	}
 
@@ -123,7 +123,7 @@ func (v *DashboardConfigMapValidator) validateDashboard(ctx context.Context, con
 	}
 	for _, dash := range dashboards {
 		if _, ok := existingOrgs[dash.Organization()]; !ok {
-			return nil, fmt.Errorf("organization %q referenced by dashboard %q does not exist", dash.Organization(), dash.UID())
+			return nil, fmt.Errorf("organization %q referenced by dashboard uid=%q in configMap=%s/%s does not exist", dash.Organization(), dash.UID(), configmap.GetNamespace(), configmap.GetName())
 		}
 	}
 

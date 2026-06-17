@@ -24,6 +24,7 @@ import (
 	"github.com/giantswarm/observability-operator/internal/mapper"
 	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
@@ -67,14 +68,9 @@ func SetupDashboardReconciler(mgr manager.Manager, cfg config.Config, grafanaCli
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.0/pkg/reconcile
 func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("configmap", req.NamespacedName)
-	ctx = log.IntoContext(ctx, logger)
-
-	logger.Info("started reconciling Grafana dashboard ConfigMap")
-	defer logger.Info("finished reconciling Grafana dashboard ConfigMap")
-
-	dashboard := &v1.ConfigMap{}
-	err := r.Get(ctx, req.NamespacedName, dashboard)
+	// Read ConfigMap from Kubernetes API.
+	dashboardConfigMap := &v1.ConfigMap{}
+	err := r.Get(ctx, req.NamespacedName, dashboardConfigMap)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to get dashboard configmap: %w", err)
@@ -83,6 +79,7 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
+	// Create a Grafana client.
 	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
@@ -90,13 +87,13 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	grafanaService := grafana.NewService(grafanaAPI, r.cfg)
 
-	// Handle deleted grafana dashboards
-	if !dashboard.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaService, dashboard)
+	// Handle dashboard deletion.
+	if !dashboardConfigMap.DeletionTimestamp.IsZero() {
+		return ctrl.Result{}, r.reconcileDelete(ctx, grafanaService, dashboardConfigMap)
 	}
 
-	// Handle non-deleted grafana dashboards
-	return ctrl.Result{}, r.reconcileCreate(ctx, grafanaService, dashboard)
+	// Handle dashboards creation and update.
+	return ctrl.Result{}, r.reconcileCreate(ctx, grafanaService, dashboardConfigMap)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -163,8 +160,6 @@ func (r *DashboardReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // This function is also responsible for:
 // - Adding the finalizer to the configmap
 func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaService *grafana.Service, dashboardConfigMap *v1.ConfigMap) error {
-	logger := log.FromContext(ctx)
-
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	finalizerAdded, err := r.finalizerHelper.EnsureAdded(ctx, dashboardConfigMap)
 	if err != nil {
@@ -174,42 +169,15 @@ func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaServic
 		return nil
 	}
 
-	// Convert ConfigMap to domain objects using mapper
-	dashboards := r.dashboardMapper.FromConfigMap(dashboardConfigMap)
-
-	// Collect all errors to ensure all dashboards have a chance to be processed
-	var errs []error
-
-	org := ""
-	// Process each dashboard
-	for _, dashboard := range dashboards {
-		org = dashboard.Organization() // org is the same for all dashboards in the same configmap, so we can just take it from the first one
-		// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
-		if validationErrors := dashboard.Validate(); len(validationErrors) > 0 {
-			logger.Error(nil, "dashboard validate failed - webhook may have been bypassed",
-				"uid", dashboard.UID(), "organization", dashboard.Organization(), "errors", validationErrors,
-				"configmap", dashboardConfigMap.Name, "namespace", dashboardConfigMap.Namespace)
-			errs = append(errs, fmt.Errorf("dashboard validation failed for uid %s: %v", dashboard.UID(), validationErrors))
-			continue
+	org, err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
+		if err := grafanaService.ConfigureDashboard(ctx, dash); err != nil {
+			return fmt.Errorf("failed to configure dashboard uid=%s from configMap=%s/%s: %w", dash.UID(), dashboardConfigMap.GetNamespace(), dashboardConfigMap.GetName(), err)
 		}
-
-		logger.Info("Configuring dashboard", "uid", dashboard.UID(), "organization", dashboard.Organization())
-		err = grafanaService.ConfigureDashboard(ctx, dashboard)
-		if err != nil {
-			logger.Error(err, "dashboard configuration failed",
-				"uid", dashboard.UID(), "organization", dashboard.Organization(),
-				"configmap", dashboardConfigMap.Name, "namespace", dashboardConfigMap.Namespace)
-			errs = append(errs, fmt.Errorf("dashboard configuration failed for uid %s: %w", dashboard.UID(), err))
-			continue
-		}
-		logger.Info("dashboard configured in Grafana",
-			"uid", dashboard.UID(), "organization", dashboard.Organization(),
-			"configmap", dashboardConfigMap.Name, "namespace", dashboardConfigMap.Namespace)
-	}
-
-	// If any errors occurred, combine them and return
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+		log.FromContext(ctx).Info("dashboard configured in Grafana")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Cleanup orphaned folders after all dashboards are processed
@@ -223,47 +191,21 @@ func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaServic
 }
 
 // reconcileDelete deletes the grafana dashboard.
-func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboard *v1.ConfigMap) error {
-	logger := log.FromContext(ctx)
+func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, dashboardConfigMap *v1.ConfigMap) error {
 	// We do not need to delete anything if there is no finalizer on the grafana dashboard
-	if !controllerutil.ContainsFinalizer(dashboard, DashboardFinalizer) {
+	if !controllerutil.ContainsFinalizer(dashboardConfigMap, DashboardFinalizer) {
 		return nil
 	}
 
-	// Convert ConfigMap to domain objects using mapper
-	dashboards := r.dashboardMapper.FromConfigMap(dashboard)
-
-	// Collect all errors to ensure all dashboards have a chance to be processed
-	var errs []error
-	org := ""
-	// Process each dashboard: validate and delete in the same loop
-	for _, dash := range dashboards {
-		org = dash.Organization() // org is the same for all dashboards in the same configmap, so we can just take it from the first one
-		// Defensive validation: Ensure dashboards are valid even if webhook was bypassed
-		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
-			logger.Error(nil, "Dashboard validation failed during reconciliation - webhook may have been bypassed",
-				"dashboard", dash.UID(), "organization", dash.Organization(), "errors", validationErrors,
-				"configmap", dashboard.Name, "namespace", dashboard.Namespace)
-			errs = append(errs, fmt.Errorf("dashboard validation failed for uid %s: %v", dash.UID(), validationErrors))
-			continue
+	org, err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
+		if err := grafanaService.DeleteDashboard(ctx, dash); err != nil {
+			return fmt.Errorf("failed to delete dashboard uid=%s from configMap=%s/%s: %w", dash.UID(), dashboardConfigMap.GetNamespace(), dashboardConfigMap.GetName(), err)
 		}
-
-		err := grafanaService.DeleteDashboard(ctx, dash)
-		if err != nil {
-			logger.Error(err, "failed to delete dashboard",
-				"uid", dash.UID(), "organization", dash.Organization(),
-				"configmap", dashboard.Name, "namespace", dashboard.Namespace)
-			errs = append(errs, fmt.Errorf("failed to delete dashboard uid %s: %w", dash.UID(), err))
-			continue
-		}
-		logger.Info("dashboard deleted from Grafana",
-			"uid", dash.UID(), "organization", dash.Organization(),
-			"configmap", dashboard.Name, "namespace", dashboard.Namespace)
-	}
-
-	// If any errors occurred, combine them and return
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+		log.FromContext(ctx).Info("dashboard deleted from Grafana")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Cleanup orphaned folders after all dashboards are deleted
@@ -274,12 +216,51 @@ func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaServic
 	}
 
 	// Finalizer handling needs to come last.
-	err := r.finalizerHelper.EnsureRemoved(ctx, dashboard)
-	if err != nil {
+	if err := r.finalizerHelper.EnsureRemoved(ctx, dashboardConfigMap); err != nil {
 		return fmt.Errorf("failed to remove finalizer: %w", err)
 	}
 
 	return nil
+}
+
+// processDashboards applies op to every dashboard parsed from the ConfigMap.
+// Errors are collected per dashboard so that a single failure does not prevent
+// the remaining dashboards from being processed. It returns the organization
+// shared by the dashboards (empty if the ConfigMap holds none) along with the
+// joined errors.
+func (r *DashboardReconciler) processDashboards(
+	ctx context.Context,
+	dashboardConfigMap *v1.ConfigMap,
+	op func(ctx context.Context, dash *dashboard.Dashboard) error,
+) (string, error) {
+	logger := log.FromContext(ctx)
+	dashboards := r.dashboardMapper.FromConfigMap(dashboardConfigMap)
+
+	org := ""
+	var errs []error
+	for _, dash := range dashboards {
+		// org is the same for all dashboards in the same configmap.
+		org = dash.Organization()
+
+		// Create a unique logger for the current dashboard.
+		dl := logger.WithValues(
+			"uid", dash.UID(),
+			"organization", dash.Organization(),
+			"folder", dash.FolderPath(),
+		)
+
+		// Defensive validation: ensure dashboards are valid even if webhook was bypassed.
+		if validationErrors := dash.Validate(); len(validationErrors) > 0 {
+			errs = append(errs, fmt.Errorf("dashboard validation failed - webhook may have been bypassed - for uid=%s from configMap=%s/%s: %v", dash.UID(), dashboardConfigMap.GetNamespace(), dashboardConfigMap.GetName(), validationErrors))
+			continue
+		}
+
+		if err := op(log.IntoContext(ctx, dl), dash); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return org, errors.Join(errs...)
 }
 
 // cleanupOrphanedFolders resolves the organization, computes which folder UIDs are still
