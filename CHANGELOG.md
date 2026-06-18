@@ -10,20 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Move orphaned dashboard folder cleanup out of the dashboard controller into a new `dashboard-cleanup` controller that reconciles per Grafana organization. Cleanup is debounced and runs once, one minute after the first dashboard event of a burst, instead of after every dashboard reconciliation.
+- CI: offload the Aliyun (China) image push to a parallel `sync-china-registry` job via `split-china-push`.
+- Improve dashboard controller speed
+  - Cache Grafana organization lookups
+  - Cache dashboard folder hierarchy lookups
 
 ## [0.71.0] - 2026-06-17
 
 ### Changed
 
-- Improve dashboard controller speed
-  - Cache Grafana organization lookups
-  - Cache dashboard folder hierarchy lookups
 - Improve log messages
   - Normalize per dashboard logging (with uid, organization and folder keys)
   - Remove redundant log lines
   - Remove started/finished log entries
   - Add ConfigMap information in errors
   - Extract common dashboard processing logic from `reconcileCreate` and `reconcileDelete`
+  - Hide finalizer log by default
 
 ### Fixed
 

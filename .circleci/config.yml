@@ -82,6 +82,9 @@ workflows:
     - architect/push-to-registries:
         context: architect
         name: push-to-registries
+        # Skip the trans-Pacific Aliyun push in-line; the sync-china-registry
+        # job below mirrors gsoci -> Aliyun from an in-China runner in parallel.
+        split-china-push: true
         requires:
         - go-build
         filters:
@@ -91,6 +94,20 @@ workflows:
             ignore:
             - main
             - master
+
+    # Mirror gsoci -> Aliyun via the in-China giantswarm/galaxy-runner, off the
+    # push-to-registries critical path. Tag builds only (dev images don't push
+    # to Aliyun).
+    - architect/sync-china-registry:
+        context: architect
+        name: sync-china-registry
+        requires:
+        - push-to-registries
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore: /.*/
 
     - architect/push-to-app-catalog:
         context: architect
