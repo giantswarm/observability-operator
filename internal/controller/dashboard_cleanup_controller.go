@@ -30,16 +30,14 @@ import (
 
 // dashboardCleanupDelay is how long the controller waits after the first
 // dashboard event before cleaning up orphaned folders for an organization.
-// Dashboard events arrive in bursts (one ConfigMap per dashboard), so we
-// debounce them: the delaying queue keeps the earliest scheduled time per
-// organization key, meaning cleanup runs once, this long after the first event
-// of a burst, by which point all dashboards have been reconciled.
+// If dashboard configmap events arrive in bursts, so we debounce them: the
+// delaying queue keeps the earliest scheduled time per organization key,
+// meaning cleanup runs once, this long after the first event of a burst.
 const dashboardCleanupDelay = time.Minute
 
 // DashboardCleanupReconciler removes orphaned Grafana folders for an organization.
 // It is keyed by organization name (carried in the reconcile request Name) rather
-// than by a single ConfigMap, so it runs once per organization after a burst of
-// dashboard events instead of once per dashboard.
+// than by a single ConfigMap, so it runs once per organization.
 type DashboardCleanupReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -83,8 +81,7 @@ func (r *DashboardCleanupReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 // SetupWithManager sets up the controller with the Manager. It watches dashboard
 // ConfigMaps but enqueues per-organization cleanup requests with a delay so that
-// a burst of dashboard events triggers a single cleanup once all dashboards have
-// been reconciled.
+// a burst of dashboard events triggers a single cleanup.
 func (r *DashboardCleanupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	labelSelectorPredicate, err := predicate.LabelSelectorPredicate(
 		metav1.LabelSelector{
