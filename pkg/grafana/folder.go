@@ -7,6 +7,7 @@ import (
 
 	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/models"
+	ttlcache "github.com/jellydator/ttlcache/v3"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
@@ -17,9 +18,18 @@ import (
 // ensureFolderHierarchy ensures that the full folder hierarchy exists for the given path.
 // Returns the leaf folder UID, or empty string if path is empty (General folder).
 // The provided client must already be scoped to the target organization.
-func (s *Service) ensureFolderHierarchy(ctx context.Context, client grafanaclient.GrafanaClient, path string) (string, error) {
+func (s *Service) ensureFolderHierarchy(ctx context.Context, client grafanaclient.GrafanaClient, orgID int64, path string) (string, error) {
 	if path == "" {
 		return "", nil
+	}
+
+	cacheKey := folderCacheKey{orgID: orgID, path: path}
+
+	// Return cached folder UID if the folder hierarchy for this path has already been
+	// processed, skipping the per-segment Grafana API calls needed to walk it again.
+	cachedUID := s.foldersCache.Get(cacheKey)
+	if cachedUID != nil {
+		return cachedUID.Value(), nil
 	}
 
 	logger := log.FromContext(ctx)
@@ -63,6 +73,9 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, client grafanaclien
 			}
 		}
 	}
+
+	// Cache the folder UID for this path for future lookups.
+	s.foldersCache.Set(cacheKey, leafUID, ttlcache.DefaultTTL)
 
 	return leafUID, nil
 }
