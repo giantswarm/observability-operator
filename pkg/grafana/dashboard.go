@@ -23,7 +23,7 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 
 	err = s.withinOrganization(ctx, org, func(ctx context.Context, client grafanaclient.GrafanaClient) error {
 		// Ensure folder hierarchy exists and get the leaf folder UID
-		folderUID, err := s.ensureFolderHierarchy(ctx, client, dashboard.FolderPath())
+		folderUID, err := s.ensureFolderHierarchy(ctx, client, org.ID(), dashboard.FolderPath())
 		if err != nil {
 			return fmt.Errorf("failed to ensure folder hierarchy: %w", err)
 		}
