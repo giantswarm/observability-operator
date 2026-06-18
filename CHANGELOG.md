@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Move orphaned dashboard folder cleanup out of the dashboard controller into a new `dashboard-cleanup` controller that reconciles per Grafana organization. Cleanup is debounced and runs once, one minute after the first dashboard event of a burst, instead of after every dashboard reconciliation.
+
 ## [0.71.0] - 2026-06-17
 
 ### Changed

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
-	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/client/orgs"
 	"github.com/grafana/grafana-openapi-client-go/models"
 	. "github.com/onsi/ginkgo/v2"
@@ -196,13 +195,6 @@ var _ = Describe("Dashboard Controller", func() {
 							UID: func() *string { s := "test-dashboard-uid"; return &s }(),
 						},
 					}, nil)
-
-				// Mock the Folders service for cleanup
-				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
-				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-					Payload: []*models.FolderSearchHit{},
-				}, nil)
 			})
 
 			AfterEach(func() {
@@ -339,13 +331,6 @@ var _ = Describe("Dashboard Controller", func() {
 					}
 					return false
 				})).Return(dashboardResponse, nil)
-
-				// Mock the Folders service for cleanup
-				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
-				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-					Payload: []*models.FolderSearchHit{},
-				}, nil)
 
 				By("Creating a dashboard ConfigMap")
 				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
@@ -565,13 +550,6 @@ var _ = Describe("Dashboard Controller", func() {
 				}
 				mockDashboardsClient.On("DeleteDashboardByUID", "test-dashboard-uid").Return(deleteResponse, nil)
 
-				// Mock the Folders service for cleanup
-				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
-				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-					Payload: []*models.FolderSearchHit{},
-				}, nil)
-
 				By("Marking the dashboard ConfigMap for deletion")
 				createdConfigMap := &v1.ConfigMap{}
 				err := k8sClient.Get(ctx, namespacedName, createdConfigMap)
@@ -681,13 +659,6 @@ var _ = Describe("Dashboard Controller", func() {
 					Payload: &models.PostDashboardOKBody{},
 				}
 				mockDashboardsClient.On("PostDashboard", mock.Anything).Return(dashboardResponse, nil)
-
-				// Mock the Folders service for cleanup
-				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
-				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-					Payload: []*models.FolderSearchHit{},
-				}, nil)
 
 				// Test ConfigMap with organization in labels instead of annotations
 				// Note: Using a valid Kubernetes label value (no spaces, alphanumeric + dashes/dots/underscores)
@@ -843,13 +814,6 @@ var _ = Describe("Dashboard Controller", func() {
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
 				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
 
-				// Mock the Folders service for cleanup
-				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
-				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-					Payload: []*models.FolderSearchHit{},
-				}, nil)
-
 				configMapWithID := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "dashboard-with-id",
@@ -984,13 +948,6 @@ var _ = Describe("Dashboard Controller", func() {
 				// Mock the Dashboards service
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
 				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
-
-				// Mock the Folders service for cleanup
-				mockFoldersClient := &mocks.MockFoldersClient{}
-				mockGrafanaClient.On("Folders").Return(mockFoldersClient)
-				mockFoldersClient.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-					Payload: []*models.FolderSearchHit{},
-				}, nil)
 
 				// Mock the organization lookup to succeed
 				orgResponse := &orgs.GetOrgByNameOK{
