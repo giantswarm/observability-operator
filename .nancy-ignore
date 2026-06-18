@@ -1,1 +1,15 @@
-CVE-2025-4673 until=2025-07-14 # golang.org/x/net@v0.40.0
+# pkg:golang/github.com/rs/cors@v1.10.1
+CVE-2025-47908 until=2026-09-10
+
+# pkg:golang/github.com/yuin/goldmark@v1.7.13
+CVE-2026-5160 until=2026-09-10
+
+# pkg:golang/golang.org/x/image@v0.0.0-20190802002840-cff245a6509b
+CVE-2026-33813 until=2026-09-10
+CVE-2026-46599 until=2026-09-10
+CVE-2023-29407 until=2026-09-10
+CVE-2023-29408 until=2026-09-10
+CVE-2026-33809 until=2026-09-10
+CVE-2026-33812 until=2026-09-10
+CVE-2022-41727 until=2026-09-10
+CVE-2026-42500 until=2026-09-10

@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.71.0] - 2026-06-17
+
 ### Changed
 
+- Improve dashboard controller speed
+  - Cache Grafana organization lookups
+  - Cache dashboard folder hierarchy lookups
 - Improve log messages
   - Normalize per dashboard logging (with uid, organization and folder keys)
   - Remove redundant log lines
@@ -1127,7 +1132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.70.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.71.0...HEAD
+[0.71.0]: https://github.com/giantswarm/observability-operator/compare/v0.70.0...v0.71.0
 [0.70.0]: https://github.com/giantswarm/observability-operator/compare/v0.69.0...v0.70.0
 [0.69.0]: https://github.com/giantswarm/observability-operator/compare/v0.68.0...v0.69.0
 [0.68.0]: https://github.com/giantswarm/observability-operator/compare/v0.67.2...v0.68.0

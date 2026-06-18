@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-openapi/runtime"
 	"github.com/grafana/grafana-openapi-client-go/models"
+	ttlcache "github.com/jellydator/ttlcache/v3"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
@@ -121,6 +122,13 @@ func isNotFound(err error) bool {
 // It returns organization.ErrOrganizationNotFound (wrapped) when Grafana returns 404,
 // letting callers distinguish a missing organization from other API failures.
 func (s *Service) FindOrgByName(name string) (*organization.Organization, error) {
+	// Return cached organization when possible to skip a redundant Grafana API round-trip
+	// for an organization we already resolved recently.
+	cachedOrganization := s.organizationCache.Get(name)
+	if cachedOrganization != nil {
+		return cachedOrganization.Value(), nil
+	}
+
 	org, err := s.grafanaClient.Orgs().GetOrgByName(name)
 	if err != nil {
 		if isNotFound(err) {
@@ -129,7 +137,12 @@ func (s *Service) FindOrgByName(name string) (*organization.Organization, error)
 		return nil, fmt.Errorf("failed to get organization by name: %w", err)
 	}
 
-	return organization.NewFromGrafana(org.Payload.ID, org.Payload.Name), nil
+	result := organization.NewFromGrafana(org.Payload.ID, org.Payload.Name)
+
+	// Cache the organization for future lookups.
+	s.organizationCache.Set(name, result, ttlcache.DefaultTTL)
+
+	return result, nil
 }
 
 // findOrgByID is a wrapper function used to find a Grafana organization by its id
