@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- CI: offload the Aliyun (China) image push to a parallel `sync-china-registry` job via `split-china-push`.
+
 ## [0.71.0] - 2026-06-17
 
 ### Changed
