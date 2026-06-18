@@ -15,7 +15,7 @@ require (
 	github.com/grafana/grafana-openapi-client-go v0.0.0-20260604125106-9550bcd4956c
 	github.com/onsi/ginkgo/v2 v2.31.0
 	github.com/onsi/gomega v1.42.0
-	github.com/prometheus/alertmanager v0.32.1
+	github.com/prometheus/alertmanager v0.33.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.69.0
 	github.com/sanity-io/litter v1.5.8
