@@ -10,14 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - CI: offload the Aliyun (China) image push to a parallel `sync-china-registry` job via `split-china-push`.
+- Improve dashboard controller speed
+  - Cache Grafana organization lookups
+  - Cache dashboard folder hierarchy lookups
 
 ## [0.71.0] - 2026-06-17
 
 ### Changed
 
-- Improve dashboard controller speed
-  - Cache Grafana organization lookups
-  - Cache dashboard folder hierarchy lookups
 - Improve log messages
   - Normalize per dashboard logging (with uid, organization and folder keys)
   - Remove redundant log lines
