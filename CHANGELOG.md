@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Cache Grafana organization lookups
   - Cache dashboard folder hierarchy lookups
 
+### Fixed
+
+- Fix dashboard folders cleanup to processes folders deepest-first
+
 ## [0.71.0] - 2026-06-17
 
 ### Changed
