@@ -101,7 +101,6 @@ var _ = Describe("Dashboard Cleanup Controller", func() {
 		grafanaURL, _ := url.Parse("http://localhost:3000")
 		reconciler = &DashboardCleanupReconciler{
 			Client:           k8sClient,
-			Scheme:           k8sClient.Scheme(),
 			grafanaURL:       grafanaURL,
 			dashboardMapper:  mapper.New(),
 			grafanaClientGen: mockGrafanaGen,

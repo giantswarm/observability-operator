@@ -8,7 +8,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -40,7 +39,6 @@ const dashboardCleanupDelay = time.Minute
 // than by a single ConfigMap, so it runs once per organization.
 type DashboardCleanupReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
 
 	grafanaURL       *url.URL
 	dashboardMapper  *mapper.DashboardMapper
@@ -52,7 +50,6 @@ type DashboardCleanupReconciler struct {
 func SetupDashboardCleanupReconciler(mgr manager.Manager, cfg config.Config, grafanaClientGen grafanaclient.GrafanaClientGenerator) error {
 	r := &DashboardCleanupReconciler{
 		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
 
 		grafanaURL:       cfg.Grafana.URL,
 		dashboardMapper:  mapper.New(),
