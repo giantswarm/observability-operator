@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
 	"github.com/giantswarm/observability-operator/pkg/config"
@@ -18,6 +20,39 @@ import (
 )
 
 var managementClusterName = "dummy-cluster"
+
+// TestMonitoringConfigReplicasRoundTrip guards the sharding logic against
+// drift between the write path (monitoring-config.yaml.template) and the read
+// path (monitoringConfig struct used to recover the current shard count). The
+// template renders alloy.controller.replicas and the struct must parse that
+// exact path. This is important because if either side moves, the replica
+// count silently unmarshals to 0 and the scale-down hysteresis in
+// ComputeShards breaks without any error.
+func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
+	const want = 7 // sentinel, distinct from the default of 1
+
+	var rendered bytes.Buffer
+	err := alloyMonitoringConfigTemplate.Execute(&rendered, struct {
+		AlloyConfig       string
+		HasCABundle       bool
+		PriorityClassName string
+		Replicas          int
+	}{Replicas: want})
+	if err != nil {
+		t.Fatalf("failed to render monitoring config template: %v", err)
+	}
+
+	var parsed monitoringConfig
+	if err := yaml.Unmarshal(rendered.Bytes(), &parsed); err != nil {
+		t.Fatalf("failed to unmarshal rendered config with monitoringConfig struct: %v", err)
+	}
+
+	if parsed.Alloy.Controller.Replicas != want {
+		t.Errorf("read/write format drift: template wrote replicas=%d under alloy.controller.replicas, "+
+			"but monitoringConfig struct read %d — the read path no longer matches the template",
+			want, parsed.Alloy.Controller.Replicas)
+	}
+}
 
 func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
 	return &Service{
@@ -364,11 +399,11 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 
 			if os.Getenv("UPDATE_GOLDEN_FILES") == "true" {
 				t.Logf("Environment variable UPDATE_GOLDEN_FILES=true detected, updating golden files")
-				if err := os.MkdirAll(filepath.Dir(tt.goldenPath), 0750); err != nil {
+				if err := os.MkdirAll(filepath.Dir(tt.goldenPath), 0o750); err != nil {
 					t.Fatalf("failed to create golden directory: %v", err)
 				}
 				//nolint:gosec
-				if err := os.WriteFile(tt.goldenPath, []byte(result), 0644); err != nil {
+				if err := os.WriteFile(tt.goldenPath, []byte(result), 0o644); err != nil {
 					t.Fatalf("failed to update golden file: %v", err)
 				}
 			}
