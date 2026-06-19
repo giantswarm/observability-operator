@@ -93,13 +93,15 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			return fmt.Errorf("failed to list folders: %w", err)
 		}
 
-		// Delete operator-managed folders that are empty and unreferenced
+		// Delete operator-managed folders that are empty and unreferenced by a dashboard
 		var errs []error
 		for _, f := range allFolders.Payload {
+			// Skip folders which are not managed by the operator
 			if !folder.IsOperatorManaged(f.UID) {
 				continue
 			}
 
+			// Skip folders which are referenced by dashboard ConfigMaps
 			if _, ok := requiredUIDs[f.UID]; ok {
 				continue
 			}
@@ -107,7 +109,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			// Check if folder is empty before deleting
 			counts, err := client.Folders().GetFolderDescendantCounts(f.UID)
 			if err != nil {
-				errs = append(errs, fmt.Errorf("failed to get descendant counts for folder %q: %w", f.UID, err))
+				errs = append(errs, fmt.Errorf("failed to get descendant counts for folder uid=%s title=%s: %w", f.UID, f.Title, err))
 				continue
 			}
 
@@ -120,7 +122,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			}
 
 			if !isEmpty {
-				errs = append(errs, fmt.Errorf("orphaned folder %q is not empty, skipping deletion", f.UID))
+				errs = append(errs, fmt.Errorf("skipping deletion, orphaned folder is not empty uid=%s title=%s", f.UID, f.Title))
 				continue
 			}
 
