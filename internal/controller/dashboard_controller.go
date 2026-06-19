@@ -25,7 +25,6 @@ import (
 	"github.com/giantswarm/observability-operator/internal/predicates"
 	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
-	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
@@ -169,25 +168,15 @@ func (r *DashboardReconciler) reconcileCreate(ctx context.Context, grafanaServic
 		return nil
 	}
 
-	org, err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
+	// Orphaned folder cleanup is handled asynchronously, per organization, by the
+	// DashboardCleanupReconciler once a burst of dashboard events has settled.
+	return r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
 		if err := grafanaService.ConfigureDashboard(ctx, dash); err != nil {
 			return fmt.Errorf("failed to configure dashboard uid=%s from configMap=%s/%s: %w", dash.UID(), dashboardConfigMap.GetNamespace(), dashboardConfigMap.GetName(), err)
 		}
 		log.FromContext(ctx).Info("dashboard configured in Grafana")
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	// Cleanup orphaned folders after all dashboards are processed
-	if org != "" {
-		if err := r.cleanupOrphanedFolders(ctx, grafanaService, org); err != nil {
-			return fmt.Errorf("failed to cleanup orphaned folders: %w", err)
-		}
-	}
-
-	return nil
 }
 
 // reconcileDelete deletes the grafana dashboard.
@@ -197,7 +186,9 @@ func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaServic
 		return nil
 	}
 
-	org, err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
+	// Orphaned folder cleanup is handled asynchronously, per organization, by the
+	// DashboardCleanupReconciler once a burst of dashboard events has settled.
+	err := r.processDashboards(ctx, dashboardConfigMap, func(ctx context.Context, dash *dashboard.Dashboard) error {
 		if err := grafanaService.DeleteDashboard(ctx, dash); err != nil {
 			return fmt.Errorf("failed to delete dashboard uid=%s from configMap=%s/%s: %w", dash.UID(), dashboardConfigMap.GetNamespace(), dashboardConfigMap.GetName(), err)
 		}
@@ -206,13 +197,6 @@ func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaServic
 	})
 	if err != nil {
 		return err
-	}
-
-	// Cleanup orphaned folders after all dashboards are deleted
-	if org != "" {
-		if err := r.cleanupOrphanedFolders(ctx, grafanaService, org); err != nil {
-			return fmt.Errorf("failed to cleanup orphaned folders: %w", err)
-		}
 	}
 
 	// Finalizer handling needs to come last.
@@ -225,23 +209,17 @@ func (r *DashboardReconciler) reconcileDelete(ctx context.Context, grafanaServic
 
 // processDashboards applies op to every dashboard parsed from the ConfigMap.
 // Errors are collected per dashboard so that a single failure does not prevent
-// the remaining dashboards from being processed. It returns the organization
-// shared by the dashboards (empty if the ConfigMap holds none) along with the
-// joined errors.
+// the remaining dashboards from being processed, and returned joined together.
 func (r *DashboardReconciler) processDashboards(
 	ctx context.Context,
 	dashboardConfigMap *v1.ConfigMap,
 	op func(ctx context.Context, dash *dashboard.Dashboard) error,
-) (string, error) {
+) error {
 	logger := log.FromContext(ctx)
 	dashboards := r.dashboardMapper.FromConfigMap(dashboardConfigMap)
 
-	org := ""
 	var errs []error
 	for _, dash := range dashboards {
-		// org is the same for all dashboards in the same configmap.
-		org = dash.Organization()
-
 		// Create a unique logger for the current dashboard.
 		dl := logger.WithValues(
 			"uid", dash.UID(),
@@ -260,51 +238,5 @@ func (r *DashboardReconciler) processDashboards(
 		}
 	}
 
-	return org, errors.Join(errs...)
-}
-
-// cleanupOrphanedFolders resolves the organization, computes which folder UIDs are still
-// needed by dashboard ConfigMaps, and delegates deletion of orphans to the Grafana service.
-func (r *DashboardReconciler) cleanupOrphanedFolders(ctx context.Context, grafanaService *grafana.Service, orgName string) error {
-	org, err := grafanaService.FindOrgByName(orgName)
-	if err != nil {
-		return fmt.Errorf("failed to find organization %q: %w", orgName, err)
-	}
-
-	requiredUIDs, err := r.collectRequiredFolderUIDs(ctx, orgName)
-	if err != nil {
-		return fmt.Errorf("failed to collect required folder UIDs: %w", err)
-	}
-
-	return grafanaService.CleanupOrphanedFoldersForOrg(ctx, org, requiredUIDs)
-}
-
-// collectRequiredFolderUIDs lists all dashboard ConfigMaps for the given organization and computes the set of folder UIDs they reference.
-func (r *DashboardReconciler) collectRequiredFolderUIDs(ctx context.Context, orgName string) (map[string]struct{}, error) {
-	var configMaps v1.ConfigMapList
-	err := r.List(ctx, &configMaps, client.MatchingLabels{
-		labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list dashboard configmaps: %w", err)
-	}
-
-	requiredUIDs := make(map[string]struct{})
-	for i := range configMaps.Items {
-		dashboards := r.dashboardMapper.FromConfigMap(&configMaps.Items[i])
-		for _, dash := range dashboards {
-			if dash.Organization() != orgName {
-				continue
-			}
-			if dash.FolderPath() == "" {
-				continue
-			}
-			segments := folder.ParsePath(dash.FolderPath())
-			for _, seg := range segments {
-				requiredUIDs[seg.UID()] = struct{}{}
-			}
-		}
-	}
-
-	return requiredUIDs, nil
+	return errors.Join(errs...)
 }

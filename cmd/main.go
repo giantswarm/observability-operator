@@ -557,6 +557,12 @@ func setupApplication() error {
 		if err != nil {
 			return fmt.Errorf("unable to create controller (Dashboard): %w", err)
 		}
+
+		// Setup the controller that asynchronously cleans up orphaned folders per organization.
+		err = controller.SetupDashboardCleanupReconciler(mgr, cfg, grafanaClientGen)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (DashboardCleanup): %w", err)
+		}
 	}
 
 	// nolint:goconst
