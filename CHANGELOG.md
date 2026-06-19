@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Cache Grafana organization lookups
   - Cache dashboard folder hierarchy lookups
 
+### Fixed
+
+- Fix Alloy metrics agent sharding: read the current monitoring ConfigMap before computing shards so the scale-down hysteresis uses the real replica count instead of always resetting to the default.
+
 ## [0.71.0] - 2026-06-17
 
 ### Changed
