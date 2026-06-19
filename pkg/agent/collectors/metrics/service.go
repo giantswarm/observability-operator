@@ -39,8 +39,16 @@ func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}
 
+	// Read the current ConfigMap so the sharding logic can base its computation on
+	// the current number of shards (nil on first reconcile).
+	configMapName := fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName)
+	currentState, err := s.ConfigurationRepository.GetConfigMap(ctx, cluster.Namespace, configMapName)
+	if err != nil {
+		return fmt.Errorf("failed to get current alloy monitoring configmap: %w", err)
+	}
+
 	// Generate ConfigMap data
-	configMapData, err := s.GenerateAlloyMonitoringConfigMapData(ctx, nil, cluster, tenants, observabilityBundleVersion)
+	configMapData, err := s.GenerateAlloyMonitoringConfigMapData(ctx, currentState, cluster, tenants, observabilityBundleVersion)
 	if err != nil {
 		return fmt.Errorf("failed to generate alloy monitoring configmap: %w", err)
 	}
@@ -65,7 +73,7 @@ func (s *Service) ReconcileCreate(ctx context.Context, cluster *clusterv1.Cluste
 	err = s.ConfigurationRepository.Save(ctx, &agent.AgentConfiguration{
 		ClusterName:        cluster.Name,
 		ClusterNamespace:   cluster.Namespace,
-		ConfigMapName:      fmt.Sprintf("%s-%s", cluster.Name, ConfigMapName),
+		ConfigMapName:      configMapName,
 		SecretName:         fmt.Sprintf("%s-%s", cluster.Name, SecretName),
 		ConfigMapData:      configMapData,
 		SecretData:         secretData,

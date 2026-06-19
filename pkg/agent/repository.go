@@ -41,6 +41,10 @@ type ConfigurationRepository interface {
 	// Save creates or updates both ConfigMap and Secret for an agent
 	Save(ctx context.Context, config *AgentConfiguration) error
 
+	// GetConfigMap returns the current ConfigMap for an agent, or nil if it does
+	// not exist yet.
+	GetConfigMap(ctx context.Context, namespace, name string) (*v1.ConfigMap, error)
+
 	// Delete removes both ConfigMap and Secret for an agent
 	Delete(ctx context.Context, clusterName, clusterNamespace, configMapName, secretName string) error
 }
@@ -106,6 +110,18 @@ func (r *k8sConfigurationRepository) Save(ctx context.Context, config *AgentConf
 	logger.V(1).Info("saved secret", "name", config.SecretName, "namespace", config.ClusterNamespace)
 
 	return nil
+}
+
+func (r *k8sConfigurationRepository) GetConfigMap(ctx context.Context, namespace, name string) (*v1.ConfigMap, error) {
+	configMap := &v1.ConfigMap{}
+	err := r.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, configMap)
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get configmap %s: %w", name, err)
+	}
+	return configMap, nil
 }
 
 func (r *k8sConfigurationRepository) Delete(ctx context.Context, clusterName, clusterNamespace, configMapName, secretName string) error {
