@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix Alloy metrics agent sharding: read the current monitoring ConfigMap before computing shards so the scale-down hysteresis uses the real replica count instead of always resetting to the default.
+- Fix Alloy metrics agent sharding regression (from 236a1e), which lead to incorrectly scaling down Alloy to 1 replicas when Mimir is not reachable.
 
 ## [0.71.0] - 2026-06-17
 
