@@ -117,7 +117,10 @@ workflows:
         context: architect
         name: go-build
         requires:
+        - go-tests
         - validate-alertmanager-config
+        - validate-alertmanager-routes
+        - verify-generate
         path: ./cmd
         binary: observability-operator
         filters:
@@ -133,9 +136,6 @@ workflows:
         split-china-push: true
         requires:
         - go-build
-        - go-tests
-        - validate-alertmanager-routes
-        - verify-generate
         filters:
           tags:
             only: /^v.*/
