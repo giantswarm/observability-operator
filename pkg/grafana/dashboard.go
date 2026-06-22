@@ -59,18 +59,13 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 	}
 
 	err = s.withinOrganization(ctx, org, func(ctx context.Context, client grafanaclient.GrafanaClient) error {
-		_, err := client.Dashboards().GetDashboardByUID(dashboard.UID())
+		_, err = client.Dashboards().DeleteDashboardByUID(dashboard.UID())
 		if err != nil {
 			// Return with no error in case the dashboard is already gone in Grafana.
-			var notFound *dashboards.GetDashboardByUIDNotFound
+			var notFound *dashboards.DeleteDashboardByUIDNotFound
 			if errors.As(err, &notFound) {
 				return nil
 			}
-			return fmt.Errorf("failed to get dashboard: %w", err)
-		}
-
-		_, err = client.Dashboards().DeleteDashboardByUID(dashboard.UID())
-		if err != nil {
 			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
 
