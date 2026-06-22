@@ -132,7 +132,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			}
 
 			if !isEmpty {
-				errs = append(errs, fmt.Errorf("skipping deletion, orphaned folder is not empty uid=%s title=%s", f.UID, f.Title))
+				logger.Info("skipping deletion, orphaned folder is not empty", "uid", f.UID, "title", f.Title)
 				continue
 			}
 
