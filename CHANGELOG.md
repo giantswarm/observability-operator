@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.72.0] - 2026-06-22
+
 ### Changed
 
 - Move orphaned dashboard folder cleanup out of the dashboard controller into a new `dashboard-cleanup` controller that reconciles per Grafana organization. Cleanup is debounced and runs once, one minute after the first dashboard event of a burst, instead of after every dashboard reconciliation.
@@ -1143,7 +1145,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.71.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.72.0...HEAD
+[0.72.0]: https://github.com/giantswarm/observability-operator/compare/v0.71.0...v0.72.0
 [0.71.0]: https://github.com/giantswarm/observability-operator/compare/v0.70.0...v0.71.0
 [0.70.0]: https://github.com/giantswarm/observability-operator/compare/v0.69.0...v0.70.0
 [0.69.0]: https://github.com/giantswarm/observability-operator/compare/v0.68.0...v0.69.0
