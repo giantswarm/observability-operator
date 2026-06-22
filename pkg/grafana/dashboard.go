@@ -2,8 +2,10 @@ package grafana
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/models"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -59,6 +61,11 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 	err = s.withinOrganization(ctx, org, func(ctx context.Context, client grafanaclient.GrafanaClient) error {
 		_, err := client.Dashboards().GetDashboardByUID(dashboard.UID())
 		if err != nil {
+			// Return with no error in case the dashboard is already gone in Grafana.
+			var notFound *dashboards.GetDashboardByUIDNotFound
+			if errors.As(err, &notFound) {
+				return nil
+			}
 			return fmt.Errorf("failed to get dashboard: %w", err)
 		}
 
