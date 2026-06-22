@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add alertmanager routes validation to CI checks
 
+### Changed
+
+- Change the "skipping deletion, orphaned folder is not empty" error to a simple info log message
+
 ## [0.72.0] - 2026-06-22
 
 ### Changed
