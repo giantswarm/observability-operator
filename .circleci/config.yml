@@ -36,8 +36,22 @@ jobs:
   tests-alertmanager-integrations:
     machine:
       image: ubuntu-2404:current
+    resource_class: large
     steps:
     - checkout
+    - run:
+        name: Install kubectl
+        command: |
+          curl -sSLo kubectl "https://dl.k8s.io/release/$(curl -sSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+    - run:
+        name: Install Helm
+        command: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    - run:
+        name: Install kind
+        command: |
+          curl -sSLo kind "https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64"
+          chmod +x kind && sudo mv kind /usr/local/bin/
     - run:
         name: Run Alertmanager integration tests
         command: make tests-alertmanager-integrations
