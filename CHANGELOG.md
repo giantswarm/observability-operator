@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Change the "skipping deletion, orphaned folder is not empty" error to a simple info log message
+
 ### Fixes
 
 - Fix dashboard not found errors on delete
