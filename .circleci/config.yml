@@ -26,6 +26,13 @@ jobs:
     - run:
         name: Validate Alertmanager Config
         command: make validate-alertmanager-config
+  validate-alertmanager-routes:
+    executor: architect/architect
+    steps:
+    - checkout
+    - run:
+        name: Validate Alertmanager routes
+        command: make tests-alertmanager-routes
   verify-generate:
     executor: architect/architect
     steps:
@@ -55,6 +62,13 @@ workflows:
           tags:
             only: /^v.*/
 
+    # This job verifies that alerts route to the expected receivers.
+    - validate-alertmanager-routes:
+        name: validate-alertmanager-routes
+        filters:
+          tags:
+            only: /^v.*/
+
     # This job validates that generated files (CRDs, RBAC, deepcopy, etc.) are up to date.
     - verify-generate:
         name: verify-generate
@@ -75,6 +89,7 @@ workflows:
         requires:
         - go-tests
         - validate-alertmanager-config
+        - validate-alertmanager-routes
         - verify-generate
         path: ./cmd
         binary: observability-operator
