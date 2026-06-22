@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Annotate dashboard and dashboard-cleanup controller error messages with debugging context (organization and folder) in addition to the dashboard UID and source ConfigMap.
+
 ## [0.72.0] - 2026-06-22
 
 ### Changed
