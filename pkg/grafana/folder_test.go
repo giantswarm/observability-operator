@@ -301,6 +301,64 @@ func TestCleanupOrphanedFoldersForOrg_DeletesEmptyOrphanedFolder(t *testing.T) {
 	mockFolders.AssertExpectations(t)
 }
 
+func TestCleanupOrphanedFoldersForOrg_DeletesNestedEmptyHierarchy(t *testing.T) {
+	mockClient := &mocks.MockGrafanaClient{}
+	mockFolders := &mocks.MockFoldersClient{}
+	setupOrgContextMocks(mockClient)
+	mockClient.On("Folders").Return(mockFolders)
+
+	uidA := folder.GenerateUID("a")
+	uidB := folder.GenerateUID("a/b")
+	uidC := folder.GenerateUID("a/b/c")
+
+	svc := newTestService(mockClient)
+
+	// GetFolders returns the hierarchy a > b > c in root-first order, which is the
+	// order that previously left the parents behind.
+	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
+		Payload: []*models.FolderSearchHit{
+			{UID: uidA, Title: "a"},
+			{UID: uidB, Title: "b", ParentUID: uidA},
+			{UID: uidC, Title: "c", ParentUID: uidB},
+		},
+	}, nil)
+
+	// Model live folder state so the mock behaves like Grafana: a parent only reads
+	// as empty once its children are actually deleted. Each folder's descendant-count
+	// payload is shared by reference with its mock return, so deleting a child mutates
+	// the parent's reported counts.
+	parentOf := map[string]string{uidB: uidA, uidC: uidB}
+	counts := map[string]*folders.GetFolderDescendantCountsOK{
+		uidA: {Payload: map[string]int64{"folder": 1}}, // has child b
+		uidB: {Payload: map[string]int64{"folder": 1}}, // has child c
+		uidC: {Payload: map[string]int64{}},            // empty leaf
+	}
+	for uid, c := range counts {
+		mockFolders.On("GetFolderDescendantCounts", uid).Return(c, nil)
+	}
+
+	// Deleting a folder drops it from its parent's descendant counts. Deepest-first
+	// processing (c, then b, then a) therefore empties each parent in turn, so all
+	// three are deleted. Root-first processing (main) reads a and b as non-empty and
+	// leaves them behind, failing this test.
+	for _, uid := range []string{uidA, uidB, uidC} {
+		mockFolders.On("DeleteFolder", mock.MatchedBy(func(params *folders.DeleteFolderParams) bool {
+			return params.FolderUID == uid
+		})).Run(func(mock.Arguments) {
+			if parent, ok := parentOf[uid]; ok {
+				delete(counts[parent].Payload, "folder")
+			}
+		}).Return(&folders.DeleteFolderOK{}, nil)
+	}
+
+	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), map[string]struct{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	mockFolders.AssertExpectations(t)
+}
+
 func TestCleanupOrphanedFoldersForOrg_SkipsNonOperatorManagedFolders(t *testing.T) {
 	mockClient := &mocks.MockGrafanaClient{}
 	mockFolders := &mocks.MockFoldersClient{}

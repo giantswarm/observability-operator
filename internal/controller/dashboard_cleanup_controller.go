@@ -167,6 +167,7 @@ func (r *DashboardCleanupReconciler) cleanupOrphanedFolders(ctx context.Context,
 
 // collectRequiredFolderUIDs lists all dashboard ConfigMaps for the given organization and computes the set of folder UIDs they reference.
 func (r *DashboardCleanupReconciler) collectRequiredFolderUIDs(ctx context.Context, orgName string) (map[string]struct{}, error) {
+	// List dashboards ConfigMaps
 	var configMaps v1.ConfigMapList
 	err := r.List(ctx, &configMaps, client.MatchingLabels{
 		labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
@@ -175,16 +176,21 @@ func (r *DashboardCleanupReconciler) collectRequiredFolderUIDs(ctx context.Conte
 		return nil, fmt.Errorf("failed to list dashboard configmaps: %w", err)
 	}
 
+	// Filter dashboards by organization and collect folder UIDs
 	requiredUIDs := make(map[string]struct{})
 	for i := range configMaps.Items {
 		dashboards := r.dashboardMapper.FromConfigMap(&configMaps.Items[i])
 		for _, dash := range dashboards {
+			// Skip dashboards that do not belong to the target organization
 			if dash.Organization() != orgName {
 				continue
 			}
+
+			// Skip dashboards that do not specify a folder path
 			if dash.FolderPath() == "" {
 				continue
 			}
+
 			segments := folder.ParsePath(dash.FolderPath())
 			for _, seg := range segments {
 				requiredUIDs[seg.UID()] = struct{}{}

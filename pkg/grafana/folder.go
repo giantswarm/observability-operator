@@ -1,9 +1,11 @@
 package grafana
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/models"
@@ -93,13 +95,23 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			return fmt.Errorf("failed to list folders: %w", err)
 		}
 
-		// Delete operator-managed folders that are empty and unreferenced
+		// Process folders deepest-first so that nested empty hierarchies (e.g. a > b > c
+		// where none holds a dashboard) are cleaned in a single pass. Descendant counts
+		// are fetched live below, so deleting the leaf empties its parent in turn.
+		depths := folderDepths(allFolders.Payload)
+		slices.SortStableFunc(allFolders.Payload, func(a, b *models.FolderSearchHit) int {
+			return cmp.Compare(depths[b.UID], depths[a.UID])
+		})
+
+		// Delete operator-managed folders that are empty and unreferenced by a dashboard
 		var errs []error
 		for _, f := range allFolders.Payload {
+			// Skip folders which are not managed by the operator
 			if !folder.IsOperatorManaged(f.UID) {
 				continue
 			}
 
+			// Skip folders which are referenced by dashboard ConfigMaps
 			if _, ok := requiredUIDs[f.UID]; ok {
 				continue
 			}
@@ -107,7 +119,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			// Check if folder is empty before deleting
 			counts, err := client.Folders().GetFolderDescendantCounts(f.UID)
 			if err != nil {
-				errs = append(errs, fmt.Errorf("failed to get descendant counts for folder %q: %w", f.UID, err))
+				errs = append(errs, fmt.Errorf("failed to get descendant counts for folder uid=%s title=%s: %w", f.UID, f.Title, err))
 				continue
 			}
 
@@ -120,7 +132,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			}
 
 			if !isEmpty {
-				errs = append(errs, fmt.Errorf("orphaned folder %q is not empty, skipping deletion", f.UID))
+				errs = append(errs, fmt.Errorf("skipping deletion, orphaned folder is not empty uid=%s title=%s", f.UID, f.Title))
 				continue
 			}
 
@@ -135,6 +147,35 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 
 		return errors.Join(errs...)
 	})
+}
+
+// folderDepths returns each folder's nesting depth keyed by UID, where a root
+// folder has depth 0. Depth is derived by walking the ParentUID chain, so the
+// cleanup loop can process leaves before their parents.
+func folderDepths(hits []*models.FolderSearchHit) map[string]int {
+	parent := make(map[string]string, len(hits))
+	for _, f := range hits {
+		parent[f.UID] = f.ParentUID
+	}
+
+	depths := make(map[string]int, len(hits))
+	var depthOf func(uid string) int
+	depthOf = func(uid string) int {
+		if d, ok := depths[uid]; ok {
+			return d
+		}
+		// Mark as visited (depth 0) before recursing to guard against cycles.
+		depths[uid] = 0
+		if p := parent[uid]; p != "" && p != uid {
+			depths[uid] = depthOf(p) + 1
+		}
+		return depths[uid]
+	}
+	for _, f := range hits {
+		depthOf(f.UID)
+	}
+
+	return depths
 }
 
 // isFolderNotFound checks if the error is a folder not found error.
