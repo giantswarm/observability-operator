@@ -323,20 +323,32 @@ func TestCleanupOrphanedFoldersForOrg_DeletesNestedEmptyHierarchy(t *testing.T) 
 		},
 	}, nil)
 
-	// Descendant counts are evaluated live and reflect deletions made earlier in the
-	// pass: once a leaf is deleted, its parent reports as empty. Because the loop now
-	// processes deepest-first (c, then b, then a), every folder reads as empty.
-	for _, uid := range []string{uidC, uidB, uidA} {
-		mockFolders.On("GetFolderDescendantCounts", uid).Return(&folders.GetFolderDescendantCountsOK{
-			Payload: map[string]int64{},
-		}, nil)
+	// Model live folder state so the mock behaves like Grafana: a parent only reads
+	// as empty once its children are actually deleted. Each folder's descendant-count
+	// payload is shared by reference with its mock return, so deleting a child mutates
+	// the parent's reported counts.
+	parentOf := map[string]string{uidB: uidA, uidC: uidB}
+	counts := map[string]*folders.GetFolderDescendantCountsOK{
+		uidA: {Payload: map[string]int64{"folder": 1}}, // has child b
+		uidB: {Payload: map[string]int64{"folder": 1}}, // has child c
+		uidC: {Payload: map[string]int64{}},            // empty leaf
+	}
+	for uid, c := range counts {
+		mockFolders.On("GetFolderDescendantCounts", uid).Return(c, nil)
 	}
 
-	// All three folders should be deleted.
+	// Deleting a folder drops it from its parent's descendant counts. Deepest-first
+	// processing (c, then b, then a) therefore empties each parent in turn, so all
+	// three are deleted. Root-first processing (main) reads a and b as non-empty and
+	// leaves them behind, failing this test.
 	for _, uid := range []string{uidA, uidB, uidC} {
 		mockFolders.On("DeleteFolder", mock.MatchedBy(func(params *folders.DeleteFolderParams) bool {
 			return params.FolderUID == uid
-		})).Return(&folders.DeleteFolderOK{}, nil)
+		})).Run(func(mock.Arguments) {
+			if parent, ok := parentOf[uid]; ok {
+				delete(counts[parent].Payload, "folder")
+			}
+		}).Return(&folders.DeleteFolderOK{}, nil)
 	}
 
 	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), map[string]struct{}{})
