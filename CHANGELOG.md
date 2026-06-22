@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix dashboard folders cleanup to processes folders deepest-first
+- Fix dashboard folders cleanup to process folders deepest-first
 
 ## [0.71.0] - 2026-06-17
 
