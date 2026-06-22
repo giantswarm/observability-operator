@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix dashboard folders cleanup to process folders deepest-first
+- Fix invalid `helm.sh/chart` label containing invalid character in some cases
 
 ## [0.71.0] - 2026-06-17
 
