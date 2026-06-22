@@ -53,7 +53,7 @@ func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 
 	// Get current number of shards from Alloy's config.
 	// Shards here is equivalent to replicas in the Alloy controller deployment.
-	var currentShards = sharding.DefaultShards
+	currentShards := sharding.DefaultShards
 	if currentState != nil && currentState.Data != nil && currentState.Data["values"] != "" {
 		var monitoringConfig monitoringConfig
 		err := yaml.Unmarshal([]byte(currentState.Data["values"]), &monitoringConfig)

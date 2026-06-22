@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix Alloy metrics agent sharding regression (from 236a1e), which lead to incorrectly scaling down Alloy to 1 replicas when Mimir is not reachable.
 - Fix dashboard folders cleanup to process folders deepest-first
 - Fix invalid `helm.sh/chart` label containing invalid character in some cases
 
