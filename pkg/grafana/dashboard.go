@@ -52,6 +52,8 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 }
 
 func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
+	logger := log.FromContext(ctx)
+
 	org, err := s.FindOrgByName(dashboard.Organization())
 	if err != nil {
 		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpDeleteDashboard).Inc()
@@ -64,6 +66,7 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 			// Return with no error in case the dashboard is already gone in Grafana.
 			var notFound *dashboards.DeleteDashboardByUIDNotFound
 			if errors.As(err, &notFound) {
+				logger.Info("skipping deletion, dashboard not found")
 				return nil
 			}
 			return fmt.Errorf("failed to delete dashboard: %w", err)
