@@ -33,7 +33,7 @@ jobs:
     - run:
         name: Validate Alertmanager routes
         command: make tests-alertmanager-routes
-  validate-alertmanager-routes-integration:
+  tests-alertmanager-integrations:
     machine:
       image: ubuntu-2404:current
     resource_class: large
@@ -93,7 +93,7 @@ workflows:
 
     # This job verifies end-to-end that alerts are delivered to the expected
     # receivers. It is slow, so it is intentionally not required by any other job.
-    - validate-alertmanager-routes-integration:
+    - tests-alertmanager-integrations:
         name: tests-alertmanager-integrations
         filters:
           tags:
