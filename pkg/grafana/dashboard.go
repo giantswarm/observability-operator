@@ -2,8 +2,10 @@ package grafana
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/models"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -50,6 +52,8 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 }
 
 func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
+	logger := log.FromContext(ctx)
+
 	org, err := s.FindOrgByName(dashboard.Organization())
 	if err != nil {
 		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpDeleteDashboard).Inc()
@@ -57,13 +61,14 @@ func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dash
 	}
 
 	err = s.withinOrganization(ctx, org, func(ctx context.Context, client grafanaclient.GrafanaClient) error {
-		_, err := client.Dashboards().GetDashboardByUID(dashboard.UID())
-		if err != nil {
-			return fmt.Errorf("failed to get dashboard: %w", err)
-		}
-
 		_, err = client.Dashboards().DeleteDashboardByUID(dashboard.UID())
 		if err != nil {
+			// Return with no error in case the dashboard is already gone in Grafana.
+			var notFound *dashboards.DeleteDashboardByUIDNotFound
+			if errors.As(err, &notFound) {
+				logger.Info("skipping deletion, dashboard not found")
+				return nil
+			}
 			return fmt.Errorf("failed to delete dashboard: %w", err)
 		}
 
