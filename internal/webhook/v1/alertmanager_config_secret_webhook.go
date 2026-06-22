@@ -1,5 +1,5 @@
 /*
-Copyright 2025.
+Copyright 2026.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,15 +24,14 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/giantswarm/observability-operator/internal/predicates"
-	"github.com/giantswarm/observability-operator/pkg/alertmanager"
+	"github.com/giantswarm/observability-operator/pkg/alerting/alertmanager"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 )
 
@@ -40,11 +39,13 @@ import (
 var log = logf.Log.WithName("alertmanagerconfig-secret-resource")
 
 // SetupAlertmanagerConfigSecretWebhookWithManager registers the webhook for Secret in the manager.
-func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) error {
-	err := ctrl.NewWebhookManagedBy(mgr).
-		For(&corev1.Secret{}).
-		WithValidator(&AlertmanagerConfigSecretValidator{client: mgr.GetClient()}).
-		WithCustomPath("/validate-alertmanager-config").
+func SetupAlertmanagerConfigSecretWebhookWithManager(mgr manager.Manager) error {
+	err := ctrl.NewWebhookManagedBy(mgr, &corev1.Secret{}).
+		WithValidator(&AlertmanagerConfigSecretValidator{
+			client:           mgr.GetClient(),
+			tenantRepository: tenancy.NewTenantRepository(mgr.GetClient()),
+		}).
+		WithValidatorCustomPath("/validate-alertmanager-config").
 		Complete()
 	if err != nil {
 		return fmt.Errorf("failed to build alertmanager webhook manager: %w", err)
@@ -64,53 +65,42 @@ func SetupAlertmanagerConfigSecretWebhookWithManager(mgr ctrl.Manager) error {
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 // +kubebuilder:object:generate=false
 type AlertmanagerConfigSecretValidator struct {
-	client client.Client
+	client           client.Client
+	tenantRepository tenancy.TenantRepository
 }
 
-var _ webhook.CustomValidator = &AlertmanagerConfigSecretValidator{}
+var _ admission.Validator[*corev1.Secret] = &AlertmanagerConfigSecretValidator{}
 
-// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type Secret.
-func (v *AlertmanagerConfigSecretValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	secret, ok := obj.(*corev1.Secret)
-	if !ok {
-		return nil, fmt.Errorf("expected a Secret object but got %T", obj)
-	}
-
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type Secret.
+func (v *AlertmanagerConfigSecretValidator) ValidateCreate(ctx context.Context, obj *corev1.Secret) (admission.Warnings, error) {
 	// Only validate secrets that are specifically marked as alertmanager-config
-	if !v.isAlertmanagerConfigSecret(secret) {
+	if !v.isAlertmanagerConfigSecret(obj) {
 		return nil, nil
 	}
 
-	log.Info("Validation for Secret upon creation", "name", secret.GetName())
-
-	if err := v.validateTenant(ctx, secret); err != nil {
+	log.Info("Validation for Secret upon creation", "name", obj.GetName())
+	if err := v.validateTenant(ctx, obj); err != nil {
 		return nil, err
 	}
-	return nil, validateAlertmanagerConfig(secret)
+	return nil, validateAlertmanagerConfig(obj)
 }
 
-// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Secret.
-func (v *AlertmanagerConfigSecretValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	secret, ok := newObj.(*corev1.Secret)
-	if !ok {
-		return nil, fmt.Errorf("expected a Secret object for the newObj but got %T", newObj)
-	}
-
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type Secret.
+func (v *AlertmanagerConfigSecretValidator) ValidateUpdate(ctx context.Context, oldObj, newObj *corev1.Secret) (admission.Warnings, error) {
 	// Only validate secrets that are specifically marked as alertmanager-config
-	if !v.isAlertmanagerConfigSecret(secret) {
+	if !v.isAlertmanagerConfigSecret(newObj) {
 		return nil, nil
 	}
 
-	log.Info("Validation for Secret upon update", "name", secret.GetName())
-
-	if err := v.validateTenant(ctx, secret); err != nil {
+	log.Info("Validation for Secret upon update", "name", newObj.GetName())
+	if err := v.validateTenant(ctx, newObj); err != nil {
 		return nil, err
 	}
-	return nil, validateAlertmanagerConfig(secret)
+	return nil, validateAlertmanagerConfig(newObj)
 }
 
-// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type Secret.
-func (v *AlertmanagerConfigSecretValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type Secret.
+func (v *AlertmanagerConfigSecretValidator) ValidateDelete(ctx context.Context, obj *corev1.Secret) (admission.Warnings, error) {
 	// We have nothing to validate on deletion
 	return nil, nil
 }
@@ -123,7 +113,7 @@ func (v *AlertmanagerConfigSecretValidator) validateTenant(ctx context.Context, 
 	}
 
 	// Check that the tenant is defined in a Grafana Organization.
-	tenants, err := tenancy.ListTenants(ctx, v.client)
+	tenants, err := v.tenantRepository.List(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}
@@ -176,13 +166,7 @@ func (v *AlertmanagerConfigSecretValidator) isAlertmanagerConfigSecret(secret *c
 }
 
 func validateAlertmanagerConfig(secret *corev1.Secret) error {
-	content, err := alertmanager.ExtractAlertmanagerConfig(secret)
-	if err != nil {
-		return fmt.Errorf("alertmanager configuration validation failed: %w. Note: If you're using a newer Alertmanager feature, it might not be supported yet by the Grafana fork (grafana/prometheus-alertmanager) used by Mimir", err)
-	}
-
-	_, err = alertmanager.ParseAlertmanagerConfig(content)
-	if err != nil {
+	if err := alertmanager.Validate(secret); err != nil {
 		return fmt.Errorf("alertmanager configuration validation failed: %w. Note: If you're using a newer Alertmanager feature, it might not be supported yet by the Grafana fork (grafana/prometheus-alertmanager) used by Mimir", err)
 	}
 

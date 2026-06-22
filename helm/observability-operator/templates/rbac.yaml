@@ -8,23 +8,76 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - namespaces
-      - pods
+      - configmaps
+      - secrets
     verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps/finalizers
+      - secrets/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - get
       - list
       - watch
   - apiGroups:
       - ""
     resources:
-      - secrets
-      - configmaps
-    verbs: ["*"]
+      - pods
+    verbs:
+      - list
+      - watch
+  - apiGroups:
+      - application.giantswarm.io
+    resources:
+      - apps
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - helm.toolkit.fluxcd.io
+    resources:
+      - helmreleases
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - source.toolkit.fluxcd.io
+    resources:
+      - ocirepositories
+    verbs:
+      - get
   - apiGroups:
       - cluster.x-k8s.io
     resources:
       - clusters
     verbs:
-      - create
       - get
       - list
       - patch
@@ -37,7 +90,7 @@ rules:
     verbs:
       - update
   - apiGroups:
-    - cluster.x-k8s.io
+      - cluster.x-k8s.io
     resources:
       - clusters/status
     verbs:
@@ -45,39 +98,76 @@ rules:
       - patch
       - update
   - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - observability.giantswarm.io
     resources:
       - grafanaorganizations
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - observability.giantswarm.io
+    resources:
+      - grafanaorganizations/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - observability.giantswarm.io
+    resources:
       - grafanaorganizations/status
     verbs:
-      - watch
       - get
-      - list
-      - update
       - patch
+      - update
   - apiGroups:
-    - coordination.k8s.io
+      - observability.giantswarm.io
     resources:
-    - leases
-    verbs: ["*"]
-  - apiGroups:
-      - ""
-    resources:
-      - events
+      - agentcredentials
     verbs:
       - create
-  # Needed to be able to configure the observability bundle app
-  - apiGroups:
-      - application.giantswarm.io
-    resources:
-      - apps
-    verbs:
-      - create
+      - delete
       - get
       - list
-      - watch
-      - update
       - patch
+      - update
+      - watch
+  - apiGroups:
+      - observability.giantswarm.io
+    resources:
+      - agentcredentials/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - observability.giantswarm.io
+    resources:
+      - agentcredentials/status
+    verbs:
+      - get
+      - patch
+      - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

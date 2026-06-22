@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  architect: giantswarm/architect@6.11.0
+  architect: giantswarm/architect@9.5.2
 
 jobs:
   go-tests:
@@ -11,7 +11,7 @@ jobs:
     - checkout
     - run:
         name: Run unit and integration tests
-        command: CGO_ENABLED=0 make test
+        command: CGO_ENABLED=0 GINKGO_NODES=2 make test
   template-chart:
     docker:
     - image: giantswarm/helm-chart-testing:v3.14.0
@@ -26,6 +26,13 @@ jobs:
     - run:
         name: Validate Alertmanager Config
         command: make validate-alertmanager-config
+  verify-generate:
+    executor: architect/architect
+    steps:
+    - checkout
+    - run:
+        name: Validate generated files
+        command: make verify-generate
 workflows:
   build:
     jobs:
@@ -37,12 +44,19 @@ workflows:
             only: /^v.*/
 
     # This job is used to validate the Alertmanager config.
-    # It requires the template-chart job to be run first because it needs 
+    # It requires the template-chart job to be run first because it needs
     # the chart to be a valid Helm chart to generate the Alertmanager config to validate.
     - validate-alertmanager-config:
         name: validate-alertmanager-config
         requires:
         - template-chart
+        filters:
+          tags:
+            only: /^v.*/
+
+    # This job validates that generated files (CRDs, RBAC, deepcopy, etc.) are up to date.
+    - verify-generate:
+        name: verify-generate
         filters:
           tags:
             only: /^v.*/
@@ -54,6 +68,7 @@ workflows:
             only: /^v.*/
 
     - architect/go-build:
+        context: architect
         name: go-build
         requires:
         - go-tests
@@ -67,6 +82,9 @@ workflows:
     - architect/push-to-registries:
         context: architect
         name: push-to-registries
+        # Skip the trans-Pacific Aliyun push in-line; the sync-china-registry
+        # job below mirrors gsoci -> Aliyun from an in-China runner in parallel.
+        split-china-push: true
         requires:
         - go-build
         filters:
@@ -76,6 +94,20 @@ workflows:
             ignore:
             - main
             - master
+
+    # Mirror gsoci -> Aliyun via the in-China giantswarm/galaxy-runner, off the
+    # push-to-registries critical path. Tag builds only (dev images don't push
+    # to Aliyun).
+    - architect/sync-china-registry:
+        context: architect
+        name: sync-china-registry
+        requires:
+        - push-to-registries
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore: /.*/
 
     - architect/push-to-app-catalog:
         context: architect
@@ -104,73 +136,3 @@ workflows:
             - main
         requires:
         - push-to-app-catalog
-
-    - architect/push-to-app-collection:
-        context: architect
-        name: capa-app-collection
-        app_name: observability-operator
-        app_namespace: monitoring
-        app_collection_repo: capa-app-collection
-        requires:
-        - push-to-app-catalog
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v.*/
-
-    - architect/push-to-app-collection:
-        context: architect
-        name: capz-app-collection
-        app_name: observability-operator
-        app_namespace: monitoring
-        app_collection_repo: capz-app-collection
-        requires:
-        - push-to-app-catalog
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v.*/
-
-    - architect/push-to-app-collection:
-        context: architect
-        name: cloud-director-app-collection
-        app_name: observability-operator
-        app_namespace: monitoring
-        app_collection_repo: cloud-director-app-collection
-        requires:
-        - push-to-app-catalog
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v.*/
-
-    - architect/push-to-app-collection:
-        context: architect
-        name: vsphere-app-collection
-        app_name: observability-operator
-        app_namespace: monitoring
-        app_collection_repo: vsphere-app-collection
-        requires:
-        - push-to-app-catalog
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v.*/
-
-    - architect/push-to-app-collection:
-        context: architect
-        name: proxmox-app-collection
-        app_name: observability-operator
-        app_namespace: monitoring
-        app_collection_repo: proxmox-app-collection
-        requires:
-        - push-to-app-catalog
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v.*/

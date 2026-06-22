@@ -108,4 +108,27 @@ webhooks:
     - grafanaorganizations
   sideEffects: None
 {{- end }}
+{{- if .Values.webhook.validatingWebhooks.agentCredential.enabled }}
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "resource.default.name" . }}-webhook
+      namespace: {{ .Release.Namespace }}
+      path: /validate-v1alpha1-agent-credential
+      port: 443
+  failurePolicy: Fail
+  name: agentcredentialv1alpha1.observability.giantswarm.io
+  rules:
+    - apiGroups:
+        - observability.giantswarm.io
+      apiVersions:
+        - v1alpha1
+      operations:
+        - CREATE
+        - UPDATE
+      resources:
+        - agentcredentials
+  sideEffects: None
+{{- end }}
 {{- end }}

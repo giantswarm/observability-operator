@@ -14,3 +14,22 @@ spec:
       {{- include "labels.selector" . | nindent 6 }}
   podMetricsEndpoints:
     - targetPort: http
+      {{- if .Values.operator.metricsServerCertificate.enabled }}
+      scheme: https
+      tlsConfig:
+        serverName: {{ include "resource.default.name" . }}.{{ include "resource.default.namespace" . }}.svc
+        insecureSkipVerify: false
+        ca:
+          secret:
+            name: {{ .Values.operator.metricsServerCertificate.secretName }}
+            key: ca.crt
+        cert:
+          secret:
+            name: {{ .Values.operator.metricsServerCertificate.secretName }}
+            key: tls.crt
+        keySecret:
+          name: {{ .Values.operator.metricsServerCertificate.secretName }}
+          key: tls.key
+      {{- else }}
+      scheme: http
+      {{- end }}

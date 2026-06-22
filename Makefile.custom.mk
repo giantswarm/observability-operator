@@ -44,18 +44,18 @@ MIMIR_CHART_VERSION = 0.21.0
 
 .PHONY: generate-golden-files
 generate-golden-files: ## Generate golden files for tests
-	$(call log_build,"Generating golden files")
+	@$(log_build) "Generating golden files"
 	@UPDATE_GOLDEN_FILES=true go test -v ./...
 
 .PHONY: coverage-html
 coverage-html: test ## Generate HTML coverage report from merged profile
-	$(call log_build,"Generating HTML coverage report")
+	@$(log_build) "Generating HTML coverage report"
 	go tool cover -html coverprofile.out
-	$(call log_info,"Coverage report generated - opened in browser")
+	@$(log_info) "Coverage report generated - opened in browser"
 
 .PHONY: manual-testing
 manual-testing: ## Run manual end-to-end testing script
-	$(call log_build,"Running manual e2e testing")
+	@$(log_build) "Running manual e2e testing"
 	@if [ -z "$(INSTALLATION)" ]; then \
 		echo "Error: INSTALLATION parameter is required"; \
 		echo "Usage: make manual-testing INSTALLATION=<installation-name>"; \
@@ -158,26 +158,6 @@ tests-alertmanager-integration-clean: ## Teardown integration test environment
 
 .PHONY: test-alertmanager-integration-setup
 test-alertmanager-integration-setup: $(ALERTMANAGER_INTEGRATION_SETUP)
-
-$(ALERTMANAGER_INTEGRATION_SETUP): ## Install Mimir Alertmanager in a Kind cluster
-	@kind get clusters -q | grep -q "^$(KIND_CLUSTER_NAME)$$" && \
-		kind delete cluster --name $(KIND_CLUSTER_NAME) || true
-	kind create cluster --wait 120s --config tests/alertmanager-integration/kind-cluster.yaml --name $(KIND_CLUSTER_NAME)
-	@echo
-	@echo "==> Preparing Mimir Alertmanager manifest"
-	@rm -rf $(MIMIR_CHART_OUTPUT)
-	@mkdir -p $(MIMIR_CHART_OUTPUT)
-	helm template mimir $(MIMIR_CHART) --version $(MIMIR_CHART_VERSION) --values tests/alertmanager-integration/mimir-values.yaml --output-dir $(MIMIR_CHART_OUTPUT)
-	patch -d $(MIMIR_CHART_OUTPUT) -p0 < tests/alertmanager-integration/mimir-alertmanager-svc.patch
-	rm -rf "$(MIMIR_CHART_OUTPUT)/mimir/charts/mimir/templates/smoke-test"
-	@echo
-	@echo "==> Deploying Mimir Alertmanager"
-	kubectl apply -Rf $(MIMIR_CHART_OUTPUT)/mimir/charts/mimir
-	@echo
-	@echo "==> Waiting for Mimir Alertmanager to be ready..."
-	$(KUBECTL) $(KUBECTL_ARGS) wait --for=condition=ready pod -lapp.kubernetes.io/component=alertmanager,app.kubernetes.io/instance=mimir --timeout=120s
-	@echo
-	touch $@
 
 test-alertmanager-integration-%: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertmanager-routes-%-alertmanager-config ## Run Alertmanager integration test
 	go test ./tests/alertmanager-routes/$* $(INTEGRATION_TEST_FLAGS)

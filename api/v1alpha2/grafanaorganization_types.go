@@ -93,6 +93,13 @@ type GrafanaOrganizationStatus struct {
 	// DataSources is a list of grafana data sources that are available to the Grafana organization.
 	// +optional
 	DataSources []DataSource `json:"dataSources"`
+
+	// DisplayName records the last display name successfully applied to the Grafana
+	// organization referenced by OrgID. The reconciler uses it to tell a legitimate
+	// CR rename (status.displayName matches what is currently in Grafana at that ID)
+	// apart from a stale OrgID that now points to an organization owned by another CR.
+	// +optional
+	DisplayName string `json:"displayName,omitempty"`
 }
 
 // DataSource defines the name and id for data sources.

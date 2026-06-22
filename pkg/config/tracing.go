@@ -1,16 +1,18 @@
 package config
 
 import (
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
-// TODO rename to observability.giantswarm.io/tracing
-const TracingLabel = "giantswarm.io/tracing"
+const TracingLabel = "observability.giantswarm.io/tracing"
 
 // TracingConfig represents the configuration for tracing support in Grafana.
 type TracingConfig struct {
 	// Enabled controls tracing at the installation level
 	Enabled bool
+
+	// Gateway holds the namespace and secret names for the Tempo gateway authentication secrets.
+	Gateway GatewayConfig
 }
 
 // Validate validates the tracing configuration
@@ -25,5 +27,5 @@ func (c TracingConfig) Validate() error {
 //   - cluster is not being deleted
 //   - cluster-specific tracing label is set to true (or missing/invalid, defaulting to true)
 func (c TracingConfig) IsTracingEnabled(cluster *clusterv1.Cluster) bool {
-	return isClusterFeatureEnabled(c.Enabled, cluster, TracingLabel)
+	return isClusterFeatureEnabled(c.Enabled, cluster, TracingLabel, true)
 }

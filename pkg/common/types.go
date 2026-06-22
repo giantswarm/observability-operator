@@ -3,7 +3,7 @@ package common
 import (
 	"fmt"
 
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 const (
@@ -19,6 +19,9 @@ const (
 	AzureManagedClusterKind         = "AzureManagedCluster"
 	AzureManagedClusterKindProvider = "aks"
 
+	AzureASOManagedClusterKind         = "AzureASOManagedCluster"
+	AzureASOManagedClusterKindProvider = "aks"
+
 	VCDClusterKind         = "VCDCluster"
 	VCDClusterKindProvider = "cloud-director"
 
@@ -30,6 +33,9 @@ const (
 
 	GCPManagedClusterKind         = "GCPManagedCluster"
 	GCPManagedClusterKindProvider = "gke"
+
+	ProxmoxClusterKind         = "ProxmoxCluster"
+	ProxmoxClusterKindProvider = "proxmox"
 )
 
 type ManagementCluster struct {
@@ -37,8 +43,11 @@ type ManagementCluster struct {
 	BaseDomain string
 	// Customer is the customer name of the management cluster.
 	Customer string
-	// InsecureCA is a flag to indicate if the management cluster has an insecure CA that should be truster
-	InsecureCA bool
+	// CASecretNamespace is the namespace of the cert-manager CA Secret.
+	CASecretNamespace string
+	// CASecretName is the name of the cert-manager CA Secret (key: tls.crt).
+	// Empty means public CA — Alloy uses the system trust store.
+	CASecretName string
 	// Name is the name of the management cluster.
 	Name string
 	// Pipeline is the pipeline name of the management cluster.
@@ -68,6 +77,8 @@ func GetClusterProvider(cluster *clusterv1.Cluster) (string, error) {
 		return AzureClusterKindProvider, nil
 	case AzureManagedClusterKind:
 		return AzureManagedClusterKindProvider, nil
+	case AzureASOManagedClusterKind:
+		return AzureASOManagedClusterKindProvider, nil
 	case VCDClusterKind:
 		return VCDClusterKindProvider, nil
 	case VSphereClusterKind:
@@ -76,6 +87,8 @@ func GetClusterProvider(cluster *clusterv1.Cluster) (string, error) {
 		return GCPClusterKindProvider, nil
 	case GCPManagedClusterKind:
 		return GCPManagedClusterKindProvider, nil
+	case ProxmoxClusterKind:
+		return ProxmoxClusterKindProvider, nil
 	}
 
 	return "", fmt.Errorf("unknown cluster provider for %s", cluster.Spec.InfrastructureRef.Kind)

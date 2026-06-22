@@ -1,0 +1,386 @@
+package metrics
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/blang/semver/v4"
+	"github.com/google/go-cmp/cmp"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+
+	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
+	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/domain/organization"
+)
+
+var managementClusterName = "dummy-cluster"
+
+func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
+	return &Service{
+		OrganizationRepository: mocks.NewMockOrganizationRepository("dummy-org"),
+		Config: config.Config{
+			Cluster: config.ClusterConfig{
+				BaseDomain: "test.gigantic.io",
+				Customer:   "dummy-customer",
+				Name:       managementClusterName,
+				Pipeline:   "dummy-pipeline",
+				Region:     "dummy-region",
+			},
+			Monitoring: config.MonitoringConfig{
+				Enabled:                 monitoringEnabled,
+				ExemplarsEnabled:        exemplarsEnabled,
+				WALTruncateFrequency:    time.Minute,
+				MimirRemoteWriteTimeout: "60s",
+				QueueConfig: config.QueueConfig{
+					Capacity:          &[]int{30000}[0],
+					MaxShards:         &[]int{10}[0],
+					MaxSamplesPerSend: &[]int{150000}[0],
+					SampleAgeLimit:    &[]string{"30m"}[0],
+				},
+			},
+			HTTP: config.HTTPConfig{
+				MimirQueryTimeout: 2 * time.Minute,
+			},
+			DefaultTenant: "giantswarm",
+		},
+	}
+}
+
+func TestGenerateMonitoringConfig(t *testing.T) {
+	tests := []struct {
+		name                       string
+		cluster                    *clusterv1.Cluster
+		tenants                    []string
+		goldenPath                 string
+		observabilityBundleVersion semver.Version
+		monitoringEnabled          bool
+		exemplarsEnabled           bool
+	}{
+		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
+		{
+			name: "WorkloadCluster_TwoTenants_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.200.WC.multi-tenants.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ManagementCluster_TwoTenants_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.200.MC.multi-tenants.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "WorkloadCluster_SingleTenant_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "single-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.200.WC.single-tenant.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ManagementCluster_SingleTenant_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.200.MC.single-tenant.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "WorkloadCluster_DefaultTenant_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.200.WC.default-tenant.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ManagementCluster_DefaultTenant_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.200.MC.default-tenant.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+
+		// Version 2.2.0+ tests (with extra query matchers and scrape configs)
+		{
+			name: "WorkloadCluster_TwoTenants_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.WC.multi-tenants.yaml"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ManagementCluster_TwoTenants_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1", "tenant2"},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.MC.multi-tenants.yaml"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "WorkloadCluster_SingleTenant_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "single-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.WC.single-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ManagementCluster_SingleTenant_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.MC.single-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "WorkloadCluster_DefaultTenant_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default-tenant-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.WC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ManagementCluster_DefaultTenant_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AzureCluster",
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.MC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ExemplarsDisabledInMC_v200",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants:                    []string{"tenant1"},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config_singletenant.200.mc.exemplars-disabled.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          true,
+			exemplarsEnabled:           false,
+		},
+		{
+			name: "MonitoringDisabled",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "AWSCluster",
+					},
+				},
+			},
+			tenants: []string{"tenant1"},
+			// goldenPath omitted - this should return an error
+			observabilityBundleVersion: semver.MustParse("2.0.0"),
+			monitoringEnabled:          false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			service := newTestService(tt.monitoringEnabled, tt.exemplarsEnabled)
+
+			resultMap, err := service.GenerateAlloyMonitoringConfigMapData(
+				ctx,
+				nil, // currentState
+				tt.cluster,
+				tt.tenants,
+				tt.observabilityBundleVersion,
+			)
+
+			// Check if this is a "monitoring disabled" test case (no golden path)
+			if tt.goldenPath == "" {
+				// Should return an error when monitoring is disabled
+				if err == nil {
+					t.Errorf("GenerateAlloyMonitoringConfigMapData() expected error when monitoring disabled, got nil")
+				}
+				return
+			}
+
+			// For valid test cases, no error should occur
+			if err != nil {
+				t.Fatalf("GenerateAlloyMonitoringConfigMapData() failed: %v", err)
+			}
+
+			result, ok := resultMap["values"]
+			if !ok {
+				t.Fatalf("GenerateAlloyMonitoringConfigMapData() did not return 'values' key")
+			}
+
+			if os.Getenv("UPDATE_GOLDEN_FILES") == "true" {
+				t.Logf("Environment variable UPDATE_GOLDEN_FILES=true detected, updating golden files")
+				if err := os.MkdirAll(filepath.Dir(tt.goldenPath), 0750); err != nil {
+					t.Fatalf("failed to create golden directory: %v", err)
+				}
+				//nolint:gosec
+				if err := os.WriteFile(tt.goldenPath, []byte(result), 0644); err != nil {
+					t.Fatalf("failed to update golden file: %v", err)
+				}
+			}
+
+			expected, err := os.ReadFile(tt.goldenPath)
+			if err != nil {
+				t.Fatalf("Failed to read golden file %s: %v", tt.goldenPath, err)
+			}
+
+			if diff := cmp.Diff(string(expected), result); diff != "" {
+				t.Errorf("GenerateAlloyMonitoringConfigMapData() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}

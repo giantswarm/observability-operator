@@ -50,6 +50,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-v1alpha1-agent-credential
+  failurePolicy: Fail
+  name: agentcredentialv1alpha1.observability.giantswarm.io
+  rules:
+  - apiGroups:
+    - observability.giantswarm.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - agentcredentials
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-v1alpha1-grafana-organization
   failurePolicy: Fail
   name: grafanaorganizationv1alpha1.observability.giantswarm.io

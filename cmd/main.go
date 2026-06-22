@@ -14,12 +14,13 @@ import (
 
 	"github.com/Netflix/go-env"
 	appv1 "github.com/giantswarm/apiextensions-application/api/v1alpha1"
+	pflag "github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -38,6 +39,117 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/config"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	//+kubebuilder:scaffold:imports
+)
+
+const (
+	// Operator configuration flag names
+	flagOperatorControllersAgentCredentialEnabled     = "controllers-agent-credential-enabled"
+	flagOperatorControllersAlertmanagerEnabled        = "controllers-alertmanager-enabled"
+	flagOperatorControllersClusterEnabled             = "controllers-cluster-enabled"
+	flagOperatorControllersDashboardEnabled           = "controllers-dashboard-enabled"
+	flagOperatorControllersGrafanaOrganizationEnabled = "controllers-grafana-organization-enabled"
+
+	flagMetricsBindAddress     = "metrics-bind-address"
+	flagMetricsCertPath        = "metrics-cert-path"
+	flagMetricsSecure          = "metrics-secure"
+	flagHealthProbeBindAddress = "health-probe-bind-address"
+	flagLeaderElect            = "leader-elect"
+
+	flagEnableHTTP2       = "enable-http2"
+	flagWebhookCertPath   = "webhook-cert-path"
+	flagOperatorNamespace = "operator-namespace"
+
+	// Grafana configuration flag names
+	flagGrafanaURL = "grafana-url"
+
+	// Grafana datasource URL flag names
+	flagGrafanaDatasourceLokiURL              = "grafana-datasource-loki-url"
+	flagGrafanaDatasourceMimirURL             = "grafana-datasource-mimir-url"
+	flagGrafanaDatasourceMimirAlertmanagerURL = "grafana-datasource-mimir-alertmanager-url"
+	flagGrafanaDatasourceMimirCardinalityURL  = "grafana-datasource-mimir-cardinality-url"
+	flagGrafanaDatasourceTempoURL             = "grafana-datasource-tempo-url"
+
+	// Management cluster configuration flag names
+	flagManagementClusterBaseDomain   = "management-cluster-base-domain"
+	flagManagementClusterCustomer     = "management-cluster-customer"
+	flagManagementClusterCASecretName = "management-cluster-ca-secret-name"
+	flagManagementClusterCASecretNS   = "management-cluster-ca-secret-namespace"
+	flagManagementClusterName         = "management-cluster-name"
+	flagManagementClusterPipeline     = "management-cluster-pipeline"
+	flagManagementClusterRegion       = "management-cluster-region"
+
+	// Monitoring configuration flag names
+	flagAlertmanagerSecretName                = "alertmanager-secret-name"
+	flagAlertmanagerURL                       = "alertmanager-url"
+	flagMonitoringEnabled                     = "monitoring-enabled"
+	flagMonitoringNetworkEnabled              = "monitoring-enable-network-monitoring"
+	flagMonitoringShardingScaleUpSeriesCount  = "monitoring-sharding-scale-up-series-count"
+	flagMonitoringShardingScaleDownPercentage = "monitoring-sharding-scale-down-percentage"
+	flagMonitoringWALTruncateFrequency        = "monitoring-wal-truncate-frequency"
+	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
+	flagMonitoringRulerURL                    = "monitoring-ruler-url"
+	flagMonitoringExemplarsEnabled            = "monitoring-exemplars-enabled"
+
+	// Queue configuration flag names
+	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
+	flagQueueCapacity          = "monitoring-queue-config-capacity"
+	flagQueueMaxBackoff        = "monitoring-queue-config-max-backoff"
+	flagQueueMaxSamplesPerSend = "monitoring-queue-config-max-samples-per-send"
+	flagQueueMaxShards         = "monitoring-queue-config-max-shards"
+	flagQueueMinBackoff        = "monitoring-queue-config-min-backoff"
+	flagQueueMinShards         = "monitoring-queue-config-min-shards"
+	flagQueueRetryOnHttp429    = "monitoring-queue-config-retry-on-http-429"
+	flagQueueSampleAgeLimit    = "monitoring-queue-config-sample-age-limit"
+
+	// Tracing configuration flag names
+	flagTracingEnabled = "tracing-enabled"
+
+	// Cronitor heartbeat monitor configuration flag names
+	flagCronitorGraceSeconds    = "cronitor-grace-seconds"
+	flagCronitorSchedule        = "cronitor-schedule"
+	flagCronitorRealertInterval = "cronitor-realert-interval"
+
+	// Gateway configuration flag names
+	flagMonitoringGatewayNamespace           = "monitoring-gateway-namespace"
+	flagMonitoringGatewayIngressSecretName   = "monitoring-gateway-ingress-secret-name"
+	flagMonitoringGatewayHTTPRouteSecretName = "monitoring-gateway-httproute-secret-name"
+	flagLoggingGatewayNamespace              = "logging-gateway-namespace"
+	flagLoggingGatewayIngressSecretName      = "logging-gateway-ingress-secret-name"
+	flagLoggingGatewayHTTPRouteSecretName    = "logging-gateway-httproute-secret-name"
+	flagTracingGatewayNamespace              = "tracing-gateway-namespace"
+	flagTracingGatewayIngressSecretName      = "tracing-gateway-ingress-secret-name"
+	flagTracingGatewayHTTPRouteSecretName    = "tracing-gateway-httproute-secret-name"
+
+	// Logging configuration flag names
+	flagLoggingEnabled                     = "logging-enabled"
+	flagLoggingRulerURL                    = "logging-ruler-url"
+	flagLoggingDefaultNamespaces           = "logging-default-namespaces"
+	flagLoggingEnableNodeFiltering         = "logging-enable-node-filtering"
+	flagLoggingIncludeEventsFromNamespaces = "logging-include-events-from-namespaces"
+	flagLoggingExcludeEventsFromNamespaces = "logging-exclude-events-from-namespaces"
+
+	// HTTP timeout flag names
+	flagRulerHTTPTimeout        = "ruler-http-timeout"
+	flagAlertmanagerHTTPTimeout = "alertmanager-http-timeout"
+	flagMimirQueryTimeout       = "mimir-query-timeout"
+
+	// Grafana client flag names
+	flagGrafanaClientRetries             = "grafana-client-retries"
+	flagGrafanaAdminSecretNamespace      = "grafana-admin-secret-namespace"
+	flagGrafanaAdminSecretName           = "grafana-admin-secret-name"
+	flagGrafanaGatewayTLSSecretNamespace = "grafana-gateway-tls-secret-namespace"
+	flagGrafanaGatewayTLSSecretName      = "grafana-gateway-tls-secret-name"
+
+	// Default tenant flag name
+	flagDefaultTenant = "default-tenant"
+
+	// Alloy pipeline knob flag names
+	flagMonitoringMimirRemoteWriteTimeout = "monitoring-mimir-remote-write-timeout"
+	flagLoggingLokiMaxBackoffPeriod       = "logging-loki-max-backoff-period"
+	flagLoggingLokiRemoteTimeout          = "logging-loki-remote-timeout"
+	flagOTLPBatchSendBatchSize            = "otlp-batch-send-batch-size"
+	flagOTLPBatchMaxSize                  = "otlp-batch-max-size"
+	flagOTLPBatchTimeout                  = "otlp-batch-timeout"
 )
 
 var (
@@ -82,128 +194,243 @@ func runner() error {
 // parseFlags parses all command line flags and updates the configuration.
 func parseFlags() (err error) {
 	// Operator configuration flags
-	flag.StringVar(&cfg.Operator.MetricsAddr, "metrics-bind-address", ":8080",
+	pflag.BoolVar(&cfg.Operator.Controllers.AgentCredential.Enabled, flagOperatorControllersAgentCredentialEnabled, true,
+		"Enable the agent credential controller. Required by the cluster controller. Disabling this also disables the cluster controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.Alertmanager.Enabled, flagOperatorControllersAlertmanagerEnabled, true,
+		"Enable the alertmanager controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.Cluster.Enabled, flagOperatorControllersClusterEnabled, true,
+		"Enable the cluster controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.Dashboard.Enabled, flagOperatorControllersDashboardEnabled, true,
+		"Enable the dashboard controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.GrafanaOrganization.Enabled, flagOperatorControllersGrafanaOrganizationEnabled, true,
+		"Enable the grafana organization controller.")
+	pflag.StringVar(&cfg.Operator.MetricsAddr, flagMetricsBindAddress, ":8080",
 		"The address the metric endpoint binds to.")
-	flag.StringVar(&cfg.Operator.ProbeAddr, "health-probe-bind-address", ":8081",
+	pflag.StringVar(&cfg.Operator.ProbeAddr, flagHealthProbeBindAddress, ":8081",
 		"The address the probe endpoint binds to.")
-	flag.BoolVar(&cfg.Operator.EnableLeaderElection, "leader-elect", false,
+	pflag.BoolVar(&cfg.Operator.EnableLeaderElection, flagLeaderElect, false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&cfg.Operator.SecureMetrics, "metrics-secure", false,
+	pflag.BoolVar(&cfg.Operator.SecureMetrics, flagMetricsSecure, false,
 		"If set the metrics endpoint is served securely")
-	flag.BoolVar(&cfg.Operator.EnableHTTP2, "enable-http2", false,
+	pflag.BoolVar(&cfg.Operator.EnableHTTP2, flagEnableHTTP2, false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	flag.StringVar(&cfg.Operator.WebhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
+	pflag.StringVar(&cfg.Operator.WebhookCertPath, flagWebhookCertPath, "/tmp/k8s-webhook-server/serving-certs",
 		"Path to the directory where the webhook server will store its TLS certificate and key.")
-	flag.StringVar(&cfg.Operator.OperatorNamespace, "operator-namespace", "",
+	pflag.StringVar(&cfg.Operator.MetricsCertPath, flagMetricsCertPath, "/tmp/k8s-metrics-server/serving-certs",
+		"Path to the directory where the metrics server will store its TLS certificate and key.")
+	pflag.StringVar(&cfg.Operator.OperatorNamespace, flagOperatorNamespace, "",
 		"The namespace where the observability-operator is running.")
 
 	// Grafana configuration flags
 	var grafanaURL string
-	flag.StringVar(&grafanaURL, "grafana-url", "http://grafana.monitoring.svc.cluster.local", "grafana URL")
-	// Parse Grafana URL
-	cfg.Grafana.URL, err = url.Parse(grafanaURL)
-	if err != nil {
-		return fmt.Errorf("failed to parse grafana URL: %w", err)
-	}
+	pflag.StringVar(&grafanaURL, flagGrafanaURL, "http://grafana.monitoring.svc.cluster.local",
+		"grafana URL")
+	pflag.StringVar(&cfg.Grafana.Datasources.LokiURL, flagGrafanaDatasourceLokiURL, "http://loki-gateway.loki.svc",
+		"URL of the Loki gateway service used for the Grafana Loki datasource.")
+	pflag.StringVar(&cfg.Grafana.Datasources.MimirURL, flagGrafanaDatasourceMimirURL, "http://mimir-gateway.mimir.svc/prometheus",
+		"URL of the Mimir gateway (Prometheus-compatible endpoint) used for the Grafana Mimir datasource.")
+	pflag.StringVar(&cfg.Grafana.Datasources.MimirAlertmanagerURL, flagGrafanaDatasourceMimirAlertmanagerURL, "http://mimir-alertmanager.mimir.svc:8080",
+		"URL of the Mimir Alertmanager service used for the Grafana Alertmanager datasource.")
+	pflag.StringVar(&cfg.Grafana.Datasources.MimirCardinalityURL, flagGrafanaDatasourceMimirCardinalityURL, "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/",
+		"URL of the Mimir cardinality API used for the Grafana JSON datasource.")
+	pflag.StringVar(&cfg.Grafana.Datasources.TempoURL, flagGrafanaDatasourceTempoURL, "http://tempo-query-frontend.tempo.svc:3200",
+		"URL of the Tempo query-frontend service used for the Grafana Tempo datasource.")
 
 	// Management cluster configuration flags
-	flag.StringVar(&cfg.Cluster.BaseDomain, "management-cluster-base-domain", "",
+	pflag.StringVar(&cfg.Cluster.BaseDomain, flagManagementClusterBaseDomain, "",
 		"The base domain of the management cluster.")
-	flag.StringVar(&cfg.Cluster.Customer, "management-cluster-customer", "",
+	pflag.StringVar(&cfg.Cluster.Customer, flagManagementClusterCustomer, "",
 		"The customer of the management cluster.")
-	flag.BoolVar(&cfg.Cluster.InsecureCA, "management-cluster-insecure-ca", false,
-		"Flag to indicate if the management cluster has an insecure CA that should be trusted")
-	flag.StringVar(&cfg.Cluster.Name, "management-cluster-name", "",
+	pflag.StringVar(&cfg.Cluster.CASecretNamespace, flagManagementClusterCASecretNS, "kube-system",
+		"Namespace of the cert-manager CA Secret.")
+	pflag.StringVar(&cfg.Cluster.CASecretName, flagManagementClusterCASecretName, "",
+		"Name of the cert-manager CA Secret (key: tls.crt). Empty = public CA, Alloy uses system trust store.")
+	pflag.StringVar(&cfg.Cluster.Name, flagManagementClusterName, "",
 		"The name of the management cluster.")
-	flag.StringVar(&cfg.Cluster.Pipeline, "management-cluster-pipeline", "",
+	pflag.StringVar(&cfg.Cluster.Pipeline, flagManagementClusterPipeline, "",
 		"The pipeline of the management cluster.")
-	flag.StringVar(&cfg.Cluster.Region, "management-cluster-region", "",
+	pflag.StringVar(&cfg.Cluster.Region, flagManagementClusterRegion, "",
 		"The region of the management cluster.")
 
 	// Monitoring configuration flags
-	flag.BoolVar(&cfg.Monitoring.AlertmanagerEnabled, "alertmanager-enabled", false,
-		"Enable Alertmanager controller.")
-	flag.StringVar(&cfg.Monitoring.AlertmanagerSecretName, "alertmanager-secret-name", "",
+	pflag.StringVar(&cfg.Monitoring.AlertmanagerSecretName, flagAlertmanagerSecretName, "",
 		"The name of the secret containing the Alertmanager configuration.")
-	flag.StringVar(&cfg.Monitoring.AlertmanagerURL, "alertmanager-url", "",
+	pflag.StringVar(&cfg.Monitoring.AlertmanagerURL, flagAlertmanagerURL, "",
 		"The URL of the Alertmanager API.")
-	flag.BoolVar(&cfg.Monitoring.Enabled, "monitoring-enabled", false,
+	pflag.BoolVar(&cfg.Monitoring.Enabled, flagMonitoringEnabled, false,
 		"Enable monitoring at the installation level.")
-	flag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleUpSeriesCount, "monitoring-sharding-scale-up-series-count", 0,
+	pflag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleUpSeriesCount, flagMonitoringShardingScaleUpSeriesCount, 0,
 		"Configures the number of time series needed to add an extra prometheus agent shard.")
-	flag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleDownPercentage, "monitoring-sharding-scale-down-percentage", 0,
+	pflag.Float64Var(&cfg.Monitoring.DefaultShardingStrategy.ScaleDownPercentage, flagMonitoringShardingScaleDownPercentage, 0,
 		"Configures the percentage of removed series to scale down the number of prometheus agent shards.")
-	flag.DurationVar(&cfg.Monitoring.WALTruncateFrequency, "monitoring-wal-truncate-frequency", 2*time.Hour,
+	pflag.DurationVar(&cfg.Monitoring.WALTruncateFrequency, flagMonitoringWALTruncateFrequency, 2*time.Hour,
 		"Configures how frequently the Write-Ahead Log (WAL) truncates segments.")
-	flag.StringVar(&cfg.Monitoring.MetricsQueryURL, "monitoring-metrics-query-url", "http://mimir-gateway.mimir.svc/prometheus",
-		"URL to query for cluster metrics")
+	pflag.StringVar(&cfg.Monitoring.MetricsQueryURL, flagMonitoringMetricsQueryURL, "http://mimir-gateway.mimir.svc/prometheus",
+		"URL to query for cluster metrics (internal Mimir query endpoint)")
+	pflag.StringVar(&cfg.Monitoring.RulerURL, flagMonitoringRulerURL, "http://mimir-gateway.mimir.svc",
+		"URL to the Mimir ruler API for cleaning up rules on cluster deletion")
+	pflag.BoolVar(&cfg.Monitoring.ExemplarsEnabled, flagMonitoringExemplarsEnabled, true,
+		"Enable exemplar forwarding in the remote write pipeline. Opt-out: enabled by default.")
+	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
+		"Enable/disable network monitoring in Alloy configuration")
+	pflag.StringVar(&cfg.Monitoring.Gateway.Namespace, flagMonitoringGatewayNamespace, "mimir",
+		"Kubernetes namespace where the Mimir gateway secrets reside.")
+	pflag.StringVar(&cfg.Monitoring.Gateway.IngressSecretName, flagMonitoringGatewayIngressSecretName, "mimir-gateway-ingress-auth",
+		"Name of the Ingress auth secret in the Mimir gateway namespace.")
+	pflag.StringVar(&cfg.Monitoring.Gateway.HTTPRouteSecretName, flagMonitoringGatewayHTTPRouteSecretName, "mimir-gateway-httproute-auth",
+		"Name of the HTTPRoute auth secret in the Mimir gateway namespace.")
 
 	// Queue configuration flags for Alloy remote write
 	var queueBatchSendDeadline, queueMaxBackoff, queueMinBackoff, queueSampleAgeLimit string
 	var queueCapacity, queueMaxSamplesPerSend, queueMaxShards, queueMinShards int
 	var queueRetryOnHttp429 bool
 
-	flag.StringVar(&queueBatchSendDeadline, "monitoring-queue-config-batch-send-deadline", "",
+	pflag.StringVar(&queueBatchSendDeadline, flagQueueBatchSendDeadline, "",
 		"Maximum time samples wait in the buffer before sending (e.g., '5s'). If empty, Alloy default is used.")
-	flag.IntVar(&queueCapacity, "monitoring-queue-config-capacity", 0,
+	pflag.IntVar(&queueCapacity, flagQueueCapacity, 0,
 		"Number of samples to buffer per shard. If 0, Alloy default is used.")
-	flag.StringVar(&queueMaxBackoff, "monitoring-queue-config-max-backoff", "",
+	pflag.StringVar(&queueMaxBackoff, flagQueueMaxBackoff, "",
 		"Maximum backoff time between retries (e.g., '5m'). If empty, Alloy default is used.")
-	flag.IntVar(&queueMaxSamplesPerSend, "monitoring-queue-config-max-samples-per-send", 0,
+	pflag.IntVar(&queueMaxSamplesPerSend, flagQueueMaxSamplesPerSend, 0,
 		"Maximum number of samples to send in a single request. If 0, Alloy default is used.")
-	flag.IntVar(&queueMaxShards, "monitoring-queue-config-max-shards", 0,
+	pflag.IntVar(&queueMaxShards, flagQueueMaxShards, 0,
 		"Maximum number of shards to use. If 0, Alloy default is used.")
-	flag.StringVar(&queueMinBackoff, "monitoring-queue-config-min-backoff", "",
+	pflag.StringVar(&queueMinBackoff, flagQueueMinBackoff, "",
 		"Minimum backoff time between retries (e.g., '30ms'). If empty, Alloy default is used.")
-	flag.IntVar(&queueMinShards, "monitoring-queue-config-min-shards", 0,
+	pflag.IntVar(&queueMinShards, flagQueueMinShards, 0,
 		"Minimum number of shards to use. If 0, Alloy default is used.")
-	flag.BoolVar(&queueRetryOnHttp429, "monitoring-queue-config-retry-on-http-429", false,
+	pflag.BoolVar(&queueRetryOnHttp429, flagQueueRetryOnHttp429, false,
 		"Retry when an HTTP 429 status code is received.")
-	flag.StringVar(&queueSampleAgeLimit, "monitoring-queue-config-sample-age-limit", "",
+	pflag.StringVar(&queueSampleAgeLimit, flagQueueSampleAgeLimit, "",
 		"Maximum age of samples to send (e.g., '30m'). If empty, Alloy default is used.")
 
 	// Tracing configuration flags
-	flag.BoolVar(&cfg.Tracing.Enabled, "tracing-enabled", false,
+	pflag.BoolVar(&cfg.Tracing.Enabled, flagTracingEnabled, false,
 		"Enable distributed tracing at the installation level.")
+	pflag.StringVar(&cfg.Tracing.Gateway.Namespace, flagTracingGatewayNamespace, "tempo",
+		"Kubernetes namespace where the Tempo gateway secrets reside.")
+	pflag.StringVar(&cfg.Tracing.Gateway.IngressSecretName, flagTracingGatewayIngressSecretName, "tempo-gateway-ingress-auth",
+		"Name of the Ingress auth secret in the Tempo gateway namespace.")
+	pflag.StringVar(&cfg.Tracing.Gateway.HTTPRouteSecretName, flagTracingGatewayHTTPRouteSecretName, "tempo-gateway-httproute-auth",
+		"Name of the HTTPRoute auth secret in the Tempo gateway namespace.")
 
 	// Logging configuration flags
-	flag.BoolVar(&cfg.Logging.Enabled, "logging-enabled", false,
+	pflag.BoolVar(&cfg.Logging.Enabled, flagLoggingEnabled, false,
 		"Enable logging at the installation level.")
+	pflag.StringSliceVar(&cfg.Logging.DefaultNamespaces, flagLoggingDefaultNamespaces, []string{},
+		"Comma-separated list of namespaces to collect logs from by default on workload clusters")
+	pflag.BoolVar(&cfg.Logging.EnableNodeFiltering, flagLoggingEnableNodeFiltering, false,
+		"Enable/disable node filtering in Alloy logging configuration")
+	pflag.StringSliceVar(&cfg.Logging.IncludeEventsNamespaces, flagLoggingIncludeEventsFromNamespaces, []string{},
+		"Comma-separated list of namespaces to collect events from on workload clusters (if empty, collect from all)")
+	pflag.StringSliceVar(&cfg.Logging.ExcludeEventsNamespaces, flagLoggingExcludeEventsFromNamespaces, []string{},
+		"Comma-separated list of namespaces to exclude events from on workload clusters")
+	pflag.StringVar(&cfg.Logging.RulerURL, flagLoggingRulerURL, "http://loki-gateway.loki.svc",
+		"URL to the Loki ruler API for cleaning up rules on cluster deletion")
+	pflag.StringVar(&cfg.Logging.Gateway.Namespace, flagLoggingGatewayNamespace, "loki",
+		"Kubernetes namespace where the Loki gateway secrets reside.")
+	pflag.StringVar(&cfg.Logging.Gateway.IngressSecretName, flagLoggingGatewayIngressSecretName, "loki-gateway-ingress-auth",
+		"Name of the Ingress auth secret in the Loki gateway namespace.")
+	pflag.StringVar(&cfg.Logging.Gateway.HTTPRouteSecretName, flagLoggingGatewayHTTPRouteSecretName, "loki-gateway-httproute-auth",
+		"Name of the HTTPRoute auth secret in the Loki gateway namespace.")
+
+	// HTTP timeout flags
+	pflag.DurationVar(&cfg.HTTP.RulerTimeout, flagRulerHTTPTimeout, 30*time.Second,
+		"HTTP client timeout for ruler API requests.")
+	pflag.DurationVar(&cfg.HTTP.AlertmanagerTimeout, flagAlertmanagerHTTPTimeout, 30*time.Second,
+		"HTTP client timeout for Alertmanager API requests.")
+	pflag.DurationVar(&cfg.HTTP.MimirQueryTimeout, flagMimirQueryTimeout, 2*time.Minute,
+		"Timeout for Mimir TSDB head series queries.")
+
+	// Grafana client flags
+	pflag.IntVar(&cfg.Grafana.ClientRetries, flagGrafanaClientRetries, 3,
+		"Number of retries for Grafana API requests.")
+	pflag.StringVar(&cfg.Grafana.AdminSecretNamespace, flagGrafanaAdminSecretNamespace, "monitoring",
+		"Kubernetes namespace containing the Grafana admin credentials secret.")
+	pflag.StringVar(&cfg.Grafana.AdminSecretName, flagGrafanaAdminSecretName, "grafana",
+		"Name of the Kubernetes secret containing Grafana admin credentials.")
+	pflag.StringVar(&cfg.Grafana.GatewayTLSSecretNamespace, flagGrafanaGatewayTLSSecretNamespace, "envoy-gateway-system",
+		"Kubernetes namespace containing the Grafana Gateway TLS secret.")
+	pflag.StringVar(&cfg.Grafana.GatewayTLSSecretName, flagGrafanaGatewayTLSSecretName, "gateway-giantswarm-default-https-tls",
+		"Name of the Kubernetes secret containing the Grafana Gateway TLS certificate.")
+
+	// Default tenant flag
+	pflag.StringVar(&cfg.DefaultTenant, flagDefaultTenant, "giantswarm",
+		"Default tenant ID used when no tenant label is present.")
+
+	// Alloy pipeline knob flags
+	pflag.StringVar(&cfg.Monitoring.MimirRemoteWriteTimeout, flagMonitoringMimirRemoteWriteTimeout, "60s",
+		"Timeout for Alloy Mimir remote write operations.")
+	pflag.StringVar(&cfg.Logging.LokiMaxBackoffPeriod, flagLoggingLokiMaxBackoffPeriod, "10m",
+		"Maximum backoff period for Alloy Loki remote write retries.")
+	pflag.StringVar(&cfg.Logging.LokiRemoteTimeout, flagLoggingLokiRemoteTimeout, "60s",
+		"Timeout for Alloy Loki remote write operations.")
+	pflag.IntVar(&cfg.OTLP.BatchSendBatchSize, flagOTLPBatchSendBatchSize, 1024,
+		"Number of items to batch before flushing in the OTLP exporter.")
+	pflag.IntVar(&cfg.OTLP.BatchMaxSize, flagOTLPBatchMaxSize, 1024,
+		"Maximum batch size for the OTLP exporter.")
+	pflag.StringVar(&cfg.OTLP.BatchTimeout, flagOTLPBatchTimeout, "500ms",
+		"Maximum wait time before flushing an incomplete OTLP batch.")
+
+	// Cronitor heartbeat monitor configuration flags
+	pflag.IntVar(&cfg.Cronitor.GraceSeconds, flagCronitorGraceSeconds, 1800,
+		"Number of seconds after a missed heartbeat before a Cronitor alert fires.")
+	pflag.StringVar(&cfg.Cronitor.Schedule, flagCronitorSchedule, "every 30 minutes",
+		"Expected heartbeat frequency for the Cronitor monitor (e.g. 'every 30 minutes').")
+	pflag.StringVar(&cfg.Cronitor.RealertInterval, flagCronitorRealertInterval, "every 24 hours",
+		"How often Cronitor re-alerts if the monitor stays in a failing state (e.g. 'every 24 hours').")
 
 	// Zap logging options
 	opts := zap.Options{
 		Development: false,
 	}
 	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	pflag.Parse()
 
-	// Apply queue configuration flags after parsing
-	if queueBatchSendDeadline != "" {
+	// Parse Grafana URL after flags are parsed
+	cfg.Grafana.URL, err = url.Parse(grafanaURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse grafana URL: %w", err)
+	}
+
+	// Soft dependency: the cluster controller declares AgentCredential CRs and
+	// the Alloy collectors read the rendered Secrets, so it cannot run without
+	// the agent-credential controller. Disabling AC therefore implicitly disables
+	// the cluster controller as well, with a warning so the operator can spot
+	// unexpected configurations from the logs.
+	if !cfg.Operator.Controllers.AgentCredential.Enabled && cfg.Operator.Controllers.Cluster.Enabled {
+		setupLog.Info("agent credential controller is disabled; cluster controller cannot run without it and has been disabled too")
+		cfg.Operator.Controllers.Cluster.Enabled = false
+	}
+
+	// Apply queue configuration flags after parsing (only if explicitly set)
+	if pflag.CommandLine.Changed(flagQueueBatchSendDeadline) {
 		cfg.Monitoring.QueueConfig.BatchSendDeadline = &queueBatchSendDeadline
 	}
-	if queueCapacity > 0 {
+	if pflag.CommandLine.Changed(flagQueueCapacity) {
 		cfg.Monitoring.QueueConfig.Capacity = &queueCapacity
 	}
-	if queueMaxBackoff != "" {
+	if pflag.CommandLine.Changed(flagQueueMaxBackoff) {
 		cfg.Monitoring.QueueConfig.MaxBackoff = &queueMaxBackoff
 	}
-	if queueMaxSamplesPerSend > 0 {
+	if pflag.CommandLine.Changed(flagQueueMaxSamplesPerSend) {
 		cfg.Monitoring.QueueConfig.MaxSamplesPerSend = &queueMaxSamplesPerSend
 	}
-	if queueMaxShards > 0 {
+	if pflag.CommandLine.Changed(flagQueueMaxShards) {
 		cfg.Monitoring.QueueConfig.MaxShards = &queueMaxShards
 	}
-	if queueMinBackoff != "" {
+	if pflag.CommandLine.Changed(flagQueueMinBackoff) {
 		cfg.Monitoring.QueueConfig.MinBackoff = &queueMinBackoff
 	}
-	if queueMinShards > 0 {
+	if pflag.CommandLine.Changed(flagQueueMinShards) {
 		cfg.Monitoring.QueueConfig.MinShards = &queueMinShards
 	}
-	if queueRetryOnHttp429 {
+	if pflag.CommandLine.Changed(flagQueueRetryOnHttp429) {
 		cfg.Monitoring.QueueConfig.RetryOnHttp429 = &queueRetryOnHttp429
 	}
-	if queueSampleAgeLimit != "" {
+	if pflag.CommandLine.Changed(flagQueueSampleAgeLimit) {
 		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
 	}
 
@@ -216,7 +443,8 @@ func setupApplication() error {
 	opts := zap.Options{
 		Development: false,
 	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	logger := zap.New(zap.UseFlagOptions(&opts))
+	ctrl.SetLogger(logger)
 
 	// Load environment variables
 	_, err := env.UnmarshalFromEnviron(&cfg.Environment)
@@ -255,6 +483,7 @@ func setupApplication() error {
 		Metrics: metricsserver.Options{
 			BindAddress:   cfg.Operator.MetricsAddr,
 			SecureServing: cfg.Operator.SecureMetrics,
+			CertDir:       cfg.Operator.MetricsCertPath,
 			TLSOpts:       tlsOpts,
 		},
 		WebhookServer:          webhookServer,
@@ -289,20 +518,32 @@ func setupApplication() error {
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
 	// Create Grafana client generator for dependency injection
-	grafanaClientGen := &grafanaclient.DefaultGrafanaClientGenerator{}
-	// Setup controller for the Cluster resource.
-	err = controller.SetupClusterMonitoringReconciler(mgr, cfg)
-	if err != nil {
-		return fmt.Errorf("unable to create controller (ClusterMonitoringReconciler): %w", err)
+	grafanaClientGen := grafanaclient.NewDefaultGrafanaClientGenerator(cfg.Grafana)
+
+	if cfg.Operator.Controllers.Cluster.Enabled {
+		// Setup controller for the Cluster resource.
+		err = controller.SetupClusterReconciler(mgr, cfg, logger)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (ClusterReconciler): %w", err)
+		}
 	}
 
-	// Setup controller for the GrafanaOrganization resource.
-	err = controller.SetupGrafanaOrganizationReconciler(mgr, cfg, grafanaClientGen)
-	if err != nil {
-		return fmt.Errorf("unable to setup controller (GrafanaOrganizationReconciler): %w", err)
+	if cfg.Operator.Controllers.AgentCredential.Enabled {
+		err = controller.SetupAgentCredentialReconciler(mgr, cfg)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (AgentCredentialReconciler): %w", err)
+		}
 	}
 
-	if cfg.Monitoring.AlertmanagerEnabled {
+	if cfg.Operator.Controllers.GrafanaOrganization.Enabled {
+		// Setup controller for the GrafanaOrganization resource.
+		err = controller.SetupGrafanaOrganizationReconciler(mgr, cfg, grafanaClientGen)
+		if err != nil {
+			return fmt.Errorf("unable to setup controller (GrafanaOrganizationReconciler): %w", err)
+		}
+	}
+
+	if cfg.Operator.Controllers.Alertmanager.Enabled {
 		// Setup controller for Alertmanager
 		err = controller.SetupAlertmanagerReconciler(mgr, cfg)
 		if err != nil {
@@ -310,10 +551,18 @@ func setupApplication() error {
 		}
 	}
 
-	// Setup controller for the Dashboard resource.
-	err = controller.SetupDashboardReconciler(mgr, cfg, grafanaClientGen)
-	if err != nil {
-		return fmt.Errorf("unable to create controller (Dashboard): %w", err)
+	if cfg.Operator.Controllers.Dashboard.Enabled {
+		// Setup controller for the Dashboard resource.
+		err = controller.SetupDashboardReconciler(mgr, cfg, grafanaClientGen)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (Dashboard): %w", err)
+		}
+
+		// Setup the controller that asynchronously cleans up orphaned folders per organization.
+		err = controller.SetupDashboardCleanupReconciler(mgr, cfg, grafanaClientGen)
+		if err != nil {
+			return fmt.Errorf("unable to create controller (DashboardCleanup): %w", err)
+		}
 	}
 
 	// nolint:goconst
@@ -329,6 +578,9 @@ func setupApplication() error {
 		}
 		if err = webhookcorev1alpha2.SetupGrafanaOrganizationWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("unable to create webhook (GrafanaOrganization v1alpha2): %w", err)
+		}
+		if err = webhookcorev1alpha1.SetupAgentCredentialWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("unable to create webhook (AgentCredential v1alpha1): %w", err)
 		}
 	}
 	//+kubebuilder:scaffold:builder

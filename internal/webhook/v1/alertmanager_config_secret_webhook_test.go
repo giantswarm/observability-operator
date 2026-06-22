@@ -1,5 +1,5 @@
 /*
-Copyright 2025.
+Copyright 2026.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
-	"github.com/giantswarm/observability-operator/pkg/alertmanager"
+	"github.com/giantswarm/observability-operator/pkg/alerting/alertmanager"
+	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 )
 
 var _ = Describe("Secret Webhook", func() {
@@ -65,7 +66,10 @@ receivers:
 		}
 		oldObj = &corev1.Secret{}
 		// Use the real client from the test environment
-		validator = AlertmanagerConfigSecretValidator{client: k8sClient}
+		validator = AlertmanagerConfigSecretValidator{
+			client:           k8sClient,
+			tenantRepository: tenancy.NewTenantRepository(k8sClient),
+		}
 		Expect(validator).NotTo(BeNil(), "Expected validator to be initialized")
 		Expect(oldObj).NotTo(BeNil(), "Expected oldObj to be initialized")
 		Expect(obj).NotTo(BeNil(), "Expected obj to be initialized")
@@ -147,9 +151,30 @@ receivers:
 				_ = k8sClient.Delete(ctx, grafanaOrg)
 			}()
 
-			By("Validating that the secret now passes tenant validation")
+			By("Validating that a secret with valid config and no templates passes")
 			_, err = validator.ValidateCreate(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
+
+			By("Validating that a secret with a valid template passes")
+			secretWithTemplate := obj.DeepCopy()
+			secretWithTemplate.Data["alert.tmpl"] = []byte(`{{ define "myalert" }}fired{{ end }}`)
+			_, err = validator.ValidateCreate(ctx, secretWithTemplate)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Rejecting a secret with an invalid template")
+			secretWithBadTemplate := obj.DeepCopy()
+			secretWithBadTemplate.Data["bad.tmpl"] = []byte(`{{ define "broken" }}{{ if }}{{ end }}{{ end }}`)
+			_, err = validator.ValidateCreate(ctx, secretWithBadTemplate)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("alertmanager configuration validation failed"))
+			Expect(err.Error()).To(ContainSubstring("invalid template"))
+
+			By("Rejecting a secret with invalid alertmanager config")
+			secretWithBadConfig := obj.DeepCopy()
+			secretWithBadConfig.Data[alertmanager.AlertmanagerConfigKey] = []byte("invalid yaml: [")
+			_, err = validator.ValidateCreate(ctx, secretWithBadConfig)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("alertmanager configuration validation failed"))
 		})
 
 		It("Should validate that tenant exists in GrafanaOrganizations", func() {
@@ -177,14 +202,6 @@ receivers:
 			_, err = validator.ValidateCreate(ctx, invalidSecret)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("is not in the list of accepted tenants"))
-		})
-
-		It("Should validate object type correctly", func() {
-			By("Testing with wrong object type")
-			wrongObj := &corev1.ConfigMap{}
-			_, err := validator.ValidateCreate(ctx, wrongObj)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a Secret object but got"))
 		})
 	})
 })

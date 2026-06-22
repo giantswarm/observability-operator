@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/client/datasources"
+	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/client/orgs"
 	"github.com/grafana/grafana-openapi-client-go/client/sso_settings"
 	"github.com/stretchr/testify/mock"
@@ -19,15 +20,13 @@ type MockGrafanaClient struct {
 	mock.Mock
 }
 
-func (m *MockGrafanaClient) OrgID() int64 {
-	args := m.Called()
-	return args.Get(0).(int64)
-}
-
+// WithOrgID returns the receiver by default so tests can use a single mock for
+// every org context. Override with mock.On("WithOrgID", id).Return(otherMock)
+// when a test needs to distinguish org contexts.
 func (m *MockGrafanaClient) WithOrgID(orgID int64) grafanaclient.GrafanaClient {
 	args := m.Called(orgID)
 	if args.Get(0) == nil {
-		return m // Return self if mock returns nil
+		return m
 	}
 	return args.Get(0).(grafanaclient.GrafanaClient)
 }
@@ -45,6 +44,11 @@ func (m *MockGrafanaClient) Orgs() orgs.ClientService {
 func (m *MockGrafanaClient) Dashboards() dashboards.ClientService {
 	args := m.Called()
 	return args.Get(0).(dashboards.ClientService)
+}
+
+func (m *MockGrafanaClient) Folders() folders.ClientService {
+	args := m.Called()
+	return args.Get(0).(folders.ClientService)
 }
 
 func (m *MockGrafanaClient) SsoSettings() sso_settings.ClientService {

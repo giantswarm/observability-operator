@@ -36,7 +36,7 @@ func (fh FinalizerHelper) EnsureAdded(ctx context.Context, object client.Object)
 
 	// We use a patch rather than an update to avoid conflicts when multiple controllers are adding their finalizer
 	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-	logger.Info("adding finalizer", "finalizer", fh.finalizer)
+	logger.V(2).Info("adding finalizer", "finalizer", fh.finalizer)
 	patchHelper, err := patch.NewHelper(object, fh.client)
 	if err != nil {
 		return false, fmt.Errorf("failed to create patch helper for adding finalizer: %w", err)
@@ -50,7 +50,8 @@ func (fh FinalizerHelper) EnsureAdded(ctx context.Context, object client.Object)
 		return false, fmt.Errorf("failed to patch object when adding finalizer: %w", err)
 	}
 
-	logger.Info("added finalizer", "finalizer", fh.finalizer)
+	logger.V(2).Info("added finalizer", "finalizer", fh.finalizer)
+
 	return true, nil
 }
 
@@ -58,7 +59,7 @@ func (fh FinalizerHelper) EnsureRemoved(ctx context.Context, object client.Objec
 	logger := log.FromContext(ctx)
 
 	// We use the patch from sigs.k8s.io/cluster-api/util/patch to handle the patching without conflicts
-	logger.Info("removing finalizer", "finalizer", fh.finalizer)
+	logger.V(2).Info("removing finalizer", "finalizer", fh.finalizer)
 	patchHelper, err := patch.NewHelper(object, fh.client)
 	if err != nil {
 		return fmt.Errorf("failed to create patch helper for removing finalizer: %w", err)
@@ -72,7 +73,7 @@ func (fh FinalizerHelper) EnsureRemoved(ctx context.Context, object client.Objec
 		return fmt.Errorf("failed to patch object when removing finalizer: %w", err)
 	}
 
-	logger.Info("removed finalizer", "finalizer", fh.finalizer)
+	logger.V(2).Info("removed finalizer", "finalizer", fh.finalizer)
 
 	return nil
 }

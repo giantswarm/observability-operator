@@ -14,7 +14,7 @@ func TestNew(t *testing.T) {
 		"key": "value",
 	}
 
-	d := dashboard.New(org, content)
+	d := dashboard.New(org, "", content)
 
 	if d.UID() != "test-uid" {
 		t.Errorf("Expected UID %s, got %s", "test-uid", d.UID())
@@ -45,6 +45,17 @@ func TestValidate(t *testing.T) {
 			expectedErrs: nil,
 		},
 		{
+			name:         "valid v2 dashboard",
+			organization: "test-org",
+			content: map[string]any{
+				"apiVersion": "dashboard.grafana.app/v2",
+				"kind":       "Dashboard",
+				"metadata":   map[string]any{"name": "gs_cluster-overview"},
+				"spec":       map[string]any{"title": "Cluster Overview"},
+			},
+			expectedErrs: nil,
+		},
+		{
 			name:         "missing UID",
 			organization: "test-org",
 			content:      map[string]any{"key": "value"}, // No UID in content
@@ -72,7 +83,7 @@ func TestValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := dashboard.New(tt.organization, tt.content)
+			d := dashboard.New(tt.organization, "", tt.content)
 			errs := d.Validate()
 
 			if len(errs) != len(tt.expectedErrs) {
@@ -93,7 +104,7 @@ func TestString(t *testing.T) {
 		"uid": "test-uid",
 		"key": "value",
 	}
-	d := dashboard.New("test-org", content)
+	d := dashboard.New("test-org", "", content)
 	expected := "Dashboard{uid: test-uid, organization: test-org}"
 	if d.String() != expected {
 		t.Errorf("Expected String() to return %s, got %s", expected, d.String())
@@ -131,14 +142,73 @@ func TestUIDExtraction(t *testing.T) {
 			content:     map[string]any{"uid": "", "title": "Dashboard"},
 			expectedUID: "",
 		},
+		{
+			name: "v2 schema reads UID from metadata.name",
+			content: map[string]any{
+				"apiVersion": "dashboard.grafana.app/v2",
+				"kind":       "Dashboard",
+				"metadata":   map[string]any{"name": "gs_cluster-overview"},
+				"spec":       map[string]any{"title": "Cluster Overview"},
+			},
+			expectedUID: "gs_cluster-overview",
+		},
+		{
+			name: "v2 schema ignores top-level uid",
+			content: map[string]any{
+				"apiVersion": "dashboard.grafana.app/v2",
+				"uid":        "should-be-ignored",
+				"metadata":   map[string]any{"name": "gs_cluster-overview"},
+			},
+			expectedUID: "gs_cluster-overview",
+		},
+		{
+			name: "v2 schema missing metadata.name",
+			content: map[string]any{
+				"apiVersion": "dashboard.grafana.app/v2",
+				"metadata":   map[string]any{},
+			},
+			expectedUID: "",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := dashboard.New("test-org", tt.content)
+			d := dashboard.New("test-org", "", tt.content)
 			if d.UID() != tt.expectedUID {
 				t.Errorf("Expected UID %s, got %s", tt.expectedUID, d.UID())
 			}
 		})
 	}
+}
+
+func TestFolderPath(t *testing.T) {
+	t.Run("empty folder path", func(t *testing.T) {
+		d := dashboard.New("test-org", "", map[string]any{"uid": "test-uid"})
+		if d.FolderPath() != "" {
+			t.Errorf("Expected empty folder path, got %q", d.FolderPath())
+		}
+	})
+
+	t.Run("folder path is stored and returned", func(t *testing.T) {
+		d := dashboard.New("test-org", "team-a/networking", map[string]any{"uid": "test-uid"})
+		if d.FolderPath() != "team-a/networking" {
+			t.Errorf("Expected folder path %q, got %q", "team-a/networking", d.FolderPath())
+		}
+	})
+
+	t.Run("invalid folder path fails validation", func(t *testing.T) {
+		d := dashboard.New("test-org", "/leading-slash", map[string]any{"uid": "test-uid"})
+		errs := d.Validate()
+		if len(errs) == 0 {
+			t.Error("Expected validation error for invalid folder path")
+		}
+	})
+
+	t.Run("valid folder path passes validation", func(t *testing.T) {
+		d := dashboard.New("test-org", "team-a/networking/alerts", map[string]any{"uid": "test-uid"})
+		errs := d.Validate()
+		if len(errs) != 0 {
+			t.Errorf("Expected no validation errors, got %v", errs)
+		}
+	})
 }

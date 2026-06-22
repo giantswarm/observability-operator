@@ -7,6 +7,320 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Move orphaned dashboard folder cleanup out of the dashboard controller into a new `dashboard-cleanup` controller that reconciles per Grafana organization. Cleanup is debounced and runs once, one minute after the first dashboard event of a burst, instead of after every dashboard reconciliation.
+- CI: offload the Aliyun (China) image push to a parallel `sync-china-registry` job via `split-china-push`.
+- Improve dashboard controller speed
+  - Cache Grafana organization lookups
+  - Cache dashboard folder hierarchy lookups
+
+## [0.71.0] - 2026-06-17
+
+### Changed
+
+- Improve log messages
+  - Normalize per dashboard logging (with uid, organization and folder keys)
+  - Remove redundant log lines
+  - Remove started/finished log entries
+  - Add ConfigMap information in errors
+  - Extract common dashboard processing logic from `reconcileCreate` and `reconcileDelete`
+  - Hide finalizer log by default
+
+### Fixed
+
+- Fix 12 CVEs related to golang.org/x/crypto
+
+## [0.70.0] - 2026-06-05
+
+### Added
+
+- Added support for Azure ASO (AKS) clusters.
+- Dashboard provisioning now accepts the Grafana App Platform schema (`apiVersion: dashboard.grafana.app/v2`) in addition to the classic flat dashboard JSON. The dashboard UID is read from `metadata.name` and the managed tag is injected under `spec.tags` for v2 dashboards.
+
+## [0.69.0] - 2026-05-28
+
+### Added
+
+- Add `kubernetes.io/arch=arm64:NoSchedule` toleration to the generated alloy-logs daemonset values so the DaemonSet schedules on ARM worker nodes.
+
+### Changed
+
+- Tempo datasource: disable streaming for metrics and search queries (`streamingEnabled.metrics` and `streamingEnabled.search` now default to `false`).
+- Bump `github.com/grafana/grafana-openapi-client-go` to `v0.0.0-20260430175825-547a3b5a00a5`. The new release makes `WithOrgID` non-mutating (returns a clone) and stops mutating the package-level `http.DefaultTransport` — the latter was a real data race in the previous transport setup.
+- `GrafanaClient.WithOrgID` now returns a fresh client; `OrgID()` was removed from the interface. Service helpers (`ConfigureDashboard`, `DeleteDashboard`, `ConfigureDatasource`, `CleanupOrphanedFoldersForOrg`) thread the per-org client through `withinOrganization` instead of mutating shared state with a save/restore dance.
+- Upgrade Cluster API import from v1beta1 to v1beta2 (sigs.k8s.io/cluster-api/api/core/v1beta2).
+
+## [0.68.0] - 2026-04-27
+
+### Added
+
+- Per-controller enable flags `--controllers-{alertmanager,cluster,dashboard,grafana-organization}-enabled` (all default `true`). Exposed via `operator.controllers.*.enabled` Helm values so individual reconcilers can be disabled at deploy time.
+- Helm chart now renders a Kubernetes `NetworkPolicy` for the operator pod by default. Flavor is selectable via `operator.networkPolicy.flavor` (`kubernetes` or `cilium`); the existing `CiliumNetworkPolicy` now only renders when `flavor=cilium`.
+- `AgentCredential` CRD (`observability.giantswarm.io/v1alpha1`): declares the desired basic-auth credential for a telemetry agent. Includes a validating webhook that enforces `(backend, agentName)` uniqueness and field immutability.
+- `AgentCredentialReconciler`: renders a per-credential basic-auth Secret and aggregates htpasswd entries into per-backend gateway Secrets. Gated by `--controllers-agent-credential-enabled` (default `true`). Disabling also implicitly disables the cluster controller.
+- `pkg/credential` package: `Renderer`, `Aggregator`, `Reader` for credential lifecycle management. Replaces the legacy `pkg/auth` manager (deleted in follow-up PR).
+- Metrics: `observability_operator_agent_credential_info`, `observability_operator_agent_credential_reconcile_errors_total`.
+
+### Changed
+
+- Cluster controller migrated from `pkg/auth.AuthManager` to `AgentCredential` CRs. Each cluster now owns 3 AgentCredential CRs (one per enabled backend) instead of directly managing gateway htpasswd Secrets.
+- Renamed `ClusterMonitoringReconciler` → `ClusterReconciler` and `SetupClusterMonitoringReconciler` → `SetupClusterReconciler`.
+- Alloy collector services (`metrics`, `logs`, `events`) no longer depend on `credential.Reader`. The cluster controller resolves credentials once per reconcile and passes them into `ReconcileCreate` as a `credential.BackendCredentials` bag, keeping the render path free of credential-store I/O.
+- **Breaking (Helm)**: removed the `--alertmanager-enabled` flag (formerly gated by `alerting.enabled`). Use `--controllers-alertmanager-enabled` / `operator.controllers.alertmanager.enabled` instead. Default flipped from `false` to `true` — the Alertmanager controller is now opt-out.
+- internal code refactoring
+- Cronitor alerts: update ops-recipe URL
+
+### Fixed
+
+- Cluster deletion: Alloy collector ConfigMaps/Secrets were leaked for collectors whose feature flag was flipped off between the previous reconcile and the delete. `reconcileDelete` now calls `ReconcileDelete` on every collector unconditionally.
+- `credential.Aggregator` no longer silently swallows write errors to gateway htpasswd secrets. A missing gateway namespace is detected explicitly up front; any `NotFound` surfaced by the write itself propagates as a real error so the `AgentCredential` finalizer stays until both the ingress and HTTPRoute secrets are updated.
+- Cluster reconcile no longer emits a spurious error on the first reconcile of a new cluster while the `AgentCredential` Secret is still being rendered. Credentials are now resolved once by the controller and passed into the Alloy collectors; if any backing Secret is not ready yet the reconcile short-requeues instead of failing.
+- Align Grafana client mocks and SSO settings payload handling with the latest `grafana-openapi-client-go` interface so `go build ./...` passes.
+- Fix Ginkgo version mismatch in tests
+- `GrafanaOrganization` reconciler: improved management of orgID conflicts.
+- Cluster deletion: Alloy collector ConfigMaps/Secrets were leaked for collectors whose feature flag was flipped off between the previous reconcile and the delete. `reconcileDelete` now calls `ReconcileDelete` on every collector unconditionally.
+- `credential.Aggregator` no longer silently swallows write errors to gateway htpasswd secrets. A missing gateway namespace is detected explicitly up front; any `NotFound` surfaced by the write itself propagates as a real error so the `AgentCredential` finalizer stays until both the ingress and HTTPRoute secrets are updated.
+
+## [0.67.2] - 2026-04-08
+
+### Added
+
+- Added `VerticalPodAutoscaler` support for the operator deployment via `verticalPodAutoscaler.*` Helm values (`enabled`, `updateMode`, `resourcePolicy`).
+
+### Changed
+
+- Auth reconciliation in `ClusterMonitoringReconciler` now collects all per-signal errors before returning instead of failing fast on the first error, so Mimir/Loki/Tempo auth are all attempted independently.
+- `DashboardReconciler` private methods (`reconcileCreate`, `reconcileDelete`, `cleanupOrphanedFolders`, `collectRequiredFolderUIDs`) changed from value to pointer receivers for consistency.
+- Metric operation label strings (`push_config`, `delete_config`, `configure_org`, etc.) extracted to named constants in `pkg/metrics`.
+- `reflect.DeepEqual` replaced with `equality.Semantic.DeepEqual` in bundle service to avoid spurious updates on typed-nil Kubernetes objects.
+
+### Fixed
+
+- Allow `kube-apiserver` ingress in `CiliumNetworkPolicy` so validating webhooks can be called by the control plane.
+- Use proper path to delete mimir rules.
+
+## [0.67.1] - 2026-04-07
+
+### Changed
+
+- Replace `insecure_skip_verify` in Alloy TLS configs with proper CA bundle propagation from a configurable cert-manager CA Secret (`managementCluster.caSecretName`). On CA rotation, all clusters re-reconcile automatically. On public-CA installations (default), no CA is configured and Alloy uses the system trust store.
+
+## [0.67.0] - 2026-04-07
+
+### Added
+
+- Added support for TLS on the operator's metrics endpoint using cert-manager certificates. Configure via `operator.metricsServerCertificate.enabled` Helm value and `--metrics-secure`, `--metrics-cert-path` CLI flags. The PodMonitor automatically configures Prometheus to scrape metrics over HTTPS when enabled.
+- Added `operator.metricsServerCertificate.*` Helm values to enable and configure TLS certificates for metrics endpoint (`operator.metricsServerCertificate.enabled`, `operator.metricsServerCertificate.secretName`).
+- Added `metrics-cert-path` CLI flag to specify the directory where the metrics server TLS certificate is stored (default: `/tmp/k8s-metrics-server/serving-certs`).
+- Added `metrics-certificate.yaml` Helm template to automatically create cert-manager Certificate resources for the metrics endpoint when enabled.
+- Added support for Proxmox clusters.
+- Added `observability_operator_monitored_cluster_info` info gauge (one series per active cluster; use `count(...)` for total).
+- Added `observability_operator_grafana_api_errors_total` counter to track Grafana API failures by operation (`configure_org`, `delete_org`, `configure_datasources`, `configure_dashboard`, `delete_dashboard`).
+- Added `observability_operator_mimir_alertmanager_api_errors_total` counter to track Mimir Alertmanager API failures by operation (`push_config`, `delete_config`).
+- Added `observability_operator_ruler_api_errors_total` counter to track ruler API failures by operation (`delete_rules`).
+- Added `monitoring.gateway`, `logging.gateway`, and `tracing.gateway` Helm values (and corresponding CLI flags) to make gateway secret namespaces and secret names configurable (`monitoring-gateway-namespace`, `monitoring-gateway-ingress-secret-name`, etc.). Defaults match the existing hardcoded values.
+- Added `grafana.datasources.*` Helm values and corresponding CLI flags to make Grafana datasource service URLs configurable (`grafana-datasource-loki-url`, `grafana-datasource-mimir-url`, `grafana-datasource-mimir-alertmanager-url`, `grafana-datasource-mimir-cardinality-url`, `grafana-datasource-tempo-url`). Defaults match the existing hardcoded values, so no action is required for standard deployments.
+- Added `cronitor.graceSeconds`, `cronitor.schedule`, and `cronitor.realertInterval` Helm values (and corresponding CLI flags `--cronitor-grace-seconds`, `--cronitor-schedule`, `--cronitor-realert-interval`) to make Cronitor heartbeat monitor operational settings configurable. Defaults match the previous hardcoded values (`1800`, `"every 30 minutes"`, `"every 24 hours"`).
+- Added `http.rulerTimeout`, `http.alertmanagerTimeout`, and `http.mimirQueryTimeout` Helm values (and CLI flags `--ruler-http-timeout`, `--alertmanager-http-timeout`, `--mimir-query-timeout`) to make HTTP client timeouts configurable. Defaults: `30s`, `30s`, `2m`.
+- Added `grafana.clientRetries`, `grafana.adminSecretNamespace`, `grafana.adminSecretName`, `grafana.gatewayTLSSecretNamespace`, and `grafana.gatewayTLSSecretName` Helm values (and corresponding CLI flags) to make Grafana client settings configurable. Defaults match previous hardcoded values.
+- Added `defaultTenant` Helm value and `--default-tenant` CLI flag to make the default tenant ID configurable. Default: `"giantswarm"`.
+- Added `monitoring.mimirRemoteWriteTimeout`, `logging.lokiMaxBackoffPeriod`, `logging.lokiRemoteTimeout` Helm values (and CLI flags `--monitoring-mimir-remote-write-timeout`, `--logging-loki-max-backoff-period`, `--logging-loki-remote-timeout`) to make Alloy remote write timeouts and retry settings configurable. Defaults match previous hardcoded values (`60s`, `10m`, `60s`).
+- Added `otlp.batchSendBatchSize`, `otlp.batchMaxSize`, `otlp.batchTimeout` Helm values (and CLI flags `--otlp-batch-send-batch-size`, `--otlp-batch-max-size`, `--otlp-batch-timeout`) to make OTLP exporter batch settings configurable. Defaults match previous hardcoded values (`1024`, `1024`, `500ms`).
+
+### Changed
+
+- Updated `config/prometheus/monitor.yaml` documentation to clarify that insecureSkipVerify is for development only and point to the TLS patch for production use.
+- All Alloy collectors (metrics, logs, events) now always route to external hostnames via basic auth, removing the management cluster shortcut that used in-cluster service URLs. This makes management cluster behaviour consistent with workload clusters.
+- Tempo gRPC endpoint for the events collector is now stored in the auth secret (`tracing-otlp-url`) rather than baked into the Alloy config, consistent with Loki and Mimir endpoints.
+- Change all alloy log level to warn instead of info.
+- Dashboard ConfigMap webhook now validates that the referenced `GrafanaOrganization` CR exists at admission time (matched by `spec.displayName`), rejecting ConfigMaps that reference a non-existent organization instead of silently failing at reconcile time.
+
+### Fixed
+
+- Delete all Mimir and Loki ruler rules for every active tenant when a cluster is deleted, preventing stale rules from accumulating. Configured via `monitoring.ruler.url` and `logging.ruler.url`.
+
+### Removed
+
+- Removed `--logging-otlp-enabled` CLI flag and `logging.otlp.enabled` Helm value. OTLP log ingestion via the events collector is now always active when `logging.enabled=true`.
+- Removed `--monitoring-otlp-enabled` CLI flag and `monitoring.otlp.enabled` Helm value. OTLP metrics ingestion via the events collector is now always active when `monitoring.enabled=true`.
+- Remove legacy `giantswarm.io` labels and annotation support (`giantswarm.io/monitoring`, `giantswarm.io/network-monitoring`, `giantswarm.io/keda-authentication`, `giantswarm.io/keda-namespace`, `giantswarm.io/logging`, `giantswarm.io/tracing`) labels as we now only use the new ones under the `observability.giantswarm.io` domain.
+
+## [0.66.1] - 2026-03-19
+
+### Fixed
+
+- Fix alert url since we changed the Mimir Datasource name.
+
+## [0.66.0] - 2026-03-17
+
+### Changed
+
+- Prefix all GS-managed Grafana datasource display names with `GS ` (e.g. `GS Loki`, `GS Mimir`, `GS Tempo`, `GS Mimir Alertmanager`) to avoid name collisions with customer-created datasources. UIDs are unchanged, so existing dashboards are unaffected.
+- Enable exemplar trace ID destinations on the Mimir datasource when tracing is enabled, so exemplar dots in metric panels link directly to the corresponding trace in Tempo.
+
+## [0.65.0] - 2026-03-17
+
+### Added
+
+- Added CLAUDE.md with AI agent context: key file map, pkg/ package descriptions, and coding conventions loaded at session start; improved PR template with detailed per-area checklists.
+- Enable exemplar forwarding in the Alloy remote write pipeline (`monitoring.exemplars.enabled`, default `true`). Exemplars link metric data points to traces in Tempo, enabling trace-to-metrics and metrics-to-traces drill-downs in Grafana. Requires Mimir to have exemplar storage enabled (`max_global_exemplars_per_user > 0`).
+- Validate alertmanager configs via webhook. May generate errors if existing configs are broken.
+- Alertmanager config secrets now receive a finalizer (`observability.giantswarm.io/alertmanager-config`) so the corresponding Mimir Alertmanager configuration is deleted when the secret is removed. Previously, deleting a secret left orphaned config in Mimir.
+- Comprehensive documentation overhaul: rewrote README with architecture tables and feature flags; added CONTRIBUTING.md with dev setup, coding conventions, and testing guide; added per-feature docs (alertmanager.md, dashboards.md, grafana-organization.md, cluster.md, metrics.md); consolidated operator metrics into a single reference page.
+- Add `otelcol.processor.batch` to the OTLP traces pipeline (`send_batch_size=1024`, `send_batch_max_size=1024`, `timeout=500ms`) for efficient export to Tempo. Warning: may increase RAM usage for alloy-events.
+- Add OTLP metrics ingestion to the events collector (`monitoring.otlp.enabled`, default `true`). When enabled alongside `monitoring.enabled`, the alloy-events collector accepts OTLP metrics on the existing otlp-gateway Service (ports 4317/4318) and routes them per-tenant to Mimir via `/otlp/v1/metrics`. Requires observability-bundle ≥ 1.11.0. External gateway routes (Mimir HTTPRoute `/otlp/v1/metrics`) must be updated before enabling on workload clusters.
+- Add OTLP logs ingestion to the events collector (`logging.otlp.enabled`, default `true`). When enabled alongside `logging.enabled`, alloy-events accepts OTLP logs on the existing otlp-gateway Service and routes them per-tenant to Loki via `/otlp/v1/logs`. Requires `loki.loki.limits_config.allow_structured_metadata: true` and observability-bundle ≥ 1.11.0. External gateway routes must be updated before enabling on workload clusters.
+- Add `X-Scope-OrgID` HTTP/gRPC header as a second tenant source alongside the existing `observability.giantswarm.io/tenant` pod label, for all OTLP signal pipelines (traces, metrics, logs) 
+
+### Changed 
+
+- Move network monitoring Helm value from `logging.enableNetworkMonitoring` to `monitoring.enableNetworkMonitoring`. The old value is still accepted for backward compatibility but is deprecated and will be removed in a future release.
+- Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
+- Migrated cluster feature toggle labels from `giantswarm.io/*` to `observability.giantswarm.io/*` namespace while maintaining full compatibility
+  - `giantswarm.io/monitoring` → `observability.giantswarm.io/monitoring`
+  - `giantswarm.io/network-monitoring` → `observability.giantswarm.io/network-monitoring`
+  - `giantswarm.io/keda-authentication` → `observability.giantswarm.io/keda-authentication`
+  - `giantswarm.io/keda-namespace` → `observability.giantswarm.io/keda-namespace`
+  - `giantswarm.io/logging` → `observability.giantswarm.io/logging`
+  - `giantswarm.io/tracing` → `observability.giantswarm.io/tracing`
+
+### Fixed
+
+- Fix: heartbeat hasChanged bug where Notify field was silently ignored
+- Fix: missing Content-Type: application/yaml header on alertmanager configure request
+- Fix alloy-logs on management clusters with network monitoring enabled: when `hostNetwork: true` is set (required for Beyla eBPF), internal Kubernetes service DNS names (`loki-gateway.loki.svc`, `loki-backend.loki.svc`) are unreachable from the host network namespace. The Alloy config now uses external URLs from the credentials secret and the Cilium network policy uses `world` instead of `toEndpoints` rules in this configuration.
+
+## [0.64.0] - 2026-03-11
+
+### Added
+
+- Enable independent configuration of logging and network monitoring features. Log collection now works when logging is enabled, and network monitoring collection can be enabled separately from logging for flexible per-cluster observability configurations.
+- Enable independent configuration of logging and tracing features. Events collection now works when logging is enabled, and tracing can be enabled separately from logging for flexible per-cluster observability configurations.
+
+### Fixed
+
+- Replace deprecated `nonsensitive()` builtin with `convert.nonsensitive()` in Alloy metrics and events templates (deprecated since Alloy v1.4 / PR#1516).
+- Fix `remote.kubernetes.secret "credentials"` block in logging Alloy template that was missing its closing brace when `LoggingEnabled` is true, causing an unclosed block and a duplicate inner block to be emitted instead.
+
+### Changed
+
+- Support Gateway API TLS certificate for Grafana client: the operator now tries `gateway-giantswarm-default-https-tls` in `envoy-gateway-system` first, falling back to the legacy `grafana-tls` secret in `monitoring`.
+- Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.
+- Expand alertmanager controller RBAC: add `patch` on secrets and `update` on `secrets/finalizers` to support finalizer management.
+- Remove unnecessary `create` and `delete` verbs from `cluster.x-k8s.io/clusters` RBAC — the operator only reconciles existing clusters, never creates or deletes them.
+- Remove unnecessary `delete` verb from `coordination.k8s.io/leases` RBAC — controller-runtime leader election only requires `create;get;update;patch` on leases, never `delete`.
+
+## [0.63.0] - 2026-03-05
+
+### Added
+
+- Support for Flux `HelmRelease` CRs alongside `App` CRs for the `observability-bundle`. The operator auto-detects per-cluster which CR type exists (tries `HelmRelease` first, falls back to `App`).
+
+## [0.62.0] - 2026-03-02
+
+### Changed
+
+- Use regexp-based customQuery for trace-to-log correlation
+
+## [0.61.0] - 2026-03-02
+
+### Added
+
+- Add support for organizing Grafana dashboards into folders and subfolders via the `observability.giantswarm.io/folder` annotation.
+
+## [0.60.0] - 2026-02-24
+
+### Changed
+
+- Enable network monitoring by default
+
+## [0.59.2] - 2026-02-12
+
+### Changed
+
+- Use `Chart.AppVersion` instead of `Chart.Version` for the image tag in the deployment template.
+- Change team annotation in `Chart.yaml` to OpenContainers format (`io.giantswarm.application.team`).
+
+### Removed
+
+- Remove `alloy-logs` and `alloy-events` reconciliation flags as the migration is over and we do not need them anymore.
+
+## [0.59.1] - 2026-02-12
+
+### Fixed
+
+- Fix the Tempo URL configured in alloy-events.
+
+## [0.59.0] - 2026-02-10
+
+### Added
+
+- Add KEDA `ClusterTriggerAuthentication` support for Mimir authentication. When the `giantswarm.io/keda-authentication: "true"` label is set on a cluster, a `giantswarm-mimir-auth` `ClusterTriggerAuthentication` and its backing credentials `Secret` are created in the KEDA operator namespace (defaults to `keda`, configurable via `giantswarm.io/keda-namespace` annotation). This enables KEDA `ScaledObjects` to query Mimir metrics with authentication.
+- Add `mimirQueryAPIURL` key to the `alloy-metrics` secret, providing a Prometheus-compatible Mimir query endpoint for use by KEDA.
+- Add generic `ExtraSecretObjects` pass-through in the agent configuration and shared secret template, allowing collectors to inject arbitrary Helm `extraObjects` YAML into the secret values.
+
+### Changed
+
+- Refactor `isClusterFeatureEnabled` to support both opt-in and opt-out models via a `defaultWhenMissing` parameter. Network monitoring and KEDA authentication use opt-in (disabled by default), while monitoring, logging, and tracing remain opt-out (enabled by default).
+- Move Mimir secret key constants from the metrics collector to `pkg/agent/common/keys.go` for reuse across packages.
+
+## [0.58.0] - 2026-02-04
+
+### Added
+
+- Add `ConfigurationRepository` interface in `pkg/agent` for managing agent (Alloy) configuration persistence with Kubernetes-based implementation. The repository now uses the shared secret template for generating agent secrets.
+- Add shared secret template infrastructure in `pkg/agent/common` to consolidate duplicate secret templates across metrics, logs, and events agents.
+
+### Fixed
+
+- Make Cronitor configuration optional since we don't set it for ephemeral MCs
+
+## [0.57.1] - 2026-01-21
+
+### Fixed
+
+- Fix auth password hash encoding by using base64 instead of hexadecimals.
+
+## [0.57.0] - 2026-01-19
+
+### Changed
+
+- Refactor tenant listing functionality into a repository interface pattern (`TenantRepository`) with Kubernetes implementation for better separation of concerns and testability.
+- Update monitoring alloy secret template to use map-based structure matching the events and logs secret patterns.
+- Move metrics, logs and events collectors from `pkg/monitoring/alloy` and `pkg/logging/alloy/{logs,events}` to `pkg/agent/collectors/{metrics,logs,events}` to consolidate agent-related code under a unified package structure.
+- Update Cronitor heartbeat API integration to use POST for monitor creation and PUT for updates, matching current API specification. Enhance error logging to include full request details (method, URL, request/response bodies) for better debugging.
+- Improve controller error handling to ensure independent reconciliation tasks run even when some fail.
+  - Return joined reconciliation errors instead of failing fast on the first error.
+  - Moved Alloy reconciliation into reconcileAlloyService
+  - Move Dashboard validation into configuration and deletion loops
+  - Add cluster controller RateLimiter to limit retries to 5mn
+- Change auth password hashing algorithm from bcrypt to sha1.
+- Allow alloy-metrics to go up to 12GB RAM requests
+
+## [0.56.0] - 2026-01-12
+
+### Added
+
+- Add logging configuration flags for workload cluster log collection: `--logging-default-namespaces`, `--logging-enable-node-filtering`, `--logging-enable-network-monitoring`, `--logging-include-events-from-namespaces`, and `--logging-exclude-events-from-namespaces`.
+- Add logging configuration section to Helm chart values for controlling log collection behavior.
+- Add support for `alloy-events` configuration
+- Add support for `alloy-logs` configuration
+
+### Changed
+
+- Change flag parsing from flag default library to `pflag`
+
+### Removed
+
+- Remove tenant cleanup from the trace resource attribute so we can count the number of individual trace sources.
+
+## [0.55.0] - 2026-01-05
+
+### Changed
+
+- Replace business hours inhibition with routing rules
+
 ### Fixed
 
 - Filter alerting tenants to exclude the `giantswarm` tenant from alerting operations unless the organization is named "Giant Swarm". This prevents organizations with the giantswarm tenant alongside their own tenants from accessing or modifying the Giant Swarm alerting configuration.
@@ -123,7 +437,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add GitHub webhook receivers for team-based alert routing to create GitHub issues for alerts with severity "ticket"
- 
+
 ### Fixed
 
 - Fixed pagerdutyToken config
@@ -823,7 +1137,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.54.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.71.0...HEAD
+[0.71.0]: https://github.com/giantswarm/observability-operator/compare/v0.70.0...v0.71.0
+[0.70.0]: https://github.com/giantswarm/observability-operator/compare/v0.69.0...v0.70.0
+[0.69.0]: https://github.com/giantswarm/observability-operator/compare/v0.68.0...v0.69.0
+[0.68.0]: https://github.com/giantswarm/observability-operator/compare/v0.67.2...v0.68.0
+[0.67.2]: https://github.com/giantswarm/observability-operator/compare/v0.67.1...v0.67.2
+[0.67.1]: https://github.com/giantswarm/observability-operator/compare/v0.67.0...v0.67.1
+[0.67.0]: https://github.com/giantswarm/observability-operator/compare/v0.66.1...v0.67.0
+[0.66.1]: https://github.com/giantswarm/observability-operator/compare/v0.66.0...v0.66.1
+[0.66.0]: https://github.com/giantswarm/observability-operator/compare/v0.65.0...v0.66.0
+[0.65.0]: https://github.com/giantswarm/observability-operator/compare/v0.64.0...v0.65.0
+[0.64.0]: https://github.com/giantswarm/observability-operator/compare/v0.63.0...v0.64.0
+[0.63.0]: https://github.com/giantswarm/observability-operator/compare/v0.62.0...v0.63.0
+[0.62.0]: https://github.com/giantswarm/observability-operator/compare/v0.61.0...v0.62.0
+[0.61.0]: https://github.com/giantswarm/observability-operator/compare/v0.60.0...v0.61.0
+[0.60.0]: https://github.com/giantswarm/observability-operator/compare/v0.59.2...v0.60.0
+[0.59.2]: https://github.com/giantswarm/observability-operator/compare/v0.59.1...v0.59.2
+[0.59.1]: https://github.com/giantswarm/observability-operator/compare/v0.59.0...v0.59.1
+[0.59.0]: https://github.com/giantswarm/observability-operator/compare/v0.58.0...v0.59.0
+[0.58.0]: https://github.com/giantswarm/observability-operator/compare/v0.57.1...v0.58.0
+[0.57.1]: https://github.com/giantswarm/observability-operator/compare/v0.57.0...v0.57.1
+[0.57.0]: https://github.com/giantswarm/observability-operator/compare/v0.56.0...v0.57.0
+[0.56.0]: https://github.com/giantswarm/observability-operator/compare/v0.55.0...v0.56.0
+[0.55.0]: https://github.com/giantswarm/observability-operator/compare/v0.54.0...v0.55.0
 [0.54.0]: https://github.com/giantswarm/observability-operator/compare/v0.53.0...v0.54.0
 [0.53.0]: https://github.com/giantswarm/observability-operator/compare/v0.52.0...v0.53.0
 [0.52.0]: https://github.com/giantswarm/observability-operator/compare/v0.51.2...v0.52.0

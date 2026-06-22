@@ -1,0 +1,268 @@
+logging {
+  level  = "warn"
+  format = "logfmt"
+}
+
+remote.kubernetes.secret "credentials" {
+  name      = "{{ .AlloySecretName }}"
+  namespace = "{{ .AlloySecretNamespace }}"
+}
+
+{{- range .Tenants }}
+// load rules for tenant {{ . }}
+mimir.rules.kubernetes "{{ . }}" {
+  address = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRulerAPIURLKey }}"])
+  basic_auth {
+    username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirUsernameKey }}"])
+    password = remote.kubernetes.secret.credentials.data["{{ $.MimirPasswordKey }}"]
+  }
+  {{- if $.HasCABundle }}
+  tls_config {
+    ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
+  }
+  {{- end }}
+  {{- if $.IsWorkloadCluster }}
+  extra_query_matchers {
+    matcher {
+        name       = "cluster_id"
+        match_type = "="
+        value      = "{{ $.ClusterID }}"
+    }
+  }
+  {{- end }}
+  mimir_namespace_prefix = "{{ $.ClusterID }}"
+  tenant_id = "{{ . }}"
+  rule_selector {
+      match_labels = {
+        "observability.giantswarm.io/tenant" = "{{ . }}",
+      }
+      match_expression {
+        key = "application.giantswarm.io/prometheus-rule-kind"
+        operator = "NotIn"
+        values = ["loki"]
+      }
+  }
+}
+{{- end }}
+
+// we create a podmonitor and servicemonitor component per tenant because we cannot read pod/service monitor labels through relabelling.
+{{- range .Tenants }}
+// remote write pipeline configuration for tenant {{ . }}
+{{- if eq . $.DefaultTenantID }}
+prometheus.operator.servicemonitors "{{ . }}_legacy" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  selector {
+    match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "DoesNotExist"
+    }
+  }
+  // Add the target's app.kubernetes.io/instance value into the metrics's app label
+  // In the scope of servicemonitors the app.kubernetes.io/instance might be
+  // exposed by 3 different Kubernetes resources.
+  // The precedences order from highest to lowest is: Pod, Endpoint, Service.
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.operator.podmonitors "{{ . }}_legacy" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  selector {
+    match_expression {
+      key      = "application.giantswarm.io/team"
+      operator = "Exists"
+    }
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "DoesNotExist"
+    }
+  }
+  // Add the Pod app.kubernetes.io/instance value into the metrics's app label
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+{{ end }}
+
+prometheus.operator.servicemonitors "{{ . }}" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["{{ . }}"]
+    }
+  }
+  // Add the target's app.kubernetes.io/instance value into the metrics's app label
+  // In the scope of servicemonitors the app.kubernetes.io/instance might be
+  // exposed by 3 different Kubernetes resources.
+  // The precedences order from highest to lowest is: Pod, Endpoint, Service.
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_endpoints_label_app_kubernetes_io_instance"]
+  }
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.operator.podmonitors "{{ . }}" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["{{ . }}"]
+    }
+  }
+  // Add the Pod app.kubernetes.io/instance value into the metrics's app label
+  rule {
+    action         =  "replace"
+    regex          =  "(.+)"
+    target_label   =  "app"
+    source_labels  =  ["__meta_kubernetes_pod_label_app_kubernetes_io_instance"]
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+
+{{- if $.IsSupportingScrapeConfigs }}
+prometheus.operator.scrapeconfigs "{{ . }}" {
+  forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  selector {
+    match_expression {
+      key      = "observability.giantswarm.io/tenant"
+      operator = "In"
+      values   = ["{{ . }}"]
+    }
+  }
+  scrape {
+    default_scrape_interval = "60s"
+  }
+  clustering {
+    enabled = true
+  }
+}
+{{- end }}
+
+// remote write pipeline configuration for tenant {{ . }}
+prometheus.remote_write "{{ . }}" {
+  endpoint {
+    name           = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPINameKey }}"])
+    enable_http2   = false
+    remote_timeout = "{{ $.MimirRemoteWriteTimeout }}"
+    send_exemplars = {{ $.ExemplarsEnabled }}
+
+    url = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirRemoteWriteAPIURLKey }}"])
+    basic_auth {
+      username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.MimirUsernameKey }}"])
+      password = remote.kubernetes.secret.credentials.data["{{ $.MimirPasswordKey }}"]
+    }
+
+    headers = {
+      "X-Scope-OrgID" = "{{ . }}",
+    }
+    {{- if $.HasCABundle }}
+    tls_config {
+      ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
+    }
+    {{- end }}
+    {{- if or $.QueueConfigBatchSendDeadline $.QueueConfigCapacity $.QueueConfigMaxBackoff $.QueueConfigMaxSamplesPerSend $.QueueConfigMaxShards $.QueueConfigMinBackoff $.QueueConfigMinShards $.QueueConfigRetryOnHttp429 $.QueueConfigSampleAgeLimit }}
+    queue_config {
+      {{- if $.QueueConfigBatchSendDeadline }}
+      batch_send_deadline = "{{ $.QueueConfigBatchSendDeadline }}"
+      {{- end }}
+      {{- if $.QueueConfigCapacity }}
+      capacity             = {{ $.QueueConfigCapacity }}
+      {{- end }}
+      {{- if $.QueueConfigMaxBackoff }}
+      max_backoff          = "{{ $.QueueConfigMaxBackoff }}"
+      {{- end }}
+      {{- if $.QueueConfigMaxSamplesPerSend }}
+      max_samples_per_send = {{ $.QueueConfigMaxSamplesPerSend }}
+      {{- end }}
+      {{- if $.QueueConfigMaxShards }}
+      max_shards           = {{ $.QueueConfigMaxShards }}
+      {{- end }}
+      {{- if $.QueueConfigMinBackoff }}
+      min_backoff          = "{{ $.QueueConfigMinBackoff }}"
+      {{- end }}
+      {{- if $.QueueConfigMinShards }}
+      min_shards           = {{ $.QueueConfigMinShards }}
+      {{- end }}
+      {{- if $.QueueConfigRetryOnHttp429 }}
+      retry_on_http_429    = {{ $.QueueConfigRetryOnHttp429 }}
+      {{- end }}
+      {{- if $.QueueConfigSampleAgeLimit }}
+      sample_age_limit     = "{{ $.QueueConfigSampleAgeLimit }}"
+      {{- end }}
+    }
+    {{- end }}
+  }
+  wal {
+    truncate_frequency = "{{ $.WALTruncateFrequency }}"
+  }
+  external_labels = {
+    {{- range $key, $value := $.ExternalLabels }}
+    "{{ $key }}" = "{{ $value }}",
+    {{- end }}
+  }
+}
+
+{{ end }}

@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
 )
@@ -16,18 +16,7 @@ const (
 	// ServicePriorityLabel is the label used to determine the priority of a service.
 	servicePriorityLabel = "giantswarm.io/service-priority"
 
-	PriorityClassName = "giantswarm-critical"
-
-	QueueConfigCapacity          = 30000
-	QueueConfigMaxSamplesPerSend = 150000
-	QueueConfigMaxShards         = 10
-	QueueConfigSampleAgeLimit    = "30m"
-
-	RemoteWriteName              = "mimir"
-	MimirBaseURLFormat           = "https://mimir.%s"
-	RemoteWriteEndpointURLFormat = MimirBaseURLFormat + "/api/v1/push"
-	RemoteWriteTimeout           = "60s"
-
+	// TODO move elsewhere
 	OrgIDHeader = "X-Scope-OrgID"
 )
 

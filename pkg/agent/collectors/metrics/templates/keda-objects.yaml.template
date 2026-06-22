@@ -1,0 +1,29 @@
+- apiVersion: keda.sh/v1alpha1
+  kind: ClusterTriggerAuthentication
+  metadata:
+    name: {{ .SecretName }}
+    labels:
+      app.kubernetes.io/managed-by: observability-operator
+      giantswarm.io/service-type: managed
+  spec:
+    secretTargetRef:
+      - parameter: username
+        name: {{ .SecretName }}
+        key: {{ .UsernameKey }}
+      - parameter: password
+        name: {{ .SecretName }}
+        key: {{ .PasswordKey }}
+{{- if .Namespace }}
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: {{ .SecretName }}
+    namespace: {{ .Namespace }}
+    labels:
+      app.kubernetes.io/managed-by: observability-operator
+      giantswarm.io/service-type: managed
+  type: Opaque
+  stringData:
+    {{ .UsernameKey }}: "{{ .Username }}"
+    {{ .PasswordKey }}: "{{ .Password }}"
+{{- end }}

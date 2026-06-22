@@ -3,14 +3,36 @@ package grafana
 import "fmt"
 
 const (
-	// datasourceUIDPrefix is the prefix for all datasources managed by the operator
-	datasourceUIDPrefix       = "gs-"
+	// datasourceUIDPrefix is the prefix for all datasource UIDs managed by the operator
+	datasourceUIDPrefix = "gs-"
+	// datasourceNamePrefix is the prefix for all datasource display names managed by the operator
+	datasourceNamePrefix      = "GS "
 	datasourceProxyAccessMode = "proxy"
 
-	// traceIDRegex is a regular expression pattern that matches trace IDs in log lines.
-	// It matches variations like: traceId, trace_id, TraceID, TRACE_ID with either colon or equals separator.
-	// Example matches: traceId=abc123, trace_id:def456, TraceID="ghi789"
+	// traceIDRegex is a regular expression pattern that matches trace IDs in raw log lines.
+	// It handles all common field name conventions across languages and frameworks:
+	//   - snake_case:  trace_id  (Python, Ruby, OpenTelemetry default)
+	//   - camelCase:   traceId   (Java, JavaScript)
+	//   - PascalCase:  TraceId   (C#)
+	//   - Go acronym:  TraceID   (Go)
+	// Supports both colon (:) and equals (=) separators, with an optional quote
+	// before the separator to handle JSON key formatting ("trace_id":value).
+	// Used by Loki derivedFields (Loki → Tempo direction) and as the basis for
+	// traceToLogsQuery (Tempo → Loki direction).
 	traceIDRegex = "[tT]race_?[Ii][dD]\"?[:=](\\w+)"
+
+	// traceToLogsQuery is the LogQL query used for Tempo → Loki trace correlation.
+	// It uses | regexp with the same pattern as traceIDRegex (adapted with a named capture group)
+	// to extract the trace ID from raw log lines regardless of format (JSON, logfmt, plain text)
+	// and field name casing (trace_id, traceId, TraceId, TraceID, etc.).
+	//
+	// Using | regexp instead of | json + label filters is intentional:
+	//   - | json only works for JSON-formatted logs and only after JSON is parsed
+	//   - | regexp operates directly on raw log lines, making it format-agnostic
+	//   - It handles all field name variants covered by traceIDRegex in one pass
+	//   - Lines that do not contain a matching trace ID field are excluded naturally
+	//     (regexp extraction yields an empty label, which never equals the span trace ID)
+	traceToLogsQuery = `{${__tags}} | regexp ` + "`" + `[tT]race_?[Ii][dD]"?[:=](?P<trace_id>\w+)` + "`" + ` | trace_id="${__span.traceId}"`
 )
 
 var (
@@ -18,6 +40,12 @@ var (
 	MimirDatasourceUID             = fmt.Sprintf("%smimir", datasourceUIDPrefix)
 	MimirAlertmanagerDatasourceUID = fmt.Sprintf("%smimir-alertmanager", datasourceUIDPrefix)
 	TempoDatasourceUID             = fmt.Sprintf("%stempo", datasourceUIDPrefix)
+
+	LokiDatasourceName              = datasourceNamePrefix + "Loki"
+	MimirDatasourceName             = datasourceNamePrefix + "Mimir"
+	MimirAlertmanagerDatasourceName = datasourceNamePrefix + "Mimir Alertmanager"
+	TempoDatasourceName             = datasourceNamePrefix + "Tempo"
+	MimirCardinalityDatasourceName  = datasourceNamePrefix + "Mimir Cardinality"
 )
 
 // Predefined datasources
@@ -30,7 +58,6 @@ var (
 	DatasourceMimirAlertmanager = func() Datasource {
 		return Datasource{
 			Type:   "alertmanager",
-			URL:    "http://mimir-alertmanager.mimir.svc:8080",
 			Access: datasourceProxyAccessMode,
 			JSONData: map[string]any{
 				"handleGrafanaManagedAlerts": false,
@@ -43,7 +70,6 @@ var (
 	DatasourceLoki = func() Datasource {
 		return Datasource{
 			Type:   "loki",
-			URL:    "http://loki-gateway.loki.svc",
 			Access: datasourceProxyAccessMode,
 		}
 	}
@@ -52,7 +78,6 @@ var (
 	DatasourceMimir = func() Datasource {
 		return Datasource{
 			Type:   "prometheus",
-			URL:    "http://mimir-gateway.mimir.svc/prometheus",
 			Access: datasourceProxyAccessMode,
 			JSONData: map[string]any{
 				// Cache matching queries on metadata endpoints within 10 minutes to improve performance
@@ -74,9 +99,8 @@ var (
 	DatasourceMimirCardinality = func() Datasource {
 		return Datasource{
 			Type:   "marcusolsson-json-datasource",
-			Name:   "Mimir Cardinality",
+			Name:   MimirCardinalityDatasourceName,
 			UID:    fmt.Sprintf("%smimir-cardinality", datasourceUIDPrefix),
-			URL:    "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/",
 			Access: datasourceProxyAccessMode,
 		}
 	}
@@ -86,7 +110,6 @@ var (
 		return Datasource{
 			Type: "tempo",
 			// We connect to the Tempo Query Frontend service to support streaming
-			URL:    "http://tempo-query-frontend.tempo.svc:3200",
 			Access: datasourceProxyAccessMode,
 			JSONData: map[string]any{
 				// Service Map configuration - generates visual service dependency maps
@@ -102,20 +125,23 @@ var (
 					"enabled": true,
 				},
 
-				// Streaming configuration for better performance with metrics
+				// Streaming is disabled for metrics and search queries.
 				"streamingEnabled": map[string]any{
-					"metrics": true,
-					"search":  true,
+					"metrics": false,
+					"search":  false,
 				},
 
 				// Traces to Logs correlation V2 - allows jumping from trace spans
-				// to related log entries in Loki for better debugging context
-				// Links to our specific Loki instance
+				// to related log entries in Loki for better debugging context.
+				// Links to our specific Loki instance.
+				// customQuery uses | regexp to match trace IDs across all log formats
+				// and field name conventions. See traceToLogsQuery for details.
 				"tracesToLogsV2": map[string]any{
 					"datasourceUid":      LokiDatasourceUID,
 					"spanStartTimeShift": "-10m",
 					"spanEndTimeShift":   "10m",
-					"filterByTraceID":    true,
+					"filterByTraceID":    false,
+					"customQuery":        traceToLogsQuery,
 				},
 
 				// Traces to Metrics correlation - allows jumping from trace spans

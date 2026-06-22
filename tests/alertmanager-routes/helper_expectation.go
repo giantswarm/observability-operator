@@ -40,58 +40,57 @@ type Expectation struct {
 // It does so by matching the Host and RequestURI of the expectation url against the request.
 // The expectation.body is partially matched against the request body.
 func AssertExpectation(expectation Expectation, records []httpRequest) error {
-	var (
-		err        error
-		matchFound *httpRequest
-	)
+	var matchFound *httpRequest
 
-	for _, r := range records {
-		err = assertExpectationRecord(expectation, r)
-		if err == nil {
-			matchFound = &r
+	for i := range records {
+		if err := assertExpectationRecord(expectation, records[i]); err == nil {
+			matchFound = &records[i]
 			break
 		}
 	}
 
 	if expectation.Negate {
 		if matchFound != nil {
-			return fmt.Errorf("==> unexpected matching request found\nURL: %s\nHeaders: %v\nBody: %s", matchFound.URL.String(), matchFound.Header, matchFound.BodyData)
+			return fmt.Errorf("unexpected matching request found\nURL: %s\nHeaders: %v\nBody: %s",
+				matchFound.URL.String(), matchFound.Header, matchFound.BodyData)
 		}
-
-		// Valid when the condition is negated and no match is found
 		return nil
 	}
 
 	if matchFound == nil {
-		return fmt.Errorf("==> no matching request found")
+		receivedURLs := make([]string, 0, len(records))
+		for _, r := range records {
+			receivedURLs = append(receivedURLs, r.URL.String())
+		}
+		return fmt.Errorf("no request matching URL %q found\nReceived URLs:\n  %s",
+			expectation.URL, strings.Join(receivedURLs, "\n  "))
 	}
 
-	// Valid when a match is found
 	return nil
 }
 
+// assertExpectationRecord checks a single record against an expectation.
+// When the URL matches, it continues to validate headers and body so the caller
+// receives a precise failure reason rather than a generic URL mismatch.
 func assertExpectationRecord(expectation Expectation, record httpRequest) error {
-	// Validate URL
-	if strings.Contains(record.URL.String(), expectation.URL) {
-
-		// Validate Headers
-		for k, v := range expectation.Headers {
-			if record.Header.Get(k) != v {
-				return fmt.Errorf("==> invalid %q header value, expected %q got %q", k, v, record.Header.Get(k))
-			}
-		}
-
-		// Validate body data
-		// Body data format for receiver can be found at https://github.com/grafana/prometheus-alertmanager/tree/main/notify
-		for _, part := range expectation.BodyParts {
-			if !strings.Contains(string(record.BodyData), part) {
-				return fmt.Errorf("==> invalid request body\n%s", string(record.BodyData))
-			}
-		}
-
-		// Expectation is valid
-		return nil
+	if !strings.Contains(record.URL.String(), expectation.URL) {
+		return fmt.Errorf("URL %q does not contain %q", record.URL.String(), expectation.URL)
 	}
 
-	return fmt.Errorf("==> invalid URL, expected %q got %q", expectation.URL, record.URL.String())
+	// Validate Headers
+	for k, v := range expectation.Headers {
+		if got := record.Header.Get(k); got != v {
+			return fmt.Errorf("header %q: expected %q, got %q", k, v, got)
+		}
+	}
+
+	// Validate body data.
+	// Body data format for receiver can be found at https://github.com/grafana/prometheus-alertmanager/tree/main/notify
+	for _, part := range expectation.BodyParts {
+		if !strings.Contains(string(record.BodyData), part) {
+			return fmt.Errorf("body does not contain %q\nFull body: %s", part, record.BodyData)
+		}
+	}
+
+	return nil
 }

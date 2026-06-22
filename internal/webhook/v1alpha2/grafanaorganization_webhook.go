@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	observabilityv1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
@@ -18,11 +17,10 @@ import (
 var grafanaorganizationlog = logf.Log.WithName("grafanaorganization-v1alpha2-resource")
 
 // SetupGrafanaOrganizationWebhookWithManager registers the webhook for GrafanaOrganization in the manager.
-func SetupGrafanaOrganizationWebhookWithManager(mgr ctrl.Manager) error {
-	err := ctrl.NewWebhookManagedBy(mgr).
-		For(&observabilityv1alpha2.GrafanaOrganization{}).
+func SetupGrafanaOrganizationWebhookWithManager(mgr manager.Manager) error {
+	err := ctrl.NewWebhookManagedBy(mgr, &observabilityv1alpha2.GrafanaOrganization{}).
 		WithValidator(&GrafanaOrganizationValidator{}).
-		WithCustomPath("/validate-v1alpha2-grafana-organization").
+		WithValidatorCustomPath("/validate-v1alpha2-grafana-organization").
 		Complete()
 	if err != nil {
 		return fmt.Errorf("failed to build grafanaorganization v1alpha2 webhook manager: %w", err)
@@ -39,34 +37,24 @@ func SetupGrafanaOrganizationWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:object:generate=false
 type GrafanaOrganizationValidator struct{}
 
-var _ webhook.CustomValidator = &GrafanaOrganizationValidator{}
+var _ admission.Validator[*observabilityv1alpha2.GrafanaOrganization] = &GrafanaOrganizationValidator{}
 
-// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type GrafanaOrganization.
-func (v *GrafanaOrganizationValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	grafanaorganization, ok := obj.(*observabilityv1alpha2.GrafanaOrganization)
-	if !ok {
-		return nil, fmt.Errorf("expected a GrafanaOrganization object but got %T", obj)
-	}
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type GrafanaOrganization.
+func (v *GrafanaOrganizationValidator) ValidateCreate(ctx context.Context, obj *observabilityv1alpha2.GrafanaOrganization) (admission.Warnings, error) {
+	grafanaorganizationlog.Info("Validation for GrafanaOrganization v1alpha2 upon creation", "name", obj.GetName())
 
-	grafanaorganizationlog.Info("Validation for GrafanaOrganization v1alpha2 upon creation", "name", grafanaorganization.GetName())
-
-	return nil, v.validateTenantConfigs(grafanaorganization.Spec.Tenants)
+	return nil, v.validateTenantConfigs(obj.Spec.Tenants)
 }
 
-// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type GrafanaOrganization.
-func (v *GrafanaOrganizationValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	grafanaorganization, ok := newObj.(*observabilityv1alpha2.GrafanaOrganization)
-	if !ok {
-		return nil, fmt.Errorf("expected a GrafanaOrganization object for the newObj but got %T", newObj)
-	}
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type GrafanaOrganization.
+func (v *GrafanaOrganizationValidator) ValidateUpdate(ctx context.Context, oldObj, newObj *observabilityv1alpha2.GrafanaOrganization) (admission.Warnings, error) {
+	grafanaorganizationlog.Info("Validation for GrafanaOrganization v1alpha2 upon update", "name", newObj.GetName())
 
-	grafanaorganizationlog.Info("Validation for GrafanaOrganization v1alpha2 upon update", "name", grafanaorganization.GetName())
-
-	return nil, v.validateTenantConfigs(grafanaorganization.Spec.Tenants)
+	return nil, v.validateTenantConfigs(newObj.Spec.Tenants)
 }
 
-// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type GrafanaOrganization.
-func (v *GrafanaOrganizationValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type GrafanaOrganization.
+func (v *GrafanaOrganizationValidator) ValidateDelete(ctx context.Context, obj *observabilityv1alpha2.GrafanaOrganization) (admission.Warnings, error) {
 	// We have nothing to validate on deletion
 	return nil, nil
 }

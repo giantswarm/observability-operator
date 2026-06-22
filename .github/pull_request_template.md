@@ -3,6 +3,5 @@
 
 ### Checklist
 
-- [ ] Update changelog in CHANGELOG.md.
-- [ ] Make sure the new features are scoped to supported observability-bundle versions (see `IsSupporting` booleans)
-- [ ] Follow deployment test procedure in the tests/manual_e2e directory and have a working branch.
+- [ ] `CHANGELOG.md` updated under `[Unreleased]`
+- [ ] Docs under `docs/` and `README.md` updated if the change affects operator behaviour, feature flags, CRD fields, exposed metrics, or configuration

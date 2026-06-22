@@ -23,10 +23,10 @@ import (
 	"github.com/prometheus/alertmanager/api/v2/models"
 	"github.com/prometheus/alertmanager/config"
 	commonconfig "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/giantswarm/observability-operator/pkg/alertmanager"
+	"github.com/giantswarm/observability-operator/pkg/alerting/alertmanager"
 	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
 )
@@ -74,7 +74,7 @@ type alertmanagerClient struct {
 	httpReceiverAddress string
 
 	alertmanagerAPIClient *client.AlertmanagerAPI
-	alertmanagerService   *alertmanager.Service
+	alertmanagerService   alertmanager.Service
 	httpClient            *http.Client
 }
 
@@ -104,7 +104,7 @@ func NewAlertmanagerClient(t *testing.T, alertmanagerURL *url.URL, tenantID, htt
 			},
 		})
 
-		amClient.alertmanagerService = &amConfigurationClient
+		amClient.alertmanagerService = amConfigurationClient
 	}
 
 	return amClient
@@ -152,12 +152,15 @@ func (a alertmanagerClient) Configure() error {
 
 	// Marshal the modifier alertmanager config back to yaml
 	// Remove the custom Marshaler of config.AlertmanagerConfig, which prodcues an invalid configuration with all secrets replaced with <redacted>.
-	amConfigContent, err = yaml.MarshalWithOptions(amConfig, yaml.CustomMarshaler(noSecretHidding), yaml.CustomMarshaler(noSecretURLHidding))
+	amConfigContent, err = yaml.MarshalWithOptions(amConfig, yaml.CustomMarshaler(noSecretHiding), yaml.CustomMarshaler(noSecretURLHiding))
 	if err != nil {
 		return fmt.Errorf("failed to marshal alertmanager configuration: %v", err)
 	}
 
-	templateFiles := make(map[string]string)
+	// Build a Secret that mirrors how the operator receives the configuration.
+	secretData := map[string][]byte{
+		alertmanager.AlertmanagerConfigKey: amConfigContent,
+	}
 	paths, err := filepath.Glob(filepath.Join(configDir, "*"+alertmanager.TemplatesSuffix))
 	if err != nil {
 		return fmt.Errorf("failed to list template files: %v", err)
@@ -167,11 +170,12 @@ func (a alertmanagerClient) Configure() error {
 		if err != nil {
 			return fmt.Errorf("failed to read template file %s: %v", path, err)
 		}
-		templateFiles[filepath.Base(path)] = string(content)
+		secretData[filepath.Base(path)] = content
 	}
+	secret := &corev1.Secret{Data: secretData}
 
 	// Configure Alertmanager
-	err = a.alertmanagerService.Configure(a.t.Context(), amConfigContent, templateFiles, a.TenantID)
+	err = a.alertmanagerService.ConfigureFromSecret(a.t.Context(), secret, a.TenantID)
 	if err != nil {
 		return fmt.Errorf("failed to upload configuration: %v", err)
 	}
@@ -253,12 +257,6 @@ func overrideWaitTimes(route *config.Route) {
 	}
 }
 
-func amDuration(d time.Duration) *model.Duration {
-	m := model.Duration(d)
-
-	return &m
-}
-
 type alertmanagerStatus struct {
 	Config map[string]string `json:"config"`
 }
@@ -320,21 +318,15 @@ func (a alertmanagerClient) waitForConfigPropagation() error {
 }
 
 func (a alertmanagerClient) UnConfigure() error {
-	req, err := http.NewRequest(http.MethodPost, a.alertmanagerURL.JoinPath("/multitenant_alertmanager/delete_tenant_config").String(), nil)
-	if err != nil {
-		return fmt.Errorf("failed to create unconfigure request: %v", err)
-	}
-
-	_, err = a.httpClient.Do(req)
-	return err
+	return a.alertmanagerService.DeleteForTenant(a.t.Context(), a.TenantID)
 }
 
-func noSecretHidding(c config.Secret) ([]byte, error) {
+func noSecretHiding(c config.Secret) ([]byte, error) {
 	s := fmt.Sprintf("%v", c)
 	return []byte(s), nil
 }
 
-func noSecretURLHidding(c *config.SecretURL) ([]byte, error) {
+func noSecretURLHiding(c *config.SecretURL) ([]byte, error) {
 	return []byte(c.URL.String()), nil
 }
 

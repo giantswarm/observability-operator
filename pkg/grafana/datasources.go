@@ -13,56 +13,44 @@ import (
 
 	common "github.com/giantswarm/observability-operator/pkg/common/monitoring"
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
+	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
 
-// ConfigureDatasources ensures the datasources for the given organization are up to date.
+// ConfigureDatasource ensures the datasources for the given organization are up to date.
 // It creates, updates, or deletes datasources as necessary to match the desired state.
 func (s *Service) ConfigureDatasource(ctx context.Context, organization *organization.Organization) ([]Datasource, error) {
 	logger := log.FromContext(ctx)
 
-	// Generate the desired datasources for the organization
 	desiredDatasources := s.generateDatasources(organization)
+	client := s.grafanaClient.WithOrgID(organization.ID())
 
-	// Configure Grafana client to use the correct organization
-	currentOrgID := s.grafanaClient.OrgID()
-	s.grafanaClient.WithOrgID(organization.ID())
-	defer s.grafanaClient.WithOrgID(currentOrgID)
-
-	// Fetch the currently configured datasources in Grafana
-	resp, err := s.grafanaClient.Datasources().GetDataSources()
+	resp, err := client.Datasources().GetDataSources()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get configured datasources: %w", err)
 	}
 
 	// Update or delete existing datasources
 	for _, currentDatasource := range resp.GetPayload() {
-		// Check if the current datasource exists in the desired datasources
 		index := slices.IndexFunc(desiredDatasources, func(d Datasource) bool {
 			return d.UID == currentDatasource.UID
 		})
 
 		if index >= 0 {
-			// Update the existing datasource
 			desiredDatasource := desiredDatasources[index]
 
 			logger.Info("updating datasource", "datasource", desiredDatasource.UID)
-			desiredDatasource, err = s.updateDatasource(desiredDatasource)
+			desiredDatasource, err = updateDatasource(client, desiredDatasource)
 			if err != nil {
 				return nil, err
 			}
-			// Set the ID of the updated datasource
 			desiredDatasources[index] = desiredDatasource
 			logger.Info("updated datasource", "datasource", desiredDatasource.UID)
-		} else {
-			if strings.HasPrefix(currentDatasource.UID, datasourceUIDPrefix) {
-				// Delete the datasource as it is no longer desired
-				logger.Info("deleting datasource", "datasource", currentDatasource.UID)
-				err := s.deleteDatasource(currentDatasource.UID)
-				if err != nil {
-					return nil, err
-				}
-				logger.Info("deleted datasource", "datasource", currentDatasource.UID)
+		} else if strings.HasPrefix(currentDatasource.UID, datasourceUIDPrefix) {
+			logger.Info("deleting datasource", "datasource", currentDatasource.UID)
+			if err := deleteDatasource(client, currentDatasource.UID); err != nil {
+				return nil, err
 			}
+			logger.Info("deleted datasource", "datasource", currentDatasource.UID)
 		}
 	}
 
@@ -70,16 +58,15 @@ func (s *Service) ConfigureDatasource(ctx context.Context, organization *organiz
 	for index := range desiredDatasources {
 		desiredDatasource := desiredDatasources[index]
 
-		// If the datasource ID is 0, it means it does not exist yet and needs to be created
-		// We already took care of updating existing datasources ID in the previous loop
+		// ID == 0 means it doesn't exist yet — the update loop above already
+		// stamped IDs on the ones that did.
 		if desiredDatasource.ID == 0 {
 			logger.Info("creating datasource", "datasource", desiredDatasource.UID)
-			desiredDatasource, err = s.createDatasource(desiredDatasource)
+			desiredDatasource, err = createDatasource(client, desiredDatasource)
 			if err != nil {
 				return nil, err
 			}
 			logger.Info("datasource created", "datasource", desiredDatasource.UID)
-			// Set the ID of the created datasource
 			desiredDatasources[index] = desiredDatasource
 		}
 	}
@@ -99,8 +86,9 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 
 	// Add Loki datasource for multi-tenant data reading
 	lokiDatasource := DatasourceLoki().Merge(Datasource{
-		Name: "Loki",
+		Name: LokiDatasourceName,
 		UID:  LokiDatasourceUID,
+		URL:  s.cfg.Grafana.Datasources.LokiURL,
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
 			"manageAlerts":    len(alertingTenants) == 1,
@@ -129,9 +117,10 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 	datasources = append(datasources, lokiDatasource)
 
 	// Add Mimir datasource for multi-tenant data reading
-	datasources = append(datasources, DatasourceMimir().Merge(Datasource{
-		Name:      "Mimir",
+	mimirDatasource := DatasourceMimir().Merge(Datasource{
+		Name:      MimirDatasourceName,
 		UID:       MimirDatasourceUID,
+		URL:       s.cfg.Grafana.Datasources.MimirURL,
 		IsDefault: true,
 		JSONData: map[string]any{
 			"httpHeaderName1": common.OrgIDHeader,
@@ -140,20 +129,36 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		SecureJSONData: map[string]string{
 			"httpHeaderValue1": multiTenantIDsHeaderValue,
 		},
-	}))
+	})
+
+	// Add tracing integration if tracing is enabled
+	if s.cfg.Tracing.Enabled {
+		// Add exemplar destinations for Mimir to Tempo integration
+		mimirDatasource.JSONData["exemplarTraceIdDestinations"] = []map[string]any{
+			{
+				"name":            "traceID",
+				"datasourceUid":   TempoDatasourceUID,
+				"urlDisplayLabel": "View in Tempo",
+			},
+		}
+	}
+
+	datasources = append(datasources, mimirDatasource)
 
 	// Add Tempo datasource - only if tracing is enabled
 	if s.cfg.Tracing.Enabled {
-		datasources = append(datasources, DatasourceTempo().Merge(Datasource{
-			Name: "Tempo",
+		tempoDatasource := DatasourceTempo().Merge(Datasource{
+			Name: TempoDatasourceName,
 			UID:  TempoDatasourceUID,
+			URL:  s.cfg.Grafana.Datasources.TempoURL,
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
 			},
 			SecureJSONData: map[string]string{
 				"httpHeaderValue1": multiTenantIDsHeaderValue,
 			},
-		}))
+		})
+		datasources = append(datasources, tempoDatasource)
 	}
 
 	// 2. Create per-tenant datasources ONLY for alerting-enabled tenants
@@ -162,8 +167,9 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		for _, tenant := range alertingTenants {
 			// Per-tenant Loki datasource for log viewing and alerting
 			lokiPerTenantDatasource := DatasourceLoki().Merge(Datasource{
-				Name: fmt.Sprintf("Loki (%s)", tenant.Name),
+				Name: fmt.Sprintf("%s (%s)", LokiDatasourceName, tenant.Name),
 				UID:  fmt.Sprintf("%s-%s", LokiDatasourceUID, tenant.Name),
+				URL:  s.cfg.Grafana.Datasources.LokiURL,
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
 					"manageAlerts":    true,
@@ -190,9 +196,10 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 			datasources = append(datasources, lokiPerTenantDatasource)
 
 			// Per-tenant Mimir datasource for rules management
-			datasources = append(datasources, DatasourceMimir().Merge(Datasource{
-				Name: fmt.Sprintf("Mimir (%s)", tenant.Name),
+			mimirPerTenantDatasource := DatasourceMimir().Merge(Datasource{
+				Name: fmt.Sprintf("%s (%s)", MimirDatasourceName, tenant.Name),
 				UID:  fmt.Sprintf("%s-%s", MimirDatasourceUID, tenant.Name),
+				URL:  s.cfg.Grafana.Datasources.MimirURL,
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
 					"manageAlerts":    true,
@@ -200,12 +207,25 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 				SecureJSONData: map[string]string{
 					"httpHeaderValue1": tenant.Name,
 				},
-			}))
+			})
+
+			if s.cfg.Tracing.Enabled {
+				mimirPerTenantDatasource.JSONData["exemplarTraceIdDestinations"] = []map[string]any{
+					{
+						"name":            "traceID",
+						"datasourceUid":   TempoDatasourceUID,
+						"urlDisplayLabel": "View in Tempo",
+					},
+				}
+			}
+
+			datasources = append(datasources, mimirPerTenantDatasource)
 
 			// Per-tenant Alertmanager datasource for alerts management
 			datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
-				Name: fmt.Sprintf("Mimir Alertmanager (%s)", tenant.Name),
+				Name: fmt.Sprintf("%s (%s)", MimirAlertmanagerDatasourceName, tenant.Name),
 				UID:  fmt.Sprintf("%s-%s", MimirAlertmanagerDatasourceUID, tenant.Name),
+				URL:  s.cfg.Grafana.Datasources.MimirAlertmanagerURL,
 				JSONData: map[string]any{
 					"httpHeaderName1": common.OrgIDHeader,
 				},
@@ -219,8 +239,9 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		tenant := alertingTenants[0]
 		// Alertmanager datasource for alerts management
 		datasources = append(datasources, DatasourceMimirAlertmanager().Merge(Datasource{
-			Name: "Mimir Alertmanager",
+			Name: MimirAlertmanagerDatasourceName,
 			UID:  MimirAlertmanagerDatasourceUID,
+			URL:  s.cfg.Grafana.Datasources.MimirAlertmanagerURL,
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
 			},
@@ -234,6 +255,7 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 	if org.Name() == organization.SharedOrg.Name() {
 		// Add Mimir Cardinality datasources to the "Shared Org"
 		datasources = append(datasources, DatasourceMimirCardinality().Merge(Datasource{
+			URL: s.cfg.Grafana.Datasources.MimirCardinalityURL,
 			JSONData: map[string]any{
 				"httpHeaderName1": common.OrgIDHeader,
 			},
@@ -248,8 +270,8 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 
 // createDatasource creates the given datasource in Grafana.
 // It returns the created datasource with its ID set.
-func (s *Service) createDatasource(datasource Datasource) (Datasource, error) {
-	created, err := s.grafanaClient.Datasources().AddDataSource(&models.AddDataSourceCommand{
+func createDatasource(client grafanaclient.GrafanaClient, datasource Datasource) (Datasource, error) {
+	created, err := client.Datasources().AddDataSource(&models.AddDataSourceCommand{
 		UID:            datasource.UID,
 		Name:           datasource.Name,
 		Type:           datasource.Type,
@@ -275,8 +297,8 @@ func (s *Service) createDatasource(datasource Datasource) (Datasource, error) {
 // updateDatasource updates the given datasource in Grafana.
 // The datasource is identified by its UID.
 // It returns the updated datasource with its ID set.
-func (s *Service) updateDatasource(datasource Datasource) (Datasource, error) {
-	resp, err := s.grafanaClient.Datasources().UpdateDataSourceByUID(datasource.UID, &models.UpdateDataSourceCommand{
+func updateDatasource(client grafanaclient.GrafanaClient, datasource Datasource) (Datasource, error) {
+	resp, err := client.Datasources().UpdateDataSourceByUID(datasource.UID, &models.UpdateDataSourceCommand{
 		UID:            datasource.UID,
 		Name:           datasource.Name,
 		Type:           datasource.Type,
@@ -301,8 +323,8 @@ func (s *Service) updateDatasource(datasource Datasource) (Datasource, error) {
 
 // deleteDatasource deletes the datasource with the given UID.
 // If the datasource does not exist, no error is returned.
-func (s *Service) deleteDatasource(uid string) error {
-	_, err := s.grafanaClient.Datasources().DeleteDataSourceByUID(uid)
+func deleteDatasource(client grafanaclient.GrafanaClient, uid string) error {
+	_, err := client.Datasources().DeleteDataSourceByUID(uid)
 	if err != nil {
 		var notFound *datasources.DeleteDataSourceByUIDNotFound
 		if !errors.As(err, &notFound) {

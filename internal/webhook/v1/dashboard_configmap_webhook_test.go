@@ -1,5 +1,5 @@
 /*
-Copyright 2025.
+Copyright 2026.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/giantswarm/observability-operator/internal/labels"
 	"github.com/giantswarm/observability-operator/internal/mapper"
 )
 
@@ -34,6 +35,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		validator *DashboardConfigMapValidator
 		obj       *corev1.ConfigMap
 		oldObj    *corev1.ConfigMap
+		v2Obj     *corev1.ConfigMap
 	)
 
 	BeforeEach(func() {
@@ -49,10 +51,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 				Name:      "test-dashboard",
 				Namespace: "default",
 				Labels: map[string]string{
-					"app.giantswarm.io/kind": "dashboard",
+					labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 				},
 				Annotations: map[string]string{
-					"observability.giantswarm.io/organization": "test-org",
+					labels.GrafanaOrganizationKey: "test-org",
 				},
 			},
 			Data: map[string]string{
@@ -70,6 +72,16 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			"uid": "test-dashboard",
 			"title": "Old Test Dashboard",
 			"panels": []
+		}`
+
+		// Create a Grafana Dashboard (v2) dashboard ConfigMap for v2-specific tests.
+		// Shares the same labels/annotations as obj; only the dashboard body differs.
+		v2Obj = obj.DeepCopy()
+		v2Obj.Data["dashboard.json"] = `{
+			"apiVersion": "dashboard.grafana.app/v2",
+			"kind": "Dashboard",
+			"metadata": {"name": "gs_cluster-overview"},
+			"spec": {"title": "Cluster Overview"}
 		}`
 	})
 
@@ -95,7 +107,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "configmap-wrong-kind",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "not-dashboard",
+						labels.DashboardSelectorLabelName: "not-dashboard",
 					},
 				},
 			}
@@ -140,24 +152,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Should validate object type correctly", func() {
-			By("Testing with wrong object type on create")
-			wrongObj := &corev1.Secret{}
-			_, err := validator.ValidateCreate(ctx, wrongObj)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a ConfigMap object but got"))
-
-			By("Testing with wrong object type on update")
-			_, err = validator.ValidateUpdate(ctx, wrongObj, wrongObj)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a ConfigMap object for the newObj but got"))
-		})
-
 		It("Should handle edge cases in webhook validation", func() {
-			By("Testing with nil object")
-			_, err := validator.ValidateCreate(ctx, nil)
-			Expect(err).To(HaveOccurred())
-
 			By("Testing with ConfigMap containing very large dashboard JSON")
 			largeConfigMap := obj.DeepCopy()
 			// Create a valid JSON with many panels
@@ -171,7 +166,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			largeJSON += `]}`
 			largeConfigMap.Data["dashboard.json"] = largeJSON
 
-			_, err = validator.ValidateCreate(ctx, largeConfigMap)
+			_, err := validator.ValidateCreate(ctx, largeConfigMap)
 			Expect(err).NotTo(HaveOccurred()) // Should handle large JSON gracefully
 		})
 	})
@@ -181,6 +176,25 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			By("Testing basic dashboard validation")
 			_, err := validator.ValidateCreate(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should validate Grafana Dashboard (v2) dashboards via metadata.name", func() {
+			By("Testing v2 dashboard validation on create")
+			_, err := validator.ValidateCreate(ctx, v2Obj)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should reject v2 dashboards missing metadata.name", func() {
+			By("Creating a v2 dashboard without metadata.name")
+			invalidConfigMap := v2Obj.DeepCopy()
+			invalidConfigMap.Data["dashboard.json"] = `{
+				"apiVersion": "dashboard.grafana.app/v2",
+				"kind": "Dashboard",
+				"metadata": {},
+				"spec": {"title": "Cluster Overview"}
+			}`
+			_, err := validator.ValidateCreate(ctx, invalidConfigMap)
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("Should reject dashboard ConfigMaps with missing UID", func() {
@@ -199,7 +213,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			By("Creating ConfigMap without organization label or annotation")
 			invalidConfigMap := obj.DeepCopy()
 			invalidConfigMap.Labels = map[string]string{
-				"app.giantswarm.io/kind": "dashboard",
+				labels.DashboardSelectorLabelName: "dashboard",
 			}
 			invalidConfigMap.Annotations = nil
 			_, err := validator.ValidateCreate(ctx, invalidConfigMap)
@@ -228,10 +242,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "test-dashboard-annotation",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "dashboard",
+						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "annotation-org",
+						labels.GrafanaOrganizationKey: "annotation-org",
 					},
 				},
 				Data: map[string]string{
@@ -254,8 +268,8 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "test-dashboard-label",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind":                   "dashboard",
-						"observability.giantswarm.io/organization": "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 				},
 				Data: map[string]string{
@@ -278,11 +292,11 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "test-dashboard-both",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind":                   "dashboard",
-						"observability.giantswarm.io/organization": "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "annotation-org",
+						labels.GrafanaOrganizationKey: "annotation-org",
 					},
 				},
 				Data: map[string]string{
@@ -305,10 +319,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "multi-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "dashboard",
+						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -336,10 +350,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "mixed-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "dashboard",
+						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -393,10 +407,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "empty-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "dashboard",
+						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{},
@@ -413,10 +427,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "non-json-dashboard",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind": "dashboard",
+						labels.DashboardSelectorLabelName: "dashboard",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "test-org",
+						labels.GrafanaOrganizationKey: "test-org",
 					},
 				},
 				Data: map[string]string{
@@ -522,11 +536,11 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					Name:      "precedence-test",
 					Namespace: "default",
 					Labels: map[string]string{
-						"app.giantswarm.io/kind":                   "dashboard",
-						"observability.giantswarm.io/organization": "label-org",
+						labels.DashboardSelectorLabelName: "dashboard",
+						labels.GrafanaOrganizationKey:     "label-org",
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "annotation-org",
+						labels.GrafanaOrganizationKey: "annotation-org",
 					},
 				},
 				Data: map[string]string{
@@ -540,20 +554,20 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			_, err := validator.ValidateCreate(ctx, precedenceConfigMap)
 			Expect(err).NotTo(HaveOccurred()) // Should use annotation-org
 
-			By("Testing organization with special characters")
-			specialOrgConfigMap := obj.DeepCopy()
-			specialOrgConfigMap.Annotations["observability.giantswarm.io/organization"] = "org-with-dashes_and_underscores.and.dots"
+			By("Testing with an existing organization")
+			existingOrgConfigMap := obj.DeepCopy()
+			existingOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "test-org"
 
-			_, err = validator.ValidateCreate(ctx, specialOrgConfigMap)
-			Expect(err).NotTo(HaveOccurred()) // Special chars should be allowed
+			_, err = validator.ValidateCreate(ctx, existingOrgConfigMap)
+			Expect(err).NotTo(HaveOccurred()) // Existing org should be accepted
 
-			By("Testing very long organization name")
-			longOrgConfigMap := obj.DeepCopy()
-			longOrgName := "very-long-organization-name-that-might-exceed-normal-limits-but-should-still-be-handled-gracefully-by-the-validation-system"
-			longOrgConfigMap.Annotations["observability.giantswarm.io/organization"] = longOrgName
+			By("Testing non-existent organization is rejected")
+			missingOrgConfigMap := obj.DeepCopy()
+			missingOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "does-not-exist"
 
-			_, err = validator.ValidateCreate(ctx, longOrgConfigMap)
-			Expect(err).NotTo(HaveOccurred()) // Long org names should be allowed
+			_, err = validator.ValidateCreate(ctx, missingOrgConfigMap)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("does not exist"))
 		})
 
 		It("Should handle webhook lifecycle operations correctly", func() {
@@ -599,7 +613,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			By("Testing error aggregation for multiple validation failures")
 			multiErrorConfigMap := obj.DeepCopy()
 			multiErrorConfigMap.Labels = map[string]string{
-				"app.giantswarm.io/kind": "dashboard",
+				labels.DashboardSelectorLabelName: "dashboard",
 			}
 			multiErrorConfigMap.Annotations = nil // Remove organization
 			multiErrorConfigMap.Data["dashboard.json"] = `{
@@ -673,14 +687,63 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			Expect(err).NotTo(HaveOccurred()) // Should handle multiple dashboards efficiently
 		})
 
-		Context("When testing additional edge cases and security scenarios", func() {
-			It("Should handle Unicode characters in organization names", func() {
-				By("Testing organization with Unicode characters")
-				unicodeOrgConfigMap := obj.DeepCopy()
-				unicodeOrgConfigMap.Annotations["observability.giantswarm.io/organization"] = "组织-العربية-русский-🏢"
+		Context("When matching organizations by displayName vs resource name", func() {
+			// Regression test for https://github.com/giantswarm/observability-operator/pull/775:
+			// the webhook must match the organization by spec.displayName, not the K8s resource name.
+			// The suite creates a GrafanaOrganization with Name="giantswarm" / DisplayName="Giant Swarm".
+			It("Should accept a dashboard referencing an org by its displayName", func() {
+				By("Referencing 'Giant Swarm' (the displayName, not the resource name)")
+				cm := &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "display-name-match",
+						Namespace: "default",
+						Labels: map[string]string{
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
+						},
+						Annotations: map[string]string{
+							labels.GrafanaOrganizationKey: "Giant Swarm",
+						},
+					},
+					Data: map[string]string{
+						"dashboard.json": `{"uid": "display-name-match", "title": "Test"}`,
+					},
+				}
+				_, err := validator.ValidateCreate(ctx, cm)
+				Expect(err).NotTo(HaveOccurred())
+			})
 
-				_, err := validator.ValidateCreate(ctx, unicodeOrgConfigMap)
-				Expect(err).NotTo(HaveOccurred()) // Unicode should be allowed
+			It("Should reject a dashboard referencing an org by its K8s resource name when displayName differs", func() {
+				By("Referencing 'giantswarm' (the resource name, not the displayName 'Giant Swarm')")
+				cm := &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "resource-name-mismatch",
+						Namespace: "default",
+						Labels: map[string]string{
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
+						},
+						Annotations: map[string]string{
+							labels.GrafanaOrganizationKey: "giantswarm",
+						},
+					},
+					Data: map[string]string{
+						"dashboard.json": `{"uid": "resource-name-mismatch", "title": "Test"}`,
+					},
+				}
+				_, err := validator.ValidateCreate(ctx, cm)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("does not exist"))
+			})
+		})
+
+		Context("When testing additional edge cases and security scenarios", func() {
+			It("Should reject dashboard referencing non-existent organization", func() {
+				By("Testing organization that does not exist as a GrafanaOrganization CR")
+				nonExistentOrgConfigMap := obj.DeepCopy()
+				nonExistentOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "no-such-org"
+
+				_, err := validator.ValidateCreate(ctx, nonExistentOrgConfigMap)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("does not exist"))
 			})
 
 			It("Should handle extremely large dashboard JSON gracefully", func() {
@@ -727,7 +790,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 				By("Testing organization with empty string")
 				emptyOrgConfigMap := obj.DeepCopy()
-				emptyOrgConfigMap.Annotations["observability.giantswarm.io/organization"] = ""
+				emptyOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = ""
 
 				_, err = validator.ValidateCreate(ctx, emptyOrgConfigMap)
 				Expect(err).To(HaveOccurred())

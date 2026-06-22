@@ -22,7 +22,6 @@ func TestDatasourceTempo(t *testing.T) {
 			name: "tempo datasource configuration",
 			expected: Datasource{
 				Type:   "tempo",
-				URL:    "http://tempo-query-frontend.tempo.svc:3200",
 				Access: "proxy",
 				JSONData: map[string]any{
 					"serviceMap": map[string]any{
@@ -32,14 +31,15 @@ func TestDatasourceTempo(t *testing.T) {
 						"enabled": true,
 					},
 					"streamingEnabled": map[string]any{
-						"metrics": true,
-						"search":  true,
+						"metrics": false,
+						"search":  false,
 					},
 					"tracesToLogsV2": map[string]any{
 						"datasourceUid":      LokiDatasourceUID,
 						"spanStartTimeShift": "-10m",
 						"spanEndTimeShift":   "10m",
-						"filterByTraceID":    true,
+						"filterByTraceID":    false,
+						"customQuery":        traceToLogsQuery,
 					},
 					"tracesToMetrics": map[string]any{
 						"datasourceUid": MimirDatasourceUID,
@@ -68,7 +68,6 @@ func TestDatasourceLoki(t *testing.T) {
 	result := DatasourceLoki()
 
 	assert.Equal(t, "loki", result.Type)
-	assert.Equal(t, "http://loki-gateway.loki.svc", result.URL)
 	assert.Equal(t, "proxy", result.Access)
 }
 
@@ -76,7 +75,6 @@ func TestDatasourceMimir(t *testing.T) {
 	result := DatasourceMimir()
 
 	assert.Equal(t, "prometheus", result.Type)
-	assert.Equal(t, "http://mimir-gateway.mimir.svc/prometheus", result.URL)
 	assert.Equal(t, "proxy", result.Access)
 
 	// Check specific JSONData fields
@@ -92,7 +90,6 @@ func TestDatasourceMimirAlertmanager(t *testing.T) {
 	result := DatasourceMimirAlertmanager()
 
 	assert.Equal(t, "alertmanager", result.Type)
-	assert.Equal(t, "http://mimir-alertmanager.mimir.svc:8080", result.URL)
 	assert.Equal(t, "proxy", result.Access)
 
 	// Check JSONData fields
@@ -104,9 +101,8 @@ func TestDatasourceMimirCardinality(t *testing.T) {
 	result := DatasourceMimirCardinality()
 
 	assert.Equal(t, "marcusolsson-json-datasource", result.Type)
-	assert.Equal(t, "Mimir Cardinality", result.Name)
+	assert.Equal(t, MimirCardinalityDatasourceName, result.Name)
 	assert.Equal(t, "gs-mimir-cardinality", result.UID)
-	assert.Equal(t, "http://mimir-gateway.mimir.svc:8080/prometheus/api/v1/cardinality/", result.URL)
 	assert.Equal(t, "proxy", result.Access)
 }
 
@@ -255,7 +251,7 @@ func TestGenerateDatasources(t *testing.T) {
 			// Check that all datasources have the correct multi-tenant headers
 			expectedHeaderValue := strings.Join(tt.organization.TenantIDs(), "|") // Count per-tenant datasources
 			perTenantCount := 0
-			multiTenantDatasources := []string{"Loki", "Mimir", "Tempo"}
+			multiTenantDatasources := []string{LokiDatasourceName, MimirDatasourceName, TempoDatasourceName}
 
 			for _, ds := range result {
 				// Check that all datasources have required fields
@@ -270,7 +266,7 @@ func TestGenerateDatasources(t *testing.T) {
 					assert.NotEqual(t, expectedHeaderValue, ds.SecureJSONData["httpHeaderValue1"], "Per-tenant datasource should not have multi-tenant header")
 					// Verify it's a single tenant ID (no pipe character)
 					assert.NotContains(t, ds.SecureJSONData["httpHeaderValue1"], "|", "Per-tenant datasource should have single tenant ID")
-				} else if slices.Contains(multiTenantDatasources, ds.Name) && ds.Name != "Mimir Cardinality" && ds.Type != "tempo" {
+				} else if slices.Contains(multiTenantDatasources, ds.Name) && ds.Name != MimirCardinalityDatasourceName && ds.Type != "tempo" {
 					// Multi-tenant datasources should have multi-tenant headers (except Tempo which doesn't support it yet)
 					assert.Equal(t, "X-Scope-OrgID", ds.JSONData["httpHeaderName1"])
 					assert.Equal(t, expectedHeaderValue, ds.SecureJSONData["httpHeaderValue1"])
@@ -290,9 +286,8 @@ func TestGenerateDatasources(t *testing.T) {
 					}
 				}
 				require.NotNil(t, tempoDS, "Tempo datasource should be present")
-				assert.Equal(t, "Tempo", tempoDS.Name)
+				assert.Equal(t, TempoDatasourceName, tempoDS.Name)
 				assert.Equal(t, "gs-tempo", tempoDS.UID)
-				assert.Equal(t, "http://tempo-query-frontend.tempo.svc:3200", tempoDS.URL)
 
 				// Check tempo-specific configurations
 				serviceMap, ok := tempoDS.JSONData["serviceMap"].(map[string]any)
@@ -317,7 +312,7 @@ func TestGenerateDatasources(t *testing.T) {
 				}
 			}
 			require.NotNil(t, lokiDS, "Loki datasource should be present")
-			assert.Equal(t, "Loki", lokiDS.Name)
+			assert.Equal(t, LokiDatasourceName, lokiDS.Name)
 			assert.Equal(t, "gs-loki", lokiDS.UID)
 
 			// Check Loki derived fields based on tracing configuration
@@ -357,7 +352,7 @@ func TestGenerateDatasources(t *testing.T) {
 						// Check for per-tenant Mimir
 						var perTenantMimir *Datasource
 						for _, ds := range result {
-							if strings.Contains(ds.Name, "Mimir ("+tenant.Name+")") {
+							if strings.Contains(ds.Name, MimirDatasourceName+" ("+tenant.Name+")") {
 								perTenantMimir = &ds
 								break
 							}
@@ -368,7 +363,7 @@ func TestGenerateDatasources(t *testing.T) {
 						// Check for per-tenant Alertmanager
 						var perTenantAlertmanager *Datasource
 						for _, ds := range result {
-							if strings.Contains(ds.Name, "Mimir Alertmanager ("+tenant.Name+")") {
+							if strings.Contains(ds.Name, MimirAlertmanagerDatasourceName+" ("+tenant.Name+")") {
 								perTenantAlertmanager = &ds
 								break
 							}
@@ -380,7 +375,7 @@ func TestGenerateDatasources(t *testing.T) {
 					// For single-alerting-tenant orgs (even if multiple total tenants), validate regular (non-suffixed) alertmanager exists
 					var alertmanager *Datasource
 					for _, ds := range result {
-						if ds.Name == "Mimir Alertmanager" {
+						if ds.Name == MimirAlertmanagerDatasourceName {
 							alertmanager = &ds
 							break
 						}

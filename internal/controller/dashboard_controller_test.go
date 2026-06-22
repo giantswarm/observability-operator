@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/internal/labels"
 	"github.com/giantswarm/observability-operator/internal/mapper"
 	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
@@ -109,10 +110,10 @@ var _ = Describe("Dashboard Controller", func() {
 					Name:      dashboardName,
 					Namespace: dashboardNamespace,
 					Labels: map[string]string{
-						DashboardSelectorLabelName: DashboardSelectorLabelValue,
+						labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 					},
 					Annotations: map[string]string{
-						"observability.giantswarm.io/organization": "Test Dashboard Organization",
+						labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 					},
 				},
 				Data: map[string]string{
@@ -171,9 +172,8 @@ var _ = Describe("Dashboard Controller", func() {
 				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).
 					Return(mockGrafanaClient, nil)
 
-				// Setup mock client methods for successful operation
-				mockGrafanaClient.On("OrgID").Return(int64(1))
-				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(nil)
+				// WithOrgID returns the same mock so per-org calls flow through the same expectations.
+				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 
 				// Mock the Orgs service
 				mockOrgsClient := &mocks.MockOrgsClient{}
@@ -287,8 +287,6 @@ var _ = Describe("Dashboard Controller", func() {
 				// Configure the client generator to return our mock client
 				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(mockGrafanaClient, nil)
 
-				// Setup common mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 			})
 
@@ -450,7 +448,7 @@ var _ = Describe("Dashboard Controller", func() {
 				mockGrafanaClient.On("Orgs").Return(mockOrgsClient)
 
 				// Mock the organization lookup to fail
-				// Note: OrgID() and WithOrgID() are NOT called when organization lookup fails
+				// Note: WithOrgID() is NOT called when organization lookup fails
 				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(nil, errors.New("organization not found"))
 
 				By("Creating a dashboard ConfigMap")
@@ -500,8 +498,6 @@ var _ = Describe("Dashboard Controller", func() {
 				// Configure the client generator to return our mock client
 				mockGrafanaGen.On("GenerateGrafanaClient", mock.Anything, mock.Anything, mock.Anything).Return(mockGrafanaClient, nil)
 
-				// Setup common mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 
 				// First create the dashboard with finalizer
@@ -639,8 +635,6 @@ var _ = Describe("Dashboard Controller", func() {
 			})
 
 			It("should handle organization specified in labels instead of annotations", func() {
-				// Set up mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 
 				// Mock the Orgs service
@@ -673,8 +667,8 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "dashboard-with-label-org",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName:                 DashboardSelectorLabelValue,
-							"observability.giantswarm.io/organization": "test-dashboard-org",
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
+							labels.GrafanaOrganizationKey:     "test-dashboard-org",
 						},
 					},
 					Data: map[string]string{
@@ -718,7 +712,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "dashboard-without-org",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 					},
 					Data: map[string]string{
@@ -767,10 +761,10 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "dashboard-without-uid",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -810,8 +804,6 @@ var _ = Describe("Dashboard Controller", func() {
 			})
 
 			It("should handle dashboard with existing ID that needs cleaning", func() {
-				// Set up mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 
 				// Mock the Orgs service
@@ -827,10 +819,10 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "dashboard-with-id",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -902,10 +894,10 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "dashboard-invalid-json",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -947,8 +939,6 @@ var _ = Describe("Dashboard Controller", func() {
 			})
 
 			It("should handle ConfigMap with multiple dashboards", func() {
-				// Set up mock expectations for organization operations
-				mockGrafanaClient.On("OrgID").Return(int64(1))
 				mockGrafanaClient.On("WithOrgID", mock.AnythingOfType("int64")).Return(mockGrafanaClient)
 
 				// Mock the Orgs service
@@ -979,10 +969,10 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "multiple-dashboards",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 						// Note: no organization annotation
 					},
@@ -1056,10 +1046,10 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "invalid-dashboard",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							"observability.giantswarm.io/organization": "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
 						},
 					},
 					Data: map[string]string{
@@ -1106,7 +1096,7 @@ var _ = Describe("Dashboard Controller", func() {
 						Name:      "invalid-org-dashboard",
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
-							DashboardSelectorLabelName: DashboardSelectorLabelValue,
+							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						// No organization annotation
 					},
@@ -1177,8 +1167,8 @@ var _ = Describe("Dashboard Controller", func() {
 		It("should have correct constants defined", func() {
 			By("Verifying dashboard controller constants")
 			Expect(DashboardFinalizer).To(Equal("observability.giantswarm.io/grafanadashboard"))
-			Expect(DashboardSelectorLabelName).To(Equal("app.giantswarm.io/kind"))
-			Expect(DashboardSelectorLabelValue).To(Equal("dashboard"))
+			Expect(labels.DashboardSelectorLabelName).To(Equal("app.giantswarm.io/kind"))
+			Expect(labels.DashboardSelectorLabelValue).To(Equal("dashboard"))
 		})
 	})
 })

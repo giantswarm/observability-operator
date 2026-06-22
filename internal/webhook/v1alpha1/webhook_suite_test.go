@@ -1,5 +1,5 @@
 /*
-Copyright 2025.
+Copyright 2026.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,6 +58,7 @@ var _ = BeforeSuite(func() {
 		WebhookSetupFuncs: []testutil.WebhookSetupFunc{
 			// Register v1alpha1 webhooks (for direct v1alpha1 validation)
 			SetupGrafanaOrganizationWebhookWithManager,
+			SetupAgentCredentialWebhookWithManager,
 			// Register v1alpha2 webhooks (storage version, handles converted v1alpha1 objects)
 			webhookv1alpha2.SetupGrafanaOrganizationWebhookWithManager,
 		},

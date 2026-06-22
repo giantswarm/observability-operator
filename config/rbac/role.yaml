@@ -25,12 +25,42 @@ rules:
   verbs:
   - update
 - apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - application.giantswarm.io
+  resources:
+  - apps
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - cluster.x-k8s.io
   resources:
   - clusters
   verbs:
-  - create
-  - delete
   - get
   - list
   - patch
@@ -51,8 +81,38 @@ rules:
   - patch
   - update
 - apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - helm.toolkit.fluxcd.io
+  resources:
+  - helmreleases
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - observability.giantswarm.io
   resources:
+  - agentcredentials
   - grafanaorganizations
   verbs:
   - create
@@ -65,12 +125,14 @@ rules:
 - apiGroups:
   - observability.giantswarm.io
   resources:
+  - agentcredentials/finalizers
   - grafanaorganizations/finalizers
   verbs:
   - update
 - apiGroups:
   - observability.giantswarm.io
   resources:
+  - agentcredentials/status
   - grafanaorganizations/status
   verbs:
   - get

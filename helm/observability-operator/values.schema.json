@@ -2,20 +2,117 @@
     "$schema": "http://json-schema.org/schema#",
     "type": "object",
     "properties": {
+        "defaultTenant": {
+            "type": "string",
+            "description": "Default tenant ID used when no tenant label is present"
+        },
+        "http": {
+            "type": "object",
+            "properties": {
+                "rulerTimeout": {
+                    "type": "string",
+                    "description": "HTTP client timeout for ruler API requests"
+                },
+                "alertmanagerTimeout": {
+                    "type": "string",
+                    "description": "HTTP client timeout for Alertmanager API requests"
+                },
+                "mimirQueryTimeout": {
+                    "type": "string",
+                    "description": "Timeout for Mimir TSDB head series queries"
+                }
+            }
+        },
+        "otlp": {
+            "type": "object",
+            "properties": {
+                "batchSendBatchSize": {
+                    "type": "integer",
+                    "description": "Number of items to batch before flushing in the OTLP exporter"
+                },
+                "batchMaxSize": {
+                    "type": "integer",
+                    "description": "Maximum batch size for the OTLP exporter"
+                },
+                "batchTimeout": {
+                    "type": "string",
+                    "description": "Maximum wait before flushing an incomplete OTLP batch"
+                }
+            }
+        },
         "alerting": {
             "type": "object",
             "properties": {
                 "alertmanagerURL": {
                     "type": "string"
                 },
-                "enabled": {
-                    "type": "boolean"
-                },
                 "grafanaAddress": {
                     "type": "string"
                 },
                 "slackAPIToken": {
                     "type": "string"
+                }
+            }
+        },
+        "cronitor": {
+            "type": "object",
+            "properties": {
+                "graceSeconds": {
+                    "type": "integer"
+                },
+                "schedule": {
+                    "type": "string"
+                },
+                "realertInterval": {
+                    "type": "string"
+                }
+            }
+        },
+        "grafana": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string"
+                },
+                "clientRetries": {
+                    "type": "integer",
+                    "description": "Number of retries for Grafana API requests"
+                },
+                "adminSecretNamespace": {
+                    "type": "string",
+                    "description": "Kubernetes namespace containing the Grafana admin credentials secret"
+                },
+                "adminSecretName": {
+                    "type": "string",
+                    "description": "Name of the Kubernetes secret containing Grafana admin credentials"
+                },
+                "gatewayTLSSecretNamespace": {
+                    "type": "string",
+                    "description": "Kubernetes namespace containing the Grafana Gateway TLS secret"
+                },
+                "gatewayTLSSecretName": {
+                    "type": "string",
+                    "description": "Name of the Kubernetes secret containing the Grafana Gateway TLS certificate"
+                },
+                "datasources": {
+                    "type": "object",
+                    "properties": {
+                        "lokiURL": {
+                            "type": "string"
+                        },
+                        "mimirURL": {
+                            "type": "string"
+                        },
+                        "mimirAlertmanagerURL": {
+                            "type": "string"
+                        },
+                        "mimirCardinalityURL": {
+                            "type": "string"
+                        },
+                        "tempoURL": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },
@@ -45,8 +142,11 @@
                 "customer": {
                     "type": "string"
                 },
-                "insecureCA": {
-                    "type": "boolean"
+                "caSecretNamespace": {
+                    "type": "string"
+                },
+                "caSecretName": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"
@@ -64,6 +164,10 @@
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                },
+                "enableNetworkMonitoring": {
+                    "type": "boolean",
+                    "description": "Enable network monitoring in Alloy configuration"
                 },
                 "sharding": {
                     "type": "object",
@@ -129,12 +233,99 @@
                             "description": "Maximum age of samples to send (e.g., '30m')"
                         }
                     }
+                },
+                "exemplars": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enable exemplar forwarding in the remote write pipeline. Requires Mimir to have exemplar storage enabled."
+                        }
+                    }
+                },
+                "mimirRemoteWriteTimeout": {
+                    "type": "string",
+                    "description": "Timeout for Alloy Mimir remote write operations"
+                },
+                "ruler": {
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "URL to the Mimir ruler API for deleting rules when a cluster is deleted. Set to empty string to disable."
+                        }
+                    }
+                },
+                "gateway": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": { "type": "string" },
+                        "ingressSecretName": { "type": "string" },
+                        "httprouteSecretName": { "type": "string" }
+                    }
                 }
             }
         },
         "operator": {
             "type": "object",
             "properties": {
+                "controllers": {
+                    "type": "object",
+                    "properties": {
+                        "agentCredential": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "alertmanager": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "cluster": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "dashboard": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "grafanaOrganization": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                },
+                "networkPolicy": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "flavor": {
+                            "type": "string",
+                            "enum": ["kubernetes", "cilium"]
+                        }
+                    }
+                },
                 "containerSecurityContext": {
                     "type": "object",
                     "properties": {
@@ -219,6 +410,14 @@
                 "enabled": {
                     "type": "boolean",
                     "description": "Enable or disable distributed tracing support"
+                },
+                "gateway": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": { "type": "string" },
+                        "ingressSecretName": { "type": "string" },
+                        "httprouteSecretName": { "type": "string" }
+                    }
                 }
             }
         },
@@ -228,6 +427,56 @@
                 "enabled": {
                     "type": "boolean",
                     "description": "Enable or disable logging support"
+                },
+                "enableNodeFiltering": {
+                    "type": "boolean",
+                    "description": "Enable node filtering in Alloy logging configuration"
+                },
+                "defaultNamespaces": {
+                    "type": "array",
+                    "description": "Default namespaces to collect logs from",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includeEventsFromNamespaces": {
+                    "type": "array",
+                    "description": "Namespaces to include/exclude for events",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludeEventsFromNamespaces": {
+                    "type": "array",
+                    "description": "Namespaces to exclude from event collection",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "lokiMaxBackoffPeriod": {
+                    "type": "string",
+                    "description": "Maximum backoff period for Alloy Loki remote write retries"
+                },
+                "lokiRemoteTimeout": {
+                    "type": "string",
+                    "description": "Timeout for Alloy Loki remote write operations"
+                },
+                "ruler": {
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "URL to the Loki ruler API for deleting rules when a cluster is deleted. Set to empty string to disable."
+                        }
+                    }
+                },
+                "gateway": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": { "type": "string" },
+                        "ingressSecretName": { "type": "string" },
+                        "httprouteSecretName": { "type": "string" }
+                    }
                 }
             }
         },
@@ -268,6 +517,54 @@
                                     "type": "boolean"
                                 }
                             }
+                        },
+                        "agentCredential": {
+                            "type": "object",
+                            "description": "Enable AgentCredential validation webhook",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "verticalPodAutoscaler": {
+            "type": "object",
+            "description": "Vertical Pod Autoscaler configuration for the operator deployment",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable VPA for the operator deployment"
+                },
+                "updateMode": {
+                    "type": "string",
+                    "description": "VPA update mode: Off, Initial, Recreate, or Auto",
+                    "enum": ["Off", "Initial", "Recreate", "Auto"]
+                },
+                "resourcePolicy": {
+                    "type": "object",
+                    "description": "Resource policy for VPA recommendations",
+                    "properties": {
+                        "controlledResources": {
+                            "type": "array",
+                            "description": "Resources to control (e.g. cpu, memory)",
+                            "items": { "type": "string" }
+                        },
+                        "controlledValues": {
+                            "type": "string",
+                            "description": "Whether to control RequestsOnly or RequestsAndLimits",
+                            "enum": ["RequestsOnly", "RequestsAndLimits"]
+                        },
+                        "maxAllowed": {
+                            "type": "object",
+                            "description": "Maximum resource recommendations"
+                        },
+                        "minAllowed": {
+                            "type": "object",
+                            "description": "Minimum resource recommendations"
                         }
                     }
                 }
