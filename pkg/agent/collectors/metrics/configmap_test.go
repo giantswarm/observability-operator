@@ -21,13 +21,17 @@ import (
 
 var managementClusterName = "dummy-cluster"
 
-// TestMonitoringConfigReplicasRoundTrip guards the sharding logic against
-// drift between the write path (monitoring-config.yaml.template) and the read
-// path (monitoringConfig struct used to recover the current shard count). The
-// template renders alloy.controller.replicas and the struct must parse that
-// exact path. This is important because if either side moves, the replica
-// count silently unmarshals to 0 and the scale-down hysteresis in
-// ComputeShards breaks without any error.
+// TestMonitoringConfigReplicasRoundTrip guards against any future code changes
+// between the read and write methods for the Alloy configuration, which are
+// performed in 2 completely different manners:
+// - read uses the minimalist monitoringConfig struct which only decodes the
+// alloy.controller.replicas value
+// - write uses the monitoring-config.yaml.template template file to generate
+// the new Alloy configuration)
+// If either side changes where the alloy.controller.replicas value is
+// read/written it would silently break and reintroduce the bug. This test
+// prevent this by ensuring that the value is always read and written at the
+// same place in the Alloy configuration file.
 func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 	const want = 7 // sentinel, distinct from the default of 1
 
