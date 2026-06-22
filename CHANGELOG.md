@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Annotate dashboard and dashboard-cleanup controller error messages with debugging context (organization and folder) in addition to the dashboard UID and source ConfigMap.
+- Annotate dashboard related errors with organization and folder
+- Change the "skipping deletion, orphaned folder is not empty" error to a simple info log message
+
+### Fixes
+
+- Fix dashboard not found errors on delete
 
 ## [0.72.0] - 2026-06-22
 
