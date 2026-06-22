@@ -36,6 +36,7 @@ jobs:
 workflows:
   build:
     jobs:
+
     # This job is used to build the Helm chart and make sure it is valid.
     - template-chart:
         name: template-chart
@@ -67,6 +68,7 @@ workflows:
           tags:
             only: /^v.*/
 
+    # Build the observability-operator binary.
     - architect/go-build:
         context: architect
         name: go-build
@@ -79,6 +81,7 @@ workflows:
           tags:
             only: /^v.*/
 
+    # Push the observability-operator container image.
     - architect/push-to-registries:
         context: architect
         name: push-to-registries
@@ -109,6 +112,7 @@ workflows:
           branches:
             ignore: /.*/
 
+    # Push the observability-operator Helm chart.
     - architect/push-to-app-catalog:
         context: architect
         executor: app-build-suite
@@ -127,6 +131,7 @@ workflows:
             - main
             - master
 
+    # Run end to end tests.
     - architect/run-tests-with-ats:
         name: run-chart-tests-with-ats
         filters:
