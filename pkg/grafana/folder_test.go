@@ -382,7 +382,7 @@ func TestCleanupOrphanedFoldersForOrg_SkipsNonOperatorManagedFolders(t *testing.
 	mockFolders.AssertNotCalled(t, "DeleteFolder", mock.Anything)
 }
 
-func TestCleanupOrphanedFoldersForOrg_NonEmptyFolderReturnsError(t *testing.T) {
+func TestCleanupOrphanedFoldersForOrg_NonEmptyFolderIsSkipped(t *testing.T) {
 	mockClient := &mocks.MockGrafanaClient{}
 	mockFolders := &mocks.MockFoldersClient{}
 	setupOrgContextMocks(mockClient)
@@ -401,12 +401,10 @@ func TestCleanupOrphanedFoldersForOrg_NonEmptyFolderReturnsError(t *testing.T) {
 		Payload: map[string]int64{"dashboards": 3},
 	}, nil)
 
+	// Non-empty orphaned folders are skipped (logged), not treated as an error
 	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), map[string]struct{}{})
-	if err == nil {
-		t.Fatal("expected error for non-empty orphaned folder, got nil")
-	}
-	if !strings.Contains(err.Error(), "not empty") {
-		t.Errorf("expected error to mention 'not empty', got: %v", err)
+	if err != nil {
+		t.Fatalf("unexpected error for non-empty orphaned folder: %v", err)
 	}
 
 	// DeleteFolder should NOT have been called
@@ -488,10 +486,11 @@ func TestCleanupOrphanedFoldersForOrg_AccumulatesMultipleErrors(t *testing.T) {
 	// First folder: descendant counts fail
 	mockFolders.On("GetFolderDescendantCounts", uid1).Return(nil, errors.New("error-1"))
 
-	// Second folder: non-empty
+	// Second folder: empty, but delete fails
 	mockFolders.On("GetFolderDescendantCounts", uid2).Return(&folders.GetFolderDescendantCountsOK{
-		Payload: map[string]int64{"dashboards": 1},
+		Payload: map[string]int64{},
 	}, nil)
+	mockFolders.On("DeleteFolder", mock.Anything).Return(nil, errors.New("error-2"))
 
 	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), map[string]struct{}{})
 	if err == nil {
@@ -502,8 +501,8 @@ func TestCleanupOrphanedFoldersForOrg_AccumulatesMultipleErrors(t *testing.T) {
 	if !strings.Contains(errStr, "failed to get descendant counts") {
 		t.Errorf("expected descendant counts error, got: %v", err)
 	}
-	if !strings.Contains(errStr, "not empty") {
-		t.Errorf("expected non-empty error, got: %v", err)
+	if !strings.Contains(errStr, "failed to delete orphaned folder") {
+		t.Errorf("expected delete error, got: %v", err)
 	}
 }
 
