@@ -26,6 +26,35 @@ jobs:
     - run:
         name: Validate Alertmanager Config
         command: make validate-alertmanager-config
+  validate-alertmanager-routes:
+    executor: architect/architect
+    steps:
+    - checkout
+    - run:
+        name: Validate Alertmanager routes
+        command: make tests-alertmanager-routes
+  tests-alertmanager-integrations:
+    machine:
+      image: ubuntu-2404:current
+    resource_class: large
+    steps:
+    - checkout
+    - run:
+        name: Install kubectl
+        command: |
+          curl -sSLo kubectl "https://dl.k8s.io/release/$(curl -sSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+    - run:
+        name: Install Helm
+        command: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    - run:
+        name: Install kind
+        command: |
+          curl -sSLo kind "https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64"
+          chmod +x kind && sudo mv kind /usr/local/bin/
+    - run:
+        name: Run Alertmanager integration tests
+        command: make tests-alertmanager-integrations
   verify-generate:
     executor: architect/architect
     steps:
@@ -36,6 +65,7 @@ jobs:
 workflows:
   build:
     jobs:
+
     # This job is used to build the Helm chart and make sure it is valid.
     - template-chart:
         name: template-chart
@@ -54,6 +84,21 @@ workflows:
           tags:
             only: /^v.*/
 
+    # This job verifies that alerts route to the expected receivers.
+    - validate-alertmanager-routes:
+        name: validate-alertmanager-routes
+        filters:
+          tags:
+            only: /^v.*/
+
+    # This job verifies end-to-end that alerts are delivered to the expected
+    # receivers. It is slow, so it is intentionally not required by any other job.
+    - tests-alertmanager-integrations:
+        name: tests-alertmanager-integrations
+        filters:
+          tags:
+            only: /^v.*/
+
     # This job validates that generated files (CRDs, RBAC, deepcopy, etc.) are up to date.
     - verify-generate:
         name: verify-generate
@@ -67,18 +112,22 @@ workflows:
           tags:
             only: /^v.*/
 
+    # Build the observability-operator binary.
     - architect/go-build:
         context: architect
         name: go-build
         requires:
         - go-tests
         - validate-alertmanager-config
+        - validate-alertmanager-routes
+        - verify-generate
         path: ./cmd
         binary: observability-operator
         filters:
           tags:
             only: /^v.*/
 
+    # Push the observability-operator container image.
     - architect/push-to-registries:
         context: architect
         name: push-to-registries
@@ -109,6 +158,7 @@ workflows:
           branches:
             ignore: /.*/
 
+    # Push the observability-operator Helm chart.
     - architect/push-to-app-catalog:
         context: architect
         executor: app-build-suite
@@ -127,6 +177,7 @@ workflows:
             - main
             - master
 
+    # Run end to end tests.
     - architect/run-tests-with-ats:
         name: run-chart-tests-with-ats
         filters:

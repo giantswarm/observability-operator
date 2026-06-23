@@ -16,6 +16,16 @@
       depNameTemplate: 'grafana/mimir',
       versioningTemplate: 'regex:^mimir-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$',
     },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^Makefile\\.custom\\.mk$/',
+      ],
+      matchStrings: [
+        'MIMIR_CHART\\s*=\\s*oci://(?<depName>\\S+)\\s*\\nMIMIR_CHART_VERSION\\s*=\\s*(?<currentValue>\\S+)',
+      ],
+      datasourceTemplate: 'docker',
+    },
   ],
   packageRules: [
     {
