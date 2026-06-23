@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.72.1] - 2026-06-23
 
 ### Changed
+
 - Annotate dashboard related errors with organization and folder
 
 ### Fixed
