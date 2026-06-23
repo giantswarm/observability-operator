@@ -18,7 +18,44 @@ Each dashboard `ConfigMap` carries the desired state. Both controllers select Co
 
 `mapper.DashboardMapper.FromConfigMap` converts a ConfigMap into one `dashboard.Dashboard` domain object per entry in `.data`, attaching the extracted organization and folder path to each.
 
+A ConfigMap holding two dashboards for org `giantswarm` under folder `platform/networking`:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: networking-dashboards
+  labels:
+    app.giantswarm.io/kind: dashboard
+    observability.giantswarm.io/organization: giantswarm
+    observability.giantswarm.io/folder: platform/networking
+data:
+  overview.json: '{"uid": "net-overview", "title": "Overview", ...}'
+  latency.json:  '{"uid": "net-latency",  "title": "Latency",  ...}'
+```
+
+maps to two domain objects:
+
+```
+Dashboard{uid: net-overview, organization: giantswarm, folderPath: platform/networking}
+Dashboard{uid: net-latency,  organization: giantswarm, folderPath: platform/networking}
+```
+
 Folder UIDs are deterministic: `folder.GenerateUID` hashes the full path (SHA-256, first 6 bytes) and prefixes it with `gs-`. A folder whose UID carries the `gs-` prefix is operator-managed. The UID depends only on the path, so the same path always maps to the same folder.
+
+```
+""                    → ""              (General folder, no UID)
+"platform"            → gs-d294fcce0cc8
+"platform/networking" → gs-ad98d443b621
+```
+
+A nested folder path expands into one folder per segment, each parented to the previous:
+
+```
+platform/networking
+└─ platform              uid=gs-d294fcce0cc8  parent=""
+   └─ networking         uid=gs-ad98d443b621  parent=gs-d294fcce0cc8
+```
 
 ## Dashboard controller
 
@@ -83,6 +120,18 @@ For an organization name:
 - It is empty (`GetFolderDescendantCounts` reports zero descendants).
 
 Non-empty orphans are skipped with an info log. Per-folder errors are collected with `errors.Join`.
+
+For org `giantswarm` whose only dashboard now lives in `platform/networking`, the required set is `{gs-d294fcce0cc8, gs-ad98d443b621}`. Given these folders in Grafana:
+
+```
+gs-d294fcce0cc8  platform              required           → keep
+gs-ad98d443b621  platform/networking   required           → keep
+gs-1a2b3c4d5e6f  platform/legacy       orphan, empty      → delete
+gs-7f8e9d0c1b2a  platform/storage      orphan, 1 dashboard → keep (not empty)
+team-a-folder    (manually created)    not gs- prefixed   → keep
+```
+
+Processing deepest-first deletes `platform/legacy` before re-evaluating `platform`; `platform` survives because it still holds the required `networking` subtree.
 
 ## Failure isolation
 
