@@ -7,7 +7,7 @@ Two controllers provision Grafana dashboards from labeled Kubernetes `ConfigMaps
 | `DashboardReconciler` | `dashboard` | Create, update, and delete dashboards in Grafana, and ensure their folder hierarchy exists. |
 | `DashboardCleanupReconciler` | `dashboard-cleanup` | Delete operator-managed folders that no longer hold any dashboard, once per organization. |
 
-![Dashboard provisioning and cleanup flow](images/dashboard-flow.png)
+![Dashboard provisioning and cleanup flow](images/dashboard-controller-architecture.png)
 
 ## Source of truth
 
