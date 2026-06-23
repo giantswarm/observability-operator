@@ -7,14 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.72.1] - 2026-06-23
+
 ### Changed
-
 - Annotate dashboard related errors with organization and folder
-- Change the "skipping deletion, orphaned folder is not empty" error to a simple info log message
 
-### Fixes
+### Fixed
 
 - Fix dashboard not found errors on delete
+- "skipping deletion, orphaned folder is not empty" error log is now an info log
 
 ## [0.72.0] - 2026-06-22
 
@@ -1154,7 +1155,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.72.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.72.1...HEAD
+[0.72.1]: https://github.com/giantswarm/observability-operator/compare/v0.72.0...v0.72.1
 [0.72.0]: https://github.com/giantswarm/observability-operator/compare/v0.71.0...v0.72.0
 [0.71.0]: https://github.com/giantswarm/observability-operator/compare/v0.70.0...v0.71.0
 [0.70.0]: https://github.com/giantswarm/observability-operator/compare/v0.69.0...v0.70.0
