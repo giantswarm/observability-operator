@@ -159,10 +159,14 @@ func (r *DashboardCleanupReconciler) cleanupOrphanedFolders(ctx context.Context,
 
 	requiredUIDs, err := r.collectRequiredFolderUIDs(ctx, orgName)
 	if err != nil {
-		return fmt.Errorf("failed to collect required folder UIDs: %w", err)
+		return fmt.Errorf("failed to collect required folder UIDs for org %q: %w", orgName, err)
 	}
 
-	return grafanaService.CleanupOrphanedFoldersForOrg(ctx, org, requiredUIDs)
+	if err := grafanaService.CleanupOrphanedFoldersForOrg(ctx, org, requiredUIDs); err != nil {
+		return fmt.Errorf("failed to cleanup orphaned folders for org %q: %w", orgName, err)
+	}
+
+	return nil
 }
 
 // collectRequiredFolderUIDs lists all dashboard ConfigMaps for the given organization and computes the set of folder UIDs they reference.
@@ -173,7 +177,7 @@ func (r *DashboardCleanupReconciler) collectRequiredFolderUIDs(ctx context.Conte
 		labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list dashboard configmaps: %w", err)
+		return nil, fmt.Errorf("failed to list dashboard configmaps for org %q: %w", orgName, err)
 	}
 
 	// Filter dashboards by organization and collect folder UIDs
