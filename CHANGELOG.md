@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add alertmanager routes validation to CI checks
+
 ## [0.72.1] - 2026-06-23
 
 ### Changed
