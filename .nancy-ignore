@@ -13,3 +13,10 @@ CVE-2026-33809 until=2026-09-10
 CVE-2026-33812 until=2026-09-10
 CVE-2022-41727 until=2026-09-10
 CVE-2026-42500 until=2026-09-10
+
+# pkg:golang/go.mongodb.org/mongo-driver@v1.13.1
+CVE-2026-2303 until=2026-09-10
+
+# pkg:golang/golang.org/x/image@v0.0.0-20190802002840-cff245a6509b
+CVE-2026-46601 until=2026-09-10
+CVE-2026-46602 until=2026-09-10
