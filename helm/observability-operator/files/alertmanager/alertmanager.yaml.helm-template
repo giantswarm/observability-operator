@@ -165,7 +165,6 @@ route:
     {{- end }}
     - team="bumblebee"
     - alertname!~"Inhibition.*"
-    - alertname!="Heartbeat"
     continue: false
 
   # Team Phoenix Slack
