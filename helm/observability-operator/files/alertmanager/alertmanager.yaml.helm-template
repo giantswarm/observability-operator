@@ -155,6 +155,19 @@ route:
     - alertname!="Heartbeat"
     continue: false
 
+  # Team Bumblebee Slack
+  - receiver: team_bumblebee_slack
+    matchers:
+    {{- if eq .Values.managementCluster.pipeline "stable" }}
+    - severity="notify"
+    {{- else }}
+    - severity=~"page|notify"
+    {{- end }}
+    - team="bumblebee"
+    - alertname!~"Inhibition.*"
+    - alertname!="Heartbeat"
+    continue: false
+
   # Team Phoenix Slack
   - receiver: team_phoenix_slack
     matchers:
@@ -241,6 +254,21 @@ receivers:
   - channel: '#alert-atlas'
   {{- else }}
   - channel: '#alert-atlas-test'
+  {{- end }}
+    http_config:
+      authorization:
+        type: Bearer
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      proxy_from_environment: true
+    send_resolved: true
+    actions: *slack-actions
+
+- name: team_bumblebee_slack
+  slack_configs:
+  {{- if eq .Values.managementCluster.pipeline "stable" }}
+  - channel: '#alert-bumblebee'
+  {{- else }}
+  - channel: '#alert-bumblebee-test'
   {{- end }}
     http_config:
       authorization:
