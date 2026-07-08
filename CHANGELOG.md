@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add alertmanager routes validation to CI checks
 - Add team bumblebee Slack alert routing (`#alert-bumblebee`)
 
+### Removed
+
+- Remove redundant L7 rule from `alloy-events` `CiliumNetworkPolicy`. The removed rule allowed DNS queries to any DNS domain so removing it has no effect.
+
 ## [0.72.1] - 2026-06-23
 
 ### Changed
