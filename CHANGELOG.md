@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add unit tests for the cluster provider mapping, covering the managed-cluster kinds (`AWSManagedCluster`, `AzureManagedCluster`, `AzureASOManagedCluster`) and the unknown-kind error path.
+
+### Removed
+
+- Remove the unused `pkg/common/types.go` duplicate of the cluster provider mapping.
+
 ## [0.72.2] - 2026-07-08
 
 ### Added
