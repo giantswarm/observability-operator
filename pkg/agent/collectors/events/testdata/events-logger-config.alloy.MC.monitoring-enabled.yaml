@@ -22,9 +22,6 @@ networkPolicy:
           protocol: ANY
         - port: "1053"
           protocol: ANY
-        rules:
-          dns:
-            - matchPattern: '*'
     ingress:
     - toPorts:
       - ports:

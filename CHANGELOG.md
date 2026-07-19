@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.72.2] - 2026-07-08
+
 ### Added
 
 - Add alertmanager routes validation to CI checks
+- Add team bumblebee Slack alert routing (`#alert-bumblebee`)
+
+### Removed
+
+- Remove redundant L7 rule from `alloy-events` `CiliumNetworkPolicy`. The removed rule allowed DNS queries to any DNS domain so removing it has no effect.
 
 ## [0.72.1] - 2026-06-23
 
@@ -1160,7 +1167,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.72.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.72.2...HEAD
+[0.72.2]: https://github.com/giantswarm/observability-operator/compare/v0.72.1...v0.72.2
 [0.72.1]: https://github.com/giantswarm/observability-operator/compare/v0.72.0...v0.72.1
 [0.72.0]: https://github.com/giantswarm/observability-operator/compare/v0.71.0...v0.72.0
 [0.71.0]: https://github.com/giantswarm/observability-operator/compare/v0.70.0...v0.71.0
