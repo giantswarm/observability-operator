@@ -36,7 +36,7 @@ KIND_CLUSTER_NAME = alertmanager-integration
 INTEGRATION_TEST_FLAGS = -count=1 -v -p 1 -test.timeout 30m -tags=integration -args \
 												 -alertmanager-config-dir $(ALERTMANAGER_TEST_CONFIG_DIR)
 MIMIR_CHART = oci://gsoci.azurecr.io/charts/giantswarm/mimir
-MIMIR_CHART_VERSION = 0.28.0
+MIMIR_CHART_VERSION = 0.30.0
 
 ###############################################################################
 # Testing & Coverage
@@ -135,7 +135,10 @@ $(ALERTMANAGER_INTEGRATION_SETUP): ## Install Mimir Alertmanager in a Kind clust
 	kubectl apply -Rf $(MIMIR_CHART_OUTPUT)/mimir/charts/mimir
 	@echo
 	@echo "==> Waiting for Mimir Alertmanager to be ready..."
-	$(KUBECTL) $(KUBECTL_ARGS) wait --for=condition=ready pod -lapp.kubernetes.io/component=alertmanager,app.kubernetes.io/instance=mimir --timeout=120s
+# `kubectl wait` errors out with "no matching resources found" when the pod does
+# not exist yet, which races against the Deployment controller. Waiting on the
+# rollout tolerates the pod not being created yet.
+	$(KUBECTL) $(KUBECTL_ARGS) rollout status deployment/mimir-alertmanager --timeout=120s
 	@echo
 	touch $@
 
