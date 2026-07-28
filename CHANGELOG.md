@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add unit tests for the cluster provider mapping, covering the managed-cluster kinds (`AWSManagedCluster`, `AzureManagedCluster`, `AzureASOManagedCluster`) and the unknown-kind error path.
+- Support for mimir 3 alertmanager
 
 ### Removed
 
