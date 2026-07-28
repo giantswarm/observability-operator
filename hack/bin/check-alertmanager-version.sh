@@ -53,6 +53,26 @@ require_jq() {
   echo "✅ jq installed temporarily in $TMP_DIR"
 }
 
+# --- Resolve the effective Alertmanager dependency of a go.mod ---
+# Takes go.mod contents as first argument, prints "<module> <version>", or
+# nothing when the module is absent.
+# A replace directive wins over the require entry: Mimir pinned Grafana's fork
+# via a replace directive up to mimir-3.0.x, and depends on upstream
+# prometheus/alertmanager directly since mimir-3.1.0.
+effective_alertmanager() {
+  local go_mod="$1"
+  local replaced
+
+  # `|| true` keeps a non-matching grep from aborting the script under pipefail.
+  replaced="$(echo "$go_mod" | { grep -E "${ALERTMANAGER_MODULE}[[:space:]]+=>" || true; })"
+  if [[ -n "$replaced" ]]; then
+    echo "$replaced" | awk '{ print $(NF-1), $NF }'
+    return
+  fi
+
+  echo "$go_mod" | { grep -E "^[[:space:]]*${ALERTMANAGER_MODULE} v" || true; } | awk '{ print $1, $2 }'
+}
+
 require_jq
 
 # --- Get latest mimir-app release and Mimir version ---
@@ -92,42 +112,51 @@ mimir_go_mod="$(curl -fsSL "https://raw.githubusercontent.com/${MIMIR_REPO}/refs
 
 # --- Extract Alertmanager version from Mimir's go.mod ---
 echo "🔍 Extracting Alertmanager version from Mimir's go.mod..."
-# Look for the replace directive, not the require directive
-mimir_alertmanager_version="$(echo "$mimir_go_mod" | grep -E "${ALERTMANAGER_MODULE} =>" | awk '{ print $NF }')"
+mimir_alertmanager="$(effective_alertmanager "$mimir_go_mod")"
 
-if [[ -z "$mimir_alertmanager_version" ]]; then
-  echo "❌ Could not find Alertmanager replace directive in Mimir's go.mod."
+if [[ -z "$mimir_alertmanager" ]]; then
+  echo "❌ Could not find the ${ALERTMANAGER_MODULE} dependency in Mimir's go.mod."
+  echo "   Looked for a replace directive and a require entry, found neither."
   exit 1
 fi
 
-echo "✅ Mimir Alertmanager version: ${mimir_alertmanager_version}"
+read -r mimir_alertmanager_module mimir_alertmanager_version <<< "$mimir_alertmanager"
+echo "✅ Mimir Alertmanager dependency: ${mimir_alertmanager_module} ${mimir_alertmanager_version}"
 
 # --- Extract local Alertmanager version from your repo's go.mod ---
 echo "🔍 Extracting Alertmanager version from local go.mod..."
-# Handle tabs and spaces in the replace directive
-local_alertmanager_version="$(grep -E "${ALERTMANAGER_MODULE}.*=>" "${GO_MOD_PATH}" | awk '{ print $NF }')"
+local_alertmanager="$(effective_alertmanager "$(<"${GO_MOD_PATH}")")"
 
-if [[ -z "$local_alertmanager_version" ]]; then
-  echo "❌ Could not find Alertmanager replace directive in local go.mod."
+if [[ -z "$local_alertmanager" ]]; then
+  echo "❌ Could not find the ${ALERTMANAGER_MODULE} dependency in local go.mod."
+  echo "   Looked for a replace directive and a require entry in ${GO_MOD_PATH}, found neither."
   exit 1
 fi
 
-echo "✅ Local Alertmanager version: ${local_alertmanager_version}"
+read -r local_alertmanager_module local_alertmanager_version <<< "$local_alertmanager"
+echo "✅ Local Alertmanager dependency: ${local_alertmanager_module} ${local_alertmanager_version}"
 
-# --- Compare versions ---
-if [[ "${mimir_alertmanager_version}" != "${local_alertmanager_version}" ]]; then
+# --- Compare dependencies ---
+if [[ "${mimir_alertmanager_module}" != "${local_alertmanager_module}" || \
+      "${mimir_alertmanager_version}" != "${local_alertmanager_version}" ]]; then
   echo ""
-  echo "❌ ALERTMANAGER VERSION MISMATCH!"
-  echo "   Mimir (${mimir_tag}) uses: ${mimir_alertmanager_version}"
-  echo "   Your operator uses:               ${local_alertmanager_version}"
+  echo "❌ ALERTMANAGER DEPENDENCY MISMATCH!"
+  echo "   Mimir (${mimir_tag}) uses: ${mimir_alertmanager_module} ${mimir_alertmanager_version}"
+  echo "   Your operator uses:        ${local_alertmanager_module} ${local_alertmanager_version}"
   echo ""
-  echo "💡 Please update your go.mod to match the Alertmanager version from the Mimir release."
+  echo "💡 Please update your go.mod to match the Alertmanager dependency from the Mimir release."
   echo ""
-  echo "🔧 Run this command to update your go.mod:"
-  echo "   go mod edit -replace=github.com/prometheus/alertmanager=github.com/grafana/prometheus-alertmanager@${mimir_alertmanager_version}"
+  echo "🔧 Run these commands to update your go.mod:"
+  if [[ "${mimir_alertmanager_module}" == "${ALERTMANAGER_MODULE}" ]]; then
+    # Mimir tracks upstream Alertmanager, so the fork replacement must be dropped.
+    echo "   go mod edit -dropreplace=${ALERTMANAGER_MODULE}"
+    echo "   go get ${ALERTMANAGER_MODULE}@${mimir_alertmanager_version}"
+  else
+    echo "   go mod edit -replace=${ALERTMANAGER_MODULE}=${mimir_alertmanager_module}@${mimir_alertmanager_version}"
+  fi
   echo "   go mod tidy"
   exit 1
 else
   echo ""
-  echo "✅ SUCCESS: Alertmanager version matches Mimir (${mimir_tag}) 🎉"
+  echo "✅ SUCCESS: Alertmanager dependency matches Mimir (${mimir_tag}) 🎉"
 fi
