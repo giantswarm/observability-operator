@@ -4,7 +4,7 @@ set -euo pipefail
 # --- Configuration ---
 MIMIR_APP_REPO="giantswarm/mimir-app"
 MIMIR_REPO="grafana/mimir"
-ALERTMANAGER_MODULE="github.com/prometheus/alertmanager"
+# ALERTMANAGER_MODULE is provided by alertmanager-dependency.sh
 GO_MOD_PATH="./go.mod"
 TMP_DIR="/tmp/jq-install"
 
@@ -53,25 +53,9 @@ require_jq() {
   echo "✅ jq installed temporarily in $TMP_DIR"
 }
 
-# --- Resolve the effective Alertmanager dependency of a go.mod ---
-# Takes go.mod contents as first argument, prints "<module> <version>", or
-# nothing when the module is absent.
-# A replace directive wins over the require entry: Mimir pinned Grafana's fork
-# via a replace directive up to mimir-3.0.x, and depends on upstream
-# prometheus/alertmanager directly since mimir-3.1.0.
-effective_alertmanager() {
-  local go_mod="$1"
-  local replaced
-
-  # `|| true` keeps a non-matching grep from aborting the script under pipefail.
-  replaced="$(echo "$go_mod" | { grep -E "${ALERTMANAGER_MODULE}[[:space:]]+=>" || true; })"
-  if [[ -n "$replaced" ]]; then
-    echo "$replaced" | awk '{ print $(NF-1), $NF }'
-    return
-  fi
-
-  echo "$go_mod" | { grep -E "^[[:space:]]*${ALERTMANAGER_MODULE} v" || true; } | awk '{ print $1, $2 }'
-}
+# --- Alertmanager dependency resolution ---
+# shellcheck source=hack/bin/alertmanager-dependency.sh
+source "$(dirname "${BASH_SOURCE[0]}")/alertmanager-dependency.sh"
 
 require_jq
 

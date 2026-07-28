@@ -10,11 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add unit tests for the cluster provider mapping, covering the managed-cluster kinds (`AWSManagedCluster`, `AzureManagedCluster`, `AzureASOManagedCluster`) and the unknown-kind error path.
-- Support for mimir 3 alertmanager
 
 ### Removed
 
 - Remove the unused `pkg/common/types.go` duplicate of the cluster provider mapping.
+
+### Fixed
+
+- check-alertmanager-version.sh now resolves Mimir's Alertmanager dependency from either a replace directive or the require entry, since Mimir switched to upstream prometheus/alertmanager in 3.1.0, and reports a readable error instead of exiting silently.
+- `validate-alertmanager-config.sh` and the `amtool` build in `Makefile.custom.mk` no longer require a fork replace directive in `go.mod`. Both now build `amtool` with `go run`/`go install` at the version resolved from `go.mod`, instead of cloning `grafana/prometheus-alertmanager` and checking out a pseudo-version commit hash. Dependency resolution is shared via the new sourceable `hack/bin/alertmanager-dependency.sh` library.
 
 ## [0.72.2] - 2026-07-08
 

@@ -72,11 +72,10 @@ $(BIN_DIR):
 
 $(AMTOOL_BIN): | $(BIN_DIR) ## Install amtool binary
 	@echo "==> Installing amtool binary"
-	git clone -q --filter=blob:none --no-checkout https://github.com/grafana/prometheus-alertmanager.git $(TESTS_WORKDIR)/prometheus-alertmanager
-	grep "github.com/prometheus/alertmanager =>" go.mod | sed -n 's/.*-\([a-f0-9]\{12\}\)$$/\1/p' | xargs \
-		git -C $(TESTS_WORKDIR)/prometheus-alertmanager checkout -q
-	make -C $(TESTS_WORKDIR)/prometheus-alertmanager common-build PROMU_BINARIES=amtool
-	mv $(TESTS_WORKDIR)/prometheus-alertmanager/amtool $@
+	@bash -euo pipefail -c '. hack/bin/alertmanager-dependency.sh; \
+		package="$$(alertmanager_amtool_package)"; \
+		echo "==> go install $$package"; \
+		GOBIN=$(abspath $(BIN_DIR)) go install "$$package"'
 
 $(BATS_BIN): ## Install BATS testing framework
 	@echo "==> Installing bats testing framework"
@@ -111,7 +110,7 @@ tests-alertmanager-routes: $(subst /,-, $(shell find tests/alertmanager-routes -
 
 .PHONY: tests-alertmanager-routes-clean
 tests-alertmanager-routes-clean:
-	-rm -rf $(TESTS_WORKDIR)/chart-manifest-* tests/alertmanager-routes/*/alertmanager-config tests-workdir/prometheus-alertmanager
+	-rm -rf $(TESTS_WORKDIR)/chart-manifest-* tests/alertmanager-routes/*/alertmanager-config
 
 ###############################################################################
 # Alertmanager Integration Tests
