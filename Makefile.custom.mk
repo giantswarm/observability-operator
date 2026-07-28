@@ -36,7 +36,7 @@ KIND_CLUSTER_NAME = alertmanager-integration
 INTEGRATION_TEST_FLAGS = -count=1 -v -p 1 -test.timeout 30m -tags=integration -args \
 												 -alertmanager-config-dir $(ALERTMANAGER_TEST_CONFIG_DIR)
 MIMIR_CHART = oci://gsoci.azurecr.io/charts/giantswarm/mimir
-MIMIR_CHART_VERSION = 0.28.0
+MIMIR_CHART_VERSION = 0.30.0
 
 ###############################################################################
 # Testing & Coverage
