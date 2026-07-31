@@ -100,7 +100,7 @@ mimir_alertmanager="$(effective_alertmanager "$mimir_go_mod")"
 
 if [[ -z "$mimir_alertmanager" ]]; then
   echo "❌ Could not find the ${ALERTMANAGER_MODULE} dependency in Mimir's go.mod."
-  echo "   Looked for a replace directive and a require entry, found neither."
+  echo "   Looked for a go.mod replace directive and a require entry, found neither."
   exit 1
 fi
 
@@ -113,7 +113,7 @@ local_alertmanager="$(effective_alertmanager "$(<"${GO_MOD_PATH}")")"
 
 if [[ -z "$local_alertmanager" ]]; then
   echo "❌ Could not find the ${ALERTMANAGER_MODULE} dependency in local go.mod."
-  echo "   Looked for a replace directive and a require entry in ${GO_MOD_PATH}, found neither."
+  echo "   Looked for a go.mod replace directive and a require entry in ${GO_MOD_PATH}, found neither."
   exit 1
 fi
 
