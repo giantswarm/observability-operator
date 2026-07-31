@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove the unused `pkg/common/types.go` duplicate of the cluster provider mapping.
 
+### Fixed
+
+- check-alertmanager-version.sh now resolves Mimir's Alertmanager dependency from either a replace directive or the require entry, since Mimir switched to upstream prometheus/alertmanager in 3.1.0, and reports a readable error instead of exiting silently.
+- `validate-alertmanager-config.sh` and the `amtool` build in `Makefile.custom.mk` no longer require a fork replace directive in `go.mod`. Both now build `amtool` with `go run`/`go install` at the version resolved from `go.mod`, instead of cloning `grafana/prometheus-alertmanager` and checking out a pseudo-version commit hash. Dependency resolution is shared via the new sourceable `hack/bin/alertmanager-dependency.sh` library.
+- Alertmanager integration test setup no longer fails intermittently with `no matching resources found`. `kubectl wait` cannot wait for a pod that does not exist yet, so it raced against the Deployment controller; the setup now waits on the `mimir-alertmanager` rollout instead.
+- Alertmanager integration tests now upload valid webhook URLs. Alertmanager v0.31.1 changed `WebhookConfig.URL` to the new `config.SecretTemplateURL` type, which the test helper did not un-redact, so Mimir received `<redacted>` as the webhook URL and failed to notify.
+- Bump the Mimir chart used by the Alertmanager integration tests from `0.28.0` to `0.30.0` (Mimir 2.17.0 to 3.1.4), so the tests run against the Mimir release whose Alertmanager version `go.mod` pins. Mimir 2.17.0 rejected configs using v0.31.1 fields such as `slack_app_url`, `rocketchat_api_url` and `app_url`.
+- Update PagerDuty `custom_details` expectations in the pipeline routing tests: Alertmanager v0.31.1 no longer coerces `custom_details` values to strings, so booleans and numbers are now emitted as typed JSON (`"all_pipelines":true` rather than `"all_pipelines":"true"`).
+
 ## [0.72.2] - 2026-07-08
 
 ### Added

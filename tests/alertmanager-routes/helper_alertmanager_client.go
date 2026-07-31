@@ -152,7 +152,7 @@ func (a alertmanagerClient) Configure() error {
 
 	// Marshal the modifier alertmanager config back to yaml
 	// Remove the custom Marshaler of config.AlertmanagerConfig, which prodcues an invalid configuration with all secrets replaced with <redacted>.
-	amConfigContent, err = yaml.MarshalWithOptions(amConfig, yaml.CustomMarshaler(noSecretHiding), yaml.CustomMarshaler(noSecretURLHiding))
+	amConfigContent, err = yaml.MarshalWithOptions(amConfig, yaml.CustomMarshaler(noSecretHiding), yaml.CustomMarshaler(noSecretURLHiding), yaml.CustomMarshaler(noSecretTemplateURLHiding))
 	if err != nil {
 		return fmt.Errorf("failed to marshal alertmanager configuration: %v", err)
 	}
@@ -328,6 +328,11 @@ func noSecretHiding(c config.Secret) ([]byte, error) {
 
 func noSecretURLHiding(c *config.SecretURL) ([]byte, error) {
 	return []byte(c.URL.String()), nil
+}
+
+// Webhook URLs use config.SecretTemplateURL, which redacts itself like the types above.
+func noSecretTemplateURLHiding(c config.SecretTemplateURL) ([]byte, error) {
+	return []byte(c), nil
 }
 
 // PostAlerts sends an alert with the given labels to Alertmanager
