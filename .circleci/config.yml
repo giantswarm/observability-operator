@@ -143,6 +143,8 @@ workflows:
             ignore:
             - main
             - master
+            - /pull\/[0-9]+/
+
 
     # Mirror gsoci -> Aliyun via the in-China giantswarm/galaxy-runner, off the
     # push-to-registries critical path. Tag builds only (dev images don't push
