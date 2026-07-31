@@ -37,6 +37,11 @@ alerting:
   cronitorHeartbeatPingKey: ""
   # -- Cronitor management key
   cronitorHeartbeatManagementKey: ""
+  # -- List of team-specific configs for per-team PagerDuty routing
+  # Expected team contents:
+  #  - name: teamA
+  #    pagerdutyToken: token-for-teamA
+  teams: []
 
 # Cronitor heartbeat monitor operational settings.
 cronitor:
@@ -46,11 +51,6 @@ cronitor:
   schedule: "every 30 minutes"
   # -- How often Cronitor re-alerts while the monitor remains in a failing state
   realertInterval: "every 24 hours"
-  # -- List of team-specific configs for per-team PagerDuty routing
-  # Expected team contents:
-  #  - name: teamA
-  #    pagerdutyToken: token-for-teamA
-  teams: []
 
 # Default tenant ID used when no tenant label is present on a cluster.
 defaultTenant: "giantswarm"
