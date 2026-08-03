@@ -58,6 +58,22 @@ func TestValidate(t *testing.T) {
 			wantErr:     true,
 			errContains: "invalid template",
 		},
+		{
+			// Ensure the msteams_configs Alertmanager receiver is a valid configuration.
+			name: "msteams receiver",
+			data: map[string][]byte{
+				AlertmanagerConfigKey: []byte("route:\n  receiver: msteams_receiver\nreceivers:\n  - name: msteams_receiver\n    msteams_configs:\n      - webhook_url: https://localhost.local\n"),
+			},
+			wantErr: false,
+		},
+		{
+			// Ensure the msteamsv2_configs Alertmanager receiver is a valid configuration.
+			name: "msteamsv2 receiver",
+			data: map[string][]byte{
+				AlertmanagerConfigKey: []byte("route:\n  receiver: msteamsv2_receiver\nreceivers:\n  - name: msteamsv2_receiver\n    msteamsv2_configs:\n      - webhook_url: https://localhost.local\n"),
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
