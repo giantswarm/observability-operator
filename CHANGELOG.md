@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.72.3] - 2026-08-03
+
 ### Added
 
 - Add unit tests for the cluster provider mapping, covering the managed-cluster kinds (`AWSManagedCluster`, `AzureManagedCluster`, `AzureASOManagedCluster`) and the unknown-kind error path.
@@ -1184,7 +1186,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.72.2...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.72.3...HEAD
+[0.72.3]: https://github.com/giantswarm/observability-operator/compare/v0.72.2...v0.72.3
 [0.72.2]: https://github.com/giantswarm/observability-operator/compare/v0.72.1...v0.72.2
 [0.72.1]: https://github.com/giantswarm/observability-operator/compare/v0.72.0...v0.72.1
 [0.72.0]: https://github.com/giantswarm/observability-operator/compare/v0.71.0...v0.72.0
