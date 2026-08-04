@@ -12,6 +12,7 @@ type Config struct {
 
 	// Subsystem configurations
 	Logging    LoggingConfig
+	LogExport  LogExportConfig
 	Grafana    GrafanaConfig
 	Monitoring MonitoringConfig
 	Tracing    TracingConfig

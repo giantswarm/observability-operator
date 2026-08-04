@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Configure `alloy-logexporter`, which archives Kubernetes API audit and Teleport logs to an object store. Disabled everywhere by default: enable it per installation with `--log-export-enabled`, and turn it off for a single cluster with the `observability.giantswarm.io/log-export` label. The app itself is shipped inert to every management cluster by `management-cluster-bases` collections and does nothing until this operator writes its values ConfigMap. It only ever runs on the management cluster, because the Envoy mirror that feeds it is configured once at the gateway.
 - Add a regression test for msteamsv2_configs and msteams_config Alertmanager receivers configuration
 
 ## [0.72.3] - 2026-08-03
@@ -224,9 +225,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `otelcol.processor.batch` to the OTLP traces pipeline (`send_batch_size=1024`, `send_batch_max_size=1024`, `timeout=500ms`) for efficient export to Tempo. Warning: may increase RAM usage for alloy-events.
 - Add OTLP metrics ingestion to the events collector (`monitoring.otlp.enabled`, default `true`). When enabled alongside `monitoring.enabled`, the alloy-events collector accepts OTLP metrics on the existing otlp-gateway Service (ports 4317/4318) and routes them per-tenant to Mimir via `/otlp/v1/metrics`. Requires observability-bundle ≥ 1.11.0. External gateway routes (Mimir HTTPRoute `/otlp/v1/metrics`) must be updated before enabling on workload clusters.
 - Add OTLP logs ingestion to the events collector (`logging.otlp.enabled`, default `true`). When enabled alongside `logging.enabled`, alloy-events accepts OTLP logs on the existing otlp-gateway Service and routes them per-tenant to Loki via `/otlp/v1/logs`. Requires `loki.loki.limits_config.allow_structured_metadata: true` and observability-bundle ≥ 1.11.0. External gateway routes must be updated before enabling on workload clusters.
-- Add `X-Scope-OrgID` HTTP/gRPC header as a second tenant source alongside the existing `observability.giantswarm.io/tenant` pod label, for all OTLP signal pipelines (traces, metrics, logs) 
+- Add `X-Scope-OrgID` HTTP/gRPC header as a second tenant source alongside the existing `observability.giantswarm.io/tenant` pod label, for all OTLP signal pipelines (traces, metrics, logs)
 
-### Changed 
+### Changed
 
 - Move network monitoring Helm value from `logging.enableNetworkMonitoring` to `monitoring.enableNetworkMonitoring`. The old value is still accepted for backward compatibility but is deprecated and will be removed in a future release.
 - Extract `alertmanager.Service` interface from the concrete struct to enable unit testing of the alertmanager controller without a real HTTP server.

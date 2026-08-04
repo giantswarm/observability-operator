@@ -120,6 +120,15 @@ const (
 	flagTracingGatewayIngressSecretName      = "tracing-gateway-ingress-secret-name"
 	flagTracingGatewayHTTPRouteSecretName    = "tracing-gateway-httproute-secret-name"
 
+	// Log export configuration flag names
+	flagLogExportEnabled        = "log-export-enabled"
+	flagLogExportNamespace      = "log-export-namespace"
+	flagLogExportEndpoint       = "log-export-endpoint"
+	flagLogExportBucket         = "log-export-bucket"
+	flagLogExportRegion         = "log-export-region"
+	flagLogExportPrefix         = "log-export-prefix"
+	flagLogExportForcePathStyle = "log-export-force-path-style"
+
 	// Logging configuration flag names
 	flagLoggingEnabled                     = "logging-enabled"
 	flagLoggingRulerURL                    = "logging-ruler-url"
@@ -314,6 +323,26 @@ func parseFlags() (err error) {
 		"Name of the Ingress auth secret in the Tempo gateway namespace.")
 	pflag.StringVar(&cfg.Tracing.Gateway.HTTPRouteSecretName, flagTracingGatewayHTTPRouteSecretName, "tempo-gateway-httproute-auth",
 		"Name of the HTTPRoute auth secret in the Tempo gateway namespace.")
+
+	// Log export configuration flags. Off by default: this ships audit logs to a
+	// third-party bucket, so it is never enabled by accident.
+	pflag.BoolVar(&cfg.LogExport.Enabled, flagLogExportEnabled, false,
+		"Enable audit and Teleport log export at the installation level.")
+	pflag.StringVar(&cfg.LogExport.Namespace, flagLogExportNamespace, "giantswarm",
+		"Namespace holding the alloy-logexporter HelmRelease. Must match it, because a "+
+			"HelmRelease resolves valuesFrom references in its own namespace only.")
+	pflag.StringVar(&cfg.LogExport.Endpoint, flagLogExportEndpoint, "",
+		"Object store endpoint. Empty uses the AWS default for the region; set it to target "+
+			"an S3-compatible store.")
+	pflag.StringVar(&cfg.LogExport.Bucket, flagLogExportBucket, "",
+		"Destination bucket for exported logs.")
+	pflag.StringVar(&cfg.LogExport.Region, flagLogExportRegion, "us-east-1",
+		"Region of the destination bucket.")
+	pflag.StringVar(&cfg.LogExport.Prefix, flagLogExportPrefix, "audit",
+		"Key prefix that exported objects are written under.")
+	pflag.BoolVar(&cfg.LogExport.ForcePathStyle, flagLogExportForcePathStyle, false,
+		"Address the bucket as a path rather than a subdomain. Generally required by "+
+			"S3-compatible stores.")
 
 	// Logging configuration flags
 	pflag.BoolVar(&cfg.Logging.Enabled, flagLoggingEnabled, false,

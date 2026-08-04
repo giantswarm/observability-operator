@@ -27,6 +27,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/events"
+	"github.com/giantswarm/observability-operator/pkg/agent/collectors/logexport"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/logs"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/metrics"
 	agentcommon "github.com/giantswarm/observability-operator/pkg/agent/common"
@@ -124,6 +125,13 @@ func SetupClusterReconciler(mgr manager.Manager, cfg config.Config, logger logr.
 		TenantRepository:        tenantRepository,
 	}
 
+	// alloy-logexporter needs neither organization nor tenant lookups: it archives
+	// raw lines to object storage rather than writing to an observability backend.
+	alloyLogExporterService := &logexport.Service{
+		Config:                  cfg,
+		ConfigurationRepository: agentConfigurationRepository,
+	}
+
 	agentCredentials := []credentialEntry{
 		{backend: v1alpha1.CredentialBackendMetrics, isEnabled: cfg.Monitoring.IsMonitoringEnabled},
 		{backend: v1alpha1.CredentialBackendLogs, isEnabled: cfg.Logging.IsLoggingEnabled},
@@ -150,6 +158,15 @@ func SetupClusterReconciler(mgr manager.Manager, cfg config.Config, logger logr.
 			service: alloyEventsService,
 			isEnabled: func(c *clusterv1.Cluster) bool {
 				return cfg.Logging.IsLoggingEnabled(c) || cfg.Tracing.IsTracingEnabled(c) || cfg.Monitoring.IsMonitoringEnabled(c)
+			},
+		},
+		{
+			// alloy-logexporter archives audit and Teleport logs to a customer
+			// bucket (statefulset, management cluster only)
+			name:    "logexport",
+			service: alloyLogExporterService,
+			isEnabled: func(c *clusterv1.Cluster) bool {
+				return cfg.LogExport.IsLogExportEnabled(c, cfg.Cluster)
 			},
 		},
 	}

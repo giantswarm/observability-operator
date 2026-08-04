@@ -17,4 +17,10 @@ const (
 	// Events (used for both logging and tracing)
 	AlloyEventsAppName      = "alloy-events"
 	AlloyEventsHelmValueKey = "alloyEvents"
+
+	// Log export. Unlike the three above, this one is not an observability-bundle
+	// app: it is shipped to management clusters by management-cluster-bases
+	// collections and is inert until this operator writes its values ConfigMap, so
+	// it has no bundle Helm value key.
+	AlloyLogExporterAppName = "alloy-logexporter"
 )
