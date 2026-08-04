@@ -112,6 +112,9 @@ Observability features are controlled per-cluster via labels on the `Cluster` ob
 | Tracing | `observability.giantswarm.io/tracing` | opt-out | enabled |
 | Network monitoring | `observability.giantswarm.io/network-monitoring` | opt-in | disabled |
 | KEDA auth | `observability.giantswarm.io/keda-authentication` | opt-in | disabled |
+| Log export | `observability.giantswarm.io/log-export` | opt-out | disabled installation-wide |
+
+Log export is off installation-wide unless `--log-export-enabled` is set, and it only ever applies to the management cluster; the label exists to turn it off again. See [docs/log-export.md](docs/log-export.md).
 
 The KEDA operator namespace can be overridden per-cluster via the `observability.giantswarm.io/keda-namespace` annotation (default: `keda`).
 
@@ -154,6 +157,7 @@ See [docs/metrics.md](docs/metrics.md) for the full metrics reference.
 | [docs/agent-credential.md](docs/agent-credential.md) | AgentCredential CRD reference and self-service usage |
 | [docs/cluster.md](docs/cluster.md) | Per-cluster observability feature flags and sharding overrides |
 | [docs/metrics.md](docs/metrics.md) | Operator metrics reference and example queries |
+| [docs/log-export.md](docs/log-export.md) | Audit and Teleport log export to an object store |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, testing, and coding conventions |
 
 ## Credits
