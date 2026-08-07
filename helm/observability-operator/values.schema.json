@@ -526,6 +526,15 @@
                                     "type": "boolean"
                                 }
                             }
+                        },
+                        "logExport": {
+                            "type": "object",
+                            "description": "Enable LogExport validation webhook",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
                     }
                 }
