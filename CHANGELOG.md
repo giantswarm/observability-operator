@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add the namespaced `LogExport` CRD, with a `selector` and an `s3` or `loki` `destination`. API types only, no controller.
 - Add a regression test for msteamsv2_configs and msteams_config Alertmanager receivers configuration
 - Enable `otelcol.receiver.vcenter` and `otelcol.exporter.prometheus` on the management cluster of vSphere and Cloud Director installations, to collect provider metrics.
 
