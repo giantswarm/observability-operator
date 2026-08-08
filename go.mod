@@ -246,6 +246,11 @@ require (
 )
 
 replace (
+	// Neither is compiled into the operator -- both arrive in the module graph with
+	// grafana/loki -- but the dependency scan audits the graph, and the versions it
+	// pulls have known CVEs. Pinned forward to the fixed releases.
+	github.com/apache/thrift => github.com/apache/thrift v0.24.0
+	github.com/containerd/containerd/v2 => github.com/containerd/containerd/v2 v2.3.3
 	github.com/hashicorp/go-cleanhttp => github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-retryablehttp => github.com/hashicorp/go-retryablehttp v0.7.8
 	// grafana/loki/v3 needs Grafana's memberlist fork; same replace as giantswarm/logql-lint.
