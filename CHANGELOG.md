@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a validating webhook rejecting `LogExport.spec.selector` expressions that are not LogQL log selectors.
 - Add the namespaced `LogExport` CRD, with a `selector` and an `s3` or `loki` `destination`. API types only, no controller.
 - Add a regression test for msteamsv2_configs and msteams_config Alertmanager receivers configuration
 
