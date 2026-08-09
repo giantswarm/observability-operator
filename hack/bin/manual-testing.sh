@@ -88,7 +88,7 @@ main() {
 
   alloy=$(kubectl get apps -n org-giantswarm | grep ollyoptest-alloy-metrics)
 
-  if [[ ! -z "$alloy" ]]; then
+  if [[ -n "$alloy" ]]; then
     local podStatus; podStatus="$(kubectl get pods -n kube-system --context "teleport.giantswarm.io-$1-ollyoptest alloy-metrics-0" -o yaml | yq .status.phase)"
 
     [[ "$podStatus" != "Running" ]] && echo "alloy app deployed but pod isn't in a running state" || echo "alloy app is deployed and pods are running"
