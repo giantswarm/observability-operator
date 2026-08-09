@@ -54,7 +54,7 @@ func NewHTTPReceiver(t *testing.T) (*httpReceiver, error) {
 		records: []httpRequest{},
 	}
 
-	f, err := os.OpenFile(fmt.Sprintf(requestsLogFileFormat, t.Name()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
+	f, err := os.OpenFile(fmt.Sprintf(requestsLogFileFormat, t.Name()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create requests log file: %v", err)
 	}

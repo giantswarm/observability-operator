@@ -139,7 +139,7 @@ var _ = Describe("AgentCredential Controller", func() {
 	It("respects spec.secretName when rendering the Secret", func() {
 		cred := &observabilityv1alpha1.AgentCredential{
 			ObjectMeta: metav1.ObjectMeta{Name: "ac-3", Namespace: ns},
-			Spec: observabilityv1alpha1.AgentCredentialSpec{
+			Spec: observabilityv1alpha1.AgentCredentialSpec{ // nolint:gosec // G101: Secret resource name, not a credential
 				Backend:    observabilityv1alpha1.CredentialBackendMetrics,
 				AgentName:  "agent-3",
 				SecretName: "ac-3-renamed-secret",
