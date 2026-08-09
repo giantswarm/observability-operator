@@ -982,7 +982,7 @@ var _ = Describe("Dashboard Controller", func() {
 							"title": "First Dashboard"
 						}`,
 						"dashboard2.json": `{
-							"uid": "dashboard-2", 
+							"uid": "dashboard-2",
 							"title": "Second Dashboard"
 						}`,
 						"dashboard3.json": `{

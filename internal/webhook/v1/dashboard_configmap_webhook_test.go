@@ -332,7 +332,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 						"panels": []
 					}`,
 					"dashboard2.json": `{
-						"uid": "dashboard-2", 
+						"uid": "dashboard-2",
 						"title": "Second Dashboard",
 						"panels": []
 					}`,

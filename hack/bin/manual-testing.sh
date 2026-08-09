@@ -70,7 +70,7 @@ main() {
   kubectl create -f grizzly-e2e-wc.yaml
 
   echo "WC named 'ollyoptest' created. Waiting for it and its apps to be ready"
-  
+
   # Waiting for 1min for the cluster resource to be created
   sleep 60
 
