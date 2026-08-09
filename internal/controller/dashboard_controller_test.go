@@ -24,6 +24,29 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
 
+const (
+	testDashboard             = "Test Dashboard"
+	testDashboardOrganization = "Test Dashboard Organization"
+	ac1                       = "ac-1"
+	ac2                       = "ac-2"
+	ac3                       = "ac-3"
+	alertmanagerConfig        = "alertmanager-config"
+	clusterCRDName            = "clusters.cluster.x-k8s.io"
+	dashboardInvalidJSON      = "dashboard-invalid-json"
+	dashboardWithID           = "dashboard-with-id"
+	dashboardWithLabelOrg     = "dashboard-with-label-org"
+	dashboardWithoutOrg       = "dashboard-without-org"
+	dashboardWithoutUID       = "dashboard-without-uid"
+	dashboardJSONKey          = "dashboard.json"
+	del                       = "del"
+	invalidDashboard          = "invalid-dashboard"
+	invalidOrgDashboard       = "invalid-org-dashboard"
+	multipleDashboards        = "multiple-dashboards"
+	kindLabel                 = "observability.giantswarm.io/kind"
+	testDashboardOrg          = "test-dashboard-org"
+	testDashboardUID          = "test-dashboard-uid"
+)
+
 var _ = Describe("Dashboard Controller", func() {
 	Context("When reconciling a dashboard ConfigMap", func() {
 		const (
@@ -75,10 +98,10 @@ var _ = Describe("Dashboard Controller", func() {
 			// Create a test GrafanaOrganization for dashboard validation
 			grafanaOrg := &observabilityv1alpha1.GrafanaOrganization{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-dashboard-org",
+					Name: testDashboardOrg,
 				},
 				Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
-					DisplayName: "Test Dashboard Organization",
+					DisplayName: testDashboardOrganization,
 					Tenants:     []observabilityv1alpha1.TenantID{"dashboard_tenant"},
 					RBAC: &observabilityv1alpha1.RBAC{
 						Admins: []string{"admin-org"},
@@ -113,11 +136,11 @@ var _ = Describe("Dashboard Controller", func() {
 						labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationKey: "Test Dashboard Organization",
+						labels.GrafanaOrganizationKey: testDashboardOrganization,
 					},
 				},
 				Data: map[string]string{
-					"dashboard.json": `{
+					dashboardJSONKey: `{
 						"uid": "test-dashboard-uid",
 						"title": "Test Dashboard",
 						"tags": ["test"],
@@ -152,7 +175,7 @@ var _ = Describe("Dashboard Controller", func() {
 			// Clean up GrafanaOrganization
 			grafanaOrg := &observabilityv1alpha1.GrafanaOrganization{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-dashboard-org",
+					Name: testDashboardOrg,
 				},
 			}
 			// Ignore cleanup errors to prevent test failures
@@ -176,11 +199,11 @@ var _ = Describe("Dashboard Controller", func() {
 				// Mock the Orgs service
 				mockOrgsClient := &mocks.MockOrgsClient{}
 				mockGrafanaClient.On("Orgs").Return(mockOrgsClient)
-				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(
+				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(
 					&orgs.GetOrgByNameOK{
 						Payload: &models.OrgDetailsDTO{
 							ID:   1,
-							Name: "Test Dashboard Organization",
+							Name: testDashboardOrganization,
 						},
 					}, nil)
 
@@ -190,7 +213,7 @@ var _ = Describe("Dashboard Controller", func() {
 				mockDashboardsClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
 					&dashboards.PostDashboardOK{
 						Payload: &models.PostDashboardOKBody{
-							UID: func() *string { s := "test-dashboard-uid"; return &s }(),
+							UID: func() *string { s := testDashboardUID; return &s }(),
 						},
 					}, nil)
 			})
@@ -302,10 +325,10 @@ var _ = Describe("Dashboard Controller", func() {
 				orgResponse := &orgs.GetOrgByNameOK{
 					Payload: &models.OrgDetailsDTO{
 						ID:   int64(2),
-						Name: "Test Dashboard Organization",
+						Name: testDashboardOrganization,
 					},
 				}
-				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(orgResponse, nil)
 
 				// Mock the Dashboards service
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
@@ -313,7 +336,7 @@ var _ = Describe("Dashboard Controller", func() {
 
 				// Mock the dashboard creation to succeed
 				dashboardID := int64(123)
-				dashboardUID := "test-dashboard-uid"
+				dashboardUID := testDashboardUID
 				dashboardURL := "/d/test-dashboard-uid/test-dashboard"
 				dashboardResponse := &dashboards.PostDashboardOK{
 					Payload: &models.PostDashboardOKBody{
@@ -374,10 +397,10 @@ var _ = Describe("Dashboard Controller", func() {
 				orgResponse := &orgs.GetOrgByNameOK{
 					Payload: &models.OrgDetailsDTO{
 						ID:   int64(2),
-						Name: "Test Dashboard Organization",
+						Name: testDashboardOrganization,
 					},
 				}
-				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(orgResponse, nil)
 
 				// Mock the Dashboards service
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
@@ -447,7 +470,7 @@ var _ = Describe("Dashboard Controller", func() {
 
 				// Mock the organization lookup to fail
 				// Note: WithOrgID() is NOT called when organization lookup fails
-				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(nil, errors.New("organization not found"))
+				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(nil, errors.New("organization not found"))
 
 				By("Creating a dashboard ConfigMap")
 				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
@@ -517,10 +540,10 @@ var _ = Describe("Dashboard Controller", func() {
 				orgResponse := &orgs.GetOrgByNameOK{
 					Payload: &models.OrgDetailsDTO{
 						ID:   int64(2),
-						Name: "Test Dashboard Organization",
+						Name: testDashboardOrganization,
 					},
 				}
-				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(orgResponse, nil)
 
 				// Mock the Dashboards service
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
@@ -530,23 +553,23 @@ var _ = Describe("Dashboard Controller", func() {
 				dashboardResponse := &dashboards.GetDashboardByUIDOK{
 					Payload: &models.DashboardFullWithMeta{
 						Dashboard: map[string]interface{}{
-							"uid":   "test-dashboard-uid",
-							"title": "Test Dashboard",
+							"uid":   testDashboardUID,
+							"title": testDashboard,
 						},
 					},
 				}
-				mockDashboardsClient.On("GetDashboardByUID", "test-dashboard-uid").Return(dashboardResponse, nil)
+				mockDashboardsClient.On("GetDashboardByUID", testDashboardUID).Return(dashboardResponse, nil)
 
 				// Mock the dashboard deletion to succeed
 				deleteMessage := "Dashboard deleted"
-				deleteTitle := "Test Dashboard"
+				deleteTitle := testDashboard
 				deleteResponse := &dashboards.DeleteDashboardByUIDOK{
 					Payload: &models.DeleteDashboardByUIDOKBody{
 						Message: &deleteMessage,
 						Title:   &deleteTitle,
 					},
 				}
-				mockDashboardsClient.On("DeleteDashboardByUID", "test-dashboard-uid").Return(deleteResponse, nil)
+				mockDashboardsClient.On("DeleteDashboardByUID", testDashboardUID).Return(deleteResponse, nil)
 
 				By("Marking the dashboard ConfigMap for deletion")
 				createdConfigMap := &v1.ConfigMap{}
@@ -579,10 +602,10 @@ var _ = Describe("Dashboard Controller", func() {
 				orgResponse := &orgs.GetOrgByNameOK{
 					Payload: &models.OrgDetailsDTO{
 						ID:   int64(2),
-						Name: "Test Dashboard Organization",
+						Name: testDashboardOrganization,
 					},
 				}
-				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(orgResponse, nil)
 
 				// Mock the Dashboards service
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
@@ -592,15 +615,15 @@ var _ = Describe("Dashboard Controller", func() {
 				dashboardResponse := &dashboards.GetDashboardByUIDOK{
 					Payload: &models.DashboardFullWithMeta{
 						Dashboard: map[string]interface{}{
-							"uid":   "test-dashboard-uid",
-							"title": "Test Dashboard",
+							"uid":   testDashboardUID,
+							"title": testDashboard,
 						},
 					},
 				}
-				mockDashboardsClient.On("GetDashboardByUID", "test-dashboard-uid").Return(dashboardResponse, nil)
+				mockDashboardsClient.On("GetDashboardByUID", testDashboardUID).Return(dashboardResponse, nil)
 
 				// Mock the dashboard deletion to fail
-				mockDashboardsClient.On("DeleteDashboardByUID", "test-dashboard-uid").Return(nil, errors.New("dashboard deletion failed"))
+				mockDashboardsClient.On("DeleteDashboardByUID", testDashboardUID).Return(nil, errors.New("dashboard deletion failed"))
 
 				By("Marking the dashboard ConfigMap for deletion")
 				createdConfigMap := &v1.ConfigMap{}
@@ -643,10 +666,10 @@ var _ = Describe("Dashboard Controller", func() {
 				orgResponse := &orgs.GetOrgByNameOK{
 					Payload: &models.OrgDetailsDTO{
 						ID:   int64(2),
-						Name: "test-dashboard-org",
+						Name: testDashboardOrg,
 					},
 				}
-				mockOrgsClient.On("GetOrgByName", "test-dashboard-org").Return(orgResponse, nil)
+				mockOrgsClient.On("GetOrgByName", testDashboardOrg).Return(orgResponse, nil)
 
 				// Mock the Dashboards service
 				mockDashboardsClient := &mocks.MockDashboardsClient{}
@@ -662,15 +685,15 @@ var _ = Describe("Dashboard Controller", func() {
 				// Note: Using a valid Kubernetes label value (no spaces, alphanumeric + dashes/dots/underscores)
 				configMapWithLabelOrg := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "dashboard-with-label-org",
+						Name:      dashboardWithLabelOrg,
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
-							labels.GrafanaOrganizationKey:     "test-dashboard-org",
+							labels.GrafanaOrganizationKey:     testDashboardOrg,
 						},
 					},
 					Data: map[string]string{
-						"dashboard.json": `{
+						dashboardJSONKey: `{
 							"uid": "test-dashboard-uid",
 							"title": "Test Dashboard"
 						}`,
@@ -683,7 +706,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("First reconciliation - should add finalizer only")
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-with-label-org",
+						Name:      dashboardWithLabelOrg,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -692,7 +715,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("Second reconciliation - should process the dashboard successfully")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-with-label-org",
+						Name:      dashboardWithLabelOrg,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -707,14 +730,14 @@ var _ = Describe("Dashboard Controller", func() {
 			It("should fail when ConfigMap has no organization label or annotation (defensive validation)", func() {
 				configMapWithoutOrg := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "dashboard-without-org",
+						Name:      dashboardWithoutOrg,
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 					},
 					Data: map[string]string{
-						"dashboard.json": `{
+						dashboardJSONKey: `{
 							"uid": "test-dashboard-uid",
 							"title": "Test Dashboard"
 						}`,
@@ -727,7 +750,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("First reconciliation - should add finalizer only")
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-without-org",
+						Name:      dashboardWithoutOrg,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -736,7 +759,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("Second reconciliation - should fail due to defensive validation")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-without-org",
+						Name:      dashboardWithoutOrg,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -756,17 +779,17 @@ var _ = Describe("Dashboard Controller", func() {
 
 				configMapWithoutUID := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "dashboard-without-uid",
+						Name:      dashboardWithoutUID,
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: testDashboardOrganization,
 						},
 					},
 					Data: map[string]string{
-						"dashboard.json": `{
+						dashboardJSONKey: `{
 							"title": "Test Dashboard Without UID"
 						}`,
 					},
@@ -778,7 +801,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("First reconciliation - should add finalizer only")
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-without-uid",
+						Name:      dashboardWithoutUID,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -787,7 +810,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("Second reconciliation - should fail due to defensive validation")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-without-uid",
+						Name:      dashboardWithoutUID,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -814,17 +837,17 @@ var _ = Describe("Dashboard Controller", func() {
 
 				configMapWithID := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "dashboard-with-id",
+						Name:      dashboardWithID,
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: testDashboardOrganization,
 						},
 					},
 					Data: map[string]string{
-						"dashboard.json": `{
+						dashboardJSONKey: `{
 							"id": 123,
 							"uid": "test-dashboard-uid",
 							"title": "Test Dashboard With ID"
@@ -836,10 +859,10 @@ var _ = Describe("Dashboard Controller", func() {
 				orgResponse := &orgs.GetOrgByNameOK{
 					Payload: &models.OrgDetailsDTO{
 						ID:   int64(2),
-						Name: "Test Dashboard Organization",
+						Name: testDashboardOrganization,
 					},
 				}
-				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(orgResponse, nil)
 
 				// Mock the dashboard creation to succeed
 				dashboardResponse := &dashboards.PostDashboardOK{
@@ -863,7 +886,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("First reconciliation - should add finalizer only")
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-with-id",
+						Name:      dashboardWithID,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -872,7 +895,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("Second reconciliation - should process and clean the dashboard ID")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-with-id",
+						Name:      dashboardWithID,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -889,17 +912,17 @@ var _ = Describe("Dashboard Controller", func() {
 
 				configMapWithInvalidJSON := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "dashboard-invalid-json",
+						Name:      dashboardInvalidJSON,
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: testDashboardOrganization,
 						},
 					},
 					Data: map[string]string{
-						"dashboard.json": `{
+						dashboardJSONKey: `{
 							"uid": "test-dashboard-uid"
 							"title": "Invalid JSON - missing comma"
 						}`,
@@ -912,7 +935,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("First reconciliation - should add finalizer only")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-invalid-json",
+						Name:      dashboardInvalidJSON,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -922,7 +945,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("Second reconciliation - should fail due to defensive validation")
 				result, err = reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "dashboard-invalid-json",
+						Name:      dashboardInvalidJSON,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -951,10 +974,10 @@ var _ = Describe("Dashboard Controller", func() {
 				orgResponse := &orgs.GetOrgByNameOK{
 					Payload: &models.OrgDetailsDTO{
 						ID:   int64(2),
-						Name: "Test Dashboard Organization",
+						Name: testDashboardOrganization,
 					},
 				}
-				mockOrgsClient.On("GetOrgByName", "Test Dashboard Organization").Return(orgResponse, nil)
+				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(orgResponse, nil)
 
 				// Mock dashboard creation for all three dashboards
 				dashboardResponse := &dashboards.PostDashboardOK{
@@ -964,13 +987,13 @@ var _ = Describe("Dashboard Controller", func() {
 
 				configMapWithMultipleDashboards := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "multiple-dashboards",
+						Name:      multipleDashboards,
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: testDashboardOrganization,
 						},
 						// Note: no organization annotation
 					},
@@ -997,7 +1020,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("First reconciliation - should add finalizer only")
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "multiple-dashboards",
+						Name:      multipleDashboards,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -1006,7 +1029,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("Second reconciliation - should process all dashboards")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "multiple-dashboards",
+						Name:      multipleDashboards,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -1041,17 +1064,17 @@ var _ = Describe("Dashboard Controller", func() {
 				By("Creating ConfigMap with invalid dashboard (missing UID)")
 				invalidConfigMap := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "invalid-dashboard",
+						Name:      invalidDashboard,
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationKey: "Test Dashboard Organization",
+							labels.GrafanaOrganizationKey: testDashboardOrganization,
 						},
 					},
 					Data: map[string]string{
-						"dashboard.json": `{
+						dashboardJSONKey: `{
 							"title": "Dashboard without UID",
 							"panels": []
 						}`,
@@ -1064,7 +1087,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("First reconciliation should add finalizer")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "invalid-dashboard",
+						Name:      invalidDashboard,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -1074,7 +1097,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("Second reconciliation should fail due to validation")
 				result, err = reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "invalid-dashboard",
+						Name:      invalidDashboard,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -1091,7 +1114,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("Creating ConfigMap with invalid dashboard (missing organization)")
 				invalidConfigMap := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "invalid-org-dashboard",
+						Name:      invalidOrgDashboard,
 						Namespace: dashboardNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
@@ -1099,7 +1122,7 @@ var _ = Describe("Dashboard Controller", func() {
 						// No organization annotation
 					},
 					Data: map[string]string{
-						"dashboard.json": `{
+						dashboardJSONKey: `{
 							"uid": "test-uid",
 							"title": "Dashboard without organization",
 							"panels": []
@@ -1113,7 +1136,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("First reconciliation should add finalizer")
 				result, err := reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "invalid-org-dashboard",
+						Name:      invalidOrgDashboard,
 						Namespace: dashboardNamespace,
 					},
 				})
@@ -1123,7 +1146,7 @@ var _ = Describe("Dashboard Controller", func() {
 				By("Second reconciliation should fail due to validation")
 				result, err = reconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      "invalid-org-dashboard",
+						Name:      invalidOrgDashboard,
 						Namespace: dashboardNamespace,
 					},
 				})

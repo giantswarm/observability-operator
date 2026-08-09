@@ -66,8 +66,8 @@ var _ = Describe("Alertmanager Controller", func() {
 				Name:      secretName,
 				Namespace: secretNamespace,
 				Labels: map[string]string{
-					"observability.giantswarm.io/kind": "alertmanager-config",
-					tenancy.TenantSelectorLabel:        testTenant,
+					kindLabel:                   alertmanagerConfig,
+					tenancy.TenantSelectorLabel: testTenant,
 				},
 			},
 			Data: map[string][]byte{
@@ -241,7 +241,7 @@ var _ = Describe("Alertmanager Controller", func() {
 					Name:      secretName,
 					Namespace: secretNamespace,
 					Labels: map[string]string{
-						"observability.giantswarm.io/kind": "alertmanager-config",
+						kindLabel: alertmanagerConfig,
 					},
 					Finalizers: []string{alertmanager.AlertmanagerConfigFinalizer},
 				},
@@ -293,8 +293,8 @@ var _ = Describe("Alertmanager Controller", func() {
 					Name:      "smoke-alertmanager-config",
 					Namespace: secretNamespace,
 					Labels: map[string]string{
-						"observability.giantswarm.io/kind": "alertmanager-config",
-						tenancy.TenantSelectorLabel:        testTenant,
+						kindLabel:                   alertmanagerConfig,
+						tenancy.TenantSelectorLabel: testTenant,
 					},
 				},
 				Data: map[string][]byte{

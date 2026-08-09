@@ -29,6 +29,11 @@ import (
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
+const (
+	testOrganization = "Test Organization"
+	adminOrg         = "admin-org"
+)
+
 // GrafanaOrganizationWebhookSpecs returns the Describe blocks for testing the GrafanaOrganization webhook
 var _ = Describe("GrafanaOrganization Validation", func() {
 	var ctx context.Context
@@ -58,10 +63,10 @@ var _ = Describe("GrafanaOrganization Validation", func() {
 						Name: "test-org-invalid-" + tc.name,
 					},
 					Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
-						DisplayName: "Test Organization",
+						DisplayName: testOrganization,
 						Tenants:     []observabilityv1alpha1.TenantID{observabilityv1alpha1.TenantID(tc.tenantID)},
 						RBAC: &observabilityv1alpha1.RBAC{
-							Admins: []string{"admin-org"},
+							Admins: []string{adminOrg},
 						},
 					},
 				}
@@ -79,10 +84,10 @@ var _ = Describe("GrafanaOrganization Validation", func() {
 					Name: "test-org-empty",
 				},
 				Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants:     []observabilityv1alpha1.TenantID{""},
 					RBAC: &observabilityv1alpha1.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}
@@ -108,10 +113,10 @@ var _ = Describe("GrafanaOrganization Validation", func() {
 					Name: "test-org-forbidden",
 				},
 				Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants:     []observabilityv1alpha1.TenantID{"__mimir_cluster"},
 					RBAC: &observabilityv1alpha1.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}
@@ -128,10 +133,10 @@ var _ = Describe("GrafanaOrganization Validation", func() {
 					Name: "test-org-duplicates",
 				},
 				Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants:     []observabilityv1alpha1.TenantID{"valid_tenant", "valid_tenant"},
 					RBAC: &observabilityv1alpha1.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}
@@ -167,10 +172,10 @@ var _ = Describe("GrafanaOrganization Validation", func() {
 						Name: fmt.Sprintf("test-org-valid-%s-%d", strings.ReplaceAll(tc.name, "_", "-"), i),
 					},
 					Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
-						DisplayName: "Test Organization",
+						DisplayName: testOrganization,
 						Tenants:     tenantIDs,
 						RBAC: &observabilityv1alpha1.RBAC{
-							Admins: []string{"admin-org"},
+							Admins: []string{adminOrg},
 						},
 					},
 				}
@@ -190,10 +195,10 @@ var _ = Describe("GrafanaOrganization Validation", func() {
 					Name: "test-org-update",
 				},
 				Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants:     []observabilityv1alpha1.TenantID{"initial_tenant"},
 					RBAC: &observabilityv1alpha1.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}
@@ -224,10 +229,10 @@ var _ = Describe("GrafanaOrganization Validation", func() {
 					Name: "test-org-delete",
 				},
 				Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants:     []observabilityv1alpha1.TenantID{"delete_test_tenant"},
 					RBAC: &observabilityv1alpha1.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}

@@ -19,6 +19,8 @@ import (
 )
 
 const (
+	monitorTypeHeartbeat = "heartbeat"
+
 	cronitorAPIBaseURL = "https://cronitor.io/api/monitors"
 	cronitorPingURL    = "https://cronitor.link/p"
 
@@ -112,7 +114,7 @@ func (r *CronitorHeartbeatRepository) makeMonitor() *cronitorMonitor {
 
 	key := r.monitorKey()
 	return &cronitorMonitor{
-		Type:            "heartbeat",
+		Type:            monitorTypeHeartbeat,
 		Key:             key,
 		Name:            key,
 		GraceSeconds:    r.cfg.graceSeconds,

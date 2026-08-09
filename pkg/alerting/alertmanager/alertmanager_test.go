@@ -15,6 +15,13 @@ import (
 	pkgconfig "github.com/giantswarm/observability-operator/pkg/config"
 )
 
+const (
+	alertTmpl               = "alert.tmpl"
+	defaultReceiver         = "default"
+	missingAlertmanagerYAML = "missing alertmanager.yaml"
+	sub1                    = "sub1"
+)
+
 func TestValidate(t *testing.T) {
 	validConfig := []byte("route:\n  receiver: noop\nreceivers:\n- name: noop\n")
 	validTemplate := []byte("{{ define \"myalert\" }}fired{{ end }}")
@@ -34,15 +41,15 @@ func TestValidate(t *testing.T) {
 			name: "valid config with valid template",
 			data: map[string][]byte{
 				AlertmanagerConfigKey: validConfig,
-				"alert.tmpl":          validTemplate,
+				alertTmpl:             validTemplate,
 			},
 			wantErr: false,
 		},
 		{
-			name:        "missing alertmanager.yaml",
+			name:        missingAlertmanagerYAML,
 			data:        map[string][]byte{},
 			wantErr:     true,
-			errContains: "missing alertmanager.yaml",
+			errContains: missingAlertmanagerYAML,
 		},
 		{
 			name:    "invalid alertmanager config",
@@ -106,24 +113,24 @@ func TestExtractTemplates(t *testing.T) {
 		{
 			name: "single valid template",
 			data: map[string][]byte{
-				"alert.tmpl": []byte(`{{ define "myalert" }}fired{{ end }}`),
+				alertTmpl: []byte(`{{ define "myalert" }}fired{{ end }}`),
 			},
-			wantKeys: []string{"alert.tmpl"},
+			wantKeys: []string{alertTmpl},
 		},
 		{
 			name: "path prefix is stripped to base name",
 			data: map[string][]byte{
 				"/etc/alertmanager/alert.tmpl": []byte(`{{ define "myalert" }}fired{{ end }}`),
 			},
-			wantKeys: []string{"alert.tmpl"},
+			wantKeys: []string{alertTmpl},
 		},
 		{
 			name: "non-template keys are ignored",
 			data: map[string][]byte{
 				AlertmanagerConfigKey: []byte("config"),
-				"alert.tmpl":          []byte(`{{ define "myalert" }}fired{{ end }}`),
+				alertTmpl:             []byte(`{{ define "myalert" }}fired{{ end }}`),
 			},
-			wantKeys: []string{"alert.tmpl"},
+			wantKeys: []string{alertTmpl},
 		},
 		{
 			name: "invalid template syntax returns error",
@@ -167,17 +174,17 @@ func TestCountRoutes(t *testing.T) {
 		{
 			name: "single root route",
 			route: &config.Route{
-				Receiver: "default",
+				Receiver: defaultReceiver,
 			},
 			expected: 1,
 		},
 		{
 			name: "route with one sub-route",
 			route: &config.Route{
-				Receiver: "default",
+				Receiver: defaultReceiver,
 				Routes: []*config.Route{
 					{
-						Receiver: "sub1",
+						Receiver: sub1,
 					},
 				},
 			},
@@ -186,10 +193,10 @@ func TestCountRoutes(t *testing.T) {
 		{
 			name: "route with multiple sub-routes",
 			route: &config.Route{
-				Receiver: "default",
+				Receiver: defaultReceiver,
 				Routes: []*config.Route{
 					{
-						Receiver: "sub1",
+						Receiver: sub1,
 					},
 					{
 						Receiver: "sub2",
@@ -204,10 +211,10 @@ func TestCountRoutes(t *testing.T) {
 		{
 			name: "nested routes",
 			route: &config.Route{
-				Receiver: "default",
+				Receiver: defaultReceiver,
 				Routes: []*config.Route{
 					{
-						Receiver: "sub1",
+						Receiver: sub1,
 						Routes: []*config.Route{
 							{
 								Receiver: "nested1",
@@ -256,7 +263,7 @@ func TestConfigureFromSecret(t *testing.T) {
 			name:        "missing alertmanager.yaml key returns error",
 			secretData:  map[string][]byte{},
 			wantErr:     true,
-			errContains: "missing alertmanager.yaml",
+			errContains: missingAlertmanagerYAML,
 		},
 		{
 			name: "invalid alertmanager config returns parse error",

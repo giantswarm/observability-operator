@@ -74,7 +74,7 @@ var _ = Describe("AgentCredential Controller", func() {
 
 	It("renders a Secret with htpasswd, status, and aggregates the gateway secret", func() {
 		cred := &observabilityv1alpha1.AgentCredential{
-			ObjectMeta: metav1.ObjectMeta{Name: "ac-1", Namespace: ns},
+			ObjectMeta: metav1.ObjectMeta{Name: ac1, Namespace: ns},
 			Spec: observabilityv1alpha1.AgentCredentialSpec{
 				Backend:   observabilityv1alpha1.CredentialBackendMetrics,
 				AgentName: "agent-1",
@@ -82,12 +82,12 @@ var _ = Describe("AgentCredential Controller", func() {
 		}
 		Expect(k8sClient.Create(ctx, cred)).To(Succeed())
 
-		reconcileTwice("ac-1")
+		reconcileTwice(ac1)
 
 		By("rendering the per-credential Secret")
 		secret := &corev1.Secret{}
 		Eventually(func() error {
-			return k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: "ac-1"}, secret)
+			return k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: ac1}, secret)
 		}, timeout, interval).Should(Succeed())
 
 		Expect(string(secret.Data[credential.SecretKeyUsername])).To(Equal("agent-1"))
@@ -96,9 +96,9 @@ var _ = Describe("AgentCredential Controller", func() {
 
 		By("setting Ready and GatewaySynced conditions and the SecretRef")
 		updated := &observabilityv1alpha1.AgentCredential{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: "ac-1"}, updated)).To(Succeed())
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: ac1}, updated)).To(Succeed())
 		Expect(updated.Status.SecretRef).NotTo(BeNil())
-		Expect(updated.Status.SecretRef.Name).To(Equal("ac-1"))
+		Expect(updated.Status.SecretRef.Name).To(Equal(ac1))
 		Expect(getConditionStatus(updated, observabilityv1alpha1.AgentCredentialConditionReady)).To(Equal(metav1.ConditionTrue))
 		Expect(getConditionStatus(updated, observabilityv1alpha1.AgentCredentialConditionGatewaySynced)).To(Equal(metav1.ConditionTrue))
 
@@ -114,31 +114,31 @@ var _ = Describe("AgentCredential Controller", func() {
 
 	It("preserves the password across reconciles", func() {
 		cred := &observabilityv1alpha1.AgentCredential{
-			ObjectMeta: metav1.ObjectMeta{Name: "ac-2", Namespace: ns},
+			ObjectMeta: metav1.ObjectMeta{Name: ac2, Namespace: ns},
 			Spec: observabilityv1alpha1.AgentCredentialSpec{
 				Backend:   observabilityv1alpha1.CredentialBackendLogs,
 				AgentName: "agent-2",
 			},
 		}
 		Expect(k8sClient.Create(ctx, cred)).To(Succeed())
-		reconcileTwice("ac-2")
+		reconcileTwice(ac2)
 
 		first := &corev1.Secret{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: "ac-2"}, first)).To(Succeed())
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: ac2}, first)).To(Succeed())
 		firstPassword := first.Data[credential.SecretKeyPassword]
 
 		// Reconcile again — the password must be preserved.
-		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: "ac-2"}})
+		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: ac2}})
 		Expect(err).NotTo(HaveOccurred())
 
 		second := &corev1.Secret{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: "ac-2"}, second)).To(Succeed())
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: ac2}, second)).To(Succeed())
 		Expect(second.Data[credential.SecretKeyPassword]).To(Equal(firstPassword))
 	})
 
 	It("respects spec.secretName when rendering the Secret", func() {
 		cred := &observabilityv1alpha1.AgentCredential{
-			ObjectMeta: metav1.ObjectMeta{Name: "ac-3", Namespace: ns},
+			ObjectMeta: metav1.ObjectMeta{Name: ac3, Namespace: ns},
 			Spec: observabilityv1alpha1.AgentCredentialSpec{ // nolint:gosec // G101: Secret resource name, not a credential
 				Backend:    observabilityv1alpha1.CredentialBackendMetrics,
 				AgentName:  "agent-3",
@@ -146,10 +146,10 @@ var _ = Describe("AgentCredential Controller", func() {
 			},
 		}
 		Expect(k8sClient.Create(ctx, cred)).To(Succeed())
-		reconcileTwice("ac-3")
+		reconcileTwice(ac3)
 
 		// CR-named secret should not exist.
-		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: "ac-3"}, &corev1.Secret{})
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: ac3}, &corev1.Secret{})
 		Expect(apierrors.IsNotFound(err)).To(BeTrue())
 
 		secret := &corev1.Secret{}
@@ -157,7 +157,7 @@ var _ = Describe("AgentCredential Controller", func() {
 		Expect(string(secret.Data[credential.SecretKeyUsername])).To(Equal("agent-3"))
 
 		updated := &observabilityv1alpha1.AgentCredential{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: "ac-3"}, updated)).To(Succeed())
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: ac3}, updated)).To(Succeed())
 		Expect(updated.Status.SecretRef.Name).To(Equal("ac-3-renamed-secret"))
 	})
 
@@ -171,7 +171,7 @@ var _ = Describe("AgentCredential Controller", func() {
 			},
 		}
 		credDel := &observabilityv1alpha1.AgentCredential{
-			ObjectMeta: metav1.ObjectMeta{Name: "del", Namespace: ns},
+			ObjectMeta: metav1.ObjectMeta{Name: del, Namespace: ns},
 			Spec: observabilityv1alpha1.AgentCredentialSpec{
 				Backend:   observabilityv1alpha1.CredentialBackendTraces,
 				AgentName: "del-agent",
@@ -180,7 +180,7 @@ var _ = Describe("AgentCredential Controller", func() {
 		Expect(k8sClient.Create(ctx, credKeep)).To(Succeed())
 		Expect(k8sClient.Create(ctx, credDel)).To(Succeed())
 		reconcileTwice("keep")
-		reconcileTwice("del")
+		reconcileTwice(del)
 
 		// Both entries are present in the gateway secret.
 		ingress := &corev1.Secret{}
@@ -190,7 +190,7 @@ var _ = Describe("AgentCredential Controller", func() {
 		// Delete one credential — the controller's finalizer must rewrite the
 		// gateway secret without the deleted entry.
 		Expect(k8sClient.Delete(ctx, credDel)).To(Succeed())
-		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: "del"}})
+		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: del}})
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: "tempo-ingress"}, ingress)).To(Succeed())
@@ -200,7 +200,7 @@ var _ = Describe("AgentCredential Controller", func() {
 
 		// The deleted CR is gone.
 		Eventually(func() bool {
-			err := k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: "del"}, &observabilityv1alpha1.AgentCredential{})
+			err := k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: del}, &observabilityv1alpha1.AgentCredential{})
 			return apierrors.IsNotFound(err)
 		}, timeout, interval).Should(BeTrue())
 	})

@@ -20,6 +20,12 @@ import (
 	"testing"
 )
 
+const (
+	duplicateTenantID = "duplicate tenant ID"
+	tenant1           = "tenant1"
+	tenant2           = "tenant2"
+)
+
 func TestNewTenantValidator(t *testing.T) {
 	validator := NewTenantValidator()
 	if validator == nil {
@@ -31,7 +37,7 @@ func TestNewTenantValidator(t *testing.T) {
 		t.Error("Expected default forbidden values to be set")
 	}
 
-	expectedForbidden := "__mimir_cluster"
+	expectedForbidden := mimirClusterTenant
 	found := false
 	for _, forbidden := range validator.ForbiddenValues {
 		if forbidden == expectedForbidden {
@@ -60,7 +66,7 @@ func TestValidateTenantName(t *testing.T) {
 		},
 		{
 			name:        "forbidden tenant name",
-			tenantName:  "__mimir_cluster",
+			tenantName:  mimirClusterTenant,
 			shouldError: true,
 			errorText:   "not allowed",
 		},
@@ -101,14 +107,14 @@ func TestValidateUniqueNames(t *testing.T) {
 	}{
 		{
 			name:        "unique tenant names",
-			tenantNames: []string{"tenant1", "tenant2", "tenant3"},
+			tenantNames: []string{tenant1, tenant2, "tenant3"},
 			shouldError: false,
 		},
 		{
 			name:        "duplicate tenant names",
-			tenantNames: []string{"tenant1", "tenant2", "tenant1"},
+			tenantNames: []string{tenant1, tenant2, tenant1},
 			shouldError: true,
-			errorText:   "duplicate tenant ID",
+			errorText:   duplicateTenantID,
 		},
 		{
 			name:        "empty list",
@@ -152,26 +158,26 @@ func TestValidateTenantNames(t *testing.T) {
 	}{
 		{
 			name:        "valid unique tenant names",
-			tenantNames: []string{"tenant1", "tenant2", "tenant3"},
+			tenantNames: []string{tenant1, tenant2, "tenant3"},
 			shouldError: false,
 		},
 		{
 			name:        "duplicate tenant names",
-			tenantNames: []string{"tenant1", "tenant2", "tenant1"},
+			tenantNames: []string{tenant1, tenant2, tenant1},
 			shouldError: true,
-			errorText:   "duplicate tenant ID",
+			errorText:   duplicateTenantID,
 		},
 		{
 			name:        "forbidden tenant name",
-			tenantNames: []string{"tenant1", "__mimir_cluster"},
+			tenantNames: []string{tenant1, mimirClusterTenant},
 			shouldError: true,
 			errorText:   "not allowed",
 		},
 		{
 			name:        "both forbidden and duplicate",
-			tenantNames: []string{"__mimir_cluster", "__mimir_cluster"},
+			tenantNames: []string{mimirClusterTenant, mimirClusterTenant},
 			shouldError: true,
-			errorText:   "duplicate tenant ID", // Should catch duplicate first
+			errorText:   duplicateTenantID, // Should catch duplicate first
 		},
 	}
 

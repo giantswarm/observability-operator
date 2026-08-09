@@ -130,7 +130,7 @@ var _ = BeforeSuite(func() {
 	Eventually(func() bool {
 		// Verify that the Cluster CRD is accessible
 		crd := &apiextensionsv1.CustomResourceDefinition{}
-		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "clusters.cluster.x-k8s.io"}, crd)
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: clusterCRDName}, crd)
 		return err == nil
 	}, time.Second*30, time.Millisecond*500).Should(BeTrue(), "Cluster API CRD should be accessible")
 
@@ -178,7 +178,7 @@ func installClusterAPICRDs(k8sClient client.Client) error {
 
 	// Check if the CRD already exists (in case of test reruns)
 	existingCRD := &apiextensionsv1.CustomResourceDefinition{}
-	err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "clusters.cluster.x-k8s.io"}, existingCRD)
+	err = k8sClient.Get(context.Background(), client.ObjectKey{Name: clusterCRDName}, existingCRD)
 	if err == nil {
 		logf.Log.Info("Cluster API CRD already exists, skipping installation")
 		return nil
@@ -226,7 +226,7 @@ func installClusterAPICRDs(k8sClient client.Client) error {
 	// Wait for the CRD to be established with more generous timeout
 	Eventually(func() bool {
 		crd := &apiextensionsv1.CustomResourceDefinition{}
-		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "clusters.cluster.x-k8s.io"}, crd)
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: clusterCRDName}, crd)
 		if err != nil {
 			logf.Log.V(1).Info("CRD not yet accessible", "error", err)
 			return false
