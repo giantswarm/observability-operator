@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Manual End-to-End Testing Script for Observability Operator
 #

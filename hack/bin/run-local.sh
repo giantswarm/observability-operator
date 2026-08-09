@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 set -euo pipefail
 
 # When developing the observability-operator, it is useful to run it locally against a real cluster.

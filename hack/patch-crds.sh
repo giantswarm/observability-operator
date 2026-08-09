@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # Patch CRDs with configurations that controller-gen doesn't generate
