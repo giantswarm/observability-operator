@@ -327,7 +327,7 @@ func noSecretHiding(c config.Secret) ([]byte, error) {
 }
 
 func noSecretURLHiding(c *config.SecretURL) ([]byte, error) {
-	return []byte(c.URL.String()), nil
+	return []byte(c.String()), nil
 }
 
 // Webhook URLs use config.SecretTemplateURL, which redacts itself like the types above.

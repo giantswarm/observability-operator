@@ -57,7 +57,7 @@ func RunAlertmanagerIntegrationTest(t *testing.T, testCases []TestCase, waitTime
 	records := receiver.FlushAndGetHTTPRequests()
 
 	for _, tc := range testCases {
-		t.Run(tc.Alert.Name, func(t *testing.T) {
+		t.Run(tc.Name, func(t *testing.T) {
 			if len(tc.Expectations) > 0 && len(records) == 0 {
 				// Fail when we expect notifications but none were received at all.
 				t.Fatalf("no Alertmanager notifications received")

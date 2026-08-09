@@ -23,7 +23,7 @@ import (
 func TestNewTenantValidator(t *testing.T) {
 	validator := NewTenantValidator()
 	if validator == nil {
-		t.Error("Expected NewTenantValidator to return a non-nil validator")
+		t.Fatal("Expected NewTenantValidator to return a non-nil validator")
 	}
 
 	// Check default forbidden values are set

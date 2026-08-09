@@ -155,10 +155,8 @@ var _ = Describe("Dashboard Controller", func() {
 					Name: "test-dashboard-org",
 				},
 			}
-			err := k8sClient.Delete(ctx, grafanaOrg)
-			if err != nil && !apierrors.IsNotFound(err) {
-				// Ignore cleanup errors to prevent test failures
-			}
+			// Ignore cleanup errors to prevent test failures
+			_ = k8sClient.Delete(ctx, grafanaOrg)
 		})
 
 		Context("When Grafana is available", func() {

@@ -56,7 +56,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Orga
 		currentOrg, err := s.findOrgByID(org.ID())
 
 		if err != nil && !errors.Is(err, organization.ErrOrganizationNotFound) {
-			return fmt.Errorf("Error when trying to find organization with ID %d: %w", org.ID(), err)
+			return fmt.Errorf("error when trying to find organization with ID %d: %w", org.ID(), err)
 		}
 		// If err is ErrOrganizationNotFound, we fall through to CreateOrg below.
 

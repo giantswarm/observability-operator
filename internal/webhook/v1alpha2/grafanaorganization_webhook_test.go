@@ -103,7 +103,7 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 
 			By("Testing tenant ID that's too long (151 chars)")
 			tooLongTenant := "a" + strings.Repeat("b", 150) // 151 characters total
-			grafanaOrg.ObjectMeta.Name = "test-org-too-long"
+			grafanaOrg.Name = "test-org-too-long"
 			grafanaOrg.Spec.Tenants = []observabilityv1alpha2.TenantConfig{
 				{
 					Name:  observabilityv1alpha2.TenantID(tooLongTenant),

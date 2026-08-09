@@ -93,7 +93,7 @@ var _ = Describe("GrafanaOrganization Validation", func() {
 
 			By("Testing tenant ID that's too long (151 chars)")
 			tooLongTenant := "a" + strings.Repeat("b", 150) // 151 characters total
-			grafanaOrg.ObjectMeta.Name = "test-org-too-long"
+			grafanaOrg.Name = "test-org-too-long"
 			grafanaOrg.Spec.Tenants = []observabilityv1alpha1.TenantID{observabilityv1alpha1.TenantID(tooLongTenant)}
 
 			err = k8sClient.Create(ctx, grafanaOrg)
@@ -250,7 +250,7 @@ var _ = Describe("GrafanaOrganization Validation", func() {
 			// Must start with a letter or underscore (following Alloy identifier rules)
 			if len(tenantID) > 0 {
 				first := tenantID[0]
-				if !((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_') {
+				if (first < 'a' || first > 'z') && (first < 'A' || first > 'Z') && first != '_' {
 					return false
 				}
 			}

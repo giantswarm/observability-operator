@@ -515,6 +515,7 @@ func setupApplication() error {
 	}
 
 	// Initialize event recorder.
+	// nolint:staticcheck // SA1019: cluster-api record.InitFromRecorder takes the old client-go recorder, which GetEventRecorder does not return
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
 	// Create Grafana client generator for dependency injection
