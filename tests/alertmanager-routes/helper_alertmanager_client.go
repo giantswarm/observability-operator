@@ -291,7 +291,7 @@ func (a alertmanagerClient) waitForConfigPropagation() error {
 	if err != nil {
 		return fmt.Errorf("failed to perform waitForConfigPropagation request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint:errcheck // best-effort close on a response body already read
 
 	amStatus := alertmanagerStatus{}
 	err = json.NewDecoder(resp.Body).Decode(&amStatus)

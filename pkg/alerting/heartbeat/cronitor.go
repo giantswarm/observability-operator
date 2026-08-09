@@ -185,7 +185,7 @@ func (r *CronitorHeartbeatRepository) Delete(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete monitor: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint:errcheck // best-effort close on a response body already read
 
 	if resp.StatusCode == http.StatusNotFound {
 		logger.Info("heartbeat monitor does not exist, nothing to delete")
@@ -207,7 +207,7 @@ func (r *CronitorHeartbeatRepository) getMonitor(ctx context.Context, key string
 	if err != nil {
 		return nil, fmt.Errorf("failed to get monitor: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint:errcheck // best-effort close on a response body already read
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, ErrMonitorNotFound
@@ -240,7 +240,7 @@ func (r *CronitorHeartbeatRepository) createMonitor(ctx context.Context, monitor
 	if err != nil {
 		return fmt.Errorf("failed to create monitor: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint:errcheck // best-effort close on a response body already read
 
 	if resp.StatusCode != http.StatusCreated {
 		return r.handleErrorResponse(ctx, resp, "POST", cronitorAPIBaseURL, body, "failed to create monitor")
@@ -266,7 +266,7 @@ func (r *CronitorHeartbeatRepository) updateMonitor(ctx context.Context, monitor
 	if err != nil {
 		return fmt.Errorf("failed to update monitor: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint:errcheck // best-effort close on a response body already read
 
 	if resp.StatusCode != http.StatusOK {
 		return r.handleErrorResponse(ctx, resp, "PUT", url, body, "failed to update monitor")
@@ -315,7 +315,7 @@ func (r *CronitorHeartbeatRepository) pingMonitor(ctx context.Context, monitorKe
 	if err != nil {
 		return fmt.Errorf("failed to ping monitor: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint:errcheck // best-effort close on a response body already read
 
 	if resp.StatusCode != http.StatusOK {
 		return r.handleErrorResponse(ctx, resp, "GET", url, nil, "failed to ping monitor")

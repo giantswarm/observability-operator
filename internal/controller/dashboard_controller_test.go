@@ -144,8 +144,8 @@ var _ = Describe("Dashboard Controller", func() {
 				if err == nil {
 					// Remove finalizers to allow deletion
 					configMapToDelete.Finalizers = []string{}
-					k8sClient.Update(ctx, configMapToDelete)
-					k8sClient.Delete(ctx, configMapToDelete)
+					k8sClient.Update(ctx, configMapToDelete) // nolint:errcheck,gosec // best-effort test cleanup
+					k8sClient.Delete(ctx, configMapToDelete) // nolint:errcheck,gosec // best-effort test cleanup
 				}
 			}
 

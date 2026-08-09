@@ -37,7 +37,7 @@ func RunAlertmanagerIntegrationTest(t *testing.T, testCases []TestCase, waitTime
 	if err != nil {
 		t.Fatalf("failed to configure Alertmanager: %v", err)
 	}
-	defer amClient.UnConfigure()
+	defer amClient.UnConfigure() // nolint:errcheck // best-effort test cleanup
 
 	// Send alerts
 	for _, tc := range testCases {

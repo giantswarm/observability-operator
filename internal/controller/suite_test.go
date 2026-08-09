@@ -194,7 +194,7 @@ func installClusterAPICRDs(k8sClient client.Client) error {
 	if err != nil {
 		return fmt.Errorf("failed to fetch CRD from %s: %w", crdURL, err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint:errcheck // best-effort close on a response body already read
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to fetch CRD: HTTP %d", resp.StatusCode)
