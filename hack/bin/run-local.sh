@@ -64,7 +64,7 @@ function grafanaPortForward {
 function stopGrafanaPortForward {
   childpids=$(ps -o pid= --ppid "$GRAFANAPORTFORWARDPID")
   kill "$GRAFANAPORTFORWARDPID" || true
-  kill $childpids || true
+  kill "$childpids" || true
 }
 
 # Port-forward the mimir service
@@ -79,7 +79,7 @@ function mimirPortForward {
 function stopMimirPortForward {
   childpids=$(ps -o pid= --ppid "$MIMIRPORTFORWARDPID")
   kill "$MIMIRPORTFORWARDPID" || true
-  kill $childpids || true
+  kill "$childpids" || true
 }
 
 # Port-forward the alertmanager service
@@ -94,7 +94,7 @@ function alertmanagerPortForward {
 function stopAlertmanagerPortForward {
   childpids=$(ps -o pid= --ppid "$ALERTMANAGERPORTFORWARDPID")
   kill "$ALERTMANAGERPORTFORWARDPID" || true
-  kill $childpids || true
+  kill "$childpids" || true
 }
 
 # Pause the in-cluster operator
