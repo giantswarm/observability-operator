@@ -20,6 +20,7 @@ require (
 	github.com/prometheus/alertmanager v0.32.1
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.70.1
+	github.com/prometheus/prometheus v0.312.1-0.20260612131846-2ad3a8717015
 	github.com/sanity-io/litter v1.5.8
 	github.com/stretchr/testify v1.11.1
 	k8s.io/api v0.36.3
@@ -120,7 +121,6 @@ require (
 	github.com/pires/go-proxyproto v0.8.1 // indirect
 	github.com/prometheus/exporter-toolkit v0.16.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
-	github.com/prometheus/prometheus v0.312.1-0.20260612131846-2ad3a8717015 // indirect
 	github.com/prometheus/sigv4 v0.4.1 // indirect
 	github.com/redis/go-redis/v9 v9.18.0 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect

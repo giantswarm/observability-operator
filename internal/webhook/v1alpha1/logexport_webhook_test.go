@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/internal/webhook/validation"
 )
 
 var _ = Describe("LogExport Validation", func() {
@@ -71,19 +72,31 @@ var _ = Describe("LogExport Validation", func() {
 		It("rejects an aggregation", func() {
 			err := k8sClient.Create(ctx, newLE("aggregation", `sum by (verb) (rate({scrape_job="audit-logs"}[5m]))`))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Aggregations and time ranges are not supported"))
+			Expect(err.Error()).To(ContainSubstring("aggregations are not supported"))
 		})
 
 		It("rejects a time range", func() {
 			err := k8sClient.Create(ctx, newLE("time-range", `{scrape_job="audit-logs"}[5m]`))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Aggregations and time ranges are not supported"))
+			Expect(err.Error()).To(ContainSubstring("time ranges are not supported"))
+		})
+
+		It("rejects a stage the exporter cannot render", func() {
+			err := k8sClient.Create(ctx, newLE("line-format", `{scrape_job="audit-logs"} | line_format "{{ .verb }}"`))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(`the stage "| line_format`))
+		})
+
+		It("rejects a selector that matches every stream", func() {
+			err := k8sClient.Create(ctx, newLE("match-all", `{scrape_job=~".+"}`))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("needs at least one exact match"))
 		})
 
 		It("names the supported subset in the error", func() {
 			err := k8sClient.Create(ctx, newLE("bad-syntax", "audit logs please"))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("a stream selector, optional line filters, and an optional parse-and-filter clause"))
+			Expect(err.Error()).To(ContainSubstring(validation.SupportedSelectorSubset))
 			Expect(err.Error()).To(ContainSubstring("spec.selector"))
 		})
 
