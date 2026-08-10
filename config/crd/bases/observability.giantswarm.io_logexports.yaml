@@ -193,10 +193,10 @@ spec:
                 description: |-
                   Selector chooses which log lines are exported, using LogQL syntax.
 
-                  Only a subset of LogQL is supported: a stream selector, optional line
-                  filters, and an optional parse-and-filter clause. Aggregations and time
-                  ranges are rejected -- an export is a continuous tee, not a query, so it has
-                  no start or end.
+                  Only the subset the exporter can render is accepted: a stream selector with at
+                  least one exact match, optional line filters, an optional "| json", and optional
+                  label filters. Aggregations and time ranges are rejected -- an export is a
+                  continuous tee, not a query, so it has no start or end.
 
                   The same expression can be pasted into Grafana Explore to see exactly which
                   lines it matches before committing it.
