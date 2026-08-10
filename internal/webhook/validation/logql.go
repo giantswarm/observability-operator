@@ -57,11 +57,9 @@ func ValidateSelector(selector string) error {
 	// stricter than its "at least one equality matcher" check anyway.
 	expr, err := syntax.ParseExprWithoutValidation(selector)
 	if err != nil {
-		// A bare `{...}[5m]` is a syntax error rather than an expression, so the range
-		// has to be recognised here to get a message worth reading. Wrapping is used
-		// instead of matching on the parser's error text: count_over_time() parses only
-		// if its argument is a log range. This only picks the message for an expression
-		// already rejected, so it cannot widen what is accepted.
+		// LogQL allows a range only inside an aggregation, so a bare `{x="y"}[5m]` is a
+		// syntax error with no AST to match on: it parses once wrapped in one. Message
+		// only — the expression is rejected either way.
 		if _, rangeErr := syntax.ParseExprWithoutValidation(fmt.Sprintf("count_over_time(%s)", selector)); rangeErr == nil {
 			return unsupported("time ranges are not supported: an export starts when the LogExport is created and cannot backfill")
 		}
