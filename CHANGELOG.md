@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.73.0] - 2026-08-10
+
 ### Added
 
 - Add the namespaced `LogExport` CRD, with a `selector` and an `s3` or `loki` `destination`. API types only, no controller.
@@ -1191,7 +1193,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.72.3...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.73.0...HEAD
+[0.73.0]: https://github.com/giantswarm/observability-operator/compare/v0.72.3...v0.73.0
 [0.72.3]: https://github.com/giantswarm/observability-operator/compare/v0.72.2...v0.72.3
 [0.72.2]: https://github.com/giantswarm/observability-operator/compare/v0.72.1...v0.72.2
 [0.72.1]: https://github.com/giantswarm/observability-operator/compare/v0.72.0...v0.72.1
