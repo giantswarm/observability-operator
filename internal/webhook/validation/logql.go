@@ -51,6 +51,13 @@ const SupportedSelectorSubset = `a stream selector with at least one exact match
 // the raw field value: the parser tolerates trailing "# comment" and non-canonical
 // whitespace, so a negated term appended to the raw string can be commented out.
 func ValidateSelector(selector string) error {
+	_, err := ParseSelector(selector)
+	return err
+}
+
+// ParseSelector validates a selector and returns the parsed expression, so that config
+// rendering is driven from the same parse the webhook accepts and the two cannot drift.
+func ParseSelector(selector string) (syntax.LogSelectorExpr, error) {
 	// ParseExprWithoutValidation recovers parser panics internally, so untrusted input is
 	// safe to pass. Loki's own validation is skipped on purpose: the expression type is
 	// needed to say *why* an expression was rejected, and the matcher rule below is
@@ -61,40 +68,42 @@ func ValidateSelector(selector string) error {
 		// syntax error with no AST to match on: it parses once wrapped in one. Message
 		// only — the expression is rejected either way.
 		if _, rangeErr := syntax.ParseExprWithoutValidation(fmt.Sprintf("count_over_time(%s)", selector)); rangeErr == nil {
-			return unsupported("time ranges are not supported: an export starts when the LogExport is created and cannot backfill")
+			return nil, unsupported("time ranges are not supported: an export starts when the LogExport is created and cannot backfill")
 		}
-		return unsupported("not a valid LogQL expression: %v", err)
+		return nil, unsupported("not a valid LogQL expression: %v", err)
 	}
 
 	switch e := expr.(type) {
 	case *syntax.MatchersExpr:
 		if err := checkMatchers(e.Mts); err != nil {
-			return err
+			return nil, err
 		}
 	case *syntax.PipelineExpr:
 		if err := checkMatchers(e.Left.Mts); err != nil {
-			return err
+			return nil, err
 		}
 		if err := checkStages(e.MultiStages); err != nil {
-			return err
+			return nil, err
 		}
 	case *syntax.LiteralExpr, *syntax.VectorExpr:
 		// These satisfy LogSelectorExpr as well as SampleExpr, so they have to be caught
 		// before the arm below.
-		return unsupported("%q returns a value rather than log lines", spell(e))
+		return nil, unsupported("%q returns a value rather than log lines", spell(e))
 	case syntax.SampleExpr:
-		return unsupported("aggregations are not supported: an export is a continuous tee, not a query")
+		return nil, unsupported("aggregations are not supported: an export is a continuous tee, not a query")
 	default:
-		return unsupported("not a log selector")
+		return nil, unsupported("not a log selector")
 	}
+
+	logSelector := expr.(syntax.LogSelectorExpr)
 
 	// Building the pipeline compiles the line filter regexps, which parsing alone does
 	// not. An expression that parses but fails to build would reach Alloy and stop every
 	// export on the installation.
-	if _, err := expr.(syntax.LogSelectorExpr).Pipeline(); err != nil {
-		return unsupported("not a usable log selector: %v", err)
+	if _, err := logSelector.Pipeline(); err != nil {
+		return nil, unsupported("not a usable log selector: %v", err)
 	}
-	return nil
+	return logSelector, nil
 }
 
 // checkMatchers requires the stream selector to name what it exports. Loki only demands

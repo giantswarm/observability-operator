@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add rendering of the `alloy-logexporter` Helm values from `LogExport` resources. Rendering only, no controller.
 - Add a validating webhook restricting `LogExport.spec.selector` to a stream selector with an exact match, optional line filters, an optional `| json` and optional label filters.
 - Add the namespaced `LogExport` CRD, with a `selector` and an `s3` or `loki` `destination`. API types only, no controller.
 - Add a regression test for msteamsv2_configs and msteams_config Alertmanager receivers configuration
