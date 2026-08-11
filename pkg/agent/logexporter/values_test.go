@@ -43,31 +43,31 @@ func TestRenderValues(t *testing.T) {
 		{
 			name:       "minimal selector",
 			exports:    []observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit", `{scrape_job="audit-logs"}`, auditBucket)},
-			goldenPath: "logexporter-config.minimal.yaml",
+			goldenPath: "alloy-logexporter-config.minimal.yaml",
 		},
 		{
 			name: "several matchers and line filters",
 			exports: []observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit",
 				`{cluster_id="wc01", scrape_job="audit-logs"} |= "delete" != "get"`, auditBucket)},
-			goldenPath: "logexporter-config.line-filters.yaml",
+			goldenPath: "alloy-logexporter-config.line-filters.yaml",
 		},
 		{
 			name: "parse and filter",
 			exports: []observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit",
 				`{scrape_job="audit-logs"} | json | verb="delete" | user=~"admin.*"`, auditBucket)},
-			goldenPath: "logexporter-config.parse-and-filter.yaml",
+			goldenPath: "alloy-logexporter-config.parse-and-filter.yaml",
 		},
 		{
 			name: "label filter on a stream label needs no extraction",
 			exports: []observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit",
 				`{scrape_job="audit-logs"} | cluster_id="wc01"`, auditBucket)},
-			goldenPath: "logexporter-config.stream-label-filter.yaml",
+			goldenPath: "alloy-logexporter-config.stream-label-filter.yaml",
 		},
 		{
 			name: "teleport",
 			exports: []observabilityv1alpha1.LogExport{s3Export("giantswarm", "teleport",
 				`{scrape_job="teleport.giantswarm.io"}`, auditBucket)},
-			goldenPath: "logexporter-config.teleport.yaml",
+			goldenPath: "alloy-logexporter-config.teleport.yaml",
 		},
 		{
 			name: "s3 options",
@@ -80,7 +80,7 @@ func TestRenderValues(t *testing.T) {
 					ForcePathStyle: true,
 					RoleARN:        "arn:aws:iam::123456789012:role/log-archive-writer",
 				})},
-			goldenPath: "logexporter-config.s3-options.yaml",
+			goldenPath: "alloy-logexporter-config.s3-options.yaml",
 		},
 		{
 			name: "two exports, two destinations",
@@ -90,7 +90,7 @@ func TestRenderValues(t *testing.T) {
 					observabilityv1alpha1.S3Destination{Bucket: "teleport-archive", Region: "eu-west-2"}),
 				s3Export("giantswarm", "audit", `{scrape_job="audit-logs"}`, auditBucket),
 			},
-			goldenPath: "logexporter-config.two-exports.yaml",
+			goldenPath: "alloy-logexporter-config.two-exports.yaml",
 		},
 		{
 			name: "credentialsRef does not change the values document",
@@ -100,7 +100,7 @@ func TestRenderValues(t *testing.T) {
 					Region:         "eu-west-2",
 					CredentialsRef: &corev1.LocalObjectReference{Name: "archive-credentials"},
 				})},
-			goldenPath: "logexporter-config.minimal.yaml",
+			goldenPath: "alloy-logexporter-config.minimal.yaml",
 		},
 	}
 

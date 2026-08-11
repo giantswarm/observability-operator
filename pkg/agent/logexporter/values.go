@@ -17,11 +17,11 @@ import (
 )
 
 var (
-	//go:embed templates/logexporter.alloy.template
+	//go:embed templates/alloy-logexporter.alloy.template
 	alloyConfig         string
 	alloyConfigTemplate *template.Template
 
-	//go:embed templates/logexporter-config.yaml.template
+	//go:embed templates/alloy-logexporter-config.yaml.template
 	alloyValues         string
 	alloyValuesTemplate *template.Template
 
@@ -31,8 +31,8 @@ var (
 )
 
 func init() {
-	alloyConfigTemplate = template.Must(template.New("logexporter.alloy").Funcs(sprig.FuncMap()).Parse(alloyConfig))
-	alloyValuesTemplate = template.Must(template.New("logexporter-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyValues))
+	alloyConfigTemplate = template.Must(template.New("alloy-logexporter.alloy").Funcs(sprig.FuncMap()).Parse(alloyConfig))
+	alloyValuesTemplate = template.Must(template.New("alloy-logexporter-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyValues))
 }
 
 // Credentials are the resolved contents of a destination's credentialsRef Secret.
