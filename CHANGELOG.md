@@ -7,9 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.73.0] - 2026-08-10
+
+### Added
+
+- Add the namespaced `LogExport` CRD, with a `selector` and an `s3` or `loki` `destination`. API types only, no controller.
+- Add a regression test for msteamsv2_configs and msteams_config Alertmanager receivers configuration
+
+## [0.72.3] - 2026-08-03
+
+### Added
+
+- Add unit tests for the cluster provider mapping, covering the managed-cluster kinds (`AWSManagedCluster`, `AzureManagedCluster`, `AzureASOManagedCluster`) and the unknown-kind error path.
+
+### Removed
+
+- Remove the unused `pkg/common/types.go` duplicate of the cluster provider mapping.
+
+### Fixed
+
+- check-alertmanager-version.sh now resolves Mimir's Alertmanager dependency from either a replace directive or the require entry, since Mimir switched to upstream prometheus/alertmanager in 3.1.0, and reports a readable error instead of exiting silently.
+- `validate-alertmanager-config.sh` and the `amtool` build in `Makefile.custom.mk` no longer require a fork replace directive in `go.mod`. Both now build `amtool` with `go run`/`go install` at the version resolved from `go.mod`, instead of cloning `grafana/prometheus-alertmanager` and checking out a pseudo-version commit hash. Dependency resolution is shared via the new sourceable `hack/bin/alertmanager-dependency.sh` library.
+- Alertmanager integration test setup no longer fails intermittently with `no matching resources found`. `kubectl wait` cannot wait for a pod that does not exist yet, so it raced against the Deployment controller; the setup now waits on the `mimir-alertmanager` rollout instead.
+- Alertmanager integration tests now upload valid webhook URLs. Alertmanager v0.31.1 changed `WebhookConfig.URL` to the new `config.SecretTemplateURL` type, which the test helper did not un-redact, so Mimir received `<redacted>` as the webhook URL and failed to notify.
+- Bump the Mimir chart used by the Alertmanager integration tests from `0.28.0` to `0.30.0` (Mimir 2.17.0 to 3.1.4), so the tests run against the Mimir release whose Alertmanager version `go.mod` pins. Mimir 2.17.0 rejected configs using v0.31.1 fields such as `slack_app_url`, `rocketchat_api_url` and `app_url`.
+- Update PagerDuty `custom_details` expectations in the pipeline routing tests: Alertmanager v0.31.1 no longer coerces `custom_details` values to strings, so booleans and numbers are now emitted as typed JSON (`"all_pipelines":true` rather than `"all_pipelines":"true"`).
+
+## [0.72.2] - 2026-07-08
+
 ### Added
 
 - Add alertmanager routes validation to CI checks
+- Add team bumblebee Slack alert routing (`#alert-bumblebee`)
+
+### Removed
+
+- Remove redundant L7 rule from `alloy-events` `CiliumNetworkPolicy`. The removed rule allowed DNS queries to any DNS domain so removing it has no effect.
 
 ## [0.72.1] - 2026-06-23
 
@@ -1160,7 +1193,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.72.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.73.0...HEAD
+[0.73.0]: https://github.com/giantswarm/observability-operator/compare/v0.72.3...v0.73.0
+[0.72.3]: https://github.com/giantswarm/observability-operator/compare/v0.72.2...v0.72.3
+[0.72.2]: https://github.com/giantswarm/observability-operator/compare/v0.72.1...v0.72.2
 [0.72.1]: https://github.com/giantswarm/observability-operator/compare/v0.72.0...v0.72.1
 [0.72.0]: https://github.com/giantswarm/observability-operator/compare/v0.71.0...v0.72.0
 [0.71.0]: https://github.com/giantswarm/observability-operator/compare/v0.70.0...v0.71.0

@@ -32,7 +32,7 @@ func TestPipelineTestingRouting(t *testing.T) {
 				// PagerDuty expectation ONLY for all_pipelines=true alert
 				{
 					URL:       "https://events.eu.pagerduty.com/v2/enqueue",
-					BodyParts: []string{`"routing_key":"foo-pagerduty-token"`, `"alertname":"TestTestingAllPipelineAlert","all_pipelines":"true"`},
+					BodyParts: []string{`"routing_key":"foo-pagerduty-token"`, `"alertname":"TestTestingAllPipelineAlert","all_pipelines":true`},
 				},
 			},
 		},

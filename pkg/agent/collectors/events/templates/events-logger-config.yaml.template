@@ -37,9 +37,6 @@ networkPolicy:
           protocol: ANY
         - port: "1053"
           protocol: ANY
-        rules:
-          dns:
-            - matchPattern: '*'
     {{- if or .TracingEnabled .MonitoringEnabled .LoggingEnabled }}
     ingress:
     - toPorts:

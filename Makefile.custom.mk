@@ -36,7 +36,7 @@ KIND_CLUSTER_NAME = alertmanager-integration
 INTEGRATION_TEST_FLAGS = -count=1 -v -p 1 -test.timeout 30m -tags=integration -args \
 												 -alertmanager-config-dir $(ALERTMANAGER_TEST_CONFIG_DIR)
 MIMIR_CHART = oci://gsoci.azurecr.io/charts/giantswarm/mimir
-MIMIR_CHART_VERSION = 0.28.0
+MIMIR_CHART_VERSION = 0.30.0
 
 ###############################################################################
 # Testing & Coverage
@@ -72,11 +72,10 @@ $(BIN_DIR):
 
 $(AMTOOL_BIN): | $(BIN_DIR) ## Install amtool binary
 	@echo "==> Installing amtool binary"
-	git clone -q --filter=blob:none --no-checkout https://github.com/grafana/prometheus-alertmanager.git $(TESTS_WORKDIR)/prometheus-alertmanager
-	grep "github.com/prometheus/alertmanager =>" go.mod | sed -n 's/.*-\([a-f0-9]\{12\}\)$$/\1/p' | xargs \
-		git -C $(TESTS_WORKDIR)/prometheus-alertmanager checkout -q
-	make -C $(TESTS_WORKDIR)/prometheus-alertmanager common-build PROMU_BINARIES=amtool
-	mv $(TESTS_WORKDIR)/prometheus-alertmanager/amtool $@
+	@bash -euo pipefail -c '. hack/bin/alertmanager-dependency.sh; \
+		package="$$(alertmanager_amtool_package)"; \
+		echo "==> go install $$package"; \
+		GOBIN=$(abspath $(BIN_DIR)) go install "$$package"'
 
 $(BATS_BIN): ## Install BATS testing framework
 	@echo "==> Installing bats testing framework"
@@ -111,7 +110,7 @@ tests-alertmanager-routes: $(subst /,-, $(shell find tests/alertmanager-routes -
 
 .PHONY: tests-alertmanager-routes-clean
 tests-alertmanager-routes-clean:
-	-rm -rf $(TESTS_WORKDIR)/chart-manifest-* tests/alertmanager-routes/*/alertmanager-config tests-workdir/prometheus-alertmanager
+	-rm -rf $(TESTS_WORKDIR)/chart-manifest-* tests/alertmanager-routes/*/alertmanager-config
 
 ###############################################################################
 # Alertmanager Integration Tests
@@ -136,7 +135,10 @@ $(ALERTMANAGER_INTEGRATION_SETUP): ## Install Mimir Alertmanager in a Kind clust
 	kubectl apply -Rf $(MIMIR_CHART_OUTPUT)/mimir/charts/mimir
 	@echo
 	@echo "==> Waiting for Mimir Alertmanager to be ready..."
-	$(KUBECTL) $(KUBECTL_ARGS) wait --for=condition=ready pod -lapp.kubernetes.io/component=alertmanager,app.kubernetes.io/instance=mimir --timeout=120s
+# `kubectl wait` errors out with "no matching resources found" when the pod does
+# not exist yet, which races against the Deployment controller. Waiting on the
+# rollout tolerates the pod not being created yet.
+	$(KUBECTL) $(KUBECTL_ARGS) rollout status deployment/mimir-alertmanager --timeout=120s
 	@echo
 	touch $@
 
