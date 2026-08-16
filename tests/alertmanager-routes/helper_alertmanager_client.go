@@ -116,7 +116,7 @@ func NewAlertmanagerClient(t *testing.T, alertmanagerURL *url.URL, tenantID, htt
 func (a alertmanagerClient) Configure() error {
 	// Read Alertmanager configuration file
 	alertmanagerConfigFilePath := filepath.Join(configDir, alertmanager.AlertmanagerConfigKey)
-	amConfigContent, err := os.ReadFile(alertmanagerConfigFilePath)
+	amConfigContent, err := os.ReadFile(alertmanagerConfigFilePath) // nolint:gosec // G304: test-controlled path under configDir
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %v", alertmanagerConfigFilePath, err)
 	}
@@ -166,7 +166,7 @@ func (a alertmanagerClient) Configure() error {
 		return fmt.Errorf("failed to list template files: %v", err)
 	}
 	for _, path := range paths {
-		content, err := os.ReadFile(path)
+		content, err := os.ReadFile(path) // nolint:gosec // G304: test-controlled path from filepath.Glob under configDir
 		if err != nil {
 			return fmt.Errorf("failed to read template file %s: %v", path, err)
 		}
@@ -291,7 +291,7 @@ func (a alertmanagerClient) waitForConfigPropagation() error {
 	if err != nil {
 		return fmt.Errorf("failed to perform waitForConfigPropagation request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint:errcheck // best-effort close on a response body already read
 
 	amStatus := alertmanagerStatus{}
 	err = json.NewDecoder(resp.Body).Decode(&amStatus)
@@ -327,7 +327,7 @@ func noSecretHiding(c config.Secret) ([]byte, error) {
 }
 
 func noSecretURLHiding(c *config.SecretURL) ([]byte, error) {
-	return []byte(c.URL.String()), nil
+	return []byte(c.String()), nil
 }
 
 // Webhook URLs use config.SecretTemplateURL, which redacts itself like the types above.

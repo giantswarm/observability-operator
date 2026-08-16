@@ -1,7 +1,7 @@
 package credential
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" // nolint:gosec // G505: mirrors the htpasswd {SHA} scheme under test
 	"encoding/base64"
 	"strings"
 	"testing"
@@ -51,7 +51,7 @@ func TestPasswordGenerator(t *testing.T) {
 			require.Len(t, parts, 2)
 			assert.Equal(t, username, parts[0])
 
-			expectedHash := sha1.Sum([]byte(password))
+			expectedHash := sha1.Sum([]byte(password)) // nolint:gosec // G401: mirrors the htpasswd {SHA} scheme under test
 			assert.Equal(t, "{SHA}"+base64.StdEncoding.EncodeToString(expectedHash[:]), parts[1])
 		})
 

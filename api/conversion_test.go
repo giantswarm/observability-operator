@@ -11,18 +11,26 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha2"
 )
 
+const (
+	testOrganization = "Test Organization"
+	adminEmail       = "admin@example.com"
+	tenant1          = "tenant1"
+	tenant2          = "tenant2"
+	testOrg          = "test-org"
+)
+
 func TestConversion_V1Alpha1_To_V1Alpha2(t *testing.T) {
 	// Create a v1alpha1 GrafanaOrganization
 	v1alpha1Org := &v1alpha1.GrafanaOrganization{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-org",
+			Name: testOrg,
 		},
 		Spec: v1alpha1.GrafanaOrganizationSpec{
-			DisplayName: "Test Organization",
+			DisplayName: testOrganization,
 			RBAC: &v1alpha1.RBAC{
-				Admins: []string{"admin@example.com"},
+				Admins: []string{adminEmail},
 			},
-			Tenants: []v1alpha1.TenantID{"tenant1", "tenant2"},
+			Tenants: []v1alpha1.TenantID{tenant1, tenant2},
 		},
 		Status: v1alpha1.GrafanaOrganizationStatus{
 			OrgID: 123,
@@ -35,18 +43,18 @@ func TestConversion_V1Alpha1_To_V1Alpha2(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify conversion
-	assert.Equal(t, "test-org", v1alpha2Org.Name)
-	assert.Equal(t, "Test Organization", v1alpha2Org.Spec.DisplayName)
-	assert.Equal(t, []string{"admin@example.com"}, v1alpha2Org.Spec.RBAC.Admins)
+	assert.Equal(t, testOrg, v1alpha2Org.Name)
+	assert.Equal(t, testOrganization, v1alpha2Org.Spec.DisplayName)
+	assert.Equal(t, []string{adminEmail}, v1alpha2Org.Spec.RBAC.Admins)
 	assert.Equal(t, int64(123), v1alpha2Org.Status.OrgID)
 
 	// Verify tenant conversion - should have both types by default
 	require.Len(t, v1alpha2Org.Spec.Tenants, 2)
 
-	assert.Equal(t, v1alpha2.TenantID("tenant1"), v1alpha2Org.Spec.Tenants[0].Name)
+	assert.Equal(t, v1alpha2.TenantID(tenant1), v1alpha2Org.Spec.Tenants[0].Name)
 	assert.Equal(t, []v1alpha2.TenantType{v1alpha2.TenantTypeData, v1alpha2.TenantTypeAlerting}, v1alpha2Org.Spec.Tenants[0].Types)
 
-	assert.Equal(t, v1alpha2.TenantID("tenant2"), v1alpha2Org.Spec.Tenants[1].Name)
+	assert.Equal(t, v1alpha2.TenantID(tenant2), v1alpha2Org.Spec.Tenants[1].Name)
 	assert.Equal(t, []v1alpha2.TenantType{v1alpha2.TenantTypeData, v1alpha2.TenantTypeAlerting}, v1alpha2Org.Spec.Tenants[1].Types)
 }
 
@@ -54,20 +62,20 @@ func TestConversion_V1Alpha2_To_V1Alpha1(t *testing.T) {
 	// Create a v1alpha2 GrafanaOrganization
 	v1alpha2Org := &v1alpha2.GrafanaOrganization{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-org",
+			Name: testOrg,
 		},
 		Spec: v1alpha2.GrafanaOrganizationSpec{
-			DisplayName: "Test Organization",
+			DisplayName: testOrganization,
 			RBAC: &v1alpha2.RBAC{
-				Admins: []string{"admin@example.com"},
+				Admins: []string{adminEmail},
 			},
 			Tenants: []v1alpha2.TenantConfig{
 				{
-					Name:  "tenant1",
+					Name:  tenant1,
 					Types: []v1alpha2.TenantType{v1alpha2.TenantTypeData, v1alpha2.TenantTypeAlerting},
 				},
 				{
-					Name:  "tenant2",
+					Name:  tenant2,
 					Types: []v1alpha2.TenantType{v1alpha2.TenantTypeData}, // Only data access
 				},
 			},
@@ -83,32 +91,32 @@ func TestConversion_V1Alpha2_To_V1Alpha1(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify conversion
-	assert.Equal(t, "test-org", v1alpha1Org.Name)
-	assert.Equal(t, "Test Organization", v1alpha1Org.Spec.DisplayName)
-	assert.Equal(t, []string{"admin@example.com"}, v1alpha1Org.Spec.RBAC.Admins)
+	assert.Equal(t, testOrg, v1alpha1Org.Name)
+	assert.Equal(t, testOrganization, v1alpha1Org.Spec.DisplayName)
+	assert.Equal(t, []string{adminEmail}, v1alpha1Org.Spec.RBAC.Admins)
 	assert.Equal(t, int64(456), v1alpha1Org.Status.OrgID)
 
 	// Verify tenant conversion - should lose type information
 	require.Len(t, v1alpha1Org.Spec.Tenants, 2)
-	assert.Equal(t, v1alpha1.TenantID("tenant1"), v1alpha1Org.Spec.Tenants[0])
-	assert.Equal(t, v1alpha1.TenantID("tenant2"), v1alpha1Org.Spec.Tenants[1])
+	assert.Equal(t, v1alpha1.TenantID(tenant1), v1alpha1Org.Spec.Tenants[0])
+	assert.Equal(t, v1alpha1.TenantID(tenant2), v1alpha1Org.Spec.Tenants[1])
 }
 
 func TestConversion_RoundTrip(t *testing.T) {
 	// Create original v1alpha1 resource
 	original := &v1alpha1.GrafanaOrganization{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-org",
+			Name:      testOrg,
 			Namespace: "test-ns",
 		},
 		Spec: v1alpha1.GrafanaOrganizationSpec{
-			DisplayName: "Test Organization",
+			DisplayName: testOrganization,
 			RBAC: &v1alpha1.RBAC{
-				Admins:  []string{"admin@example.com"},
+				Admins:  []string{adminEmail},
 				Editors: []string{"editor@example.com"},
 				Viewers: []string{"viewer@example.com"},
 			},
-			Tenants: []v1alpha1.TenantID{"tenant1", "tenant2", "tenant3"},
+			Tenants: []v1alpha1.TenantID{tenant1, tenant2, "tenant3"},
 		},
 		Status: v1alpha1.GrafanaOrganizationStatus{
 			OrgID: 789,

@@ -9,7 +9,7 @@ import (
 
 func TestGenerateKEDAExtraObjects(t *testing.T) {
 	secretData := map[string]string{
-		common.MimirUsernameKey: "test-cluster",
+		common.MimirUsernameKey: testCluster,
 		common.MimirPasswordKey: "test-password",
 	}
 
@@ -59,7 +59,7 @@ func TestGenerateKEDAExtraObjects(t *testing.T) {
 				if !strings.Contains(result, "namespace: "+tt.kedaNamespace) {
 					t.Errorf("expected namespace %s in output", tt.kedaNamespace)
 				}
-				if !strings.Contains(result, "test-cluster") {
+				if !strings.Contains(result, testCluster) {
 					t.Error("expected username value in output")
 				}
 				if !strings.Contains(result, "test-password") {

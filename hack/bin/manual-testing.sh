@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Manual End-to-End Testing Script for Observability Operator
 #
@@ -41,7 +41,7 @@ check_configs() {
   local config
 
   [[ "$2" == "config" ]] \
-    && config=$(kubectl get configmap -n org-giantswarm ollyoptest-$1-$2) || config=$(kubectl get secret -n org-giantswarm ollyoptest-$1-$2)
+    && config="$(kubectl get configmap -n org-giantswarm "ollyoptest-$1-$2")" || config="$(kubectl get secret -n org-giantswarm "ollyoptest-$1-$2")"
 
   [[ -z "$config" ]] && echo "$1-$2 not found" || echo "$1-$2 found"
 }
@@ -50,7 +50,7 @@ main() {
   [[ -z "$1" ]] && exit_error "Please provide the installation name as an argument"
 
   # Logging into the specified installation to perform the tests
-  tsh kube login $1
+  tsh kube login "$1"
 
   echo "Checking if observability-operator app is in deployed state"
 
@@ -66,7 +66,7 @@ main() {
   {{end}}' | sed -ne 's/false\/aws-//p' | sort -V | tail -1)"
 
   # Creating WC template and applying it
-  kubectl gs template cluster --provider capa --name ollyoptest --organization giantswarm --description "observability-operator e2e tests" --release $toUseRelease > grizzly-e2e-wc.yaml
+  kubectl gs template cluster --provider capa --name ollyoptest --organization giantswarm --description "observability-operator e2e tests" --release "$toUseRelease" > grizzly-e2e-wc.yaml
   kubectl create -f grizzly-e2e-wc.yaml
 
   echo "WC named 'ollyoptest' created. Waiting for it and its apps to be ready"
@@ -83,13 +83,13 @@ main() {
   echo "Checking if the monitoring agent is up and running on the WC"
 
   # Logging into the WC to get the context into the kubeconfig
-  tsh kube login $1-ollyoptest
-  tsh kube login $1
+  tsh kube login "$1-ollyoptest"
+  tsh kube login "$1"
 
   alloy=$(kubectl get apps -n org-giantswarm | grep ollyoptest-alloy-metrics)
 
-  if [[ ! -z "$alloy" ]]; then
-    local podStatus=$(kubectl get pods -n kube-system --context teleport.giantswarm.io-$1-ollyoptest alloy-metrics-0 -o yaml | yq .status.phase)
+  if [[ -n "$alloy" ]]; then
+    local podStatus; podStatus="$(kubectl get pods -n kube-system --context "teleport.giantswarm.io-$1-ollyoptest alloy-metrics-0" -o yaml | yq .status.phase)"
 
     [[ "$podStatus" != "Running" ]] && echo "alloy app deployed but pod isn't in a running state" || echo "alloy app is deployed and pods are running"
 

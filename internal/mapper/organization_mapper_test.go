@@ -29,7 +29,7 @@ func TestFromGrafanaOrganization(t *testing.T) {
 			name: "regular organization with tenant configs",
 			grafanaOrg: &v1alpha2.GrafanaOrganization{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-org",
+					Name: testOrg,
 				},
 				Spec: v1alpha2.GrafanaOrganizationSpec{
 					DisplayName: "Test Organization",

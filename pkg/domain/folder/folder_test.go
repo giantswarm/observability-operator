@@ -7,6 +7,14 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 )
 
+const (
+	gsPrefix              = "gs-"
+	networking            = "networking"
+	teamA                 = "team-a"
+	teamANetworking       = "team-a/networking"
+	teamANetworkingAlerts = "team-a/networking/alerts"
+)
+
 func TestGenerateUID(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -17,22 +25,22 @@ func TestGenerateUID(t *testing.T) {
 	}{
 		{
 			name:     "simple path",
-			path:     "team-a",
-			wantPfx:  "gs-",
+			path:     teamA,
+			wantPfx:  gsPrefix,
 			wantLen:  15, // "gs-" (3) + 12 hex chars
 			wantSame: true,
 		},
 		{
 			name:     "nested path",
-			path:     "team-a/networking/alerts",
-			wantPfx:  "gs-",
+			path:     teamANetworkingAlerts,
+			wantPfx:  gsPrefix,
 			wantLen:  15,
 			wantSame: true,
 		},
 		{
 			name:     "empty path",
 			path:     "",
-			wantPfx:  "gs-",
+			wantPfx:  gsPrefix,
 			wantLen:  15,
 			wantSame: true,
 		},
@@ -62,11 +70,11 @@ func TestGenerateUID(t *testing.T) {
 
 func TestGenerateUID_Uniqueness(t *testing.T) {
 	paths := []string{
-		"team-a",
+		teamA,
 		"team-b",
-		"team-a/networking",
+		teamANetworking,
 		"team-b/networking",
-		"team-a/networking/alerts",
+		teamANetworkingAlerts,
 		"team-a/monitoring/alerts",
 	}
 
@@ -88,7 +96,7 @@ func TestIsOperatorManaged(t *testing.T) {
 	}{
 		{
 			name: "operator-managed folder",
-			uid:  folder.GenerateUID("team-a"),
+			uid:  folder.GenerateUID(teamA),
 			want: true,
 		},
 		{
@@ -108,7 +116,7 @@ func TestIsOperatorManaged(t *testing.T) {
 		},
 		{
 			name: "just the prefix",
-			uid:  "gs-",
+			uid:  gsPrefix,
 			want: true,
 		},
 	}
@@ -141,26 +149,26 @@ func TestParsePath(t *testing.T) {
 		},
 		{
 			name:          "single segment",
-			path:          "team-a",
+			path:          teamA,
 			wantCount:     1,
-			wantTitles:    []string{"team-a"},
-			wantPaths:     []string{"team-a"},
+			wantTitles:    []string{teamA},
+			wantPaths:     []string{teamA},
 			wantParentNil: []bool{true},
 		},
 		{
 			name:          "two segments",
-			path:          "team-a/networking",
+			path:          teamANetworking,
 			wantCount:     2,
-			wantTitles:    []string{"team-a", "networking"},
-			wantPaths:     []string{"team-a", "team-a/networking"},
+			wantTitles:    []string{teamA, networking},
+			wantPaths:     []string{teamA, teamANetworking},
 			wantParentNil: []bool{true, false},
 		},
 		{
 			name:          "three segments",
-			path:          "team-a/networking/alerts",
+			path:          teamANetworkingAlerts,
 			wantCount:     3,
-			wantTitles:    []string{"team-a", "networking", "alerts"},
-			wantPaths:     []string{"team-a", "team-a/networking", "team-a/networking/alerts"},
+			wantTitles:    []string{teamA, networking, "alerts"},
+			wantPaths:     []string{teamA, teamANetworking, teamANetworkingAlerts},
 			wantParentNil: []bool{true, false, false},
 		},
 	}
@@ -215,19 +223,19 @@ func TestParsePath_ParentUIDChaining(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	f := folder.New("team-a/networking", "networking", folder.GenerateUID("team-a"))
+	f := folder.New(teamANetworking, networking, folder.GenerateUID(teamA))
 
-	if f.UID() != folder.GenerateUID("team-a/networking") {
-		t.Errorf("UID = %q, want %q", f.UID(), folder.GenerateUID("team-a/networking"))
+	if f.UID() != folder.GenerateUID(teamANetworking) {
+		t.Errorf("UID = %q, want %q", f.UID(), folder.GenerateUID(teamANetworking))
 	}
-	if f.Title() != "networking" {
-		t.Errorf("Title = %q, want %q", f.Title(), "networking")
+	if f.Title() != networking {
+		t.Errorf("Title = %q, want %q", f.Title(), networking)
 	}
-	if f.ParentUID() != folder.GenerateUID("team-a") {
-		t.Errorf("ParentUID = %q, want %q", f.ParentUID(), folder.GenerateUID("team-a"))
+	if f.ParentUID() != folder.GenerateUID(teamA) {
+		t.Errorf("ParentUID = %q, want %q", f.ParentUID(), folder.GenerateUID(teamA))
 	}
-	if f.FullPath() != "team-a/networking" {
-		t.Errorf("FullPath = %q, want %q", f.FullPath(), "team-a/networking")
+	if f.FullPath() != teamANetworking {
+		t.Errorf("FullPath = %q, want %q", f.FullPath(), teamANetworking)
 	}
 }
 
@@ -244,12 +252,12 @@ func TestValidatePath(t *testing.T) {
 		},
 		{
 			name:    "simple path is valid",
-			path:    "team-a",
+			path:    teamA,
 			wantErr: false,
 		},
 		{
 			name:    "nested path is valid",
-			path:    "team-a/networking/alerts",
+			path:    teamANetworkingAlerts,
 			wantErr: false,
 		},
 		{

@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 set -euo pipefail
 
 YQ="yq"
@@ -77,7 +78,7 @@ if [ -z "$CONFIG_B64" ]; then
 fi
 
 echo "✓ Found alertmanager.yaml configuration data"
-echo "Configuration size: $(echo "$CONFIG_B64" | wc -c) base64 characters"
+echo "Configuration size: ${#CONFIG_B64} base64 characters"
 
 # Decode the configuration
 echo ""

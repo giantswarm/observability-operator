@@ -19,6 +19,16 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
+const (
+	awsClusterKind   = "AWSCluster"
+	aws              = "aws"
+	providerLabel    = "cluster.x-k8s.io/provider"
+	defaultNamespace = "default"
+	giantswarm       = "giantswarm"
+	clusterLabel     = "giantswarm.io/cluster"
+	testCluster      = "test-cluster"
+)
+
 var (
 	managementClusterName = "test-installation"
 )
@@ -40,19 +50,19 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     managementClusterName,
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  managementClusterName,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:        []string{"giantswarm"},
+			tenants:        []string{giantswarm},
 			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.loki-events.yaml"),
 			loggingEnabled: true,
 			tracingEnabled: false,
@@ -61,20 +71,20 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			name: "WorkloadCluster_LokiEvents",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:        []string{"giantswarm"},
+			tenants:        []string{giantswarm},
 			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events.yaml"),
 			loggingEnabled: true,
 			tracingEnabled: false,
@@ -84,19 +94,19 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "include-namespaces",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "include-namespaces",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  "include-namespaces",
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:           []string{"giantswarm"},
+			tenants:           []string{giantswarm},
 			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-include-namespaces.yaml"),
 			loggingEnabled:    true,
 			tracingEnabled:    false,
@@ -107,19 +117,19 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "exclude-namespaces",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "exclude-namespaces",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  "exclude-namespaces",
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:           []string{"giantswarm"},
+			tenants:           []string{giantswarm},
 			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.loki-events-exclude-namespaces.yaml"),
 			loggingEnabled:    true,
 			tracingEnabled:    false,
@@ -130,19 +140,19 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     managementClusterName,
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  managementClusterName,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:        []string{"giantswarm"},
+			tenants:        []string{giantswarm},
 			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.MC.tracing-enabled.yaml"),
 			loggingEnabled: false,
 			tracingEnabled: true,
@@ -151,20 +161,20 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			name: "WorkloadCluster_OTLPTraces",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:        []string{"giantswarm"},
+			tenants:        []string{giantswarm},
 			goldenPath:     filepath.Join("testdata", "events-logger-config.alloy.WC.tracing-enabled.yaml"),
 			loggingEnabled: false,
 			tracingEnabled: true,
@@ -174,19 +184,19 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     managementClusterName,
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  managementClusterName,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants: []string{"giantswarm"},
+			tenants: []string{giantswarm},
 			// goldenPath omitted - this should return an error
 			loggingEnabled: false,
 			tracingEnabled: false,
@@ -195,20 +205,20 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			name: "WorkloadCluster_NoneEnabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants: []string{"giantswarm"},
+			tenants: []string{giantswarm},
 			// goldenPath omitted - this should return an error
 			loggingEnabled: false,
 			tracingEnabled: false,
@@ -218,19 +228,19 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     managementClusterName,
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  managementClusterName,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:           []string{"giantswarm"},
+			tenants:           []string{giantswarm},
 			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.MC.monitoring-enabled.yaml"),
 			loggingEnabled:    false,
 			tracingEnabled:    false,
@@ -240,20 +250,20 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			name: "WorkloadCluster_OTLPMetrics",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:           []string{"giantswarm"},
+			tenants:           []string{giantswarm},
 			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.monitoring-enabled.yaml"),
 			loggingEnabled:    false,
 			tracingEnabled:    false,
@@ -264,19 +274,19 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     managementClusterName,
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  managementClusterName,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:           []string{"giantswarm"},
+			tenants:           []string{giantswarm},
 			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.MC.all-signals.yaml"),
 			loggingEnabled:    true,
 			tracingEnabled:    true,
@@ -286,20 +296,20 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			name: "WorkloadCluster_AllSignals",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:           []string{"giantswarm"},
+			tenants:           []string{giantswarm},
 			goldenPath:        filepath.Join("testdata", "events-logger-config.alloy.WC.all-signals.yaml"),
 			loggingEnabled:    true,
 			tracingEnabled:    true,
@@ -320,10 +330,10 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 			grafanaOrg := &v1alpha1.GrafanaOrganization{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-org",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: v1alpha1.GrafanaOrganizationSpec{
-					Tenants: []v1alpha1.TenantID{"giantswarm"},
+					Tenants: []v1alpha1.TenantID{giantswarm},
 				},
 			}
 
@@ -349,7 +359,7 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 					BatchMaxSize:       1024,
 					BatchTimeout:       "500ms",
 				},
-				DefaultTenant: "giantswarm",
+				DefaultTenant: giantswarm,
 			}
 
 			mockOrgRepo := mocks.NewMockOrganizationRepository("test-organization")

@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # shellcheck shell=bash
 #
 # Library — source this file, do not execute it:

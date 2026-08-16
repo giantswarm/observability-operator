@@ -13,6 +13,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+const (
+	testCluster = "test-cluster"
+)
+
 func TestNamespaceOrganizationRepository_Read(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = corev1.AddToScheme(scheme)
@@ -30,7 +34,7 @@ func TestNamespaceOrganizationRepository_Read(t *testing.T) {
 		{
 			name: "case 0: success - label found",
 			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: testCluster, Namespace: "test-ns"},
 			},
 			initialObjects: []client.Object{
 				&corev1.Namespace{
@@ -48,7 +52,7 @@ func TestNamespaceOrganizationRepository_Read(t *testing.T) {
 		{
 			name: "case 1: error - namespace not found",
 			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "non-existent-ns"},
+				ObjectMeta: metav1.ObjectMeta{Name: testCluster, Namespace: "non-existent-ns"},
 			},
 			initialObjects: []client.Object{},
 			expectedOrg:    "",
@@ -59,7 +63,7 @@ func TestNamespaceOrganizationRepository_Read(t *testing.T) {
 		{
 			name: "case 2: error - label missing",
 			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns-no-label"},
+				ObjectMeta: metav1.ObjectMeta{Name: testCluster, Namespace: "test-ns-no-label"},
 			},
 			initialObjects: []client.Object{
 				&corev1.Namespace{
@@ -75,7 +79,7 @@ func TestNamespaceOrganizationRepository_Read(t *testing.T) {
 		{
 			name: "case 3: success - label found with other labels present",
 			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns-many-labels"},
+				ObjectMeta: metav1.ObjectMeta{Name: testCluster, Namespace: "test-ns-many-labels"},
 			},
 			initialObjects: []client.Object{
 				&corev1.Namespace{
@@ -95,7 +99,7 @@ func TestNamespaceOrganizationRepository_Read(t *testing.T) {
 		{
 			name: "case 4: error - label present but empty string", // Updated expectation
 			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns-empty-label"},
+				ObjectMeta: metav1.ObjectMeta{Name: testCluster, Namespace: "test-ns-empty-label"},
 			},
 			initialObjects: []client.Object{
 				&corev1.Namespace{
@@ -113,7 +117,7 @@ func TestNamespaceOrganizationRepository_Read(t *testing.T) {
 		{
 			name: "case 5: error - namespace has no labels map (nil labels)",
 			cluster: &clusterv1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-cluster", Namespace: "test-ns-nil-labels"},
+				ObjectMeta: metav1.ObjectMeta{Name: testCluster, Namespace: "test-ns-nil-labels"},
 			},
 			initialObjects: []client.Object{
 				&corev1.Namespace{

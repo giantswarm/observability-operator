@@ -2,7 +2,7 @@ package credential
 
 import (
 	"crypto/rand"
-	"crypto/sha1"
+	"crypto/sha1" // nolint:gosec // G505: required by the htpasswd {SHA} scheme the observability gateway consumes
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -30,7 +30,7 @@ func (g *simplePasswordGenerator) GeneratePassword(length int) (string, error) {
 }
 
 func (g *simplePasswordGenerator) GenerateHtpasswd(username, password string) (string, error) {
-	hash := sha1.Sum([]byte(password))
+	hash := sha1.Sum([]byte(password)) // nolint:gosec // G401: required by the htpasswd {SHA} scheme the observability gateway consumes
 	encryptedPassword := base64.StdEncoding.EncodeToString(hash[:])
 	return fmt.Sprintf("%s:{SHA}%s", username, encryptedPassword), nil
 }
