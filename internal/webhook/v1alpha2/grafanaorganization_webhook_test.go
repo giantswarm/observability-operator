@@ -29,6 +29,12 @@ import (
 	observabilityv1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
 )
 
+const (
+	testOrganization = "Test Organization"
+	adminOrg         = "admin-org"
+	validTenant      = "valid_tenant"
+)
+
 // GrafanaOrganizationWebhookSpecs returns the Describe blocks for testing the GrafanaOrganization webhook
 var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 	var ctx context.Context
@@ -58,7 +64,7 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 						Name: "test-org-invalid-" + tc.name,
 					},
 					Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
-						DisplayName: "Test Organization",
+						DisplayName: testOrganization,
 						Tenants: []observabilityv1alpha2.TenantConfig{
 							{
 								Name:  observabilityv1alpha2.TenantID(tc.tenantID),
@@ -66,7 +72,7 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 							},
 						},
 						RBAC: &observabilityv1alpha2.RBAC{
-							Admins: []string{"admin-org"},
+							Admins: []string{adminOrg},
 						},
 					},
 				}
@@ -84,7 +90,7 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 					Name: "test-org-empty",
 				},
 				Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants: []observabilityv1alpha2.TenantConfig{
 						{
 							Name:  "",
@@ -92,7 +98,7 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 						},
 					},
 					RBAC: &observabilityv1alpha2.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}
@@ -103,7 +109,7 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 
 			By("Testing tenant ID that's too long (151 chars)")
 			tooLongTenant := "a" + strings.Repeat("b", 150) // 151 characters total
-			grafanaOrg.ObjectMeta.Name = "test-org-too-long"
+			grafanaOrg.Name = "test-org-too-long"
 			grafanaOrg.Spec.Tenants = []observabilityv1alpha2.TenantConfig{
 				{
 					Name:  observabilityv1alpha2.TenantID(tooLongTenant),
@@ -123,7 +129,7 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 					Name: "test-org-forbidden",
 				},
 				Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants: []observabilityv1alpha2.TenantConfig{
 						{
 							Name:  "__mimir_cluster",
@@ -131,7 +137,7 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 						},
 					},
 					RBAC: &observabilityv1alpha2.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}
@@ -148,19 +154,19 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 					Name: "test-org-duplicates",
 				},
 				Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants: []observabilityv1alpha2.TenantConfig{
 						{
-							Name:  "valid_tenant",
+							Name:  validTenant,
 							Types: []observabilityv1alpha2.TenantType{observabilityv1alpha2.TenantTypeData},
 						},
 						{
-							Name:  "valid_tenant", // Duplicate!
+							Name:  validTenant, // Duplicate!
 							Types: []observabilityv1alpha2.TenantType{observabilityv1alpha2.TenantTypeAlerting},
 						},
 					},
 					RBAC: &observabilityv1alpha2.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}
@@ -177,15 +183,15 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 					Name: "test-org-empty-types",
 				},
 				Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants: []observabilityv1alpha2.TenantConfig{
 						{
-							Name:  "valid_tenant",
+							Name:  validTenant,
 							Types: []observabilityv1alpha2.TenantType{}, // Empty types should default to ["data"]
 						},
 					},
 					RBAC: &observabilityv1alpha2.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}
@@ -249,10 +255,10 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 						Name: fmt.Sprintf("test-org-valid-%s-%d", strings.ReplaceAll(tc.name, "_", "-"), i),
 					},
 					Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
-						DisplayName: "Test Organization",
+						DisplayName: testOrganization,
 						Tenants:     tc.tenants,
 						RBAC: &observabilityv1alpha2.RBAC{
-							Admins: []string{"admin-org"},
+							Admins: []string{adminOrg},
 						},
 					},
 				}
@@ -272,12 +278,12 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 					Name: "test-org-update",
 				},
 				Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants: []observabilityv1alpha2.TenantConfig{
 						{Name: "initial_tenant", Types: []observabilityv1alpha2.TenantType{observabilityv1alpha2.TenantTypeData}},
 					},
 					RBAC: &observabilityv1alpha2.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}
@@ -313,12 +319,12 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 					Name: "test-org-delete",
 				},
 				Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
-					DisplayName: "Test Organization",
+					DisplayName: testOrganization,
 					Tenants: []observabilityv1alpha2.TenantConfig{
 						{Name: "delete_test_tenant", Types: []observabilityv1alpha2.TenantType{observabilityv1alpha2.TenantTypeData}},
 					},
 					RBAC: &observabilityv1alpha2.RBAC{
-						Admins: []string{"admin-org"},
+						Admins: []string{adminOrg},
 					},
 				},
 			}
@@ -350,12 +356,12 @@ var _ = Describe("GrafanaOrganization V1Alpha2 Validation", func() {
 						Name: fmt.Sprintf("test-org-types-%s-%d", strings.ReplaceAll(tc.name, "_", "-"), i),
 					},
 					Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
-						DisplayName: "Test Organization",
+						DisplayName: testOrganization,
 						Tenants: []observabilityv1alpha2.TenantConfig{
 							{Name: "test_tenant", Types: tc.types},
 						},
 						RBAC: &observabilityv1alpha2.RBAC{
-							Admins: []string{"admin-org"},
+							Admins: []string{adminOrg},
 						},
 					},
 				}

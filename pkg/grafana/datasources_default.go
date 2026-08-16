@@ -108,7 +108,7 @@ var (
 	// Datasource for Tempo distributed tracing backend
 	DatasourceTempo = func() Datasource {
 		return Datasource{
-			Type: "tempo",
+			Type: tempo,
 			// We connect to the Tempo Query Frontend service to support streaming
 			Access: datasourceProxyAccessMode,
 			JSONData: map[string]any{
@@ -116,7 +116,7 @@ var (
 				// from trace data using metrics from the connected Prometheus datasource
 				// Links to our specific Mimir instance for service map generation
 				"serviceMap": map[string]any{
-					"datasourceUid": MimirDatasourceUID,
+					datasourceUIDKey: MimirDatasourceUID,
 				},
 
 				// Node Graph configuration - enables node graph visualization
@@ -137,7 +137,7 @@ var (
 				// customQuery uses | regexp to match trace IDs across all log formats
 				// and field name conventions. See traceToLogsQuery for details.
 				"tracesToLogsV2": map[string]any{
-					"datasourceUid":      LokiDatasourceUID,
+					datasourceUIDKey:     LokiDatasourceUID,
 					"spanStartTimeShift": "-10m",
 					"spanEndTimeShift":   "10m",
 					"filterByTraceID":    false,
@@ -148,7 +148,7 @@ var (
 				// to related metrics in Prometheus/Mimir for performance analysis
 				// Links to our specific Mimir instance
 				"tracesToMetrics": map[string]any{
-					"datasourceUid": MimirDatasourceUID,
+					datasourceUIDKey: MimirDatasourceUID,
 				},
 			},
 		}

@@ -1,6 +1,6 @@
 # Kubernetes API Code Generation and Manifest Management
 # Enhanced version following modern Kubernetes operator best practices
-# 
+#
 # This file manages:
 # - Custom Resource Definition (CRD) generation
 # - Go code generation (deepcopy, client, etc.)
@@ -21,7 +21,7 @@ CONTROLLER_TOOLS_VERSION ?= v0.19.0
 KUSTOMIZE_VERSION ?= v5.7.1
 # Auto-detect ENVTEST version from controller-runtime dependency
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime 2>/dev/null | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
-# Auto-detect Kubernetes version from k8s.io/api dependency  
+# Auto-detect Kubernetes version from k8s.io/api dependency
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api 2>/dev/null | awk -F'[v.]' '{printf "1.%d", $$3}')
 
 # Code quality and development tool versions
@@ -79,7 +79,7 @@ MANIFEST_DIRS := $(CRD_DIR) $(RBAC_DIR) $(WEBHOOK_DIR)
 generate: generate-deepcopy generate-manifests ## Generate all code and manifests
 	@$(log_info) "Code generation completed successfully"
 
-.PHONY: manifests  
+.PHONY: manifests
 manifests: generate-crds generate-rbac generate-webhook ## Generate all Kubernetes manifests
 	@$(log_info) "Kubernetes manifest generation completed"
 
@@ -230,7 +230,7 @@ validate-crds: $(KUSTOMIZE) generate-crds ## Validate generated CRDs
 	done
 	@$(log_info) "CRD validation completed"
 
-.PHONY: validate-manifests  
+.PHONY: validate-manifests
 validate-manifests: validate-crds $(KUSTOMIZE) ## Validate all generated manifests
 	@$(log_build) "Validating Kubernetes manifests"
 	@if [ -d "$(CRD_OPTIONS)" ]; then \
@@ -294,7 +294,7 @@ update-tools: clean-tools install-tools ## Update all tools to latest versions
 	@$(log_info) "Tools updated successfully"
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
-# $1 - target path with name of binary  
+# $1 - target path with name of binary
 # $2 - package url which can be installed
 # $3 - specific version of package
 define go-install-tool
@@ -368,7 +368,7 @@ help-kubebuilder: ## Show help for Kubebuilder targets
 	@echo "    generate-all         Generate everything (code + manifests)"
 	@echo "    generate-deepcopy    Generate deepcopy methods for API types"
 	@echo "    generate-client      Generate Kubernetes client code"
-	@echo "    generate-crds        Generate Custom Resource Definitions" 
+	@echo "    generate-crds        Generate Custom Resource Definitions"
 	@echo "    generate-rbac        Generate RBAC manifests"
 	@echo "    generate-webhook     Generate webhook configurations"
 	@echo "    generate-manifests   Generate all Kubernetes manifests"

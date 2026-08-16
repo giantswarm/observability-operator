@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # Patch CRDs with configurations that controller-gen doesn't generate
@@ -9,7 +9,7 @@ echo "Patching CRDs with manual configurations..."
 # Function to add conversion webhook configuration
 add_conversion_webhook() {
     echo "Adding conversion webhook configuration to $CRD_FILE"
-    
+
     # Check if conversion config already exists
     if grep -q "conversion:" "$CRD_FILE"; then
         echo "Conversion webhook configuration already exists"
@@ -29,7 +29,7 @@ add_conversion_webhook() {
       - v1beta1' "$CRD_FILE"
         echo "Conversion webhook configuration added successfully"
     fi
-    
+
     # Add cert-manager CA injection annotation
     if ! grep -q "cert-manager.io/inject-ca-from" "$CRD_FILE"; then
         sed -i '/controller-gen.kubebuilder.io\/version/a\
@@ -43,18 +43,18 @@ add_conversion_webhook() {
 # Function to add MCB deployment comment
 add_mcb_comment() {
     echo "Adding MCB deployment comment to $CRD_FILE"
-    
+
     # Check if comment already exists
     if head -n 5 "$CRD_FILE" | grep -q "management-cluster-bases"; then
         echo "MCB deployment comment already exists"
         return 0
     fi
-    
+
     # Add comment at the beginning of the file
     sed -i '1i\
 # This secret is deployed via https://github.com/giantswarm/management-cluster-bases/blob/16e623dd03558a616fe92641dfbdd79b8807d462/bases/crds/giantswarm/kustomization.yaml#L11\
 # If you edit this CRD, do not forget to edit the link to this CRD in MCB' "$CRD_FILE"
-    
+
     echo "MCB deployment comment added successfully"
 }
 

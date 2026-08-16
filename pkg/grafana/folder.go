@@ -49,7 +49,7 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, client grafanaclien
 			}
 
 			// Folder doesn't exist - create it
-			logger.Info("creating folder", "uid", seg.UID(), "title", seg.Title(), "parentUID", seg.ParentUID())
+			logger.Info("creating folder", uidKey, seg.UID(), titleKey, seg.Title(), "parentUID", seg.ParentUID())
 			_, err = client.Folders().CreateFolder(&models.CreateFolderCommand{
 				UID:         seg.UID(),
 				Title:       seg.Title(),
@@ -65,7 +65,7 @@ func (s *Service) ensureFolderHierarchy(ctx context.Context, client grafanaclien
 		// Folder exists - reconcile title if someone renamed it manually in the Grafana UI.
 		// The UID is derived from the path so it stays the same, but the title could have been changed.
 		if existing.Payload.Title != seg.Title() {
-			logger.Info("renaming folder", "uid", seg.UID(), "oldTitle", existing.Payload.Title, "newTitle", seg.Title())
+			logger.Info("renaming folder", uidKey, seg.UID(), "oldTitle", existing.Payload.Title, "newTitle", seg.Title())
 			_, err = client.Folders().UpdateFolder(seg.UID(), &models.UpdateFolderCommand{
 				Title:     seg.Title(),
 				Overwrite: true,
@@ -132,7 +132,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 			}
 
 			if !isEmpty {
-				logger.Info("skipping deletion, orphaned folder is not empty", "uid", f.UID, "title", f.Title)
+				logger.Info("skipping deletion, orphaned folder is not empty", uidKey, f.UID, titleKey, f.Title)
 				continue
 			}
 
@@ -142,7 +142,7 @@ func (s *Service) CleanupOrphanedFoldersForOrg(ctx context.Context, org *organiz
 				continue
 			}
 
-			logger.Info("deleted orphaned folder", "uid", f.UID, "title", f.Title)
+			logger.Info("deleted orphaned folder", uidKey, f.UID, titleKey, f.Title)
 		}
 
 		return errors.Join(errs...)

@@ -19,6 +19,15 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
+const (
+	awsClusterKind   = "AWSCluster"
+	azureClusterKind = "AzureCluster"
+	defaultNamespace = "default"
+	tenant1          = "tenant1"
+	tenant2          = "tenant2"
+	testCluster      = "test-cluster"
+)
+
 var managementClusterName = "dummy-cluster"
 
 // TestMonitoringConfigReplicasRoundTrip guards against any future code changes
@@ -104,16 +113,16 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			name: "WorkloadCluster_TwoTenants_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"tenant1", "tenant2"},
+			tenants:                    []string{tenant1, tenant2},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config.200.WC.multi-tenants.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
@@ -124,15 +133,15 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"tenant1", "tenant2"},
+			tenants:                    []string{tenant1, tenant2},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config.200.MC.multi-tenants.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
@@ -143,15 +152,15 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "single-tenant-cluster",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AzureCluster",
+						Kind: azureClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"tenant1"},
+			tenants:                    []string{tenant1},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config.200.WC.single-tenant.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
@@ -162,15 +171,15 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AzureCluster",
+						Kind: azureClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"tenant1"},
+			tenants:                    []string{tenant1},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config.200.MC.single-tenant.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
@@ -181,11 +190,11 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "default-tenant-cluster",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AzureCluster",
+						Kind: azureClusterKind,
 					},
 				},
 			},
@@ -200,11 +209,11 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AzureCluster",
+						Kind: azureClusterKind,
 					},
 				},
 			},
@@ -220,16 +229,16 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			name: "WorkloadCluster_TwoTenants_v220",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"tenant1", "tenant2"},
+			tenants:                    []string{tenant1, tenant2},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.WC.multi-tenants.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
@@ -240,15 +249,15 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"tenant1", "tenant2"},
+			tenants:                    []string{tenant1, tenant2},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.MC.multi-tenants.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
@@ -259,15 +268,15 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "single-tenant-cluster",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AzureCluster",
+						Kind: azureClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"tenant1"},
+			tenants:                    []string{tenant1},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.WC.single-tenant.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
@@ -278,15 +287,15 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AzureCluster",
+						Kind: azureClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"tenant1"},
+			tenants:                    []string{tenant1},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.MC.single-tenant.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
@@ -297,11 +306,11 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "default-tenant-cluster",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AzureCluster",
+						Kind: azureClusterKind,
 					},
 				},
 			},
@@ -316,11 +325,11 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AzureCluster",
+						Kind: azureClusterKind,
 					},
 				},
 			},
@@ -354,15 +363,15 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"tenant1"},
+			tenants:                    []string{tenant1},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config_singletenant.200.mc.exemplars-disabled.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          true,
@@ -372,16 +381,16 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			name: "MonitoringDisabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants: []string{"tenant1"},
+			tenants: []string{tenant1},
 			// goldenPath omitted - this should return an error
 			observabilityBundleVersion: semver.MustParse("2.0.0"),
 			monitoringEnabled:          false,

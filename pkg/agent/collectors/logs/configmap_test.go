@@ -20,6 +20,17 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
+const (
+	awsClusterKind   = "AWSCluster"
+	aws              = "aws"
+	providerLabel    = "cluster.x-k8s.io/provider"
+	defaultNamespace = "default"
+	giantswarm       = "giantswarm"
+	clusterLabel     = "giantswarm.io/cluster"
+	testCluster      = "test-cluster"
+	testSelector     = "test-selector"
+)
+
 var (
 	managementClusterName = "test-installation"
 )
@@ -41,20 +52,20 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     managementClusterName,
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  managementClusterName,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:                    []string{giantswarm},
+			defaultNamespaces:          []string{testSelector},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170.MC.basic.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
 			loggingEnabled:             true,
@@ -65,21 +76,21 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			name: "WorkloadCluster_Basic",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:                    []string{giantswarm},
+			defaultNamespaces:          []string{testSelector},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170.WC.basic.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
 			loggingEnabled:             true,
@@ -90,20 +101,20 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			name: "WorkloadCluster_DefaultNamespacesNil",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
+			tenants:                    []string{giantswarm},
 			defaultNamespaces:          nil,
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170.WC.default-namespaces-nil.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
@@ -115,20 +126,20 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			name: "WorkloadCluster_DefaultNamespacesEmpty",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
+			tenants:                    []string{giantswarm},
 			defaultNamespaces:          []string{""},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170.WC.default-namespaces-empty.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
@@ -140,16 +151,16 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			name: "WorkloadCluster_CustomTenants",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
@@ -166,20 +177,20 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     managementClusterName,
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  managementClusterName,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:                    []string{giantswarm},
+			defaultNamespaces:          []string{testSelector},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170.MC.node-filtering.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
 			loggingEnabled:             true,
@@ -190,21 +201,21 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			name: "WorkloadCluster_NodeFiltering",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:                    []string{giantswarm},
+			defaultNamespaces:          []string{testSelector},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.170.WC.node-filtering.yaml"),
 			observabilityBundleVersion: semver.MustParse("1.7.0"),
 			loggingEnabled:             true,
@@ -215,21 +226,21 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			name: "WorkloadCluster_NodeFiltering_v240",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:                    []string{giantswarm},
+			defaultNamespaces:          []string{testSelector},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.240.WC.node-filtering.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.4.0"),
 			loggingEnabled:             true,
@@ -241,20 +252,20 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     managementClusterName,
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  managementClusterName,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:                    []string{giantswarm},
+			defaultNamespaces:          []string{testSelector},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.230.MC.network-monitoring.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.3.0"),
 			loggingEnabled:             true,
@@ -265,21 +276,21 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			name: "WorkloadCluster_NetworkMonitoring",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:                    []string{giantswarm},
+			defaultNamespaces:          []string{testSelector},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.230.WC.network-monitoring.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.3.0"),
 			loggingEnabled:             true,
@@ -290,21 +301,21 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			name: "WorkloadCluster_NetworkMonitoring_NodeFiltering",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:                    []string{giantswarm},
+			defaultNamespaces:          []string{testSelector},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.230.WC.network-monitoring-node-filtering.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.3.0"),
 			loggingEnabled:             true,
@@ -316,20 +327,20 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     managementClusterName,
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  managementClusterName,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:                    []string{giantswarm},
+			defaultNamespaces:          []string{testSelector},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.230.MC.network-monitoring-only.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.3.0"),
 			loggingEnabled:             false,
@@ -340,21 +351,21 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			name: "WorkloadCluster_NetworkMonitoringOnly",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:                    []string{"giantswarm"},
-			defaultNamespaces:          []string{"test-selector"},
+			tenants:                    []string{giantswarm},
+			defaultNamespaces:          []string{testSelector},
 			goldenPath:                 filepath.Join("testdata", "logging-config.alloy.230.WC.network-monitoring-only.yaml"),
 			observabilityBundleVersion: semver.MustParse("2.3.0"),
 			loggingEnabled:             false,
@@ -365,21 +376,21 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			name: "WorkloadCluster_NeitherEnabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "default",
+					Name:      testCluster,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"giantswarm.io/cluster":     "test-cluster",
-						"cluster.x-k8s.io/provider": "aws",
+						clusterLabel:  testCluster,
+						providerLabel: aws,
 					},
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "AWSCluster",
+						Kind: awsClusterKind,
 					},
 				},
 			},
-			tenants:           []string{"giantswarm"},
-			defaultNamespaces: []string{"test-selector"},
+			tenants:           []string{giantswarm},
+			defaultNamespaces: []string{testSelector},
 			// goldenPath omitted - this should return an error
 			observabilityBundleVersion: semver.MustParse("2.3.0"),
 			loggingEnabled:             false,
@@ -407,7 +418,7 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 			grafanaOrg := &v1alpha1.GrafanaOrganization{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-org",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: v1alpha1.GrafanaOrganizationSpec{
 					Tenants: tenantIDs,
@@ -435,7 +446,7 @@ func TestGenerateAlloyLogsConfig(t *testing.T) {
 				Monitoring: config.MonitoringConfig{
 					NetworkEnabled: tt.networkMonitoringEnabled,
 				},
-				DefaultTenant: "giantswarm",
+				DefaultTenant: giantswarm,
 			}
 
 			mockOrgRepo := mocks.NewMockOrganizationRepository("test-organization")

@@ -21,11 +21,11 @@ func TestDatasourceTempo(t *testing.T) {
 		{
 			name: "tempo datasource configuration",
 			expected: Datasource{
-				Type:   "tempo",
+				Type:   tempo,
 				Access: "proxy",
 				JSONData: map[string]any{
 					"serviceMap": map[string]any{
-						"datasourceUid": MimirDatasourceUID,
+						datasourceUIDKey: MimirDatasourceUID,
 					},
 					"nodeGraph": map[string]any{
 						"enabled": true,
@@ -35,14 +35,14 @@ func TestDatasourceTempo(t *testing.T) {
 						"search":  false,
 					},
 					"tracesToLogsV2": map[string]any{
-						"datasourceUid":      LokiDatasourceUID,
+						datasourceUIDKey:     LokiDatasourceUID,
 						"spanStartTimeShift": "-10m",
 						"spanEndTimeShift":   "10m",
 						"filterByTraceID":    false,
 						"customQuery":        traceToLogsQuery,
 					},
 					"tracesToMetrics": map[string]any{
-						"datasourceUid": MimirDatasourceUID,
+						datasourceUIDKey: MimirDatasourceUID,
 					},
 				},
 			},
@@ -120,8 +120,8 @@ func TestGenerateDatasources(t *testing.T) {
 		{
 			name: "regular organization with data-only tenants and tracing enabled",
 			organization: organization.New(1, "test-org", []organization.TenantConfig{
-				{Name: "tenant1", Types: []string{"data"}},
-				{Name: "tenant2", Types: []string{"data"}},
+				{Name: tenant1, Types: []string{dataKey}},
+				{Name: tenant2, Types: []string{dataKey}},
 			}, nil, nil, nil),
 			tracingEnabled:   true,
 			expectedLen:      3, // Loki, Mimir, Tempo (no Alertmanager for data-only)
@@ -133,8 +133,8 @@ func TestGenerateDatasources(t *testing.T) {
 		{
 			name: "regular organization with data-only tenants and tracing disabled",
 			organization: organization.New(1, "test-org", []organization.TenantConfig{
-				{Name: "tenant1", Types: []string{"data"}},
-				{Name: "tenant2", Types: []string{"data"}},
+				{Name: tenant1, Types: []string{dataKey}},
+				{Name: tenant2, Types: []string{dataKey}},
 			}, nil, nil, nil),
 			tracingEnabled:   false,
 			expectedLen:      2, // Loki, Mimir (no Tempo, no Alertmanager)
@@ -146,8 +146,8 @@ func TestGenerateDatasources(t *testing.T) {
 		{
 			name: "organization with alerting-enabled tenant and tracing enabled",
 			organization: organization.New(1, "test-org", []organization.TenantConfig{
-				{Name: "tenant1", Types: []string{"data", "alerting"}},
-				{Name: "tenant2", Types: []string{"data"}},
+				{Name: tenant1, Types: []string{dataKey, alerting}},
+				{Name: tenant2, Types: []string{dataKey}},
 			}, nil, nil, nil),
 			tracingEnabled:   true,
 			expectedLen:      4, // Loki, Mimir, Tempo, Alertmanager (only 1 alerting tenant, so no per-tenant suffix)
@@ -159,8 +159,8 @@ func TestGenerateDatasources(t *testing.T) {
 		{
 			name: "organization with alerting-enabled tenant and tracing disabled",
 			organization: organization.New(1, "test-org", []organization.TenantConfig{
-				{Name: "tenant1", Types: []string{"data", "alerting"}},
-				{Name: "tenant2", Types: []string{"data"}},
+				{Name: tenant1, Types: []string{dataKey, alerting}},
+				{Name: tenant2, Types: []string{dataKey}},
 			}, nil, nil, nil),
 			tracingEnabled:   false,
 			expectedLen:      3, // Loki, Mimir, Alertmanager (only 1 alerting tenant, so no per-tenant suffix)
@@ -172,7 +172,7 @@ func TestGenerateDatasources(t *testing.T) {
 		{
 			name: "mono-tenant organization with alerting",
 			organization: organization.New(1, "test-org", []organization.TenantConfig{
-				{Name: "tenant1", Types: []string{"data", "alerting"}},
+				{Name: tenant1, Types: []string{dataKey, alerting}},
 			}, nil, nil, nil),
 			tracingEnabled:   true,
 			expectedLen:      4, // Loki, Mimir, Tempo, Alertmanager (no per-tenant suffix for single tenant)
@@ -184,9 +184,9 @@ func TestGenerateDatasources(t *testing.T) {
 		{
 			name: "multi-tenant organization with multiple alerting tenants and tracing enabled",
 			organization: organization.New(1, "test-org", []organization.TenantConfig{
-				{Name: "tenant1", Types: []string{"data", "alerting"}},
-				{Name: "tenant2", Types: []string{"data", "alerting"}},
-				{Name: "tenant3", Types: []string{"data"}},
+				{Name: tenant1, Types: []string{dataKey, alerting}},
+				{Name: tenant2, Types: []string{dataKey, alerting}},
+				{Name: "tenant3", Types: []string{dataKey}},
 			}, nil, nil, nil),
 			tracingEnabled:   true,
 			expectedLen:      9, // Loki, Mimir, Tempo + per-tenant: Loki(t1), Mimir(t1), Alertmanager(t1), Loki(t2), Mimir(t2), Alertmanager(t2)
@@ -198,9 +198,9 @@ func TestGenerateDatasources(t *testing.T) {
 		{
 			name: "multi-tenant organization with multiple alerting tenants and tracing disabled",
 			organization: organization.New(1, "test-org", []organization.TenantConfig{
-				{Name: "tenant1", Types: []string{"data", "alerting"}},
-				{Name: "tenant2", Types: []string{"data", "alerting"}},
-				{Name: "tenant3", Types: []string{"data"}},
+				{Name: tenant1, Types: []string{dataKey, alerting}},
+				{Name: tenant2, Types: []string{dataKey, alerting}},
+				{Name: "tenant3", Types: []string{dataKey}},
 			}, nil, nil, nil),
 			tracingEnabled:   false,
 			expectedLen:      8, // Loki, Mimir + per-tenant: Loki(t1), Mimir(t1), Alertmanager(t1), Loki(t2), Mimir(t2), Alertmanager(t2)
@@ -212,7 +212,7 @@ func TestGenerateDatasources(t *testing.T) {
 		{
 			name: "shared organization with data-only tenant and tracing enabled",
 			organization: organization.New(1, "Shared Org", []organization.TenantConfig{
-				{Name: "tenant1", Types: []string{"data"}},
+				{Name: tenant1, Types: []string{dataKey}},
 			}, nil, nil, nil),
 			tracingEnabled:   true,
 			expectedLen:      4, // Loki, Mimir, Tempo, Cardinality (no Alertmanager for data-only)
@@ -224,7 +224,7 @@ func TestGenerateDatasources(t *testing.T) {
 		{
 			name: "shared organization with data-only tenant and tracing disabled",
 			organization: organization.New(1, "Shared Org", []organization.TenantConfig{
-				{Name: "tenant1", Types: []string{"data"}},
+				{Name: tenant1, Types: []string{dataKey}},
 			}, nil, nil, nil),
 			tracingEnabled:   false,
 			expectedLen:      3, // Loki, Mimir, Cardinality (no Tempo, no Alertmanager)
@@ -262,14 +262,14 @@ func TestGenerateDatasources(t *testing.T) {
 				if strings.Contains(ds.Name, "(") && strings.Contains(ds.Name, ")") {
 					perTenantCount++
 					// Per-tenant datasources should have single-tenant headers
-					assert.Equal(t, "X-Scope-OrgID", ds.JSONData["httpHeaderName1"])
-					assert.NotEqual(t, expectedHeaderValue, ds.SecureJSONData["httpHeaderValue1"], "Per-tenant datasource should not have multi-tenant header")
+					assert.Equal(t, "X-Scope-OrgID", ds.JSONData[httpHeaderName1Key])
+					assert.NotEqual(t, expectedHeaderValue, ds.SecureJSONData[httpHeaderValue1Key], "Per-tenant datasource should not have multi-tenant header")
 					// Verify it's a single tenant ID (no pipe character)
-					assert.NotContains(t, ds.SecureJSONData["httpHeaderValue1"], "|", "Per-tenant datasource should have single tenant ID")
-				} else if slices.Contains(multiTenantDatasources, ds.Name) && ds.Name != MimirCardinalityDatasourceName && ds.Type != "tempo" {
+					assert.NotContains(t, ds.SecureJSONData[httpHeaderValue1Key], "|", "Per-tenant datasource should have single tenant ID")
+				} else if slices.Contains(multiTenantDatasources, ds.Name) && ds.Name != MimirCardinalityDatasourceName && ds.Type != tempo {
 					// Multi-tenant datasources should have multi-tenant headers (except Tempo which doesn't support it yet)
-					assert.Equal(t, "X-Scope-OrgID", ds.JSONData["httpHeaderName1"])
-					assert.Equal(t, expectedHeaderValue, ds.SecureJSONData["httpHeaderValue1"])
+					assert.Equal(t, "X-Scope-OrgID", ds.JSONData[httpHeaderName1Key])
+					assert.Equal(t, expectedHeaderValue, ds.SecureJSONData[httpHeaderValue1Key])
 				}
 			}
 
@@ -280,7 +280,7 @@ func TestGenerateDatasources(t *testing.T) {
 				// Find and validate Tempo datasource
 				var tempoDS *Datasource
 				for _, ds := range result {
-					if ds.Type == "tempo" {
+					if ds.Type == tempo {
 						tempoDS = &ds
 						break
 					}
@@ -292,7 +292,7 @@ func TestGenerateDatasources(t *testing.T) {
 				// Check tempo-specific configurations
 				serviceMap, ok := tempoDS.JSONData["serviceMap"].(map[string]any)
 				require.True(t, ok, "serviceMap should be present and be a map")
-				assert.Equal(t, MimirDatasourceUID, serviceMap["datasourceUid"])
+				assert.Equal(t, MimirDatasourceUID, serviceMap[datasourceUIDKey])
 
 				nodeGraph, ok := tempoDS.JSONData["nodeGraph"].(map[string]any)
 				require.True(t, ok, "nodeGraph should be present and be a map")
@@ -300,7 +300,7 @@ func TestGenerateDatasources(t *testing.T) {
 
 				tracesToLogsV2, ok := tempoDS.JSONData["tracesToLogsV2"].(map[string]any)
 				require.True(t, ok, "tracesToLogsV2 should be present and be a map")
-				assert.Equal(t, LokiDatasourceUID, tracesToLogsV2["datasourceUid"])
+				assert.Equal(t, LokiDatasourceUID, tracesToLogsV2[datasourceUIDKey])
 			}
 
 			// Find and validate Loki datasource for derived fields
@@ -322,11 +322,11 @@ func TestGenerateDatasources(t *testing.T) {
 				require.Len(t, derivedFields, 1, "Should have exactly one derived field")
 
 				field := derivedFields[0]
-				assert.Equal(t, "traceID", field["name"])
+				assert.Equal(t, traceIDField, field[nameKey])
 				assert.Equal(t, "[tT]race_?[Ii][dD]\"?[:=](\\w+)", field["matcherRegex"])
-				assert.Equal(t, "gs-tempo", field["datasourceUid"])
+				assert.Equal(t, "gs-tempo", field[datasourceUIDKey])
 				assert.Equal(t, "${__value.raw}", field["url"])
-				assert.Equal(t, "Trace ID", field["urlDisplayLabel"])
+				assert.Equal(t, "Trace ID", field[urlDisplayLabelKey])
 			} else {
 				_, hasDerivedFields := lokiDS.JSONData["derivedFields"]
 				assert.False(t, hasDerivedFields, "derivedFields should not be present when tracing is disabled")
@@ -358,7 +358,7 @@ func TestGenerateDatasources(t *testing.T) {
 							}
 						}
 						require.NotNil(t, perTenantMimir, "Per-tenant Mimir datasource should be present for alerting tenant %s", tenant.Name)
-						assert.Equal(t, tenant.Name, perTenantMimir.SecureJSONData["httpHeaderValue1"])
+						assert.Equal(t, tenant.Name, perTenantMimir.SecureJSONData[httpHeaderValue1Key])
 
 						// Check for per-tenant Alertmanager
 						var perTenantAlertmanager *Datasource
@@ -369,7 +369,7 @@ func TestGenerateDatasources(t *testing.T) {
 							}
 						}
 						require.NotNil(t, perTenantAlertmanager, "Per-tenant Alertmanager datasource should be present for alerting tenant %s", tenant.Name)
-						assert.Equal(t, tenant.Name, perTenantAlertmanager.SecureJSONData["httpHeaderValue1"])
+						assert.Equal(t, tenant.Name, perTenantAlertmanager.SecureJSONData[httpHeaderValue1Key])
 					}
 				} else {
 					// For single-alerting-tenant orgs (even if multiple total tenants), validate regular (non-suffixed) alertmanager exists
@@ -389,7 +389,7 @@ func TestGenerateDatasources(t *testing.T) {
 
 func TestDatasourceMerge(t *testing.T) {
 	base := Datasource{
-		Type:   "tempo",
+		Type:   tempo,
 		URL:    "http://base-url",
 		Access: "proxy",
 		JSONData: map[string]any{
@@ -419,7 +419,7 @@ func TestDatasourceMerge(t *testing.T) {
 	assert.Equal(t, "merged-tempo", result.UID)
 
 	// Check that base values are preserved when not overridden
-	assert.Equal(t, "tempo", result.Type)
+	assert.Equal(t, tempo, result.Type)
 	assert.Equal(t, "http://base-url", result.URL)
 	assert.Equal(t, "proxy", result.Access)
 

@@ -29,6 +29,21 @@ import (
 	"github.com/giantswarm/observability-operator/internal/mapper"
 )
 
+const (
+	alertmanagerConfig = "alertmanager-config"
+	annotationOrg      = "annotation-org"
+	appLabelValue      = "app"
+	dashboard          = "dashboard"
+	dashboardJSONKey   = "dashboard.json"
+	defaultNamespace   = "default"
+	giantswarm         = "giantswarm"
+	labelOrg           = "label-org"
+	kindLabel          = "observability.giantswarm.io/kind"
+	testNamespace      = "test-namespace"
+	testOrg            = "test-org"
+	testTenant         = "test_tenant"
+)
+
 var _ = Describe("Dashboard ConfigMap Webhook", func() {
 	var (
 		ctx       context.Context
@@ -49,16 +64,16 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		obj = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-dashboard",
-				Namespace: "default",
+				Namespace: defaultNamespace,
 				Labels: map[string]string{
 					labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 				},
 				Annotations: map[string]string{
-					labels.GrafanaOrganizationKey: "test-org",
+					labels.GrafanaOrganizationKey: testOrg,
 				},
 			},
 			Data: map[string]string{
-				"dashboard.json": `{
+				dashboardJSONKey: `{
 					"uid": "test-dashboard",
 					"title": "Test Dashboard",
 					"panels": []
@@ -68,7 +83,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 		// Create oldObj for update tests
 		oldObj = obj.DeepCopy()
-		oldObj.Data["dashboard.json"] = `{
+		oldObj.Data[dashboardJSONKey] = `{
 			"uid": "test-dashboard",
 			"title": "Old Test Dashboard",
 			"panels": []
@@ -77,7 +92,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		// Create a Grafana Dashboard (v2) dashboard ConfigMap for v2-specific tests.
 		// Shares the same labels/annotations as obj; only the dashboard body differs.
 		v2Obj = obj.DeepCopy()
-		v2Obj.Data["dashboard.json"] = `{
+		v2Obj.Data[dashboardJSONKey] = `{
 			"apiVersion": "dashboard.grafana.app/v2",
 			"kind": "Dashboard",
 			"metadata": {"name": "gs_cluster-overview"},
@@ -95,7 +110,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			configMapWithoutLabels := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "configmap-without-labels",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 			}
 			isDashboard = validator.isDashboardConfigMap(configMapWithoutLabels)
@@ -105,7 +120,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			configMapWithWrongKind := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "configmap-wrong-kind",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
 						labels.DashboardSelectorLabelName: "not-dashboard",
 					},
@@ -120,9 +135,9 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			nonDashboardConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "regular-configmap",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"app": "some-app",
+						appLabelValue: "some-app",
 					},
 				},
 				Data: map[string]string{
@@ -164,7 +179,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 				largeJSON += fmt.Sprintf(`{"id": %d, "title": "Panel %d"}`, i, i)
 			}
 			largeJSON += `]}`
-			largeConfigMap.Data["dashboard.json"] = largeJSON
+			largeConfigMap.Data[dashboardJSONKey] = largeJSON
 
 			_, err := validator.ValidateCreate(ctx, largeConfigMap)
 			Expect(err).NotTo(HaveOccurred()) // Should handle large JSON gracefully
@@ -187,7 +202,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		It("Should reject v2 dashboards missing metadata.name", func() {
 			By("Creating a v2 dashboard without metadata.name")
 			invalidConfigMap := v2Obj.DeepCopy()
-			invalidConfigMap.Data["dashboard.json"] = `{
+			invalidConfigMap.Data[dashboardJSONKey] = `{
 				"apiVersion": "dashboard.grafana.app/v2",
 				"kind": "Dashboard",
 				"metadata": {},
@@ -200,7 +215,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		It("Should reject dashboard ConfigMaps with missing UID", func() {
 			By("Creating ConfigMap with dashboard missing UID")
 			invalidConfigMap := obj.DeepCopy()
-			invalidConfigMap.Data["dashboard.json"] = `{
+			invalidConfigMap.Data[dashboardJSONKey] = `{
 				"title": "Test Dashboard without UID",
 				"panels": []
 			}`
@@ -213,7 +228,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			By("Creating ConfigMap without organization label or annotation")
 			invalidConfigMap := obj.DeepCopy()
 			invalidConfigMap.Labels = map[string]string{
-				labels.DashboardSelectorLabelName: "dashboard",
+				labels.DashboardSelectorLabelName: dashboard,
 			}
 			invalidConfigMap.Annotations = nil
 			_, err := validator.ValidateCreate(ctx, invalidConfigMap)
@@ -224,7 +239,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		It("Should reject dashboard ConfigMaps with invalid JSON", func() {
 			By("Creating ConfigMap with malformed JSON")
 			invalidConfigMap := obj.DeepCopy()
-			invalidConfigMap.Data["dashboard.json"] = `{
+			invalidConfigMap.Data[dashboardJSONKey] = `{
 				"uid": "test-dashboard",
 				"title": "Invalid JSON Dashboard"
 				// Missing comma and closing brace
@@ -240,16 +255,16 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			validConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-dashboard-annotation",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName: "dashboard",
+						labels.DashboardSelectorLabelName: dashboard,
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationKey: "annotation-org",
+						labels.GrafanaOrganizationKey: annotationOrg,
 					},
 				},
 				Data: map[string]string{
-					"dashboard.json": `{
+					dashboardJSONKey: `{
 						"uid": "test-dashboard-annotation",
 						"title": "Test Dashboard with Annotation",
 						"panels": []
@@ -266,14 +281,14 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			validConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-dashboard-label",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName: "dashboard",
-						labels.GrafanaOrganizationKey:     "label-org",
+						labels.DashboardSelectorLabelName: dashboard,
+						labels.GrafanaOrganizationKey:     labelOrg,
 					},
 				},
 				Data: map[string]string{
-					"dashboard.json": `{
+					dashboardJSONKey: `{
 						"uid": "test-dashboard-label",
 						"title": "Test Dashboard with Label",
 						"panels": []
@@ -290,17 +305,17 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			configMapWithBoth := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-dashboard-both",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName: "dashboard",
-						labels.GrafanaOrganizationKey:     "label-org",
+						labels.DashboardSelectorLabelName: dashboard,
+						labels.GrafanaOrganizationKey:     labelOrg,
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationKey: "annotation-org",
+						labels.GrafanaOrganizationKey: annotationOrg,
 					},
 				},
 				Data: map[string]string{
-					"dashboard.json": `{
+					dashboardJSONKey: `{
 						"uid": "test-dashboard-both",
 						"title": "Test Dashboard with Both",
 						"panels": []
@@ -317,12 +332,12 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			multiDashboardConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "multi-dashboard",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName: "dashboard",
+						labels.DashboardSelectorLabelName: dashboard,
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationKey: "test-org",
+						labels.GrafanaOrganizationKey: testOrg,
 					},
 				},
 				Data: map[string]string{
@@ -332,7 +347,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 						"panels": []
 					}`,
 					"dashboard2.json": `{
-						"uid": "dashboard-2", 
+						"uid": "dashboard-2",
 						"title": "Second Dashboard",
 						"panels": []
 					}`,
@@ -348,12 +363,12 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			mixedConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "mixed-dashboard",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName: "dashboard",
+						labels.DashboardSelectorLabelName: dashboard,
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationKey: "test-org",
+						labels.GrafanaOrganizationKey: testOrg,
 					},
 				},
 				Data: map[string]string{
@@ -377,7 +392,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		It("Should validate dashboard ConfigMaps on update operations", func() {
 			By("Testing update with valid dashboard changes")
 			updatedObj := obj.DeepCopy()
-			updatedObj.Data["dashboard.json"] = `{
+			updatedObj.Data[dashboardJSONKey] = `{
 				"uid": "test-dashboard",
 				"title": "Updated Test Dashboard",
 				"panels": [{"id": 1, "title": "New Panel"}]
@@ -390,7 +405,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		It("Should reject invalid dashboard updates", func() {
 			By("Testing update with invalid dashboard")
 			invalidUpdatedObj := obj.DeepCopy()
-			invalidUpdatedObj.Data["dashboard.json"] = `{
+			invalidUpdatedObj.Data[dashboardJSONKey] = `{
 				"title": "Dashboard without UID after update",
 				"panels": []
 			}`
@@ -405,12 +420,12 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			emptyConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "empty-dashboard",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName: "dashboard",
+						labels.DashboardSelectorLabelName: dashboard,
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationKey: "test-org",
+						labels.GrafanaOrganizationKey: testOrg,
 					},
 				},
 				Data: map[string]string{},
@@ -425,17 +440,17 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			nonJSONConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "non-json-dashboard",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName: "dashboard",
+						labels.DashboardSelectorLabelName: dashboard,
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationKey: "test-org",
+						labels.GrafanaOrganizationKey: testOrg,
 					},
 				},
 				Data: map[string]string{
 					"readme.txt": "This is not a JSON file",
-					"dashboard.json": `{
+					dashboardJSONKey: `{
 						"uid": "valid-dashboard",
 						"title": "Valid Dashboard",
 						"panels": []
@@ -451,7 +466,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		It("Should handle dashboard ConfigMaps with complex validation scenarios", func() {
 			By("Testing dashboard with ID field that should be ignored during validation")
 			dashboardWithID := obj.DeepCopy()
-			dashboardWithID.Data["dashboard.json"] = `{
+			dashboardWithID.Data[dashboardJSONKey] = `{
 				"uid": "dashboard-with-id",
 				"id": 12345,
 				"title": "Dashboard with ID Field",
@@ -463,7 +478,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			By("Testing dashboard with minimal required fields only")
 			minimalDashboard := obj.DeepCopy()
-			minimalDashboard.Data["dashboard.json"] = `{
+			minimalDashboard.Data[dashboardJSONKey] = `{
 				"uid": "minimal-dashboard"
 			}`
 
@@ -472,7 +487,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			By("Testing dashboard with complex nested structure")
 			complexDashboard := obj.DeepCopy()
-			complexDashboard.Data["dashboard.json"] = `{
+			complexDashboard.Data[dashboardJSONKey] = `{
 				"uid": "complex-dashboard",
 				"title": "Complex Dashboard",
 				"tags": ["monitoring", "kubernetes"],
@@ -506,7 +521,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		It("Should validate multiple file extensions correctly", func() {
 			By("Testing ConfigMap with .json extension")
 			jsonConfigMap := obj.DeepCopy()
-			delete(jsonConfigMap.Data, "dashboard.json")
+			delete(jsonConfigMap.Data, dashboardJSONKey)
 			jsonConfigMap.Data["my-dashboard.json"] = `{
 				"uid": "json-extension",
 				"title": "JSON Extension Dashboard"
@@ -520,7 +535,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			mixedConfigMap.Data = map[string]string{
 				"config.yaml":    "some: yaml",
 				"script.sh":      "#!/bin/bash\necho hello",
-				"dashboard.json": `{"uid": "mixed-files", "title": "Mixed Files Dashboard"}`,
+				dashboardJSONKey: `{"uid": "mixed-files", "title": "Mixed Files Dashboard"}`,
 				"another.json":   `{"uid": "another-dash", "title": "Another Dashboard"}`,
 			}
 
@@ -534,17 +549,17 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			precedenceConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "precedence-test",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.DashboardSelectorLabelName: "dashboard",
-						labels.GrafanaOrganizationKey:     "label-org",
+						labels.DashboardSelectorLabelName: dashboard,
+						labels.GrafanaOrganizationKey:     labelOrg,
 					},
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationKey: "annotation-org",
+						labels.GrafanaOrganizationKey: annotationOrg,
 					},
 				},
 				Data: map[string]string{
-					"dashboard.json": `{
+					dashboardJSONKey: `{
 						"uid": "precedence-test",
 						"title": "Precedence Test Dashboard"
 					}`,
@@ -556,7 +571,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			By("Testing with an existing organization")
 			existingOrgConfigMap := obj.DeepCopy()
-			existingOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = "test-org"
+			existingOrgConfigMap.Annotations[labels.GrafanaOrganizationKey] = testOrg
 
 			_, err = validator.ValidateCreate(ctx, existingOrgConfigMap)
 			Expect(err).NotTo(HaveOccurred()) // Existing org should be accepted
@@ -575,9 +590,9 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			regularConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "regular-config",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"app": "some-application",
+						appLabelValue: "some-application",
 					},
 				},
 				Data: map[string]string{
@@ -600,7 +615,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 		It("Should provide meaningful error messages for different validation failures", func() {
 			By("Testing specific error message for missing UID")
 			noUIDConfigMap := obj.DeepCopy()
-			noUIDConfigMap.Data["dashboard.json"] = `{
+			noUIDConfigMap.Data[dashboardJSONKey] = `{
 				"title": "Dashboard without UID",
 				"description": "This dashboard is missing the required UID field"
 			}`
@@ -613,10 +628,10 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			By("Testing error aggregation for multiple validation failures")
 			multiErrorConfigMap := obj.DeepCopy()
 			multiErrorConfigMap.Labels = map[string]string{
-				labels.DashboardSelectorLabelName: "dashboard",
+				labels.DashboardSelectorLabelName: dashboard,
 			}
 			multiErrorConfigMap.Annotations = nil // Remove organization
-			multiErrorConfigMap.Data["dashboard.json"] = `{
+			multiErrorConfigMap.Data[dashboardJSONKey] = `{
 				"title": "Dashboard with multiple errors"
 			}` // Missing UID
 
@@ -627,7 +642,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			By("Testing JSON parsing error details")
 			invalidJSONConfigMap := obj.DeepCopy()
-			invalidJSONConfigMap.Data["dashboard.json"] = `{
+			invalidJSONConfigMap.Data[dashboardJSONKey] = `{
 				"uid": "invalid-json",
 				"title": "Invalid JSON"
 				"missing": "comma"
@@ -661,7 +676,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 				}`, i, i)
 			}
 
-			reasonableSizeConfigMap.Data["dashboard.json"] = fmt.Sprintf(`{
+			reasonableSizeConfigMap.Data[dashboardJSONKey] = fmt.Sprintf(`{
 				"uid": "performance-test",
 				"title": "Performance Test Dashboard",
 				"description": "Dashboard with reasonable number of panels for performance testing",
@@ -673,7 +688,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 
 			By("Testing memory usage with multiple dashboards")
 			multiDashConfigMap := obj.DeepCopy()
-			delete(multiDashConfigMap.Data, "dashboard.json")
+			delete(multiDashConfigMap.Data, dashboardJSONKey)
 
 			// Add multiple small dashboards
 			for i := 0; i < 10; i++ {
@@ -696,7 +711,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 				cm := &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "display-name-match",
-						Namespace: "default",
+						Namespace: defaultNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
@@ -705,7 +720,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 						},
 					},
 					Data: map[string]string{
-						"dashboard.json": `{"uid": "display-name-match", "title": "Test"}`,
+						dashboardJSONKey: `{"uid": "display-name-match", "title": "Test"}`,
 					},
 				}
 				_, err := validator.ValidateCreate(ctx, cm)
@@ -717,16 +732,16 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 				cm := &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "resource-name-mismatch",
-						Namespace: "default",
+						Namespace: defaultNamespace,
 						Labels: map[string]string{
 							labels.DashboardSelectorLabelName: labels.DashboardSelectorLabelValue,
 						},
 						Annotations: map[string]string{
-							labels.GrafanaOrganizationKey: "giantswarm",
+							labels.GrafanaOrganizationKey: giantswarm,
 						},
 					},
 					Data: map[string]string{
-						"dashboard.json": `{"uid": "resource-name-mismatch", "title": "Test"}`,
+						dashboardJSONKey: `{"uid": "resource-name-mismatch", "title": "Test"}`,
 					},
 				}
 				_, err := validator.ValidateCreate(ctx, cm)
@@ -770,7 +785,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 					"title": "Extreme Size Dashboard",
 					"panels": [%s]
 				}`, panels)
-				extremeConfigMap.Data["dashboard.json"] = extremeJSON
+				extremeConfigMap.Data[dashboardJSONKey] = extremeJSON
 
 				_, err := validator.ValidateCreate(ctx, extremeConfigMap)
 				Expect(err).NotTo(HaveOccurred()) // Should handle extreme size gracefully
@@ -779,7 +794,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			It("Should handle empty string values gracefully", func() {
 				By("Testing dashboard with empty UID string")
 				emptyUIDConfigMap := obj.DeepCopy()
-				emptyUIDConfigMap.Data["dashboard.json"] = `{
+				emptyUIDConfigMap.Data[dashboardJSONKey] = `{
 					"uid": "",
 					"title": "Dashboard with Empty UID"
 				}`
@@ -819,7 +834,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			It("Should validate against JSON injection attacks", func() {
 				By("Testing with JSON containing potential injection patterns")
 				injectionConfigMap := obj.DeepCopy()
-				injectionConfigMap.Data["dashboard.json"] = `{
+				injectionConfigMap.Data[dashboardJSONKey] = `{
 					"uid": "injection-test",
 					"title": "Test Dashboard",
 					"malicious": "'; DROP TABLE dashboards; --",

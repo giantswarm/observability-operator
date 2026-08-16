@@ -9,6 +9,14 @@ import (
 	"github.com/giantswarm/observability-operator/internal/labels"
 )
 
+const (
+	dashboardJSONKey  = "dashboard.json"
+	defaultNamespace  = "default"
+	testDashboard     = "test-dashboard"
+	testOrg           = "test-org"
+	testDashboardJSON = `{"uid": "test-uid", "title": "Test Dashboard"}`
+)
+
 func TestNew(t *testing.T) {
 	dashboardMapper := New()
 	if dashboardMapper == nil {
@@ -26,14 +34,14 @@ func TestFromConfigMap(t *testing.T) {
 			name: "valid configmap with single dashboard",
 			configMap: &v1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dashboard",
-					Namespace: "default",
+					Name:      testDashboard,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.GrafanaOrganizationKey: "test-org",
+						labels.GrafanaOrganizationKey: testOrg,
 					},
 				},
 				Data: map[string]string{
-					"dashboard.json": `{"uid": "test-uid", "title": "Test Dashboard"}`,
+					dashboardJSONKey: testDashboardJSON,
 				},
 			},
 			expectedCount: 1,
@@ -42,14 +50,14 @@ func TestFromConfigMap(t *testing.T) {
 			name: "valid configmap with annotation organization",
 			configMap: &v1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dashboard",
-					Namespace: "default",
+					Name:      testDashboard,
+					Namespace: defaultNamespace,
 					Annotations: map[string]string{
-						labels.GrafanaOrganizationKey: "test-org",
+						labels.GrafanaOrganizationKey: testOrg,
 					},
 				},
 				Data: map[string]string{
-					"dashboard.json": `{"uid": "test-uid", "title": "Test Dashboard"}`,
+					dashboardJSONKey: testDashboardJSON,
 				},
 			},
 			expectedCount: 1,
@@ -58,10 +66,10 @@ func TestFromConfigMap(t *testing.T) {
 			name: "multiple dashboards in configmap",
 			configMap: &v1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dashboard",
-					Namespace: "default",
+					Name:      testDashboard,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.GrafanaOrganizationKey: "test-org",
+						labels.GrafanaOrganizationKey: testOrg,
 					},
 				},
 				Data: map[string]string{
@@ -75,11 +83,11 @@ func TestFromConfigMap(t *testing.T) {
 			name: "missing organization",
 			configMap: &v1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dashboard",
-					Namespace: "default",
+					Name:      testDashboard,
+					Namespace: defaultNamespace,
 				},
 				Data: map[string]string{
-					"dashboard.json": `{"uid": "test-uid", "title": "Test Dashboard"}`,
+					dashboardJSONKey: testDashboardJSON,
 				},
 			},
 			expectedCount: 1,
@@ -88,14 +96,14 @@ func TestFromConfigMap(t *testing.T) {
 			name: "invalid JSON",
 			configMap: &v1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dashboard",
-					Namespace: "default",
+					Name:      testDashboard,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.GrafanaOrganizationKey: "test-org",
+						labels.GrafanaOrganizationKey: testOrg,
 					},
 				},
 				Data: map[string]string{
-					"dashboard.json": `invalid json`,
+					dashboardJSONKey: `invalid json`,
 				},
 			},
 			expectedCount: 1,
@@ -104,14 +112,14 @@ func TestFromConfigMap(t *testing.T) {
 			name: "missing UID in dashboard",
 			configMap: &v1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-dashboard",
-					Namespace: "default",
+					Name:      testDashboard,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						labels.GrafanaOrganizationKey: "test-org",
+						labels.GrafanaOrganizationKey: testOrg,
 					},
 				},
 				Data: map[string]string{
-					"dashboard.json": `{"title": "Test Dashboard"}`,
+					dashboardJSONKey: `{"title": "Test Dashboard"}`,
 				},
 			},
 			expectedCount: 1,
@@ -151,7 +159,7 @@ func TestFromConfigMapEdgeCases(t *testing.T) {
 		cm := &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					labels.GrafanaOrganizationKey: "test-org",
+					labels.GrafanaOrganizationKey: testOrg,
 				},
 			},
 			Data: map[string]string{},
@@ -174,7 +182,7 @@ func TestFromConfigMapEdgeCases(t *testing.T) {
 				},
 			},
 			Data: map[string]string{
-				"dashboard.json": `{"uid": "test-uid", "title": "Test Dashboard"}`,
+				dashboardJSONKey: testDashboardJSON,
 			},
 		}
 
