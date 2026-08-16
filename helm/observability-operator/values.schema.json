@@ -43,6 +43,14 @@
         "alerting": {
             "type": "object",
             "properties": {
+                "alertmanagerSecret": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        }
+                    }
+                },
                 "alertmanagerURL": {
                     "type": "string"
                 },
