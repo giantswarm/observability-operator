@@ -135,8 +135,8 @@ const (
 
 	// Grafana client flag names
 	flagGrafanaClientRetries             = "grafana-client-retries"
-	flagGrafanaAdminSecretNamespace      = "grafana-admin-secret-namespace"
-	flagGrafanaAdminSecretName           = "grafana-admin-secret-name"
+	flagGrafanaAdminSecretNamespace      = "grafana-admin-secret-namespace" // nolint:gosec // G101: CLI flag name, not a credential
+	flagGrafanaAdminSecretName           = "grafana-admin-secret-name"      // nolint:gosec // G101: CLI flag name, not a credential
 	flagGrafanaGatewayTLSSecretNamespace = "grafana-gateway-tls-secret-namespace"
 	flagGrafanaGatewayTLSSecretName      = "grafana-gateway-tls-secret-name"
 
@@ -515,6 +515,7 @@ func setupApplication() error {
 	}
 
 	// Initialize event recorder.
+	// nolint:staticcheck // SA1019: cluster-api record.InitFromRecorder takes the old client-go recorder, which GetEventRecorder does not return
 	record.InitFromRecorder(mgr.GetEventRecorderFor("observability-operator"))
 
 	// Create Grafana client generator for dependency injection

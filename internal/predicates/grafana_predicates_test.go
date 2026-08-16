@@ -8,6 +8,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
+const (
+	defaultNamespace = "default"
+	grafanaPod       = "grafana-pod"
+	nonGrafanaPod    = "non-grafana-pod"
+)
+
 func TestIsGrafanaPod(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -23,8 +29,8 @@ func TestIsGrafanaPod(t *testing.T) {
 			name: "non-Grafana pod",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "non-grafana-pod",
-					Namespace: "default",
+					Name:      nonGrafanaPod,
+					Namespace: defaultNamespace,
 				},
 			},
 			expected: false,
@@ -33,10 +39,10 @@ func TestIsGrafanaPod(t *testing.T) {
 			name: "Grafana pod with correct labels",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "grafana-pod",
-					Namespace: "monitoring",
+					Name:      grafanaPod,
+					Namespace: monitoring,
 					Labels: map[string]string{
-						"app.kubernetes.io/instance": "grafana",
+						instanceLabel: grafana,
 					},
 				},
 			},
@@ -46,10 +52,10 @@ func TestIsGrafanaPod(t *testing.T) {
 			name: "Grafana pod with incorrect namespace",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "grafana-pod",
-					Namespace: "default",
+					Name:      grafanaPod,
+					Namespace: defaultNamespace,
 					Labels: map[string]string{
-						"app.kubernetes.io/instance": "grafana",
+						instanceLabel: grafana,
 					},
 				},
 			},
@@ -59,10 +65,10 @@ func TestIsGrafanaPod(t *testing.T) {
 			name: "Grafana pod with incorrect label",
 			pod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "grafana-pod",
-					Namespace: "monitoring",
+					Name:      grafanaPod,
+					Namespace: monitoring,
 					Labels: map[string]string{
-						"app.kubernetes.io/instance": "not-grafana",
+						instanceLabel: "not-grafana",
 					},
 				},
 			},
@@ -103,14 +109,14 @@ func TestGrafanaPodRecreatedPredicate_Update(t *testing.T) {
 			name: "non-Grafana pod",
 			oldPod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "non-grafana-pod",
-					Namespace: "default",
+					Name:      nonGrafanaPod,
+					Namespace: defaultNamespace,
 				},
 			},
 			newPod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "non-grafana-pod",
-					Namespace: "default",
+					Name:      nonGrafanaPod,
+					Namespace: defaultNamespace,
 				},
 			},
 			expected: false,
@@ -119,10 +125,10 @@ func TestGrafanaPodRecreatedPredicate_Update(t *testing.T) {
 			name: "Grafana pod not ready to ready",
 			oldPod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "grafana-pod",
-					Namespace: "monitoring",
+					Name:      grafanaPod,
+					Namespace: monitoring,
 					Labels: map[string]string{
-						"app.kubernetes.io/instance": "grafana",
+						instanceLabel: grafana,
 					},
 				},
 				Status: corev1.PodStatus{
@@ -136,10 +142,10 @@ func TestGrafanaPodRecreatedPredicate_Update(t *testing.T) {
 			},
 			newPod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "grafana-pod",
-					Namespace: "monitoring",
+					Name:      grafanaPod,
+					Namespace: monitoring,
 					Labels: map[string]string{
-						"app.kubernetes.io/instance": "grafana",
+						instanceLabel: grafana,
 					},
 				},
 				Status: corev1.PodStatus{
@@ -157,10 +163,10 @@ func TestGrafanaPodRecreatedPredicate_Update(t *testing.T) {
 			name: "Grafana pod ready to not ready",
 			oldPod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "grafana-pod",
-					Namespace: "monitoring",
+					Name:      grafanaPod,
+					Namespace: monitoring,
 					Labels: map[string]string{
-						"app.kubernetes.io/instance": "grafana",
+						instanceLabel: grafana,
 					},
 				},
 				Status: corev1.PodStatus{
@@ -174,10 +180,10 @@ func TestGrafanaPodRecreatedPredicate_Update(t *testing.T) {
 			},
 			newPod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "grafana-pod",
-					Namespace: "monitoring",
+					Name:      grafanaPod,
+					Namespace: monitoring,
 					Labels: map[string]string{
-						"app.kubernetes.io/instance": "grafana",
+						instanceLabel: grafana,
 					},
 				},
 				Status: corev1.PodStatus{

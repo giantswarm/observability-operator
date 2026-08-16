@@ -24,6 +24,12 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
+const (
+	kindKey   = "kind"
+	nameKey   = "name"
+	valuesKey = "values"
+)
+
 const observabilityBundleName string = "observability-bundle"
 
 var helmReleaseGVK = schema.GroupVersionKind{
@@ -137,7 +143,7 @@ func (s service) createOrUpdateConfigMap(ctx context.Context, cluster *clusterv1
 		}
 
 		configMap.Data = map[string]string{
-			"values": string(values),
+			valuesKey: string(values),
 		}
 		return nil
 	})
@@ -184,9 +190,9 @@ func (s service) configureHelmRelease(ctx context.Context, cluster *clusterv1.Cl
 	configMapObjectKey := getConfigMapObjectKey(cluster)
 
 	desiredEntry := map[string]interface{}{
-		"kind":      "ConfigMap",
-		"name":      configMapObjectKey.Name,
-		"valuesKey": "values",
+		kindKey:     "ConfigMap",
+		nameKey:     configMapObjectKey.Name,
+		"valuesKey": valuesKey,
 	}
 
 	spec, ok := hr.Object["spec"].(map[string]interface{})
@@ -206,7 +212,7 @@ func (s service) configureHelmRelease(ctx context.Context, cluster *clusterv1.Cl
 		if !ok {
 			return false
 		}
-		return entry["kind"] == desiredEntry["kind"] && entry["name"] == desiredEntry["name"]
+		return entry[kindKey] == desiredEntry[kindKey] && entry[nameKey] == desiredEntry[nameKey]
 	})
 
 	if foundIndex == -1 {
@@ -328,7 +334,7 @@ func (s service) getHelmReleaseVersion(ctx context.Context, hr *unstructured.Uns
 		return semver.Version{}, fmt.Errorf("helmrelease %s/%s has no spec.chartRef", hr.GetNamespace(), hr.GetName())
 	}
 
-	name, _ := chartRef["name"].(string)
+	name, _ := chartRef[nameKey].(string)
 	namespace, _ := chartRef["namespace"].(string)
 	if namespace == "" {
 		namespace = hr.GetNamespace()

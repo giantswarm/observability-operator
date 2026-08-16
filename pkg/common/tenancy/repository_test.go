@@ -13,6 +13,13 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
 )
 
+const (
+	defaultNamespace = "default"
+	org1             = "org1"
+	tenantA          = "tenant-a"
+	tenantB          = "tenant-b"
+)
+
 func TestKubernetesTenantRepository_List(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme) // Register GrafanaOrganization with the scheme
@@ -36,47 +43,47 @@ func TestKubernetesTenantRepository_List(t *testing.T) {
 			name: "case 1: single GrafanaOrganization with tenants",
 			initialObjs: []client.Object{
 				&v1alpha1.GrafanaOrganization{
-					ObjectMeta: metav1.ObjectMeta{Name: "org1", Namespace: "default"},
+					ObjectMeta: metav1.ObjectMeta{Name: org1, Namespace: defaultNamespace},
 					Spec: v1alpha1.GrafanaOrganizationSpec{
-						Tenants: []v1alpha1.TenantID{"tenant-a", "tenant-b"},
+						Tenants: []v1alpha1.TenantID{tenantA, tenantB},
 					},
 				},
 			},
-			expected:  []string{"tenant-a", "tenant-b"},
+			expected:  []string{tenantA, tenantB},
 			expectErr: false,
 		},
 		{
 			name: "case 2: multiple GrafanaOrganizations with unique and overlapping tenants",
 			initialObjs: []client.Object{
 				&v1alpha1.GrafanaOrganization{
-					ObjectMeta: metav1.ObjectMeta{Name: "org1", Namespace: "default"},
+					ObjectMeta: metav1.ObjectMeta{Name: org1, Namespace: defaultNamespace},
 					Spec: v1alpha1.GrafanaOrganizationSpec{
-						Tenants: []v1alpha1.TenantID{"tenant-a", "tenant-b"},
+						Tenants: []v1alpha1.TenantID{tenantA, tenantB},
 					},
 				},
 				&v1alpha1.GrafanaOrganization{
-					ObjectMeta: metav1.ObjectMeta{Name: "org2", Namespace: "default"},
+					ObjectMeta: metav1.ObjectMeta{Name: "org2", Namespace: defaultNamespace},
 					Spec: v1alpha1.GrafanaOrganizationSpec{
-						Tenants: []v1alpha1.TenantID{"tenant-b", "tenant-c"},
+						Tenants: []v1alpha1.TenantID{tenantB, "tenant-c"},
 					},
 				},
 			},
-			expected:  []string{"tenant-a", "tenant-b", "tenant-c"},
+			expected:  []string{tenantA, tenantB, "tenant-c"},
 			expectErr: false,
 		},
 		{
 			name: "case 3: GrafanaOrganization marked for deletion",
 			initialObjs: []client.Object{
 				&v1alpha1.GrafanaOrganization{
-					ObjectMeta: metav1.ObjectMeta{Name: "org1", Namespace: "default"},
+					ObjectMeta: metav1.ObjectMeta{Name: org1, Namespace: defaultNamespace},
 					Spec: v1alpha1.GrafanaOrganizationSpec{
-						Tenants: []v1alpha1.TenantID{"tenant-a"},
+						Tenants: []v1alpha1.TenantID{tenantA},
 					},
 				},
 				&v1alpha1.GrafanaOrganization{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:              "org-deleted",
-						Namespace:         "default",
+						Namespace:         defaultNamespace,
 						DeletionTimestamp: &now,
 						Finalizers:        []string{"finalizer.grafana.giantswarm.io"},
 					},
@@ -85,20 +92,20 @@ func TestKubernetesTenantRepository_List(t *testing.T) {
 					},
 				},
 			},
-			expected:  []string{"tenant-a"},
+			expected:  []string{tenantA},
 			expectErr: false,
 		},
 		{
 			name: "case 4: GrafanaOrganization with no tenants",
 			initialObjs: []client.Object{
 				&v1alpha1.GrafanaOrganization{
-					ObjectMeta: metav1.ObjectMeta{Name: "org1", Namespace: "default"},
+					ObjectMeta: metav1.ObjectMeta{Name: org1, Namespace: defaultNamespace},
 					Spec: v1alpha1.GrafanaOrganizationSpec{
 						Tenants: []v1alpha1.TenantID{},
 					},
 				},
 				&v1alpha1.GrafanaOrganization{
-					ObjectMeta: metav1.ObjectMeta{Name: "org2", Namespace: "default"},
+					ObjectMeta: metav1.ObjectMeta{Name: "org2", Namespace: defaultNamespace},
 					Spec: v1alpha1.GrafanaOrganizationSpec{
 						Tenants: []v1alpha1.TenantID{"tenant-x"},
 					},
@@ -111,7 +118,7 @@ func TestKubernetesTenantRepository_List(t *testing.T) {
 			name: "case 5: unsorted tenants in spec, ensure output is sorted",
 			initialObjs: []client.Object{
 				&v1alpha1.GrafanaOrganization{
-					ObjectMeta: metav1.ObjectMeta{Name: "org1", Namespace: "default"},
+					ObjectMeta: metav1.ObjectMeta{Name: org1, Namespace: defaultNamespace},
 					Spec: v1alpha1.GrafanaOrganizationSpec{
 						Tenants: []v1alpha1.TenantID{"zebra", "apple", "banana"},
 					},
