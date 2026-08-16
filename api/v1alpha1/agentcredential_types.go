@@ -8,7 +8,7 @@ import (
 const (
 	// AgentCredentialFinalizer ensures gateway htpasswd is re-aggregated before
 	// the credential disappears.
-	AgentCredentialFinalizer = "observability.giantswarm.io/agentcredential"
+	AgentCredentialFinalizer = "observability.giantswarm.io/agentcredential" // nolint:gosec // G101: finalizer name, not a credential
 
 	// Condition types set on AgentCredentialStatus.
 	AgentCredentialConditionReady         = "Ready"

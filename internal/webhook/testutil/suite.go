@@ -25,8 +25,8 @@ import (
 	"path/filepath"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" // nolint:staticcheck // ST1001: ginkgo DSL is used via dot import by convention
+	. "github.com/onsi/gomega"    // nolint:staticcheck // ST1001: gomega DSL is used via dot import by convention
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"

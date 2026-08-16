@@ -43,10 +43,10 @@ var _ = Describe("Secret Webhook", func() {
 		obj = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-secret",
-				Namespace: "test-namespace",
+				Namespace: testNamespace,
 				Labels: map[string]string{
-					"observability.giantswarm.io/kind":   "alertmanager-config",
-					"observability.giantswarm.io/tenant": "test_tenant",
+					kindLabel:                            alertmanagerConfig,
+					"observability.giantswarm.io/tenant": testTenant,
 				},
 			},
 			Data: map[string][]byte{
@@ -85,9 +85,9 @@ receivers:
 			nonAlertmanagerSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "regular-secret",
-					Namespace: "test-namespace",
+					Namespace: testNamespace,
 					Labels: map[string]string{
-						"app": "some-app",
+						appLabelValue: "some-app",
 					},
 				},
 				Data: map[string][]byte{
@@ -108,7 +108,7 @@ receivers:
 			secretWithoutLabels := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "secret-without-labels",
-					Namespace: "test-namespace",
+					Namespace: testNamespace,
 				},
 			}
 			isAlertmanagerConfig = validator.isAlertmanagerConfigSecret(secretWithoutLabels)
@@ -118,9 +118,9 @@ receivers:
 			secretWithoutTenant := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "secret-without-tenant",
-					Namespace: "test-namespace",
+					Namespace: testNamespace,
 					Labels: map[string]string{
-						"observability.giantswarm.io/kind": "alertmanager-config",
+						kindLabel: alertmanagerConfig,
 					},
 				},
 			}
@@ -136,7 +136,7 @@ receivers:
 				},
 				Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
 					DisplayName: "Test Organization",
-					Tenants:     []observabilityv1alpha1.TenantID{"test_tenant"},
+					Tenants:     []observabilityv1alpha1.TenantID{testTenant},
 					RBAC: &observabilityv1alpha1.RBAC{
 						Admins: []string{"admin-org"},
 					},
@@ -187,10 +187,10 @@ receivers:
 			invalidSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "invalid-secret",
-					Namespace: "test-namespace",
+					Namespace: testNamespace,
 					Labels: map[string]string{
-						"observability.giantswarm.io/kind":   "alertmanager-config",
-						"observability.giantswarm.io/tenant": "test_tenant",
+						kindLabel:                            alertmanagerConfig,
+						"observability.giantswarm.io/tenant": testTenant,
 					},
 				},
 				Data: map[string][]byte{

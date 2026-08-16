@@ -17,9 +17,9 @@ import (
 func TestReader_ReadsCredentials(t *testing.T) {
 	scheme := newScheme(t)
 
-	cred := newAgentCredential("c1", "ns1", "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
+	cred := newAgentCredential("c1", ns1, "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: ns1},
 		Data: map[string][]byte{
 			SecretKeyUsername: []byte("agent-a"),
 			SecretKeyPassword: []byte("hunter2"),
@@ -29,7 +29,7 @@ func TestReader_ReadsCredentials(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred, secret).Build()
 	r := NewReader(c)
 
-	username, password, err := r.ReadPassword(context.Background(), "ns1", "c1")
+	username, password, err := r.ReadPassword(context.Background(), ns1, "c1")
 	require.NoError(t, err)
 	assert.Equal(t, "agent-a", username)
 	assert.Equal(t, "hunter2", password)
@@ -37,11 +37,11 @@ func TestReader_ReadsCredentials(t *testing.T) {
 
 func TestReader_ReturnsNotReadyWhenSecretMissing(t *testing.T) {
 	scheme := newScheme(t)
-	cred := newAgentCredential("c1", "ns1", "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
+	cred := newAgentCredential("c1", ns1, "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred).Build()
 	r := NewReader(c)
 
-	_, _, err := r.ReadPassword(context.Background(), "ns1", "c1")
+	_, _, err := r.ReadPassword(context.Background(), ns1, "c1")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrCredentialNotReady), "expected ErrCredentialNotReady, got %v", err)
 }
@@ -51,15 +51,15 @@ func TestReader_FailsWhenCredentialMissing(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).Build()
 	r := NewReader(c)
 
-	_, _, err := r.ReadPassword(context.Background(), "ns1", "missing")
+	_, _, err := r.ReadPassword(context.Background(), ns1, "missing")
 	assert.Error(t, err)
 }
 
 func TestReader_ReturnsNotReadyWhenPasswordEmpty(t *testing.T) {
 	scheme := newScheme(t)
-	cred := newAgentCredential("c1", "ns1", "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
+	cred := newAgentCredential("c1", ns1, "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: ns1},
 		Data: map[string][]byte{
 			SecretKeyUsername: []byte("agent-a"),
 		},
@@ -67,7 +67,7 @@ func TestReader_ReturnsNotReadyWhenPasswordEmpty(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred, secret).Build()
 	r := NewReader(c)
 
-	_, _, err := r.ReadPassword(context.Background(), "ns1", "c1")
+	_, _, err := r.ReadPassword(context.Background(), ns1, "c1")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrCredentialNotReady), "expected ErrCredentialNotReady, got %v", err)
 }

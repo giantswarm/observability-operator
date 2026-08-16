@@ -12,6 +12,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+const (
+	configYAMLKey    = "config.yaml"
+	defaultNamespace = "default"
+	testCluster      = "test-cluster"
+	testConfigmap    = "test-configmap"
+	testSecret       = "test-secret"
+)
+
 func TestK8sConfigurationRepository_Save(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -23,12 +31,12 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 		{
 			name: "creates new ConfigMap and Secret",
 			config: &AgentConfiguration{
-				ClusterName:      "test-cluster",
-				ClusterNamespace: "default",
-				ConfigMapName:    "test-configmap",
-				SecretName:       "test-secret",
+				ClusterName:      testCluster,
+				ClusterNamespace: defaultNamespace,
+				ConfigMapName:    testConfigmap,
+				SecretName:       testSecret,
 				ConfigMapData: map[string]string{
-					"config.yaml": "test: config",
+					configYAMLKey: "test: config",
 				},
 				SecretData: map[string]string{
 					"MIMIR_URL":      "https://mimir.example.com",
@@ -50,7 +58,7 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 				if err != nil {
 					t.Errorf("Failed to get ConfigMap: %v", err)
 				}
-				if cm.Data["config.yaml"] != "test: config" {
+				if cm.Data[configYAMLKey] != "test: config" {
 					t.Errorf("ConfigMap data mismatch: got %v", cm.Data)
 				}
 				if cm.Labels["app"] != "alloy" {
@@ -75,12 +83,12 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 		{
 			name: "updates existing ConfigMap and Secret",
 			config: &AgentConfiguration{
-				ClusterName:      "test-cluster",
-				ClusterNamespace: "default",
-				ConfigMapName:    "test-configmap",
-				SecretName:       "test-secret",
+				ClusterName:      testCluster,
+				ClusterNamespace: defaultNamespace,
+				ConfigMapName:    testConfigmap,
+				SecretName:       testSecret,
 				ConfigMapData: map[string]string{
-					"config.yaml": "updated: config",
+					configYAMLKey: "updated: config",
 				},
 				SecretData: map[string]string{
 					"MIMIR_URL":      "https://mimir-updated.example.com",
@@ -93,17 +101,17 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 			existingObjs: []client.Object{
 				&v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-configmap",
-						Namespace: "default",
+						Name:      testConfigmap,
+						Namespace: defaultNamespace,
 					},
 					Data: map[string]string{
-						"config.yaml": "old: config",
+						configYAMLKey: "old: config",
 					},
 				},
 				&v1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-secret",
-						Namespace: "default",
+						Name:      testSecret,
+						Namespace: defaultNamespace,
 					},
 					Data: map[string][]byte{
 						"values": []byte("old data"),
@@ -121,7 +129,7 @@ func TestK8sConfigurationRepository_Save(t *testing.T) {
 				if err != nil {
 					t.Errorf("Failed to get ConfigMap: %v", err)
 				}
-				if cm.Data["config.yaml"] != "updated: config" {
+				if cm.Data[configYAMLKey] != "updated: config" {
 					t.Errorf("ConfigMap data not updated: got %v", cm.Data)
 				}
 				if cm.Labels["app"] != "alloy-updated" {
@@ -189,21 +197,21 @@ func TestK8sConfigurationRepository_Delete(t *testing.T) {
 	}{
 		{
 			name:             "deletes existing ConfigMap and Secret",
-			clusterName:      "test-cluster",
-			clusterNamespace: "default",
-			configMapName:    "test-configmap",
-			secretName:       "test-secret",
+			clusterName:      testCluster,
+			clusterNamespace: defaultNamespace,
+			configMapName:    testConfigmap,
+			secretName:       testSecret,
 			existingObjs: []client.Object{
 				&v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-configmap",
-						Namespace: "default",
+						Name:      testConfigmap,
+						Namespace: defaultNamespace,
 					},
 				},
 				&v1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-secret",
-						Namespace: "default",
+						Name:      testSecret,
+						Namespace: defaultNamespace,
 					},
 				},
 			},
@@ -212,8 +220,8 @@ func TestK8sConfigurationRepository_Delete(t *testing.T) {
 				// Validate ConfigMap was deleted
 				cm := &v1.ConfigMap{}
 				err := c.Get(context.Background(), client.ObjectKey{
-					Name:      "test-configmap",
-					Namespace: "default",
+					Name:      testConfigmap,
+					Namespace: defaultNamespace,
 				}, cm)
 				if !apierrors.IsNotFound(err) {
 					t.Errorf("ConfigMap should be deleted, got error: %v", err)
@@ -222,8 +230,8 @@ func TestK8sConfigurationRepository_Delete(t *testing.T) {
 				// Validate Secret was deleted
 				secret := &v1.Secret{}
 				err = c.Get(context.Background(), client.ObjectKey{
-					Name:      "test-secret",
-					Namespace: "default",
+					Name:      testSecret,
+					Namespace: defaultNamespace,
 				}, secret)
 				if !apierrors.IsNotFound(err) {
 					t.Errorf("Secret should be deleted, got error: %v", err)
@@ -232,8 +240,8 @@ func TestK8sConfigurationRepository_Delete(t *testing.T) {
 		},
 		{
 			name:             "handles non-existent resources gracefully",
-			clusterName:      "test-cluster",
-			clusterNamespace: "default",
+			clusterName:      testCluster,
+			clusterNamespace: defaultNamespace,
 			configMapName:    "non-existent-configmap",
 			secretName:       "non-existent-secret",
 			existingObjs:     []client.Object{},
@@ -244,27 +252,27 @@ func TestK8sConfigurationRepository_Delete(t *testing.T) {
 		},
 		{
 			name:             "deletes only specified resources",
-			clusterName:      "test-cluster",
-			clusterNamespace: "default",
-			configMapName:    "test-configmap",
-			secretName:       "test-secret",
+			clusterName:      testCluster,
+			clusterNamespace: defaultNamespace,
+			configMapName:    testConfigmap,
+			secretName:       testSecret,
 			existingObjs: []client.Object{
 				&v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-configmap",
-						Namespace: "default",
+						Name:      testConfigmap,
+						Namespace: defaultNamespace,
 					},
 				},
 				&v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "other-configmap",
-						Namespace: "default",
+						Namespace: defaultNamespace,
 					},
 				},
 				&v1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-secret",
-						Namespace: "default",
+						Name:      testSecret,
+						Namespace: defaultNamespace,
 					},
 				},
 			},
@@ -273,8 +281,8 @@ func TestK8sConfigurationRepository_Delete(t *testing.T) {
 				// Validate only specified ConfigMap was deleted
 				cm := &v1.ConfigMap{}
 				err := c.Get(context.Background(), client.ObjectKey{
-					Name:      "test-configmap",
-					Namespace: "default",
+					Name:      testConfigmap,
+					Namespace: defaultNamespace,
 				}, cm)
 				if !apierrors.IsNotFound(err) {
 					t.Errorf("test-configmap should be deleted")
@@ -284,7 +292,7 @@ func TestK8sConfigurationRepository_Delete(t *testing.T) {
 				otherCm := &v1.ConfigMap{}
 				err = c.Get(context.Background(), client.ObjectKey{
 					Name:      "other-configmap",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				}, otherCm)
 				if err != nil {
 					t.Errorf("other-configmap should still exist, got error: %v", err)

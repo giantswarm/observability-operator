@@ -43,7 +43,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Orga
 	if foundByName != nil {
 		if org.ID() != foundByName.ID() {
 			logger.Info("adopting existing Grafana organization matching display name",
-				"name", foundByName.Name(), "newID", foundByName.ID(), "previousID", org.ID())
+				nameKey, foundByName.Name(), "newID", foundByName.ID(), "previousID", org.ID())
 		}
 		org.SetID(foundByName.ID())
 		return nil
@@ -56,7 +56,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Orga
 		currentOrg, err := s.findOrgByID(org.ID())
 
 		if err != nil && !errors.Is(err, organization.ErrOrganizationNotFound) {
-			return fmt.Errorf("Error when trying to find organization with ID %d: %w", org.ID(), err)
+			return fmt.Errorf("error when trying to find organization with ID %d: %w", org.ID(), err)
 		}
 		// If err is ErrOrganizationNotFound, we fall through to CreateOrg below.
 
@@ -73,7 +73,7 @@ func (s *Service) UpsertOrganization(ctx context.Context, org *organization.Orga
 		}
 	}
 
-	logger.Info("creating organization", "name", org.Name())
+	logger.Info("creating organization", nameKey, org.Name())
 	createdOrg, err := s.grafanaClient.Orgs().CreateOrg(&models.CreateOrgCommand{Name: org.Name()})
 	if err != nil {
 		return fmt.Errorf("failed to create organization: %w", err)
