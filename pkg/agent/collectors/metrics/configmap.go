@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"slices"
 	"text/template"
 
 	v1 "k8s.io/api/core/v1"
@@ -123,6 +124,13 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		return "", fmt.Errorf("failed to get cluster provider: %w", err)
 	}
 
+	// vCenter metrics are collected once per installation, from the management cluster agent, and
+	// are sent to the default tenant. The default tenant is only present when a Grafana
+	// organization declares it, so we check for it to avoid referencing a missing remote write.
+	vcenterEnabled := !s.Config.Cluster.IsWorkloadCluster(cluster) &&
+		s.Config.Cluster.IsVCenterProvider(cluster) &&
+		slices.Contains(tenants, s.Config.DefaultTenant)
+
 	data := struct {
 		AlloySecretName      string
 		AlloySecretNamespace string
@@ -137,7 +145,6 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		ClusterID         string
 		IsWorkloadCluster bool
-		Provider          string
 
 		Tenants         []string
 		DefaultTenantID string
@@ -158,6 +165,13 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		IsSupportingScrapeConfigs bool
 		ExemplarsEnabled          bool
+
+		VCenterEnabled               bool
+		VCenterSecretName            string
+		VCenterEndpointKey           string
+		VCenterUsernameKey           string
+		VCenterPasswordKey           string
+		VCenterInsecureSkipVerifyKey string
 	}{
 		AlloySecretName:      apps.AlloyMetricsAppName,
 		AlloySecretNamespace: apps.AlloyNamespace,
@@ -200,9 +214,15 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		},
 
 		IsWorkloadCluster:         s.Config.Cluster.IsWorkloadCluster(cluster),
-		Provider:                  provider,
 		IsSupportingScrapeConfigs: observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
 		ExemplarsEnabled:          s.Config.Monitoring.ExemplarsEnabled,
+
+		VCenterEnabled:               vcenterEnabled,
+		VCenterSecretName:            common.VCenterSecretName,
+		VCenterEndpointKey:           common.VCenterEndpointKey,
+		VCenterUsernameKey:           common.VCenterUsernameKey,
+		VCenterPasswordKey:           common.VCenterPasswordKey,
+		VCenterInsecureSkipVerifyKey: common.VCenterInsecureSkipVerifyKey,
 	}
 
 	err = alloyConfigTemplate.Execute(&values, data)

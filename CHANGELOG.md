@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add a regression test for msteamsv2_configs and msteams_config Alertmanager receivers configuration
-- Enable `otel.exporter.prometheus` and `otel.receiver.vcenter` for vSphere and Cloud Director installations to enable collection of provider metrics.
+- Enable `otelcol.receiver.vcenter` and `otelcol.exporter.prometheus` on the management cluster of vSphere and Cloud Director installations, to collect provider metrics.
 
 ## [0.72.3] - 2026-08-03
 

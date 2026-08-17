@@ -53,6 +53,21 @@ metadata:
     observability.giantswarm.io/network-monitoring: "true"
 ```
 
+## vCenter metrics
+
+On vSphere and Cloud Director installations, the management cluster Alloy agent collects provider metrics from vCenter with `otelcol.receiver.vcenter`. The metrics go to the default tenant through `otelcol.exporter.prometheus`. Workload cluster agents do not collect these metrics.
+
+The operator does not create the credentials. Provide a Secret named `alloy-vcenter-credentials` in the `kube-system` namespace of the management cluster, with these keys:
+
+| Key | Description |
+|---|---|
+| `vcenter-endpoint` | URL of the vCenter API endpoint |
+| `vcenter-username` | Username for vCenter authentication |
+| `vcenter-password` | Password for vCenter authentication |
+| `vcenter-insecure-skip-verify` | `"true"` to skip TLS verification, any other value to verify |
+
+All keys are mandatory. Alloy fails to load its configuration if a key is absent.
+
 ## KEDA namespace
 
 When KEDA authentication is enabled, the operator creates a `ClusterTriggerAuthentication` resource so KEDA `ScaledObjects` can authenticate with Mimir. By default it targets the `keda` namespace. Override it per cluster:

@@ -89,6 +89,10 @@ const (
 	// --- vCenter Configuration ---
 	// Configuration for the vCenter receiver, used for both vCenter and Cloud Director environments
 
+	// VCenterSecretName is the secret holding the vCenter credentials. The operator does not
+	// create this secret: it is provided externally in the Alloy namespace.
+	VCenterSecretName = "alloy-vcenter-credentials"
+
 	// vCenter secret keys for authentication and endpoint configuration
 	VCenterUsernameKey           = "vcenter-username"             // Username for vCenter authentication
 	VCenterPasswordKey           = "vcenter-password"             // Password for vCenter authentication

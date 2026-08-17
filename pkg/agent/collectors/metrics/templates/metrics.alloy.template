@@ -267,19 +267,32 @@ prometheus.remote_write "{{ . }}" {
 
 {{ end }}
 
-{{- if and (not $.IsWorkloadCluster) (or (eq $.Provider "vsphere") (eq $.Provider "cloud-director")) }}
-// Enable the vcenter receiver for vsphere and cloud-director installations
-otelcol.receiver.vcenter "{{ $.ClusterID }}" {
-  endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.VCenterEndpointKey }}"])
-  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.VCenterUsernameKey }}"])
-  password = remote.kubernetes.secret.credentials.data["{{ $.VCenterProviderPasswordKey }}"]
+{{- if $.VCenterEnabled }}
+// vCenter credentials for vsphere and cloud-director installations.
+// This secret is not created by the operator, it is provided externally.
+remote.kubernetes.secret "vcenter_credentials" {
+  name      = "{{ $.VCenterSecretName }}"
+  namespace = "{{ $.AlloySecretNamespace }}"
+}
 
-  output {
-    metrics = ["http://mimir-gateway.mimir.svc:80/otlp"] # TODO: variablise me
-  }
+// Collect provider metrics from vCenter
+otelcol.receiver.vcenter "default" {
+  endpoint = convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["{{ $.VCenterEndpointKey }}"])
+  username = convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["{{ $.VCenterUsernameKey }}"])
+  password = remote.kubernetes.secret.vcenter_credentials.data["{{ $.VCenterPasswordKey }}"]
 
   tls {
-    insecure_skip_verify = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.VCenterInsecureSkipVerifyKey }}"])
+    // The secret value is a string, the comparison gives the boolean Alloy expects.
+    insecure_skip_verify = convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["{{ $.VCenterInsecureSkipVerifyKey }}"]) == "true"
   }
+
+  output {
+    metrics = [otelcol.exporter.prometheus.vcenter.input]
+  }
+}
+
+// Convert the vCenter metrics to the Prometheus format and send them to the default tenant
+otelcol.exporter.prometheus "vcenter" {
+  forward_to = [prometheus.remote_write.{{ $.DefaultTenantID }}.receiver]
 }
 {{- end }}

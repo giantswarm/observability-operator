@@ -331,6 +331,25 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			exemplarsEnabled:           true,
 		},
 		{
+			name: "ManagementCluster_VSphere_DefaultTenant_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: "default",
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: "VSphereCluster",
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.MC.vsphere.yaml"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
 			name: "ExemplarsDisabledInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
