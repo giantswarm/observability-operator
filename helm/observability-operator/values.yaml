@@ -31,7 +31,7 @@ alerting:
   alertmanagerURL: ""
   alertmanagerSecret:
     # -- Render the Alertmanager configuration Secret from this chart.
-    # Set to false once `alerting-config` ships the Secret for the installation,
+    # TODO: Set to false once `alerting-config` ships the Secret for the installation,
     # otherwise both Secrets reconcile and fight over one Mimir configuration.
     enabled: true
   # -- Grafana instance address
