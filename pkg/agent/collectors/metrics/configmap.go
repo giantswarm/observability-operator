@@ -137,6 +137,7 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		ClusterID         string
 		IsWorkloadCluster bool
+		Provider          string
 
 		Tenants         []string
 		DefaultTenantID string
@@ -199,6 +200,7 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		},
 
 		IsWorkloadCluster:         s.Config.Cluster.IsWorkloadCluster(cluster),
+		Provider:                  provider,
 		IsSupportingScrapeConfigs: observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
 		ExemplarsEnabled:          s.Config.Monitoring.ExemplarsEnabled,
 	}

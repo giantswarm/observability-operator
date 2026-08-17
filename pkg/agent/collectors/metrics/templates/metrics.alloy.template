@@ -266,3 +266,20 @@ prometheus.remote_write "{{ . }}" {
 }
 
 {{ end }}
+
+{{- if and (not $.IsWorkloadCluster) (or (eq $.Provider "vsphere") (eq $.Provider "cloud-director")) }}
+// Enable the vcenter receiver for vsphere and cloud-director installations
+otelcol.receiver.vcenter "{{ $.ClusterID }}" {
+  endpoint = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.VCenterEndpointKey }}"])
+  username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.VCenterUsernameKey }}"])
+  password = remote.kubernetes.secret.credentials.data["{{ $.VCenterProviderPasswordKey }}"]
+
+  output {
+    metrics = ["http://mimir-gateway.mimir.svc:80/otlp"] # TODO: variablise me
+  }
+
+  tls {
+    insecure_skip_verify = convert.nonsensitive(remote.kubernetes.secret.credentials.data["{{ $.VCenterInsecureSkipVerifyKey }}"])
+  }
+}
+{{- end }}
