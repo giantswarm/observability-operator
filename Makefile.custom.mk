@@ -63,6 +63,14 @@ manual-testing: ## Run manual end-to-end testing script
 	fi
 	@./hack/bin/manual-testing.sh $(INSTALLATION)
 
+# Extra flags for verify-alerting, e.g. VERIFY_ARGS="--context glean --tenant giantswarm"
+VERIFY_ARGS =
+
+.PHONY: verify-alerting
+verify-alerting: $(YQ_BIN) ## Verify one installation's alerting state (Alertmanager config in Mimir, Cronitor heartbeat)
+	@$(log_build) "Verifying alerting state"
+	@YQ=$(abspath $(YQ_BIN)) ./hack/bin/verify-alerting.sh $(VERIFY_ARGS)
+
 ###############################################################################
 # Alertmanager unit Tests
 ###############################################################################

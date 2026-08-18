@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add the `alerting.alertmanagerSecret.enabled` value (default `true`) to gate rendering of the Alertmanager configuration Secret, so the Alertmanager configuration can be shipped from another chart instead.
+- Add `make verify-alerting` (`hack/bin/verify-alerting.sh`), which checks one installation's alerting state and exits non-zero on any failure: the configuration Mimir Alertmanager serves matches the Secret on the cluster, exactly one Secret ships it for the tenant, the Cronitor monitor the configuration pings exists and is passing, and the `Heartbeat` resource is Ready where the CRD is registered.
 
 ## [0.73.0] - 2026-08-10
 
