@@ -107,7 +107,7 @@ func (c ClusterConfig) GetClusterProvider(cluster *clusterv1.Cluster) (string, e
 	return "", fmt.Errorf("unknown cluster provider for %s", cluster.Spec.InfrastructureRef.Kind)
 }
 
-// IsVCenterProvider checks if the given cluster is a vCenter provider (vSphere or VCD).
+// IsVCenterProvider returns true if the given cluster is a vCenter provider (vSphere or VCD).
 func (c ClusterConfig) IsVCenterProvider(cluster *clusterv1.Cluster) bool {
 	provider, err := c.GetClusterProvider(cluster)
 	if err != nil {
