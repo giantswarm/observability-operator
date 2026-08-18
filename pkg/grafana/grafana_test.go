@@ -33,12 +33,12 @@ func TestUpsertOrganization_AdoptsByName(t *testing.T) {
 	mockOrgs := &mocks.MockOrgsClient{}
 	mockClient.On("Orgs").Return(mockOrgs)
 
-	mockOrgs.On("GetOrgByName", "Giant Swarm").Return(&orgs.GetOrgByNameOK{
-		Payload: &models.OrgDetailsDTO{ID: 7, Name: "Giant Swarm"},
+	mockOrgs.On("GetOrgByName", giantSwarm).Return(&orgs.GetOrgByNameOK{
+		Payload: &models.OrgDetailsDTO{ID: 7, Name: giantSwarm},
 	}, nil)
 
 	svc := newTestService(mockClient)
-	org := newOrg(2, "Giant Swarm")
+	org := newOrg(2, giantSwarm)
 
 	err := svc.UpsertOrganization(context.Background(), org, "something-stale")
 	require.NoError(t, err)
@@ -52,15 +52,15 @@ func TestUpsertOrganization_CreatesWhenNoCachedIDAndNoNameMatch(t *testing.T) {
 	mockOrgs := &mocks.MockOrgsClient{}
 	mockClient.On("Orgs").Return(mockOrgs)
 
-	mockOrgs.On("GetOrgByName", "Giant Swarm").Return(nil, notFoundErr())
+	mockOrgs.On("GetOrgByName", giantSwarm).Return(nil, notFoundErr())
 	mockOrgs.On("CreateOrg", mock.MatchedBy(func(cmd *models.CreateOrgCommand) bool {
-		return cmd.Name == "Giant Swarm"
+		return cmd.Name == giantSwarm
 	})).Return(&orgs.CreateOrgOK{
 		Payload: &models.CreateOrgOKBody{OrgID: int64Ptr(42)},
 	}, nil)
 
 	svc := newTestService(mockClient)
-	org := newOrg(0, "Giant Swarm")
+	org := newOrg(0, giantSwarm)
 
 	err := svc.UpsertOrganization(context.Background(), org, "")
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ func TestUpsertOrganization_StaleIDCollision_CreatesFreshInsteadOfClobbering(t *
 
 	mockOrgs.On("GetOrgByName", "Hello World").Return(nil, notFoundErr())
 	mockOrgs.On("GetOrgByID", int64(2)).Return(&orgs.GetOrgByIDOK{
-		Payload: &models.OrgDetailsDTO{ID: 2, Name: "Giant Swarm"},
+		Payload: &models.OrgDetailsDTO{ID: 2, Name: giantSwarm},
 	}, nil)
 	mockOrgs.On("CreateOrg", mock.MatchedBy(func(cmd *models.CreateOrgCommand) bool {
 		return cmd.Name == "Hello World"
@@ -136,7 +136,7 @@ func TestUpsertOrganization_EmptyPreviousNameTreatsIDMismatchAsCollision(t *test
 	mockOrgs := &mocks.MockOrgsClient{}
 	mockClient.On("Orgs").Return(mockOrgs)
 
-	mockOrgs.On("GetOrgByName", "Giant Swarm").Return(nil, notFoundErr())
+	mockOrgs.On("GetOrgByName", giantSwarm).Return(nil, notFoundErr())
 	mockOrgs.On("GetOrgByID", int64(2)).Return(&orgs.GetOrgByIDOK{
 		Payload: &models.OrgDetailsDTO{ID: 2, Name: "Something Else"},
 	}, nil)
@@ -145,7 +145,7 @@ func TestUpsertOrganization_EmptyPreviousNameTreatsIDMismatchAsCollision(t *test
 	}, nil)
 
 	svc := newTestService(mockClient)
-	org := newOrg(2, "Giant Swarm")
+	org := newOrg(2, giantSwarm)
 
 	err := svc.UpsertOrganization(context.Background(), org, "")
 	require.NoError(t, err)
@@ -161,16 +161,16 @@ func TestUpsertOrganization_CachedIDGone_CreatesFresh(t *testing.T) {
 	mockOrgs := &mocks.MockOrgsClient{}
 	mockClient.On("Orgs").Return(mockOrgs)
 
-	mockOrgs.On("GetOrgByName", "Giant Swarm").Return(nil, notFoundErr())
+	mockOrgs.On("GetOrgByName", giantSwarm).Return(nil, notFoundErr())
 	mockOrgs.On("GetOrgByID", int64(2)).Return(nil, notFoundErr())
 	mockOrgs.On("CreateOrg", mock.Anything).Return(&orgs.CreateOrgOK{
 		Payload: &models.CreateOrgOKBody{OrgID: int64Ptr(2)},
 	}, nil)
 
 	svc := newTestService(mockClient)
-	org := newOrg(2, "Giant Swarm")
+	org := newOrg(2, giantSwarm)
 
-	err := svc.UpsertOrganization(context.Background(), org, "Giant Swarm")
+	err := svc.UpsertOrganization(context.Background(), org, giantSwarm)
 	require.NoError(t, err)
 	require.Equal(t, int64(2), org.ID())
 
@@ -184,12 +184,12 @@ func TestUpsertOrganization_FindByNameTransientError_Propagates(t *testing.T) {
 	mockOrgs := &mocks.MockOrgsClient{}
 	mockClient.On("Orgs").Return(mockOrgs)
 
-	mockOrgs.On("GetOrgByName", "Giant Swarm").Return(nil, errors.New("connection refused"))
+	mockOrgs.On("GetOrgByName", giantSwarm).Return(nil, errors.New("connection refused"))
 
 	svc := newTestService(mockClient)
-	org := newOrg(2, "Giant Swarm")
+	org := newOrg(2, giantSwarm)
 
-	err := svc.UpsertOrganization(context.Background(), org, "Giant Swarm")
+	err := svc.UpsertOrganization(context.Background(), org, giantSwarm)
 	require.Error(t, err)
 
 	mockOrgs.AssertNotCalled(t, "CreateOrg", mock.Anything)

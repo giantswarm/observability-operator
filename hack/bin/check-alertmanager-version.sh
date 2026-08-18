@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 set -euo pipefail
 
 # --- Configuration ---
@@ -42,10 +43,10 @@ require_jq() {
   # Download the appropriate jq binary from the official GitHub releases
   # Use silent mode (-s) and follow redirects (-L) for a clean download
   curl -sSL -o jq "https://github.com/stedolan/jq/releases/latest/download/${jq_bin}"
-  
+
   # Make the downloaded binary executable
   chmod +x jq
-  
+
   # Add the temporary directory to PATH so jq can be found by subsequent commands
   # This is only temporary for the duration of this script execution
   export PATH="$TMP_DIR:$PATH"

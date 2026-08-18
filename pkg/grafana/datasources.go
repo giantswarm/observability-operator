@@ -16,6 +16,20 @@ import (
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 )
 
+const (
+	datasourceUIDKey    = "datasourceUid"
+	httpHeaderName1Key  = "httpHeaderName1"
+	httpHeaderValue1Key = "httpHeaderValue1"
+	manageAlertsKey     = "manageAlerts"
+	nameKey             = "name"
+	tagsKey             = "tags"
+	tempo               = "tempo"
+	titleKey            = "title"
+	traceIDField        = "traceID"
+	uidKey              = "uid"
+	urlDisplayLabelKey  = "urlDisplayLabel"
+)
+
 // ConfigureDatasource ensures the datasources for the given organization are up to date.
 // It creates, updates, or deletes datasources as necessary to match the desired state.
 func (s *Service) ConfigureDatasource(ctx context.Context, organization *organization.Organization) ([]Datasource, error) {
@@ -90,11 +104,11 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		UID:  LokiDatasourceUID,
 		URL:  s.cfg.Grafana.Datasources.LokiURL,
 		JSONData: map[string]any{
-			"httpHeaderName1": common.OrgIDHeader,
-			"manageAlerts":    len(alertingTenants) == 1,
+			httpHeaderName1Key: common.OrgIDHeader,
+			manageAlertsKey:    len(alertingTenants) == 1,
 		},
 		SecureJSONData: map[string]string{
-			"httpHeaderValue1": multiTenantIDsHeaderValue,
+			httpHeaderValue1Key: multiTenantIDsHeaderValue,
 		},
 	})
 
@@ -103,13 +117,13 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		// Add derived fields for Loki to Tempo integration
 		lokiDatasource.JSONData["derivedFields"] = []map[string]any{
 			{
-				"name":          "traceID",
-				"matcherRegex":  traceIDRegex,
-				"datasourceUid": TempoDatasourceUID,
+				nameKey:          traceIDField,
+				"matcherRegex":   traceIDRegex,
+				datasourceUIDKey: TempoDatasourceUID,
 				// Open a new tab when clicking the link
-				"targetBlank":     true,
-				"url":             "${__value.raw}",
-				"urlDisplayLabel": "Trace ID",
+				"targetBlank":      true,
+				"url":              "${__value.raw}",
+				urlDisplayLabelKey: "Trace ID",
 			},
 		}
 	}
@@ -123,11 +137,11 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		URL:       s.cfg.Grafana.Datasources.MimirURL,
 		IsDefault: true,
 		JSONData: map[string]any{
-			"httpHeaderName1": common.OrgIDHeader,
-			"manageAlerts":    len(alertingTenants) == 1,
+			httpHeaderName1Key: common.OrgIDHeader,
+			manageAlertsKey:    len(alertingTenants) == 1,
 		},
 		SecureJSONData: map[string]string{
-			"httpHeaderValue1": multiTenantIDsHeaderValue,
+			httpHeaderValue1Key: multiTenantIDsHeaderValue,
 		},
 	})
 
@@ -136,9 +150,9 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		// Add exemplar destinations for Mimir to Tempo integration
 		mimirDatasource.JSONData["exemplarTraceIdDestinations"] = []map[string]any{
 			{
-				"name":            "traceID",
-				"datasourceUid":   TempoDatasourceUID,
-				"urlDisplayLabel": "View in Tempo",
+				nameKey:            traceIDField,
+				datasourceUIDKey:   TempoDatasourceUID,
+				urlDisplayLabelKey: "View in Tempo",
 			},
 		}
 	}
@@ -152,10 +166,10 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 			UID:  TempoDatasourceUID,
 			URL:  s.cfg.Grafana.Datasources.TempoURL,
 			JSONData: map[string]any{
-				"httpHeaderName1": common.OrgIDHeader,
+				httpHeaderName1Key: common.OrgIDHeader,
 			},
 			SecureJSONData: map[string]string{
-				"httpHeaderValue1": multiTenantIDsHeaderValue,
+				httpHeaderValue1Key: multiTenantIDsHeaderValue,
 			},
 		})
 		datasources = append(datasources, tempoDatasource)
@@ -171,11 +185,11 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 				UID:  fmt.Sprintf("%s-%s", LokiDatasourceUID, tenant.Name),
 				URL:  s.cfg.Grafana.Datasources.LokiURL,
 				JSONData: map[string]any{
-					"httpHeaderName1": common.OrgIDHeader,
-					"manageAlerts":    true,
+					httpHeaderName1Key: common.OrgIDHeader,
+					manageAlertsKey:    true,
 				},
 				SecureJSONData: map[string]string{
-					"httpHeaderValue1": tenant.Name,
+					httpHeaderValue1Key: tenant.Name,
 				},
 			})
 
@@ -183,12 +197,12 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 			if s.cfg.Tracing.Enabled {
 				lokiPerTenantDatasource.JSONData["derivedFields"] = []map[string]any{
 					{
-						"name":            "traceID",
-						"matcherRegex":    traceIDRegex,
-						"datasourceUid":   TempoDatasourceUID,
-						"targetBlank":     true,
-						"url":             "${__value.raw}",
-						"urlDisplayLabel": "Trace ID",
+						nameKey:            traceIDField,
+						"matcherRegex":     traceIDRegex,
+						datasourceUIDKey:   TempoDatasourceUID,
+						"targetBlank":      true,
+						"url":              "${__value.raw}",
+						urlDisplayLabelKey: "Trace ID",
 					},
 				}
 			}
@@ -201,20 +215,20 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 				UID:  fmt.Sprintf("%s-%s", MimirDatasourceUID, tenant.Name),
 				URL:  s.cfg.Grafana.Datasources.MimirURL,
 				JSONData: map[string]any{
-					"httpHeaderName1": common.OrgIDHeader,
-					"manageAlerts":    true,
+					httpHeaderName1Key: common.OrgIDHeader,
+					manageAlertsKey:    true,
 				},
 				SecureJSONData: map[string]string{
-					"httpHeaderValue1": tenant.Name,
+					httpHeaderValue1Key: tenant.Name,
 				},
 			})
 
 			if s.cfg.Tracing.Enabled {
 				mimirPerTenantDatasource.JSONData["exemplarTraceIdDestinations"] = []map[string]any{
 					{
-						"name":            "traceID",
-						"datasourceUid":   TempoDatasourceUID,
-						"urlDisplayLabel": "View in Tempo",
+						nameKey:            traceIDField,
+						datasourceUIDKey:   TempoDatasourceUID,
+						urlDisplayLabelKey: "View in Tempo",
 					},
 				}
 			}
@@ -227,10 +241,10 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 				UID:  fmt.Sprintf("%s-%s", MimirAlertmanagerDatasourceUID, tenant.Name),
 				URL:  s.cfg.Grafana.Datasources.MimirAlertmanagerURL,
 				JSONData: map[string]any{
-					"httpHeaderName1": common.OrgIDHeader,
+					httpHeaderName1Key: common.OrgIDHeader,
 				},
 				SecureJSONData: map[string]string{
-					"httpHeaderValue1": tenant.Name,
+					httpHeaderValue1Key: tenant.Name,
 				},
 			}))
 		}
@@ -243,10 +257,10 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 			UID:  MimirAlertmanagerDatasourceUID,
 			URL:  s.cfg.Grafana.Datasources.MimirAlertmanagerURL,
 			JSONData: map[string]any{
-				"httpHeaderName1": common.OrgIDHeader,
+				httpHeaderName1Key: common.OrgIDHeader,
 			},
 			SecureJSONData: map[string]string{
-				"httpHeaderValue1": tenant.Name,
+				httpHeaderValue1Key: tenant.Name,
 			},
 		}))
 	}
@@ -257,10 +271,10 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		datasources = append(datasources, DatasourceMimirCardinality().Merge(Datasource{
 			URL: s.cfg.Grafana.Datasources.MimirCardinalityURL,
 			JSONData: map[string]any{
-				"httpHeaderName1": common.OrgIDHeader,
+				httpHeaderName1Key: common.OrgIDHeader,
 			},
 			SecureJSONData: map[string]string{
-				"httpHeaderValue1": strings.Join(org.TenantIDs(), "|"),
+				httpHeaderValue1Key: strings.Join(org.TenantIDs(), "|"),
 			},
 		}))
 	}

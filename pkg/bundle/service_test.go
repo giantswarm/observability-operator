@@ -35,8 +35,8 @@ func newTestHelmRelease(name, namespace, ociRepoName string) *unstructured.Unstr
 	hr.SetNamespace(namespace)
 	hr.Object["spec"] = map[string]interface{}{
 		"chartRef": map[string]interface{}{
-			"kind": "OCIRepository",
-			"name": ociRepoName,
+			kindKey: "OCIRepository",
+			nameKey: ociRepoName,
 		},
 	}
 	return hr
@@ -108,9 +108,9 @@ func TestConfigureBundle(t *testing.T) {
 		require.Len(t, valuesFrom, 1)
 
 		entry := valuesFrom[0].(map[string]interface{})
-		assert.Equal(t, "ConfigMap", entry["kind"])
-		assert.Equal(t, "test-cluster-observability-platform-configuration", entry["name"])
-		assert.Equal(t, "values", entry["valuesKey"])
+		assert.Equal(t, "ConfigMap", entry[kindKey])
+		assert.Equal(t, "test-cluster-observability-platform-configuration", entry[nameKey])
+		assert.Equal(t, valuesKey, entry["valuesKey"])
 	})
 
 	t.Run("falls back to App CR when HelmRelease not found", func(t *testing.T) {
@@ -183,9 +183,9 @@ func TestConfigureBundle(t *testing.T) {
 		spec := hr.Object["spec"].(map[string]interface{})
 		spec["valuesFrom"] = []interface{}{
 			map[string]interface{}{
-				"kind":      "Secret",
-				"name":      "existing-secret",
-				"valuesKey": "values",
+				kindKey:     "Secret",
+				nameKey:     "existing-secret",
+				"valuesKey": valuesKey,
 			},
 		}
 
@@ -212,13 +212,13 @@ func TestConfigureBundle(t *testing.T) {
 
 		// Original entry still present
 		existing := valuesFrom[0].(map[string]interface{})
-		assert.Equal(t, "Secret", existing["kind"])
-		assert.Equal(t, "existing-secret", existing["name"])
+		assert.Equal(t, "Secret", existing[kindKey])
+		assert.Equal(t, "existing-secret", existing[nameKey])
 
 		// New entry added
 		newEntry := valuesFrom[1].(map[string]interface{})
-		assert.Equal(t, "ConfigMap", newEntry["kind"])
-		assert.Equal(t, "test-cluster-observability-platform-configuration", newEntry["name"])
+		assert.Equal(t, "ConfigMap", newEntry[kindKey])
+		assert.Equal(t, "test-cluster-observability-platform-configuration", newEntry[nameKey])
 	})
 }
 

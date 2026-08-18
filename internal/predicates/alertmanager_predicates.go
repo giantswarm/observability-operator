@@ -41,7 +41,7 @@ func NewAlertmanagerPodPredicate() predicate.Predicate {
 		ok = pod.GetNamespace() == mimirNamespace &&
 			labels != nil &&
 			labels["app.kubernetes.io/component"] == mimirAlertmanagerComponent &&
-			labels["app.kubernetes.io/instance"] == mimirInstance &&
+			labels[instanceLabel] == mimirInstance &&
 			isPodReady(pod)
 
 		return ok

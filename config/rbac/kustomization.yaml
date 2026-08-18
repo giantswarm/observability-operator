@@ -25,4 +25,3 @@ resources:
 - grafanaorganization_admin_role.yaml
 - grafanaorganization_editor_role.yaml
 - grafanaorganization_viewer_role.yaml
-

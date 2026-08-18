@@ -11,6 +11,19 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
+const (
+	every1Hour        = "every 1 hour"
+	every30Minutes    = "every 30 minutes"
+	mimirTestCluster  = "mimir-test-cluster"
+	production        = "production"
+	tag1              = "tag1"
+	tag2              = "tag2"
+	testCluster       = "test-cluster"
+	testManagementKey = "test-management-key"
+	testPingKey       = "test-ping-key"
+	testPipeline      = "testing"
+)
+
 // mockHTTPClient is a mock implementation of HTTPClient for testing.
 type mockHTTPClient struct {
 	doFunc func(req *http.Request) (*http.Response, error)
@@ -27,12 +40,12 @@ func newTestRepo(cfg config.Config, client HTTPClient) *CronitorHeartbeatReposit
 func TestNewCronitorHeartbeatRepository(t *testing.T) {
 	cfg := config.Config{
 		Cluster: config.ClusterConfig{
-			Name:     "test-cluster",
-			Pipeline: "testing",
+			Name:     testCluster,
+			Pipeline: testPipeline,
 		},
 		Environment: config.EnvironmentConfig{
-			CronitorHeartbeatManagementKey: "test-management-key",
-			CronitorHeartbeatPingKey:       "test-ping-key",
+			CronitorHeartbeatManagementKey: testManagementKey,
+			CronitorHeartbeatPingKey:       testPingKey,
 		},
 	}
 
@@ -58,15 +71,15 @@ func TestNewCronitorHeartbeatRepository(t *testing.T) {
 func TestMakeMonitor(t *testing.T) {
 	cfg := config.Config{
 		Cluster: config.ClusterConfig{
-			Name:     "test-cluster",
-			Pipeline: "testing",
+			Name:     testCluster,
+			Pipeline: testPipeline,
 		},
 		Environment: config.EnvironmentConfig{
 			CronitorHeartbeatManagementKey: "test-key",
 		},
 		Cronitor: config.CronitorConfig{
 			GraceSeconds:    1800,
-			Schedule:        "every 30 minutes",
+			Schedule:        every30Minutes,
 			RealertInterval: "every 24 hours",
 		},
 	}
@@ -74,18 +87,18 @@ func TestMakeMonitor(t *testing.T) {
 	repo := newTestRepo(cfg, &mockHTTPClient{})
 	monitor := repo.makeMonitor()
 
-	if monitor.Type != "heartbeat" {
-		t.Errorf("expected type %q, got %s", "heartbeat", monitor.Type)
+	if monitor.Type != monitorTypeHeartbeat {
+		t.Errorf("expected type %q, got %s", monitorTypeHeartbeat, monitor.Type)
 	}
-	expectedKey := "mimir-test-cluster"
+	expectedKey := mimirTestCluster
 	if monitor.Key != expectedKey {
 		t.Errorf("expected key %q, got %s", expectedKey, monitor.Key)
 	}
 	if monitor.GraceSeconds != 1800 {
 		t.Errorf("expected grace_seconds %d, got %d", 1800, monitor.GraceSeconds)
 	}
-	if monitor.Schedule != "every 30 minutes" {
-		t.Errorf("expected schedule %q, got %s", "every 30 minutes", monitor.Schedule)
+	if monitor.Schedule != every30Minutes {
+		t.Errorf("expected schedule %q, got %s", every30Minutes, monitor.Schedule)
 	}
 	if len(monitor.Tags) != 4 {
 		t.Errorf("expected 4 tags, got %d", len(monitor.Tags))
@@ -95,12 +108,12 @@ func TestMakeMonitor(t *testing.T) {
 func TestCreateOrUpdate_CreateNew(t *testing.T) {
 	cfg := config.Config{
 		Cluster: config.ClusterConfig{
-			Name:     "test-cluster",
-			Pipeline: "testing",
+			Name:     testCluster,
+			Pipeline: testPipeline,
 		},
 		Environment: config.EnvironmentConfig{
-			CronitorHeartbeatManagementKey: "test-management-key",
-			CronitorHeartbeatPingKey:       "test-ping-key",
+			CronitorHeartbeatManagementKey: testManagementKey,
+			CronitorHeartbeatPingKey:       testPingKey,
 		},
 	}
 
@@ -155,22 +168,22 @@ func TestCreateOrUpdate_CreateNew(t *testing.T) {
 func TestCreateOrUpdate_UpdateExisting(t *testing.T) {
 	cfg := config.Config{
 		Cluster: config.ClusterConfig{
-			Name:     "test-cluster",
-			Pipeline: "testing",
+			Name:     testCluster,
+			Pipeline: testPipeline,
 		},
 		Environment: config.EnvironmentConfig{
-			CronitorHeartbeatManagementKey: "test-management-key",
-			CronitorHeartbeatPingKey:       "test-ping-key",
+			CronitorHeartbeatManagementKey: testManagementKey,
+			CronitorHeartbeatPingKey:       testPingKey,
 		},
 	}
 
 	existingMonitor := &cronitorMonitor{
-		Type:         "heartbeat",
-		Key:          "mimir-test-cluster",
-		Name:         "mimir-test-cluster",
+		Type:         monitorTypeHeartbeat,
+		Key:          mimirTestCluster,
+		Name:         mimirTestCluster,
 		GraceSeconds: 900, // Different from desired 1800
-		Schedule:     "every 1 hour",
-		Notify:       []string{"testing"},
+		Schedule:     every1Hour,
+		Notify:       []string{testPipeline},
 		Tags:         []string{"team:atlas", "pipeline:testing"}, // Same pipeline, so no ping needed
 	}
 
@@ -229,12 +242,12 @@ func TestCreateOrUpdate_UpdateExisting(t *testing.T) {
 func TestCreateOrUpdate_NoChangeNeeded(t *testing.T) {
 	cfg := config.Config{
 		Cluster: config.ClusterConfig{
-			Name:     "test-cluster",
-			Pipeline: "testing",
+			Name:     testCluster,
+			Pipeline: testPipeline,
 		},
 		Environment: config.EnvironmentConfig{
-			CronitorHeartbeatManagementKey: "test-management-key",
-			CronitorHeartbeatPingKey:       "test-ping-key",
+			CronitorHeartbeatManagementKey: testManagementKey,
+			CronitorHeartbeatPingKey:       testPingKey,
 		},
 	}
 
@@ -276,12 +289,12 @@ func TestCreateOrUpdate_NoChangeNeeded(t *testing.T) {
 func TestDelete(t *testing.T) {
 	cfg := config.Config{
 		Cluster: config.ClusterConfig{
-			Name:     "test-cluster",
-			Pipeline: "testing",
+			Name:     testCluster,
+			Pipeline: testPipeline,
 		},
 		Environment: config.EnvironmentConfig{
-			CronitorHeartbeatManagementKey: "test-management-key",
-			CronitorHeartbeatPingKey:       "test-ping-key",
+			CronitorHeartbeatManagementKey: testManagementKey,
+			CronitorHeartbeatPingKey:       testPingKey,
 		},
 	}
 
@@ -328,22 +341,22 @@ func TestDelete(t *testing.T) {
 func TestCreateOrUpdate_EnvironmentChange(t *testing.T) {
 	cfg := config.Config{
 		Cluster: config.ClusterConfig{
-			Name:     "test-cluster",
-			Pipeline: "production", // Changed from testing
+			Name:     testCluster,
+			Pipeline: production, // Changed from testing
 		},
 		Environment: config.EnvironmentConfig{
-			CronitorHeartbeatManagementKey: "test-management-key",
-			CronitorHeartbeatPingKey:       "test-ping-key",
+			CronitorHeartbeatManagementKey: testManagementKey,
+			CronitorHeartbeatPingKey:       testPingKey,
 		},
 	}
 
 	existingMonitor := &cronitorMonitor{
-		Type:         "heartbeat",
-		Key:          "mimir-test-cluster",
-		Name:         "mimir-test-cluster",
+		Type:         monitorTypeHeartbeat,
+		Key:          mimirTestCluster,
+		Name:         mimirTestCluster,
 		GraceSeconds: 1800,
-		Schedule:     "every 1 hour",
-		Notify:       []string{"testing"},
+		Schedule:     every1Hour,
+		Notify:       []string{testPipeline},
 		Tags:         []string{"team:atlas", "installation:test-cluster", "pipeline:testing"}, // Old pipeline
 	}
 
@@ -422,17 +435,17 @@ func TestHasChanged(t *testing.T) {
 			name: "no changes",
 			existing: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1", "tag2"},
+				Schedule:     every1Hour,
+				Tags:         []string{tag1, tag2},
 				Note:         "test note",
-				Notify:       []string{"production"},
+				Notify:       []string{production},
 			},
 			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1", "tag2"},
+				Schedule:     every1Hour,
+				Tags:         []string{tag1, tag2},
 				Note:         "test note",
-				Notify:       []string{"production"},
+				Notify:       []string{production},
 			},
 			expected: false,
 		},
@@ -440,15 +453,15 @@ func TestHasChanged(t *testing.T) {
 			name: "grace seconds changed",
 			existing: &cronitorMonitor{
 				GraceSeconds: 900,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1"},
-				Notify:       []string{"production"},
+				Schedule:     every1Hour,
+				Tags:         []string{tag1},
+				Notify:       []string{production},
 			},
 			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1"},
-				Notify:       []string{"production"},
+				Schedule:     every1Hour,
+				Tags:         []string{tag1},
+				Notify:       []string{production},
 			},
 			expected: true,
 		},
@@ -456,15 +469,15 @@ func TestHasChanged(t *testing.T) {
 			name: "schedule changed",
 			existing: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 30 minutes",
-				Tags:         []string{"tag1"},
-				Notify:       []string{"production"},
+				Schedule:     every30Minutes,
+				Tags:         []string{tag1},
+				Notify:       []string{production},
 			},
 			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1"},
-				Notify:       []string{"production"},
+				Schedule:     every1Hour,
+				Tags:         []string{tag1},
+				Notify:       []string{production},
 			},
 			expected: true,
 		},
@@ -472,15 +485,15 @@ func TestHasChanged(t *testing.T) {
 			name: "tags changed",
 			existing: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1"},
-				Notify:       []string{"production"},
+				Schedule:     every1Hour,
+				Tags:         []string{tag1},
+				Notify:       []string{production},
 			},
 			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1", "tag2"},
-				Notify:       []string{"production"},
+				Schedule:     every1Hour,
+				Tags:         []string{tag1, tag2},
+				Notify:       []string{production},
 			},
 			expected: true,
 		},
@@ -488,17 +501,17 @@ func TestHasChanged(t *testing.T) {
 			name: "note changed",
 			existing: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1"},
+				Schedule:     every1Hour,
+				Tags:         []string{tag1},
 				Note:         "old note",
-				Notify:       []string{"production"},
+				Notify:       []string{production},
 			},
 			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 1 hour",
-				Tags:         []string{"tag1"},
+				Schedule:     every1Hour,
+				Tags:         []string{tag1},
 				Note:         "new note",
-				Notify:       []string{"production"},
+				Notify:       []string{production},
 			},
 			expected: true,
 		},
@@ -506,15 +519,15 @@ func TestHasChanged(t *testing.T) {
 			name: "notify changed (pipeline rename)",
 			existing: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 30 minutes",
-				Tags:         []string{"tag1"},
-				Notify:       []string{"testing"},
+				Schedule:     every30Minutes,
+				Tags:         []string{tag1},
+				Notify:       []string{testPipeline},
 			},
 			desired: &cronitorMonitor{
 				GraceSeconds: 1800,
-				Schedule:     "every 30 minutes",
-				Tags:         []string{"tag1"},
-				Notify:       []string{"production"},
+				Schedule:     every30Minutes,
+				Tags:         []string{tag1},
+				Notify:       []string{production},
 			},
 			expected: true,
 		},
@@ -522,16 +535,16 @@ func TestHasChanged(t *testing.T) {
 			name: "realert interval changed",
 			existing: &cronitorMonitor{
 				GraceSeconds:    1800,
-				Schedule:        "every 30 minutes",
-				Tags:            []string{"tag1"},
-				Notify:          []string{"production"},
+				Schedule:        every30Minutes,
+				Tags:            []string{tag1},
+				Notify:          []string{production},
 				RealertInterval: "every 12 hours",
 			},
 			desired: &cronitorMonitor{
 				GraceSeconds:    1800,
-				Schedule:        "every 30 minutes",
-				Tags:            []string{"tag1"},
-				Notify:          []string{"production"},
+				Schedule:        every30Minutes,
+				Tags:            []string{tag1},
+				Notify:          []string{production},
 				RealertInterval: "every 24 hours",
 			},
 			expected: true,

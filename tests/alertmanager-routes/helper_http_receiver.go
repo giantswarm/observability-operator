@@ -54,7 +54,7 @@ func NewHTTPReceiver(t *testing.T) (*httpReceiver, error) {
 		records: []httpRequest{},
 	}
 
-	f, err := os.OpenFile(fmt.Sprintf(requestsLogFileFormat, t.Name()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
+	f, err := os.OpenFile(fmt.Sprintf(requestsLogFileFormat, t.Name()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create requests log file: %v", err)
 	}
@@ -92,7 +92,7 @@ func NewHTTPReceiver(t *testing.T) (*httpReceiver, error) {
 		if err != nil {
 			t.Errorf("failed to read request body: %v", err)
 		}
-		defer r.Body.Close()
+		defer r.Body.Close() // nolint:errcheck // best-effort close on a request body already read
 
 		// Add request to records
 		record := httpRequest{
@@ -106,7 +106,7 @@ func NewHTTPReceiver(t *testing.T) (*httpReceiver, error) {
 		// Send 200 OK response
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "ok"}`))
+		w.Write([]byte(`{"status": "ok"}`)) // nolint:errcheck,gosec // test receiver, a failed write surfaces in the client
 	})
 
 	// Create HTTP server
@@ -188,7 +188,7 @@ func (h *httpReceiver) FlushAndGetHTTPRequests() []httpRequest {
 		}
 
 		dump += fmt.Sprintf("\n%s\n", r.BodyData)
-		fmt.Fprintf(h.recordsFile, "%s", dump)
+		fmt.Fprintf(h.recordsFile, "%s", dump) // nolint:errcheck // best-effort debug dump
 	}
 
 	return h.records
@@ -203,7 +203,7 @@ func handleTunnel(t *testing.T, address string, w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
-	defer destConn.Close()
+	defer destConn.Close() // nolint:errcheck // best-effort close on a tunnel connection
 	w.WriteHeader(http.StatusOK)
 
 	// Retrieve the underlying current connection
@@ -218,7 +218,7 @@ func handleTunnel(t *testing.T, address string, w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer srcConn.Close()
+	defer srcConn.Close() // nolint:errcheck // best-effort close on a tunnel connection
 
 	srcConnStr := fmt.Sprintf("%s->%s", srcConn.LocalAddr().String(), srcConn.RemoteAddr().String())
 	dstConnStr := fmt.Sprintf("%s->%s", destConn.LocalAddr().String(), destConn.RemoteAddr().String())

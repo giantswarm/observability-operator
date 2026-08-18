@@ -53,7 +53,7 @@ func newAgentCredential(name, namespace, agentName string, backend observability
 
 func TestRender_CreatesSecret(t *testing.T) {
 	scheme := newScheme(t)
-	cred := newAgentCredential("c1", "ns1", "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
+	cred := newAgentCredential("c1", ns1, "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred).Build()
 
 	r := &Renderer{Client: c, PasswordGenerator: &fixedPasswordGenerator{password: "p1"}}
@@ -61,7 +61,7 @@ func TestRender_CreatesSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "c1", secret.Name)
-	assert.Equal(t, "ns1", secret.Namespace)
+	assert.Equal(t, ns1, secret.Namespace)
 	assert.Equal(t, corev1.SecretTypeOpaque, secret.Type)
 	assert.Equal(t, "agent-a", string(secret.Data[SecretKeyUsername]))
 	assert.Equal(t, "p1", string(secret.Data[SecretKeyPassword]))
@@ -75,10 +75,10 @@ func TestRender_CreatesSecret(t *testing.T) {
 
 func TestRender_PreservesExistingPassword(t *testing.T) {
 	scheme := newScheme(t)
-	cred := newAgentCredential("c1", "ns1", "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
+	cred := newAgentCredential("c1", ns1, "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
 
 	existing := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: ns1},
 		Data: map[string][]byte{
 			SecretKeyPassword: []byte("kept-password"),
 		},
@@ -95,7 +95,7 @@ func TestRender_PreservesExistingPassword(t *testing.T) {
 
 func TestRender_UsesSpecSecretName(t *testing.T) {
 	scheme := newScheme(t)
-	cred := newAgentCredential("c1", "ns1", "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
+	cred := newAgentCredential("c1", ns1, "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
 	cred.Spec.SecretName = "custom-secret-name"
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred).Build()
 
@@ -107,5 +107,5 @@ func TestRender_UsesSpecSecretName(t *testing.T) {
 
 	// And the secret is actually persisted under that name.
 	got := &corev1.Secret{}
-	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: "ns1", Name: "custom-secret-name"}, got))
+	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: ns1, Name: "custom-secret-name"}, got))
 }

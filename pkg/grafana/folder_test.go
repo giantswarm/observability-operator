@@ -58,17 +58,17 @@ func TestEnsureFolderHierarchy_SingleFolder_AlreadyExists(t *testing.T) {
 	mockFolders := &mocks.MockFoldersClient{}
 	mockClient.On("Folders").Return(mockFolders)
 
-	expectedUID := folder.GenerateUID("team-a")
+	expectedUID := folder.GenerateUID(teamA)
 
 	mockFolders.On("GetFolderByUID", expectedUID).Return(&folders.GetFolderByUIDOK{
 		Payload: &models.Folder{
 			UID:   expectedUID,
-			Title: "team-a",
+			Title: teamA,
 		},
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, teamA)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestEnsureFolderHierarchy_SingleFolder_DoesNotExist(t *testing.T) {
 	mockFolders := &mocks.MockFoldersClient{}
 	mockClient.On("Folders").Return(mockFolders)
 
-	expectedUID := folder.GenerateUID("team-a")
+	expectedUID := folder.GenerateUID(teamA)
 
 	// GetFolderByUID returns 404
 	mockFolders.On("GetFolderByUID", expectedUID).Return(nil,
@@ -93,15 +93,15 @@ func TestEnsureFolderHierarchy_SingleFolder_DoesNotExist(t *testing.T) {
 	// CreateFolder should be called
 	mockFolders.On("CreateFolder", mock.MatchedBy(func(cmd *models.CreateFolderCommand) bool {
 		return cmd.UID == expectedUID &&
-			cmd.Title == "team-a" &&
+			cmd.Title == teamA &&
 			cmd.ParentUID == "" &&
 			cmd.Description == folder.Description
 	})).Return(&folders.CreateFolderOK{
-		Payload: &models.Folder{UID: expectedUID, Title: "team-a"},
+		Payload: &models.Folder{UID: expectedUID, Title: teamA},
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, teamA)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -117,12 +117,12 @@ func TestEnsureFolderHierarchy_NestedPath(t *testing.T) {
 	mockFolders := &mocks.MockFoldersClient{}
 	mockClient.On("Folders").Return(mockFolders)
 
-	rootUID := folder.GenerateUID("team-a")
+	rootUID := folder.GenerateUID(teamA)
 	leafUID := folder.GenerateUID("team-a/networking")
 
 	// Root folder exists
 	mockFolders.On("GetFolderByUID", rootUID).Return(&folders.GetFolderByUIDOK{
-		Payload: &models.Folder{UID: rootUID, Title: "team-a"},
+		Payload: &models.Folder{UID: rootUID, Title: teamA},
 	}, nil)
 
 	// Leaf folder doesn't exist
@@ -155,7 +155,7 @@ func TestEnsureFolderHierarchy_Rename(t *testing.T) {
 	mockFolders := &mocks.MockFoldersClient{}
 	mockClient.On("Folders").Return(mockFolders)
 
-	expectedUID := folder.GenerateUID("team-a")
+	expectedUID := folder.GenerateUID(teamA)
 
 	// Folder exists but with old title
 	mockFolders.On("GetFolderByUID", expectedUID).Return(&folders.GetFolderByUIDOK{
@@ -164,13 +164,13 @@ func TestEnsureFolderHierarchy_Rename(t *testing.T) {
 
 	// UpdateFolder should be called with new title
 	mockFolders.On("UpdateFolder", expectedUID, mock.MatchedBy(func(cmd *models.UpdateFolderCommand) bool {
-		return cmd.Title == "team-a"
+		return cmd.Title == teamA
 	})).Return(&folders.UpdateFolderOK{
-		Payload: &models.Folder{UID: expectedUID, Title: "team-a"},
+		Payload: &models.Folder{UID: expectedUID, Title: teamA},
 	}, nil)
 
 	svc := newTestService(mockClient)
-	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a")
+	uid, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, teamA)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -186,14 +186,14 @@ func TestEnsureFolderHierarchy_CreateFolderError(t *testing.T) {
 	mockFolders := &mocks.MockFoldersClient{}
 	mockClient.On("Folders").Return(mockFolders)
 
-	expectedUID := folder.GenerateUID("team-a")
+	expectedUID := folder.GenerateUID(teamA)
 
 	mockFolders.On("GetFolderByUID", expectedUID).Return(nil,
 		goruntime.NewAPIError("not found", nil, http.StatusNotFound))
 	mockFolders.On("CreateFolder", mock.Anything).Return(nil, errors.New("grafana unavailable"))
 
 	svc := newTestService(mockClient)
-	_, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a")
+	_, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, teamA)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -244,14 +244,14 @@ func TestEnsureFolderHierarchy_GetFolderNon404Error(t *testing.T) {
 	mockFolders := &mocks.MockFoldersClient{}
 	mockClient.On("Folders").Return(mockFolders)
 
-	expectedUID := folder.GenerateUID("team-a")
+	expectedUID := folder.GenerateUID(teamA)
 
 	// Return a 500 error, not a 404
 	mockFolders.On("GetFolderByUID", expectedUID).Return(nil,
 		goruntime.NewAPIError("internal server error", nil, http.StatusInternalServerError))
 
 	svc := newTestService(mockClient)
-	_, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, "team-a")
+	_, err := svc.ensureFolderHierarchy(context.Background(), mockClient, testFolderCacheOrgID, teamA)
 	if err == nil {
 		t.Fatal("expected error for 500 response, got nil")
 	}
@@ -274,13 +274,13 @@ func TestCleanupOrphanedFoldersForOrg_DeletesEmptyOrphanedFolder(t *testing.T) {
 	setupOrgContextMocks(mockClient)
 	mockClient.On("Folders").Return(mockFolders)
 
-	orphanUID := folder.GenerateUID("old-team")
+	orphanUID := folder.GenerateUID(oldTeam)
 
 	svc := newTestService(mockClient)
 
 	// GetFolders returns one operator-managed folder
 	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: "old-team"}},
+		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: oldTeam}},
 	}, nil)
 
 	// Folder is empty
@@ -388,12 +388,12 @@ func TestCleanupOrphanedFoldersForOrg_NonEmptyFolderIsSkipped(t *testing.T) {
 	setupOrgContextMocks(mockClient)
 	mockClient.On("Folders").Return(mockFolders)
 
-	orphanUID := folder.GenerateUID("old-team")
+	orphanUID := folder.GenerateUID(oldTeam)
 
 	svc := newTestService(mockClient)
 
 	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: "old-team"}},
+		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: oldTeam}},
 	}, nil)
 
 	// Folder has descendants
@@ -417,12 +417,12 @@ func TestCleanupOrphanedFoldersForOrg_DeleteErrorIsReturned(t *testing.T) {
 	setupOrgContextMocks(mockClient)
 	mockClient.On("Folders").Return(mockFolders)
 
-	orphanUID := folder.GenerateUID("old-team")
+	orphanUID := folder.GenerateUID(oldTeam)
 
 	svc := newTestService(mockClient)
 
 	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: "old-team"}},
+		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: oldTeam}},
 	}, nil)
 
 	mockFolders.On("GetFolderDescendantCounts", orphanUID).Return(&folders.GetFolderDescendantCountsOK{
@@ -446,12 +446,12 @@ func TestCleanupOrphanedFoldersForOrg_DescendantCountsErrorIsReturned(t *testing
 	setupOrgContextMocks(mockClient)
 	mockClient.On("Folders").Return(mockFolders)
 
-	orphanUID := folder.GenerateUID("old-team")
+	orphanUID := folder.GenerateUID(oldTeam)
 
 	svc := newTestService(mockClient)
 
 	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: "old-team"}},
+		Payload: []*models.FolderSearchHit{{UID: orphanUID, Title: oldTeam}},
 	}, nil)
 
 	mockFolders.On("GetFolderDescendantCounts", orphanUID).Return(nil, errors.New("grafana error"))
@@ -512,7 +512,7 @@ func TestCleanupOrphanedFoldersForOrg_SkipsReferencedFolders(t *testing.T) {
 	setupOrgContextMocks(mockClient)
 	mockClient.On("Folders").Return(mockFolders)
 
-	referencedUID := folder.GenerateUID("team-a")
+	referencedUID := folder.GenerateUID(teamA)
 
 	svc := newTestService(mockClient)
 
@@ -522,7 +522,7 @@ func TestCleanupOrphanedFoldersForOrg_SkipsReferencedFolders(t *testing.T) {
 	}
 
 	mockFolders.On("GetFolders", mock.Anything).Return(&folders.GetFoldersOK{
-		Payload: []*models.FolderSearchHit{{UID: referencedUID, Title: "team-a"}},
+		Payload: []*models.FolderSearchHit{{UID: referencedUID, Title: teamA}},
 	}, nil)
 
 	err := svc.CleanupOrphanedFoldersForOrg(context.Background(), testOrg(), requiredUIDs)

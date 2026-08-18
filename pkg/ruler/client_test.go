@@ -16,9 +16,14 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/ruler"
 )
 
+const (
+	myCluster      = "my-cluster"
+	myClusterRules = "my-cluster/rules"
+)
+
 func TestNewNoop(t *testing.T) {
 	c := ruler.NewNoop()
-	err := c.DeleteClusterRulesForTenant(context.Background(), "giantswarm", "my-cluster")
+	err := c.DeleteClusterRulesForTenant(context.Background(), "giantswarm", myCluster)
 	assert.NoError(t, err)
 }
 
@@ -34,38 +39,38 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 	}{
 		{
 			name:       "no rules (404 on list)",
-			clusterID:  "my-cluster",
+			clusterID:  myCluster,
 			listStatus: http.StatusNotFound,
 			wantErr:    false,
 		},
 		{
 			name:       "no namespaces (empty map)",
-			clusterID:  "my-cluster",
+			clusterID:  myCluster,
 			listStatus: http.StatusOK,
 			listBody:   map[string]any{},
 			wantErr:    false,
 		},
 		{
 			name:       "deletes only namespaces matching cluster prefix",
-			clusterID:  "my-cluster",
+			clusterID:  myCluster,
 			listStatus: http.StatusOK,
-			listBody:   map[string]any{"my-cluster/rules": nil, "my-cluster/alerts": nil, "other-cluster/rules": nil},
+			listBody:   map[string]any{myClusterRules: nil, "my-cluster/alerts": nil, "other-cluster/rules": nil},
 			deleteStatuses: map[string]int{
-				"my-cluster/rules":  http.StatusNoContent,
+				myClusterRules:      http.StatusNoContent,
 				"my-cluster/alerts": http.StatusOK,
 			},
 			wantErr: false,
 		},
 		{
 			name:       "skips all namespaces when none match prefix",
-			clusterID:  "my-cluster",
+			clusterID:  myCluster,
 			listStatus: http.StatusOK,
 			listBody:   map[string]any{"other-cluster/rules": nil},
 			wantErr:    false,
 		},
 		{
 			name:       "treats 404 on delete as success",
-			clusterID:  "my-cluster",
+			clusterID:  myCluster,
 			listStatus: http.StatusOK,
 			listBody:   map[string]any{"my-cluster/gone": nil},
 			deleteStatuses: map[string]int{
@@ -75,7 +80,7 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 		},
 		{
 			name:       "returns error on unexpected delete status",
-			clusterID:  "my-cluster",
+			clusterID:  myCluster,
 			listStatus: http.StatusOK,
 			listBody:   map[string]any{"my-cluster/fail": nil},
 			deleteStatuses: map[string]int{
@@ -85,13 +90,13 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 		},
 		{
 			name:       "returns error on unexpected list status",
-			clusterID:  "my-cluster",
+			clusterID:  myCluster,
 			listStatus: http.StatusInternalServerError,
 			wantErr:    true,
 		},
 		{
 			name:        "handles YAML response from Mimir (no matching namespaces)",
-			clusterID:   "my-cluster",
+			clusterID:   myCluster,
 			listStatus:  http.StatusOK,
 			listBodyRaw: []byte("groups:\n- name: test\n"),
 			wantErr:     false,
@@ -99,11 +104,11 @@ func TestNewMimir_DeleteClusterRulesForTenant(t *testing.T) {
 		{
 			// Real Mimir response: top-level keys are namespace names in YAML format.
 			name:        "handles real Mimir YAML response with matching namespace",
-			clusterID:   "my-cluster",
+			clusterID:   myCluster,
 			listStatus:  http.StatusOK,
 			listBodyRaw: []byte("my-cluster/rules:\n- name: group1\n  rules: []\nother-cluster/rules:\n- name: group2\n  rules: []\n"),
 			deleteStatuses: map[string]int{
-				"my-cluster/rules": http.StatusNoContent,
+				myClusterRules: http.StatusNoContent,
 			},
 			wantErr: false,
 		},
@@ -171,13 +176,13 @@ func TestNewLoki_DeleteClusterRulesForTenant(t *testing.T) {
 	defer srv.Close()
 
 	c := ruler.NewLoki(srv.URL, 30*time.Second)
-	err := c.DeleteClusterRulesForTenant(context.Background(), tenantID, "my-cluster")
+	err := c.DeleteClusterRulesForTenant(context.Background(), tenantID, myCluster)
 	assert.NoError(t, err)
 }
 
 func TestNewMulti_DeleteClusterRulesForTenant(t *testing.T) {
 	const tenantID = "giantswarm"
-	const clusterID = "my-cluster"
+	const clusterID = myCluster
 
 	t.Run("calls all backends", func(t *testing.T) {
 		called := map[string]int{}

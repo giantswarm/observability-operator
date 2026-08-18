@@ -97,7 +97,7 @@ func injectManagedTag(content map[string]any) error {
 		tagsHolder = spec
 	}
 
-	tags, ok := tagsHolder["tags"].([]any)
+	tags, ok := tagsHolder[tagsKey].([]any)
 	if !ok {
 		tags = []any{}
 	}
@@ -108,7 +108,7 @@ func injectManagedTag(content map[string]any) error {
 		}
 	}
 
-	tagsHolder["tags"] = append(tags, managedDashboardTag)
+	tagsHolder[tagsKey] = append(tags, managedDashboardTag)
 	return nil
 }
 
