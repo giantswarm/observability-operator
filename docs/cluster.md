@@ -61,12 +61,14 @@ The operator does not create the credentials. Provide a Secret named `alloy-vcen
 
 | Key | Description |
 |---|---|
-| `vcenter-endpoint` | URL of the vCenter API endpoint |
+| `vcenter-endpoint` | URL of the vCenter API endpoint. The `http://` or `https://` scheme is mandatory, for example `https://vcenter.example.com` |
 | `vcenter-username` | Username for vCenter authentication |
 | `vcenter-password` | Password for vCenter authentication |
 | `vcenter-insecure-skip-verify` | `"true"` to skip TLS verification, any other value to verify |
 
 All keys are mandatory. Alloy fails to load its configuration if a key is absent.
+
+Alloy removes leading and trailing whitespace from all values except the password, which stays a secret. Make sure the password has no trailing newline. Use `stringData` in the Secret manifest, or `kubectl create secret generic --from-literal`, to prevent this.
 
 ## KEDA namespace
 

@@ -280,14 +280,16 @@ alloy:
         }
         
         // Collect provider metrics from vCenter
+        // string.trim_space removes the trailing newline that base64 encoding of the secret can add.
+        // The password keeps the Alloy secret type, which string.trim_space does not accept.
         otelcol.receiver.vcenter "default" {
-          endpoint = convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["vcenter-endpoint"])
-          username = convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["vcenter-username"])
+          endpoint = string.trim_space(convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["vcenter-endpoint"]))
+          username = string.trim_space(convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["vcenter-username"]))
           password = remote.kubernetes.secret.vcenter_credentials.data["vcenter-password"]
         
           tls {
             // The secret value is a string, the comparison gives the boolean Alloy expects.
-            insecure_skip_verify = convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["vcenter-insecure-skip-verify"]) == "true"
+            insecure_skip_verify = string.trim_space(convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["vcenter-insecure-skip-verify"])) == "true"
           }
         
           output {
