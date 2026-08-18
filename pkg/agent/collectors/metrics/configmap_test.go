@@ -344,7 +344,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
