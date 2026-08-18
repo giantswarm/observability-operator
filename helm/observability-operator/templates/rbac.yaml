@@ -168,6 +168,32 @@ rules:
       - get
       - patch
       - update
+  - apiGroups:
+      - observability.giantswarm.io
+    resources:
+      - heartbeats
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - observability.giantswarm.io
+    resources:
+      - heartbeats/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - observability.giantswarm.io
+    resources:
+      - heartbeats/status
+    verbs:
+      - get
+      - patch
+      - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
