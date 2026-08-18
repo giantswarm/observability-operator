@@ -31,7 +31,7 @@ func TestDashboardCleanupOrganizationRequest(t *testing.T) {
 
 	dashboardCM := func(org string) *v1.ConfigMap {
 		cm := &v1.ConfigMap{
-			Data: map[string]string{"dashboard.json": `{"uid":"u","title":"t"}`},
+			Data: map[string]string{dashboardJSONKey: `{"uid":"u","title":"t"}`},
 		}
 		if org != "" {
 			cm.Annotations = map[string]string{labels.GrafanaOrganizationKey: org}
@@ -89,7 +89,7 @@ var _ = Describe("Dashboard Cleanup Controller", func() {
 					labels.GrafanaFolderKey:       "keep-team",
 				},
 			},
-			Data: map[string]string{"dashboard.json": `{"uid":"kept-uid","title":"Kept"}`},
+			Data: map[string]string{dashboardJSONKey: `{"uid":"kept-uid","title":"Kept"}`},
 		}
 		Expect(k8sClient.Create(ctx, keptConfigMap)).To(Succeed())
 

@@ -283,7 +283,7 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 // listActiveGrafanaOrganizations retrieves all GrafanaOrganization CRs and converts them to domain objects
 func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx context.Context) ([]*organization.Organization, error) {
 	organizationList := &v1alpha2.GrafanaOrganizationList{}
-	err := r.Client.List(ctx, organizationList)
+	err := r.List(ctx, organizationList)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list grafana organizations: %w", err)
 	}

@@ -8,6 +8,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+const (
+	instanceLabel = "app.kubernetes.io/instance"
+	grafana       = "grafana"
+	monitoring    = "monitoring"
+)
+
 // GrafanaPodRecreatedPredicate implements an event handler predicate function.
 // This predicate is used to trigger a reconciliation when the Grafana pod is recreated to ensure the Grafana instance is up to date.
 type GrafanaPodRecreatedPredicate struct {
@@ -49,10 +55,10 @@ func (GrafanaPodRecreatedPredicate) Update(e event.UpdateEvent) bool {
 // isGrafanaPod checks if the object is a Grafana pod.
 func isGrafanaPod(pod *corev1.Pod) bool {
 	return pod != nil &&
-		strings.HasPrefix(pod.GetName(), "grafana") &&
-		pod.GetNamespace() == "monitoring" &&
+		strings.HasPrefix(pod.GetName(), grafana) &&
+		pod.GetNamespace() == monitoring &&
 		pod.GetLabels() != nil &&
-		pod.GetLabels()["app.kubernetes.io/instance"] == "grafana"
+		pod.GetLabels()[instanceLabel] == grafana
 }
 
 // isPodReady checks if the pod is ready by inspecting its conditions.

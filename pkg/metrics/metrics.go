@@ -5,6 +5,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
+const (
+	nameKey        = "name"
+	operationLabel = "operation"
+)
+
 var (
 	MimirQueryErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "observability_operator_mimir_head_series_query_errors_total",
@@ -15,12 +20,12 @@ var (
 	GrafanaOrganizationTenantInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_grafana_organization_tenants",
 		Help: "Information about tenant resources per organization",
-	}, []string{"name", "org_id"})
+	}, []string{nameKey, "org_id"})
 
 	GrafanaOrganizationInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_grafana_organization_info",
 		Help: "Information about GrafanaOrganization resources",
-	}, []string{"name", "display_name", "org_id", "status"}) // status: active, pending, error
+	}, []string{nameKey, "display_name", "org_id", "status"}) // status: active, pending, error
 
 	// Alertmanager metrics
 	AlertmanagerRoutes = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -35,21 +40,21 @@ var (
 	GrafanaAPIErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "observability_operator_grafana_api_errors_total",
 		Help: "Total number of errors from the Grafana API, by operation",
-	}, []string{"operation"})
+	}, []string{operationLabel})
 
 	// MimirAlertmanagerAPIErrors counts errors returned by the Mimir Alertmanager API, labelled by operation.
 	// operation values: push_config, delete_config
 	MimirAlertmanagerAPIErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "observability_operator_mimir_alertmanager_api_errors_total",
 		Help: "Total number of errors from the Mimir Alertmanager API, by operation",
-	}, []string{"operation"})
+	}, []string{operationLabel})
 
 	// RulerAPIErrors counts errors returned by the ruler API (Mimir or Loki), labelled by operation.
 	// operation values: delete_rules
 	RulerAPIErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "observability_operator_ruler_api_errors_total",
 		Help: "Total number of errors from the ruler API, by operation",
-	}, []string{"operation"})
+	}, []string{operationLabel})
 
 	// Cluster monitoring metrics
 
@@ -66,7 +71,7 @@ var (
 	AgentCredentialInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_agent_credential_info",
 		Help: "Info gauge for AgentCredential resources; one series per active credential",
-	}, []string{"namespace", "name", "backend", "agent_name"})
+	}, []string{"namespace", nameKey, "backend", "agent_name"})
 
 	// AgentCredentialReconcileErrors counts reconcile errors from the AgentCredential
 	// controller, labelled by backend and reconcile step (render, aggregate).

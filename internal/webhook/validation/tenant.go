@@ -21,6 +21,10 @@ import (
 	"slices"
 )
 
+const (
+	mimirClusterTenant = "__mimir_cluster"
+)
+
 // TenantValidator provides common validation logic for tenant IDs across API versions.
 type TenantValidator struct {
 	// List of forbidden tenant ID values that pass the CRD pattern but are not allowed by Mimir
@@ -30,7 +34,7 @@ type TenantValidator struct {
 // NewTenantValidator creates a new TenantValidator with default forbidden values.
 func NewTenantValidator() *TenantValidator {
 	return &TenantValidator{
-		ForbiddenValues: []string{"__mimir_cluster"},
+		ForbiddenValues: []string{mimirClusterTenant},
 	}
 }
 

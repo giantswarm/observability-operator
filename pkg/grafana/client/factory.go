@@ -16,7 +16,7 @@ import (
 
 const (
 	// Ingress TLS secret (legacy - replaced by GatewayTLSSecretName) - TODO: remove once ingress is gone
-	grafanaLegacyTLSSecretName = "grafana-tls"
+	grafanaLegacyTLSSecretName = "grafana-tls" // nolint:gosec // G101: Secret resource name, not a credential
 
 	grafanaAdminSecretUserKey     = "admin-user"
 	grafanaAdminSecretPasswordKey = "admin-password"
