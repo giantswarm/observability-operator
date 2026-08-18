@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `alerting.alertmanagerSecret.enabled` value (default `true`) to gate rendering of the Alertmanager configuration Secret, so the Alertmanager configuration can be shipped from another chart instead.
+
 ## [0.73.0] - 2026-08-10
 
 ### Added
