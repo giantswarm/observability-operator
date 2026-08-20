@@ -55,13 +55,28 @@ func TestValidateSelector(t *testing.T) {
 			selector: `{scrape_job="audit-logs"} != "get" !~ "wat.*"`,
 		},
 		{
-			// Line filters reach Alloy verbatim, so anything the parser accepts works.
+			// Selection is rendered as a drop of the negated filter, and `or` negates only
+			// by applying De Morgan across the whole chain.
 			name:     "or line filter",
 			selector: `{scrape_job="audit-logs"} |= "delete" or "create"`,
+			wantErr:  "cannot be negated term by term",
 		},
 		{
 			name:     "ip line filter",
 			selector: `{scrape_job="audit-logs"} |= ip("1.2.3.4")`,
+			wantErr:  "has no negated spelling",
+		},
+		{
+			// Accepted: on a negative operator Loki flattens `or` into an AND-chain of
+			// nots, so each term negates on its own. Only the positive operators make it a
+			// real alternation.
+			name:     "or on a negative line filter",
+			selector: `{scrape_job="audit-logs"} != "delete" or "create"`,
+		},
+		{
+			name:     "or later in a chain",
+			selector: `{scrape_job="audit-logs"} |= "a" |= "b" or "c"`,
+			wantErr:  "cannot be negated term by term",
 		},
 		{
 			// A keyword scan would reject this; the parser knows it is a line filter.
