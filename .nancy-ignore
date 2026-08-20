@@ -27,3 +27,10 @@ CVE-2026-14362 until=2026-09-10
 
 # pkg:golang/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.39.0
 CVE-2026-39882 until=2026-09-10
+
+# pkg:golang/github.com/apache/thrift@v0.22.0
+CVE-2026-41602 until=2026-09-10
+
+# pkg:golang/github.com/containerd/containerd/v2@v2.0.9
+CVE-2026-47262 until=2026-09-10
+CVE-2026-53488 until=2026-09-10

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a LogQL selector validator restricting an expression to the subset the log exporter can render: a stream selector, optional line filters, an optional `| json` and optional string label filters. Not yet wired to a webhook. Adds a dependency on `github.com/grafana/loki/v3` for its LogQL parser.
 - Add the `alerting.alertmanagerSecret.enabled` value (default `true`) to gate rendering of the Alertmanager configuration Secret, so the Alertmanager configuration can be shipped from another chart instead.
 
 ## [0.73.0] - 2026-08-10
