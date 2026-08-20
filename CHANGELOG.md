@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add the `alerting.alertmanagerSecret.enabled` value (default `true`) to gate rendering of the Alertmanager configuration Secret, so the Alertmanager configuration can be shipped from another chart instead.
+- Add the namespaced `Heartbeat` CRD, with a `cronitor` provider variant carrying the monitor definition and a `credentialsRef` to the Cronitor API keys. API types only, no controller.
 
 ## [0.73.0] - 2026-08-10
 

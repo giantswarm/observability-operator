@@ -3,6 +3,7 @@
 # It should be run by config/default
 resources:
 - bases/observability.giantswarm.io_grafanaorganizations.yaml
+- bases/observability.giantswarm.io_heartbeats.yaml
 - bases/observability.giantswarm.io_logexports.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
