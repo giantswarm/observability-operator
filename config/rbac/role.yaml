@@ -114,6 +114,7 @@ rules:
   resources:
   - agentcredentials
   - grafanaorganizations
+  - heartbeats
   verbs:
   - create
   - delete
@@ -127,6 +128,7 @@ rules:
   resources:
   - agentcredentials/finalizers
   - grafanaorganizations/finalizers
+  - heartbeats/finalizers
   verbs:
   - update
 - apiGroups:
@@ -134,6 +136,7 @@ rules:
   resources:
   - agentcredentials/status
   - grafanaorganizations/status
+  - heartbeats/status
   verbs:
   - get
   - patch
