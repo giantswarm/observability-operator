@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enable `otelcol.receiver.vcenter` and `otelcol.exporter.prometheus` on the management cluster of vSphere and Cloud Director installations, to collect provider metrics.
 - Add the `monitoring.vcenter.enabled` Helm value to control vCenter resource metrics collection. Disabled by default, so installations must opt in.
+- Add the `alerting.alertmanagerSecret.enabled` value (default `true`) to gate rendering of the Alertmanager configuration Secret, so the Alertmanager configuration can be shipped from another chart instead.
 
 ## [0.73.0] - 2026-08-10
 

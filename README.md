@@ -1,6 +1,12 @@
-[![CircleCI](https://dl.circleci.com/status-badge/img/gh/giantswarm/observability-operator/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/giantswarm/observability-operator/tree/main)
+<div align="center">
 
-# observability-operator
+  # observability-operator
+
+  [![Go Reference](https://pkg.go.dev/badge/github.com/giantswarm/observability-operator.svg)](https://pkg.go.dev/github.com/giantswarm/observability-operator)
+  [![CircleCI](https://dl.circleci.com/status-badge/img/gh/giantswarm/observability-operator/tree/main.svg?style=shield)](https://dl.circleci.com/status-badge/redirect/gh/giantswarm/observability-operator/tree/main)
+  [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/giantswarm/observability-operator/badge)](https://scorecard.dev/viewer/?uri=github.com/giantswarm/observability-operator)
+
+</div>
 
 Brain of the Giant Swarm observability platform: provisions and configures the full observability stack (metrics, logs, traces, alerts, dashboards) for every managed cluster.
 
