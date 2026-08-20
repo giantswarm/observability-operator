@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add the `monitoring.vcenter.enabled` Helm value to control vCenter resource metrics collection. Disabled by default, so installations must opt in.
 - Enforce the supported `LogExport.spec.selector` subset at admission, gated by `webhook.validatingWebhooks.logExport.enabled`.
 - Add a LogQL selector validator for expressions used in LogExport
+- Reject `or` on `|=`/`|~` and `ip()` line filters in `LogExport.spec.selector`.
 
 ### Fixed
 
