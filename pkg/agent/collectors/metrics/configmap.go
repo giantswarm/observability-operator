@@ -125,9 +125,11 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 	}
 
 	// vCenter metrics are collected once per installation, from the management cluster agent, and
-	// are sent to the default tenant. The default tenant is only present when a Grafana
-	// organization declares it, so we check for it to avoid referencing a missing remote write.
-	vcenterEnabled := !s.Config.Cluster.IsWorkloadCluster(cluster) &&
+	// are sent to the default tenant. Collection is opt-in per installation because the credentials
+	// secret is provided externally. The default tenant is only present when a Grafana organization
+	// declares it, so we check for it to avoid referencing a missing remote write.
+	vcenterEnabled := s.Config.Monitoring.VCenterEnabled &&
+		!s.Config.Cluster.IsWorkloadCluster(cluster) &&
 		s.Config.Cluster.IsVCenterProvider(cluster) &&
 		slices.Contains(tenants, s.Config.DefaultTenant)
 

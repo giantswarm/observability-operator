@@ -57,6 +57,8 @@ metadata:
 
 On vSphere and Cloud Director installations, the management cluster Alloy agent collects provider metrics from vCenter with `otelcol.receiver.vcenter`. The metrics go to the default tenant through `otelcol.exporter.prometheus`. Workload cluster agents do not collect these metrics.
 
+Collection is disabled by default. Set `monitoring.vcenter.enabled` to `true` in the operator Helm values to enable it. Enable it only on installations that provide the credentials described below.
+
 The operator does not create the credentials. Provide a Secret named `alloy-vcenter-credentials` in the `kube-system` namespace of the management cluster, with these keys:
 
 | Key | Description |

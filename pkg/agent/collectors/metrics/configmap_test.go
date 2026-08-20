@@ -20,12 +20,13 @@ import (
 )
 
 const (
-	awsClusterKind   = "AWSCluster"
-	azureClusterKind = "AzureCluster"
-	defaultNamespace = "default"
-	tenant1          = "tenant1"
-	tenant2          = "tenant2"
-	testCluster      = "test-cluster"
+	awsClusterKind     = "AWSCluster"
+	azureClusterKind   = "AzureCluster"
+	vsphereClusterKind = "VSphereCluster"
+	defaultNamespace   = "default"
+	tenant1            = "tenant1"
+	tenant2            = "tenant2"
+	testCluster        = "test-cluster"
 )
 
 var managementClusterName = "dummy-cluster"
@@ -67,7 +68,7 @@ func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 	}
 }
 
-func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
+func newTestService(monitoringEnabled, exemplarsEnabled, vcenterEnabled bool) *Service {
 	return &Service{
 		OrganizationRepository: mocks.NewMockOrganizationRepository("dummy-org"),
 		Config: config.Config{
@@ -81,6 +82,7 @@ func newTestService(monitoringEnabled, exemplarsEnabled bool) *Service {
 			Monitoring: config.MonitoringConfig{
 				Enabled:                 monitoringEnabled,
 				ExemplarsEnabled:        exemplarsEnabled,
+				VCenterEnabled:          vcenterEnabled,
 				WALTruncateFrequency:    time.Minute,
 				MimirRemoteWriteTimeout: "60s",
 				QueueConfig: config.QueueConfig{
@@ -107,6 +109,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		observabilityBundleVersion semver.Version
 		monitoringEnabled          bool
 		exemplarsEnabled           bool
+		vcenterEnabled             bool
 	}{
 		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
@@ -344,16 +347,36 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      managementClusterName,
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						Kind: "VSphereCluster",
+						Kind: vsphereClusterKind,
 					},
 				},
 			},
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.MC.vsphere.yaml"),
+			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+			vcenterEnabled:             true,
+		},
+		{
+			name: "ManagementCluster_VSphere_VCenterDisabled_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: vsphereClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.MC.vsphere.vcenter-disabled.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
@@ -400,7 +423,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			service := newTestService(tt.monitoringEnabled, tt.exemplarsEnabled)
+			service := newTestService(tt.monitoringEnabled, tt.exemplarsEnabled, tt.vcenterEnabled)
 
 			resultMap, err := service.GenerateAlloyMonitoringConfigMapData(
 				ctx,
