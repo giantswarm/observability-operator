@@ -51,6 +51,13 @@ const SupportedSelectorSubset = `a stream selector ` +
 // the raw field value: the parser tolerates trailing "# comment" and non-canonical
 // whitespace, so a negated term appended to the raw string can be commented out.
 func ValidateSelector(selector string) error {
+	_, err := ParseSelector(selector)
+	return err
+}
+
+// ParseSelector validates a selector and returns the parsed expression, so that config
+// rendering is driven from the same parse admission accepts and the two cannot drift.
+func ParseSelector(selector string) (syntax.LogSelectorExpr, error) {
 	// ParseExpr both parses and validates. Validation is what rejects a selector that
 	// names no stream -- `{}`, `{job=~".*"}`, `{job!="x"}` -- since Loki requires at least
 	// one matcher that cannot match empty. The parse phase recovers its own panics, so
@@ -64,40 +71,42 @@ func ValidateSelector(selector string) error {
 		// but `count_over_time({})` would still parse, so an unvalidated probe would
 		// blame a time range that the selector does not contain.
 		if _, rangeErr := syntax.ParseExpr(fmt.Sprintf("count_over_time(%s)", selector)); rangeErr == nil {
-			return unsupported("time ranges are not supported: an export starts when the LogExport is created and cannot backfill")
+			return nil, unsupported("time ranges are not supported: an export starts when the LogExport is created and cannot backfill")
 		}
-		return unsupported("not a valid LogQL expression: %v", err)
+		return nil, unsupported("not a valid LogQL expression: %v", err)
 	}
 
 	switch e := expr.(type) {
 	case *syntax.MatchersExpr:
 		if err := checkMatchers(e.Mts); err != nil {
-			return err
+			return nil, err
 		}
 	case *syntax.PipelineExpr:
 		if err := checkMatchers(e.Left.Mts); err != nil {
-			return err
+			return nil, err
 		}
 		if err := checkStages(e.MultiStages); err != nil {
-			return err
+			return nil, err
 		}
 	case *syntax.LiteralExpr, *syntax.VectorExpr:
 		// These satisfy LogSelectorExpr as well as SampleExpr, so they have to be caught
 		// before the case below.
-		return unsupported("%q returns a value rather than log lines", spell(e))
+		return nil, unsupported("%q returns a value rather than log lines", spell(e))
 	case syntax.SampleExpr:
-		return unsupported("aggregations are not supported: an export is a continuous tee, not a query")
+		return nil, unsupported("aggregations are not supported: an export is a continuous tee, not a query")
 	default:
-		return unsupported("not a log selector")
+		return nil, unsupported("not a log selector")
 	}
+
+	logSelector := expr.(syntax.LogSelectorExpr)
 
 	// Building the pipeline compiles the line filter regexps, which parsing alone does
 	// not. An expression that parses but fails to build would reach Alloy and stop every
 	// export on the installation.
-	if _, err := expr.(syntax.LogSelectorExpr).Pipeline(); err != nil {
-		return unsupported("not a usable log selector: %v", err)
+	if _, err := logSelector.Pipeline(); err != nil {
+		return nil, unsupported("not a usable log selector: %v", err)
 	}
-	return nil
+	return logSelector, nil
 }
 
 // checkMatchers rejects Loki-internal labels in the stream selector. How much the
@@ -116,7 +125,14 @@ func checkStages(stages syntax.MultiStageExpr) error {
 	for _, stage := range stages {
 		switch s := stage.(type) {
 		case *syntax.LineFilterExpr:
-			// Passed verbatim into stage.match, so anything the parser accepts works.
+			// Passed verbatim into stage.match, except that selection is rendered as a drop
+			// of the *negated* filter. On a positive operator `or` is a real alternation,
+			// which negates only by De Morgan across the chain; ip() has no negated spelling
+			// at all. Neither becomes a drop term by term, and a mistranslation over-exports.
+			// `or` on a negative operator is fine: Loki flattens it into an AND-chain.
+			if err := checkLineFilters(s); err != nil {
+				return err
+			}
 		case *syntax.LineParserExpr:
 			// Also where regexp, unpack and pattern land.
 			if s.Op != syntax.OpParserTypeJSON || s.Param != "" {
@@ -126,7 +142,7 @@ func checkStages(stages syntax.MultiStageExpr) error {
 			// Selection is rendered as a drop of the *negated* filter, and a drop can only
 			// spell a string comparison. `| duration > 10s` has no negated stream-selector
 			// form, so there is nothing to render it into.
-			m, ok := stringMatcher(s.LabelFilterer)
+			m, ok := StringMatcher(s.LabelFilterer)
 			if !ok {
 				return unsupported("the label filter %q is not supported: only string comparisons (=, !=, =~, !~) on a single label are", spell(s))
 			}
@@ -140,7 +156,22 @@ func checkStages(stages syntax.MultiStageExpr) error {
 	return nil
 }
 
-// stringMatcher reports the matcher behind a label filter, for the filterers that are a
+// checkLineFilters walks a line filter chain, rejecting the forms that have no negated
+// spelling. Left is the previous filter in the chain; Or is set only where the parser kept
+// an alternation, which it does for `|=` and `|~` but not for `!=` and `!~`.
+func checkLineFilters(expr *syntax.LineFilterExpr) error {
+	for e := expr; e != nil; e = e.Left {
+		if e.Or != nil || e.IsOrChild {
+			return unsupported("the line filter %q uses `or`, which cannot be negated term by term", spell(expr))
+		}
+		if e.Op != "" {
+			return unsupported("the line filter %q uses %s(), which has no negated spelling", spell(expr), e.Op)
+		}
+	}
+	return nil
+}
+
+// StringMatcher reports the matcher behind a label filter, for the filterers that are a
 // single string comparison.
 //
 // Note that `| verb="delete"` is not a StringLabelFilter: log.NewStringLabelFilter
@@ -148,7 +179,7 @@ func checkStages(stages syntax.MultiStageExpr) error {
 // reduces to a match-all, and a StringLabelFilter only on its fallback path. All three
 // carry a matcher; binary (and/or), numeric, duration, bytes and IP filters do not, and
 // have no stream-selector spelling once negated.
-func stringMatcher(f log.LabelFilterer) (*labels.Matcher, bool) {
+func StringMatcher(f log.LabelFilterer) (*labels.Matcher, bool) {
 	switch t := f.(type) {
 	case *log.LineFilterLabelFilter:
 		return t.Matcher, true
