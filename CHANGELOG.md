@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add rendering of the `alloy-logexporter` Helm values from `LogExport` resources. Rendering only, no controller.
 - Add a validating webhook enforcing the supported `LogExport.spec.selector` subset at admission, so a selector the exporter cannot render is rejected on `kubectl apply` rather than stopping every export on the installation. Gated by `webhook.validatingWebhooks.logExport.enabled` (default `true`).
 - Add a LogQL selector validator restricting an expression to the subset the log exporter can render: a stream selector, optional line filters excluding `or` on `|=`/`|~` and `ip()`, an optional `| json` and optional string label filters. Not yet wired to a webhook. Adds a dependency on `github.com/grafana/loki/v3` for its LogQL parser.
 - Add the `alerting.alertmanagerSecret.enabled` value (default `true`) to gate rendering of the Alertmanager configuration Secret, so the Alertmanager configuration can be shipped from another chart instead.
