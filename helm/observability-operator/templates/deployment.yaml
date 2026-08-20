@@ -66,7 +66,6 @@ spec:
         - --otlp-batch-max-size={{ $.Values.otlp.batchMaxSize }}
         - --otlp-batch-timeout={{ $.Values.otlp.batchTimeout }}
         # Alerting configuration
-        - --alertmanager-secret-name={{ include "alertmanager-secret.name" . }}
         - --alertmanager-url={{ $.Values.alerting.alertmanagerURL }}
         # Monitoring configuration
         {{ with .Values.monitoring }}

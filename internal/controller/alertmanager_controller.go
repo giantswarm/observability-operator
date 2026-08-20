@@ -51,7 +51,7 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, cfg config.Config) error {
 	err = ctrl.NewControllerManagedBy(mgr).
 		Named("alertmanager").
 		For(&v1.Secret{}, builder.WithPredicates(alertmanagerConfigSecretsPredicate)).
-		Watches(&v1.Pod{}, podEventHandler(cfg), builder.WithPredicates(podPredicate)).
+		Watches(&v1.Pod{}, podEventHandler(mgr.GetClient()), builder.WithPredicates(podPredicate)).
 		Complete(r)
 	if err != nil {
 		return fmt.Errorf("failed to build controller: %w", err)
@@ -60,18 +60,39 @@ func SetupAlertmanagerReconciler(mgr ctrl.Manager, cfg config.Config) error {
 	return nil
 }
 
-// podEventHandler returns an event handler that enqueues requests for the Alertmanager secret only.
-func podEventHandler(cfg config.Config) handler.EventHandler {
-	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
-		return []reconcile.Request{
-			{
-				NamespacedName: types.NamespacedName{
-					Name:      cfg.Monitoring.AlertmanagerSecretName,
-					Namespace: cfg.Operator.OperatorNamespace,
-				},
-			},
+// podEventHandler returns an event handler that enqueues every Alertmanager config secret,
+// so all configurations are pushed again once Mimir Alertmanager is ready to accept them.
+func podEventHandler(c client.Client) handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(alertmanagerConfigSecretRequests(c))
+}
+
+// alertmanagerConfigSecretRequests returns one request per secret carrying the
+// Alertmanager config kind label, in any namespace.
+func alertmanagerConfigSecretRequests(c client.Client) handler.MapFunc {
+	return func(ctx context.Context, _ client.Object) []reconcile.Request {
+		logger := log.FromContext(ctx)
+
+		var secrets v1.SecretList
+		err := c.List(ctx, &secrets, client.MatchingLabels{
+			predicates.AlertmanagerConfigSelectorLabelName: predicates.AlertmanagerConfigSelectorLabelValue,
+		})
+		if err != nil {
+			logger.Error(err, "failed to list Alertmanager config secrets")
+			return []reconcile.Request{}
 		}
-	})
+
+		requests := make([]reconcile.Request, 0, len(secrets.Items))
+		for _, secret := range secrets.Items {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      secret.Name,
+					Namespace: secret.Namespace,
+				},
+			})
+		}
+
+		return requests
+	}
 }
 
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;patch
