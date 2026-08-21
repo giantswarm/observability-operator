@@ -251,6 +251,15 @@
                         }
                     }
                 },
+                "vcenter": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enable vCenter resource metrics collection on vSphere and Cloud Director installations. Requires an externally-provided alloy-vcenter-credentials Secret."
+                        }
+                    }
+                },
                 "mimirRemoteWriteTimeout": {
                     "type": "string",
                     "description": "Timeout for Alloy Mimir remote write operations"
