@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add the `alerting.alertmanagerSecret.enabled` value (default `true`) to gate rendering of the Alertmanager configuration Secret, so the Alertmanager configuration can be shipped from another chart instead.
 
+### Fixed
+
+- The `alloy-logs` storage path is now a node `hostPath` (`/var/lib/alloy-logs`, `DirectoryOrCreate`) instead of an `emptyDir`, so the `loki.source.podlogs` positions survive a pod restart. With an `emptyDir`, every restart replayed each container log from the oldest entry the node still held, and Loki rejected the backfill with `has timestamp too old` / `entry too far behind`.
+- The `alloy-tmp` volume is now mounted in every mode. The volume was declared unconditionally but mounted only when logging was enabled, so a network-monitoring-only cluster ran with `readOnlyRootFilesystem: true` and no writable storage path.
+- Set `alloy.alloy.storagePath` to `/tmp/alloy` explicitly, matching the `alloy-tmp` mount path.
+
 ## [0.73.0] - 2026-08-10
 
 ### Added
