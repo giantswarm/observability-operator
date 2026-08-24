@@ -30,6 +30,7 @@ declare SECRET_COUNT MIMIR_HTTP_CODE
 SECRET_JSON=""
 MONITOR_JSON=""
 PINGED_MONITOR_KEY=""
+PINGED_MONITOR_ENV=""
 
 TMP_DIR="$(mktemp -d -t verify-alerting.XXXXXX)"
 PORT_FORWARD_PID=""
@@ -374,33 +375,47 @@ function checkSingleConfigSource {
   esac
 }
 
-# pingedMonitorKeys prints the Cronitor monitor keys the live configuration pings, taken
-# from https://cronitor.link/p/<ping-key>/<monitor-key>?env=<pipeline>. This is the ground
-# truth for which monitor must exist: the operator writes the key in Go, the configuration
-# writes it again in YAML, and the two can drift once they no longer share a chart.
-function pingedMonitorKeys {
-  local url rest
-  local -a keys=()
+# pingedMonitorTargets prints "<monitor-key><TAB><environment>" for each Cronitor monitor the
+# live configuration pings, taken from
+# https://cronitor.link/p/<ping-key>/<monitor-key>?env=<pipeline>. This is the ground truth
+# for which monitor must exist: the operator writes the key in Go, the configuration writes it
+# again in YAML, and the two can drift once they no longer share a chart.
+#
+# The environment is part of that ground truth, not decoration. Cronitor scopes a monitor's
+# telemetry state per environment, so a monitor pinged only under ?env=<pipeline> reads as
+# never pinged when queried without it. The environment is empty when the URL carries none.
+function pingedMonitorTargets {
+  local url rest key env
+  local -a targets=()
 
   while IFS= read -r url; do
     [[ -n "$url" ]] || continue
     rest="${url#*cronitor.link/p/}" # <ping-key>/<monitor-key>?env=...
     rest="${rest#*/}"               # <monitor-key>?env=...
-    keys+=("${rest%%\?*}")
+    key="${rest%%\?*}"
+    env=""
+    [[ "$rest" == *\?* ]] && env="$(sed -n 's/.*[?&]env=\([^&]*\).*/\1/p' <<< "$rest")"
+    targets+=("$(printf '%s\t%s' "$key" "$env")")
   done < <(jq -r '[.receivers[]?.webhook_configs[]?.url // empty] | .[]' "$TMP_DIR/mimir.alertmanager.json" | grep -F "cronitor.link/p/" || true)
 
-  [[ ${#keys[@]} -gt 0 ]] || return 0
-  printf '%s\n' "${keys[@]}" | sort -u
+  [[ ${#targets[@]} -gt 0 ]] || return 0
+  printf '%s\n' "${targets[@]}" | sort -u
 }
 
 # cronitorMonitor prints a monitor's JSON, or its HTTP status code if it could not be read.
+# The environment is optional and scopes the state fields — `initialized`, `passing` and
+# `latest_event` are reported per environment. The parameter is undocumented, but the API
+# honours it and the UI uses it; without it the response describes the default environment,
+# which nothing pings.
 function cronitorMonitor {
-  local key="$1" code
+  local key="$1" env="${2:-}" url code
+  url="https://cronitor.io/api/monitors/$key"
+  [[ -n "$env" ]] && url="$url?env=$env"
   code="$(
     curl -s -o "$TMP_DIR/monitor.json" -w '%{http_code}' --max-time 30 \
       --user "$CRONITOR_HEARTBEAT_MANAGEMENT_KEY:" \
       -H "Accept: application/json" \
-      "https://cronitor.io/api/monitors/$key"
+      "$url"
   )"
   if [[ "$code" != "200" ]]; then
     printf '%s' "$code"
@@ -417,20 +432,22 @@ function checkHeartbeatWiring {
     return
   fi
 
-  local -a keys
-  mapfile -t keys < <(pingedMonitorKeys)
+  local -a targets
+  mapfile -t targets < <(pingedMonitorTargets)
 
-  if [[ ${#keys[@]} -eq 0 ]]; then
+  if [[ ${#targets[@]} -eq 0 ]]; then
     fail "the configuration in Mimir pings no Cronitor monitor — no receiver has a cronitor.link/p/ webhook URL"
     return
   fi
-  if [[ ${#keys[@]} -gt 1 ]]; then
-    fail "the configuration pings ${#keys[@]} different Cronitor monitors: ${keys[*]}"
+  if [[ ${#targets[@]} -gt 1 ]]; then
+    fail "the configuration pings ${#targets[@]} different Cronitor monitors: $(tr '\t' '@' <<< "${targets[*]}")"
     return
   fi
 
-  PINGED_MONITOR_KEY="${keys[0]}"
+  PINGED_MONITOR_KEY="${targets[0]%%$'\t'*}"
+  PINGED_MONITOR_ENV="${targets[0]#*$'\t'}"
   info "pinged monitor:     $PINGED_MONITOR_KEY"
+  info "environment:        ${PINGED_MONITOR_ENV:-<none>}"
   if [[ "$PINGED_MONITOR_KEY" != "mimir-$INSTALLATION" ]]; then
     info "note: the operator's own derivation is mimir-$INSTALLATION, expected to differ only once a Heartbeat CR sets the key"
   fi
@@ -441,7 +458,7 @@ function checkHeartbeatWiring {
   fi
 
   local result
-  if ! result="$(cronitorMonitor "$PINGED_MONITOR_KEY")"; then
+  if ! result="$(cronitorMonitor "$PINGED_MONITOR_KEY" "$PINGED_MONITOR_ENV")"; then
     if [[ "$result" == "404" ]]; then
       fail "the configuration pings $PINGED_MONITOR_KEY, which does not exist in Cronitor — every ping is discarded and the real monitor pages once its grace period expires"
     else
