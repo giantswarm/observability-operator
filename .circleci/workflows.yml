@@ -14,6 +14,10 @@ workflows:
         name: go-build
         binary: observability-operator
         context: architect
+        # LOCAL TEST PATCH -- not generator output. The main package lives in
+        # ./cmd (kubebuilder layout); the generator emits no `path`, so the orb
+        # defaults to "." and `go build` finds no Go files. See notes.
+        path: ./cmd
         # Run unit tests through `make test` rather than the orb's hardcoded
         # `go test ./...`, so CI and local agent runs use the same command.
         # The generic Makefile target is `go test ./...`; repos that need more
