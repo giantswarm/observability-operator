@@ -346,7 +346,7 @@ func (a alertmanagerClient) PostAlerts(alertData Alert) error {
 	alertPost := &alert.PostAlertsParams{
 		Alerts: models.PostableAlerts{
 			{
-				Annotations: nil,
+				Annotations: models.LabelSet(alertData.Annotations),
 				Alert: models.Alert{
 					Labels: models.LabelSet(labels),
 				},
