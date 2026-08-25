@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.74.0] - 2026-08-25
+
 ### Added
 
 - Add the `alerting.alertmanagerSecret.enabled` value (default `true`) to gate rendering of the Alertmanager configuration Secret, so the Alertmanager configuration can be shipped from another chart instead.
@@ -1203,7 +1205,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.73.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.74.0...HEAD
+[0.74.0]: https://github.com/giantswarm/observability-operator/compare/v0.73.0...v0.74.0
 [0.73.0]: https://github.com/giantswarm/observability-operator/compare/v0.72.3...v0.73.0
 [0.72.3]: https://github.com/giantswarm/observability-operator/compare/v0.72.2...v0.72.3
 [0.72.2]: https://github.com/giantswarm/observability-operator/compare/v0.72.1...v0.72.2
