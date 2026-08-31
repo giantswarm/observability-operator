@@ -310,6 +310,9 @@ webhook:
     # -- Validate AgentCredential CRs
     agentCredential:
       enabled: true
+    # -- Validate LogExport CRs
+    logExport:
+      enabled: true
 
 # Vertical Pod Autoscaler configuration for the operator deployment
 verticalPodAutoscaler:
