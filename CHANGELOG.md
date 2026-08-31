@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.74.1] - 2026-08-31
 
+### Fixed
+
+- Fix missing descriptions in PagerDuty incidents.
+
 ## [0.74.0] - 2026-08-25
 
 ### Added
@@ -17,7 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix missing descriptions in PagerDuty incidents.
 - The `alloy-logs` storage path is now a node `hostPath` instead of an `emptyDir`, so the `loki.source.podlogs` positions survive a pod restart.
 - The `alloy-tmp` volume is now always mounted to fix network-monitoring-only clusters.
 - Set `alloy.alloy.storagePath` to `/tmp/alloy` explicitly, matching the `alloy-tmp` mount path.
