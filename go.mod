@@ -15,7 +15,7 @@ require (
 	github.com/grafana/grafana-openapi-client-go v0.0.0-20260828183528-15d99ca95e47
 	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/onsi/ginkgo/v2 v2.32.1
-	github.com/onsi/gomega v1.42.1
+	github.com/onsi/gomega v1.43.0
 	github.com/prometheus/alertmanager v0.31.1
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.70.1
