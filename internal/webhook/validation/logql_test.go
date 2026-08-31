@@ -21,6 +21,13 @@ import (
 	"testing"
 )
 
+// Fragments asserted by more than one case. Named only because they repeat; the
+// one-off fragments below stay inline so each case still reads on its own.
+const (
+	errInvalidLogQL = "not a valid LogQL expression"
+	errUnsupported  = "is not supported"
+)
+
 func TestValidateSelector(t *testing.T) {
 	tests := []struct {
 		name string
@@ -144,12 +151,12 @@ func TestValidateSelector(t *testing.T) {
 		{
 			name:     "not logql",
 			selector: "audit logs please",
-			wantErr:  "not a valid LogQL expression",
+			wantErr:  errInvalidLogQL,
 		},
 		{
 			name:     "empty",
 			selector: "",
-			wantErr:  "not a valid LogQL expression",
+			wantErr:  errInvalidLogQL,
 		},
 
 		// Stream selectors that name no stream at all. Loki's own validation rejects
@@ -158,19 +165,19 @@ func TestValidateSelector(t *testing.T) {
 		{
 			name:     "empty stream selector",
 			selector: `{}`,
-			wantErr:  "not a valid LogQL expression",
+			wantErr:  errInvalidLogQL,
 		},
 		{
 			name:     "match-everything regex",
 			selector: `{job=~".*"}`,
-			wantErr:  "not a valid LogQL expression",
+			wantErr:  errInvalidLogQL,
 		},
 		{
 			// A negative matcher matches streams missing the label entirely, so Loki
 			// counts it as a filter rather than a matcher.
 			name:     "negative matcher only",
 			selector: `{job!="x"}`,
-			wantErr:  "not a valid LogQL expression",
+			wantErr:  errInvalidLogQL,
 		},
 		{
 			name:     "reserved label in the stream selector",
@@ -192,39 +199,39 @@ func TestValidateSelector(t *testing.T) {
 		{
 			name:     "pattern parser",
 			selector: `{scrape_job="audit-logs"} | pattern "<_> <msg>"`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "regexp parser",
 			selector: `{scrape_job="audit-logs"} | regexp "(?P<verb>\\w+)"`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "json with parser parameters",
 			selector: `{scrape_job="audit-logs"} | json verb="fields.verb"`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 
 		// Stages the renderer cannot translate.
 		{
 			name:     "line format",
 			selector: `{scrape_job="audit-logs"} | line_format "{{ .verb }}"`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "label format",
 			selector: `{scrape_job="audit-logs"} | json | label_format v=verb`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "drop labels",
 			selector: `{scrape_job="audit-logs"} | json | drop verb`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "keep labels",
 			selector: `{scrape_job="audit-logs"} | json | keep verb`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "decolorize",
@@ -236,32 +243,32 @@ func TestValidateSelector(t *testing.T) {
 		{
 			name:     "duration label filter",
 			selector: `{scrape_job="audit-logs"} | json | duration > 10s`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "numeric label filter",
 			selector: `{scrape_job="audit-logs"} | json | status_code >= 400`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "bytes label filter",
 			selector: `{scrape_job="audit-logs"} | json | size > 1KB`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "ip label filter",
 			selector: `{scrape_job="audit-logs"} | json | remote_addr = ip("1.2.3.4")`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "or label filter",
 			selector: `{scrape_job="audit-logs"} | json | verb="delete" or verb="create"`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "and label filter",
 			selector: `{scrape_job="audit-logs"} | json | verb="delete" and user="x"`,
-			wantErr:  "is not supported",
+			wantErr:  errUnsupported,
 		},
 		{
 			name:     "reserved label in a label filter",
