@@ -324,17 +324,10 @@ alloy:
   controller:
     type: daemonset
     priorityClassName: giantswarm-critical
+    # Logs are collected per node, so the agent has to run on every node.
     tolerations:
-    - effect: NoSchedule
-      key: node-role.kubernetes.io/master
-      operator: Exists
-    - effect: NoSchedule
-      key: node-role.kubernetes.io/control-plane
-      operator: Exists
-    - effect: NoSchedule
-      key: kubernetes.io/arch
-      operator: Equal
-      value: arm64
+    - operator: Exists
+      effect: NoSchedule
     volumes:
       extra:
       - name: runlogjournal
