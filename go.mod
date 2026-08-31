@@ -12,7 +12,7 @@ require (
 	github.com/go-logr/logr v1.4.4
 	github.com/go-openapi/runtime v0.33.1
 	github.com/goccy/go-yaml v1.19.2
-	github.com/grafana/grafana-openapi-client-go v0.0.0-20260724161645-6029e6c64947
+	github.com/grafana/grafana-openapi-client-go v0.0.0-20260828183528-15d99ca95e47
 	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/onsi/ginkgo/v2 v2.32.1
 	github.com/onsi/gomega v1.42.1
