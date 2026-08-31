@@ -26,12 +26,22 @@
 
 {{ define "pagerduty.default.message" }}{{ .GroupLabels.installation }}{{ if not (eq .GroupLabels.cluster_id .GroupLabels.installation) }}-{{ .GroupLabels.cluster_id }}{{ end }} - {{ .GroupLabels.alertname }}{{ end }}
 {{ define "pagerduty.default.source" }}{{ template "__alertmanager" . }}{{ end }}
+{{/*
+  Alertmanager >= v0.30 parses each rendered detail as YAML and sends it as structured
+  JSON unless the parse fails. We want the parse to fail, so this block is sent verbatim.
+  Things to avoid:
+  - Using a colon in the header (e.g. "Alerts:") because it will be interpreted as a key/value pair.
+  - Using '---' because it will be interpreted as a YAML document separator.
+*/}}
 {{ define "pagerduty.default.description" -}}
-{{ if (index .Alerts 0).Annotations.runbook_url -}}
+Alerts 🔥
+{{ range .Alerts.Firing }}  {{ if .Labels.instance }}{{ .Labels.instance }}: {{ end }}{{ .Annotations.description }}
+{{ end }}
+{{- if (index .Alerts 0).Annotations.runbook_url -}}
 📗 Runbook: {{ template "__runbook_url" . }}
 {{ else -}}
 📗 Runbook: ⚠️ There is no **runbook** for this alert, time to get your pen.
-{{- end }}
+{{ end -}}
 {{ if or ((index .Alerts 0).Annotations.__dashboardUid__) ((index .Alerts 0).Annotations.dashboardExternalUrl) -}}
 📈 Dashboard: {{ template "__dashboard_url" . }}
 {{ else -}}
@@ -39,13 +49,6 @@
 {{ end -}}
 👀 Explore: {{ template "__alert_url" . }}
 🔔 Silence: {{ template "__alert_silence_link" . }}
-
----
-
-* Team: {{ (index .Alerts 0).Labels.team }}
-* Area: {{ (index .Alerts 0).Labels.area }} / {{ (index .Alerts 0).Labels.topic }}
-* Instances:{{ range .Alerts.Firing }}
-🔥 {{ if .Labels.instance }}{{ .Labels.instance }}: {{ end }}{{ .Annotations.description }}{{ end }}
 {{- end }}
 
 # Link to the silence repository where silences should be created
