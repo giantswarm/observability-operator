@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.74.1] - 2026-08-31
+
+### Fixed
+
+- Fix missing descriptions in PagerDuty incidents.
+
 ## [0.74.0] - 2026-08-25
 
 ### Added
@@ -15,7 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix missing descriptions in PagerDuty incidents.
 - The `alloy-logs` storage path is now a node `hostPath` instead of an `emptyDir`, so the `loki.source.podlogs` positions survive a pod restart.
 - The `alloy-tmp` volume is now always mounted to fix network-monitoring-only clusters.
 - Set `alloy.alloy.storagePath` to `/tmp/alloy` explicitly, matching the `alloy-tmp` mount path.
@@ -1206,7 +1211,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.74.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.74.1...HEAD
+[0.74.1]: https://github.com/giantswarm/observability-operator/compare/v0.74.0...v0.74.1
 [0.74.0]: https://github.com/giantswarm/observability-operator/compare/v0.73.0...v0.74.0
 [0.73.0]: https://github.com/giantswarm/observability-operator/compare/v0.72.3...v0.73.0
 [0.72.3]: https://github.com/giantswarm/observability-operator/compare/v0.72.2...v0.72.3
