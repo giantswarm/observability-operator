@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enforce the supported `LogExport.spec.selector` subset at admission, gated by `webhook.validatingWebhooks.logExport.enabled`.
 - Add a LogQL selector validator for expressions used in LogExport
 
+### Fixed
+
+- `alloy-logs` now tolerates all `NoSchedule` taints, so it is scheduled on every node.
+
 ## [0.74.1] - 2026-08-31
 
 ### Fixed
