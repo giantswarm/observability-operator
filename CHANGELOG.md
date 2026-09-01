@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Enable `otelcol.receiver.vcenter` and `otelcol.exporter.prometheus` on the management cluster of vSphere and Cloud Director installations, to collect provider metrics.
+- Add the `monitoring.vcenter.enabled` Helm value to control vCenter resource metrics collection. Disabled by default, so installations must opt in.
+- Enforce the supported `LogExport.spec.selector` subset at admission, gated by `webhook.validatingWebhooks.logExport.enabled`.
 - Add a LogQL selector validator for expressions used in LogExport
 
 ### Fixed

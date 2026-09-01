@@ -33,10 +33,13 @@ const (
 type LogExportSpec struct {
 	// Selector chooses which log lines are exported, using LogQL syntax.
 	//
-	// Only a subset of LogQL is supported: a stream selector, optional line
-	// filters, and an optional parse-and-filter clause. Aggregations and time
-	// ranges are rejected -- an export is a continuous tee, not a query, so it has
-	// no start or end.
+	// Only a subset the exporter can render is accepted: a stream selector, optional
+	// line filters, an optional "| json", and optional label filters comparing a single
+	// label to a string. Aggregations and time ranges are rejected -- an export is a
+	// continuous tee, not a query, so it has no start or end.
+	//
+	// As in Loki, the stream selector must name at least one label it can match on, so
+	// {job=~".*"} is rejected while {job=~".+"} is accepted.
 	//
 	// The same expression can be pasted into Grafana Explore to see exactly which
 	// lines it matches before committing it.
