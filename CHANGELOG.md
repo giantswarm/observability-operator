@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.75.0] - 2026-09-01
+
 ### Added
 
 - Enable `otelcol.receiver.vcenter` and `otelcol.exporter.prometheus` on the management cluster of vSphere and Cloud Director installations, to collect provider metrics.
@@ -1222,7 +1224,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.74.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.75.0...HEAD
+[0.75.0]: https://github.com/giantswarm/observability-operator/compare/v0.74.1...v0.75.0
 [0.74.1]: https://github.com/giantswarm/observability-operator/compare/v0.74.0...v0.74.1
 [0.74.0]: https://github.com/giantswarm/observability-operator/compare/v0.73.0...v0.74.0
 [0.73.0]: https://github.com/giantswarm/observability-operator/compare/v0.72.3...v0.73.0
