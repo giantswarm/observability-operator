@@ -30,6 +30,26 @@ const SupportedSelectorSubset = `a stream selector ` +
 	`(e.g. {scrape_job="audit-logs"}), optional line filters (|=, !=, |~, !~), ` +
 	`an optional "| json", and optional label filters (e.g. | verb="delete")`
 
+// code identifies a rejection reason in the message, so a customer can quote it and
+// docs/logexport-selectors.md can explain the rationale and the workaround. Codes are
+// stable: append new ones, never renumber and never reuse.
+type code string
+
+const (
+	codeTimeRange      code = "LOGQL001"
+	codeSyntax         code = "LOGQL002"
+	codeNotLogLines    code = "LOGQL003"
+	codeAggregation    code = "LOGQL004"
+	codeNotLogSelector code = "LOGQL005"
+	codePipelineBuild  code = "LOGQL006"
+	codeParser         code = "LOGQL007"
+	codeLabelFilter    code = "LOGQL008"
+	codeStage          code = "LOGQL009"
+	codeLineFilterOr   code = "LOGQL010"
+	codeLineFilterOp   code = "LOGQL011"
+	codeReservedLabel  code = "LOGQL012"
+)
+
 // ValidateSelector reports whether a LogExport selector is a LogQL expression the
 // export pipeline can honour.
 //
@@ -71,9 +91,9 @@ func ParseSelector(selector string) (syntax.LogSelectorExpr, error) {
 		// but `count_over_time({})` would still parse, so an unvalidated probe would
 		// blame a time range that the selector does not contain.
 		if _, rangeErr := syntax.ParseExpr(fmt.Sprintf("count_over_time(%s)", selector)); rangeErr == nil {
-			return nil, unsupported("time ranges are not supported: an export forwards log lines as they arrive, so there is no past window to select from")
+			return nil, unsupported(codeTimeRange, "time ranges are not supported: an export forwards log lines as they arrive, so there is no past window to select from")
 		}
-		return nil, unsupported("not a valid LogQL expression: %v", err)
+		return nil, unsupported(codeSyntax, "not a valid LogQL expression: %v", err)
 	}
 
 	switch e := expr.(type) {
@@ -91,11 +111,11 @@ func ParseSelector(selector string) (syntax.LogSelectorExpr, error) {
 	case *syntax.LiteralExpr, *syntax.VectorExpr:
 		// These satisfy LogSelectorExpr as well as SampleExpr, so they have to be caught
 		// before the case below.
-		return nil, unsupported("%q returns a value rather than log lines", spell(e))
+		return nil, unsupported(codeNotLogLines, "%q returns a value rather than log lines", spell(e))
 	case syntax.SampleExpr:
-		return nil, unsupported("aggregations are not supported: an export is a continuous tee, not a query")
+		return nil, unsupported(codeAggregation, "aggregations are not supported: an export is a continuous tee, not a query")
 	default:
-		return nil, unsupported("not a log selector")
+		return nil, unsupported(codeNotLogSelector, "not a log selector")
 	}
 
 	logSelector := expr.(syntax.LogSelectorExpr)
@@ -104,7 +124,7 @@ func ParseSelector(selector string) (syntax.LogSelectorExpr, error) {
 	// not. An expression that parses but fails to build would reach Alloy and stop every
 	// export on the installation.
 	if _, err := logSelector.Pipeline(); err != nil {
-		return nil, unsupported("not a usable log selector: %v", err)
+		return nil, unsupported(codePipelineBuild, "not a usable log selector: %v", err)
 	}
 	return logSelector, nil
 }
@@ -125,47 +145,46 @@ func checkStages(stages syntax.MultiStageExpr) error {
 	for _, stage := range stages {
 		switch s := stage.(type) {
 		case *syntax.LineFilterExpr:
-			// Passed verbatim into stage.match, except that selection is rendered as a drop
-			// of the *negated* filter. On a positive operator `or` is a real alternation,
-			// which negates only by De Morgan across the chain; ip() has no negated spelling
-			// at all. Neither becomes a drop term by term, and a mistranslation over-exports.
-			// `or` on a negative operator is fine: Loki flattens it into an AND-chain.
+			// The renderer selects by dropping the opposite of each filter, so every filter
+			// needs an opposite. checkLineFilters rejects the forms that have none.
 			if err := checkLineFilters(s); err != nil {
 				return err
 			}
 		case *syntax.LineParserExpr:
 			// Also where regexp, unpack and pattern land.
 			if s.Op != syntax.OpParserTypeJSON || s.Param != "" {
-				return unsupported("the parser %q is not supported: only \"| json\" is", spell(s))
+				return unsupported(codeParser, "the parser %q is not supported: only \"| json\" is", spell(s))
 			}
 		case *syntax.LabelFilterExpr:
-			// Selection is rendered as a drop of the *negated* filter, and a drop can only
-			// spell a string comparison. `| duration > 10s` has no negated stream-selector
-			// form, so there is nothing to render it into.
+			// Same rule: only a string comparison has an opposite the renderer can drop (LOGQL008).
 			m, ok := StringMatcher(s.LabelFilterer)
 			if !ok {
-				return unsupported("the label filter %q is not supported: only string comparisons (=, !=, =~, !~) on a single label are", spell(s))
+				return unsupported(codeLabelFilter, "the label filter %q is not supported: only string comparisons (=, !=, =~, !~) on a single label are", spell(s))
 			}
 			if err := checkLabelName(m.Name); err != nil {
 				return err
 			}
 		default:
-			return unsupported("the stage %q is not supported", spell(s))
+			return unsupported(codeStage, "the stage %q is not supported", spell(s))
 		}
 	}
 	return nil
 }
 
-// checkLineFilters walks a line filter chain, rejecting the forms that have no negated
-// spelling. Left is the previous filter in the chain; Or is set only where the parser kept
-// an alternation, which it does for `|=` and `|~` but not for `!=` and `!~`.
+// checkLineFilters accepts only line filters the renderer can rewrite into a single
+// opposite filter -- `|= "x"` into `!= "x"`, `!~ "y"` into `|~ "y"`. `or` on a positive
+// filter and ip() have no such rewrite (LOGQL010, LOGQL011); `or` on a negative filter
+// does, because Loki flattens `!= "a" or "b"` into `!= "a" != "b"` before we see it.
+//
+// The chain is walked through Left, the previous filter. Or is set only where the parser
+// kept an alternation.
 func checkLineFilters(expr *syntax.LineFilterExpr) error {
 	for e := expr; e != nil; e = e.Left {
 		if e.Or != nil || e.IsOrChild {
-			return unsupported("the line filter %q uses `or`, which cannot be negated term by term", spell(expr))
+			return unsupported(codeLineFilterOr, "the line filter %q uses `or`, which cannot be negated term by term", spell(expr))
 		}
 		if e.Op != "" {
-			return unsupported("the line filter %q uses %s(), which has no negated spelling", spell(expr), e.Op)
+			return unsupported(codeLineFilterOp, "the line filter %q uses %s(), which has no negated spelling", spell(expr), e.Op)
 		}
 	}
 	return nil
@@ -191,12 +210,11 @@ func StringMatcher(f log.LabelFilterer) (*labels.Matcher, bool) {
 	return nil, false
 }
 
-// checkLabelName rejects Loki's internal labels. `__error__` and friends are produced by
-// Loki's query-time parsers and do not exist in the exporter's pipeline, so filtering on
-// them would silently export more than the customer asked for.
+// checkLabelName rejects Loki's internal labels, which the exporter's pipeline never
+// produces and so cannot filter on (LOGQL012).
 func checkLabelName(name string) error {
 	if strings.HasPrefix(name, "__") {
-		return unsupported("the label %q is reserved for Loki internals and is not visible to the exporter", name)
+		return unsupported(codeReservedLabel, "the label %q is reserved for Loki internals and is not visible to the exporter", name)
 	}
 	return nil
 }
@@ -206,6 +224,6 @@ func spell(e syntax.Expr) string {
 	return strings.TrimSpace(e.String())
 }
 
-func unsupported(format string, args ...any) error {
-	return fmt.Errorf("%s; supported is %s", fmt.Sprintf(format, args...), SupportedSelectorSubset)
+func unsupported(c code, format string, args ...any) error {
+	return fmt.Errorf("%s: %s; supported is %s", c, fmt.Sprintf(format, args...), SupportedSelectorSubset)
 }
