@@ -89,6 +89,7 @@ const (
 	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
 	flagMonitoringRulerURL                    = "monitoring-ruler-url"
 	flagMonitoringExemplarsEnabled            = "monitoring-exemplars-enabled"
+	flagMonitoringVCenterEnabled              = "monitoring-vcenter-enabled"
 
 	// Queue configuration flag names
 	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
@@ -272,6 +273,8 @@ func parseFlags() (err error) {
 		"URL to the Mimir ruler API for cleaning up rules on cluster deletion")
 	pflag.BoolVar(&cfg.Monitoring.ExemplarsEnabled, flagMonitoringExemplarsEnabled, true,
 		"Enable exemplar forwarding in the remote write pipeline. Opt-out: enabled by default.")
+	pflag.BoolVar(&cfg.Monitoring.VCenterEnabled, flagMonitoringVCenterEnabled, false,
+		"Enable vCenter resource metrics collection on vSphere and Cloud Director installations. Opt-in: disabled by default.")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
 		"Enable/disable network monitoring in Alloy configuration")
 	pflag.StringVar(&cfg.Monitoring.Gateway.Namespace, flagMonitoringGatewayNamespace, "mimir",
