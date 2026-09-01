@@ -245,7 +245,7 @@ require (
 
 replace (
 	// grafana/loki/v3 needs Grafana's memberlist fork; same replace as giantswarm/logql-lint.
-	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20251126142931-6f9f62ab6f86
+	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20260515134459-1798cf41aca7
 	// Hold alertmanager at Mimir's version; grafana/loki/v3 would otherwise raise it
 	// via MVS and break check-alertmanager-version.sh. We compile no Loki package
 	// that uses alertmanager.
