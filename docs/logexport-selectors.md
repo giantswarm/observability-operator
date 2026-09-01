@@ -1,8 +1,33 @@
 # LogExport selectors
 
-`LogExport.spec.selector` is a LogQL expression that picks which log lines an export forwards. The operator translates it into `loki.process` stages for the exporting agent, so the accepted subset is narrower than what Loki's query API takes: a selector has to be *renderable*, not merely valid.
+A `LogExport` copies selected log lines to a destination outside the observability platform. `spec.selector` is the LogQL expression that picks them:
 
-A validating webhook rejects anything outside that subset at admission. Every rejection carries a `LOGQLnnn` code — look it up in the [error reference](#error-reference) below for the reason and the way around it.
+```yaml
+apiVersion: observability.giantswarm.io/v1alpha1
+kind: LogExport
+metadata:
+  name: audit-logs-to-s3
+spec:
+  selector: '{cluster_id="wc01", scrape_job="audit-logs"} |= "delete" | json | verb!="get"'
+  destination:
+    type: s3
+    s3:
+      bucket: acme-audit-archive
+      region: eu-central-1
+```
+
+The operator translates that selector into `loki.process` stages for the exporting agent, so the accepted subset is narrower than what Loki's query API takes: a selector has to be *renderable*, not merely valid.
+
+A validating webhook checks it when you apply the CR, so a selector outside the subset fails at `kubectl apply` rather than going quiet in the exporter:
+
+```
+The LogExport "audit-logs-to-s3" is invalid: spec.selector: Invalid value:
+"{scrape_job=\"audit-logs\"}[5m]": LOGQL001: time ranges are not supported: an
+export forwards log lines as they arrive, so there is no past window to select
+from; supported is a stream selector (e.g. {scrape_job="audit-logs"}), ...
+```
+
+Look the `LOGQLnnn` code up in the [error reference](#error-reference) for the reason and the way around it.
 
 ## The supported subset
 
@@ -21,16 +46,16 @@ A label filter before the parser matches a stream label; after `| json` it match
 
 ## Why the subset is narrow
 
-Selection is rendered as a **drop of the opposite** of what you wrote, never as a keep. Alloy's `stage.match` defaults to `action = "keep"`, which does not drop non-matching entries — it only gates its nested stages — so a keep-based translation would export every log line in the installation. Sequential drops compose as an AND of keeps, which is the behaviour you want.
+Selection is rendered as a **drop of the opposite** of what you wrote, never as a keep. Sequential drops then compose as an AND of keeps.
 
 The selector above becomes:
 
 ```
-StreamDrops  {cluster_id!="wc01"}
-             {scrape_job!="audit-logs"}
-             {cluster_id="wc01", scrape_job="audit-logs"} != "delete"
-JSONFields   verb
-FieldDrops   {verb="get"}
+drop     {cluster_id!="wc01"}
+drop     {scrape_job!="audit-logs"}
+drop     {cluster_id="wc01", scrape_job="audit-logs"} != "delete"
+extract  verb                                  # promote the JSON field to a label
+drop     {verb="get"}
 ```
 
 Two consequences follow, and between them they explain most of this page:
@@ -67,7 +92,9 @@ The expression does not parse, or names no stream. Loki requires at least one ma
 vector(0)
 ```
 
-The expression is a constant, not a stream of log lines. **Instead:** start from a stream selector.
+The expression is a constant, not a stream of log lines.
+
+**Instead:** start from a stream selector.
 
 ### LOGQL004 — aggregations are not supported
 
