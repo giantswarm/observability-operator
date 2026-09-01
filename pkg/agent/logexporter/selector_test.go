@@ -192,12 +192,12 @@ func TestTranslateRejects(t *testing.T) {
 		{
 			name:     "or line filter",
 			selector: `{scrape_job="audit-logs"} |= "a" or "b"`,
-			wantErr:  "cannot be negated term by term",
+			wantErr:  "uses `or`",
 		},
 		{
 			name:     "ip line filter",
 			selector: `{scrape_job="audit-logs"} |= ip("1.2.3.4")`,
-			wantErr:  "has no negated spelling",
+			wantErr:  "uses ip()",
 		},
 		{
 			name:     "match everything",
@@ -228,7 +228,7 @@ func TestLineFilterTermsGuards(t *testing.T) {
 		wantErr  string
 	}{
 		{`{job="x"} |= "a" or "b"`, "uses `or`"},
-		{`{job="x"} |= ip("1.2.3.4")`, "has no negated spelling"},
+		{`{job="x"} |= ip("1.2.3.4")`, "uses ip()"},
 	} {
 		expr, err := syntax.ParseExpr(tt.selector)
 		if err != nil {

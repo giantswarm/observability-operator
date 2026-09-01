@@ -123,19 +123,19 @@ func negateMatcher(m *labels.Matcher) (*labels.Matcher, error) {
 	return out, nil
 }
 
-// lineFilterTerms returns the negated spelling of each line filter in a chain.
+// lineFilterTerms returns the opposite of each line filter in a chain.
 //
-// `or` chains and ip() filters have no term-by-term negation. Validation rejects them, so
-// the errors below are unreachable through ParseSelector and exist to keep this honest if
-// that ever loosens -- a mistranslation here over-exports.
+// `or` chains and ip() filters are not rewritten here. Validation rejects them, so the
+// errors below are unreachable through ParseSelector and exist to keep this honest if that
+// ever loosens -- a mistranslation here exports the wrong lines.
 func lineFilterTerms(expr *syntax.LineFilterExpr) ([]string, error) {
 	var terms []string
 	for e := expr; e != nil; e = e.Left {
 		if e.Or != nil || e.IsOrChild {
-			return nil, fmt.Errorf("line filter %q uses `or`, which cannot be negated term by term", strings.TrimSpace(expr.String()))
+			return nil, fmt.Errorf("line filter %q uses `or`, which is not rewritable", strings.TrimSpace(expr.String()))
 		}
 		if e.Op != "" {
-			return nil, fmt.Errorf("line filter %q uses %s(), which has no negated spelling", strings.TrimSpace(expr.String()), e.Op)
+			return nil, fmt.Errorf("line filter %q uses ip(), which is not supported", strings.TrimSpace(expr.String()))
 		}
 
 		negated, err := negateLineMatchType(e.Ty)

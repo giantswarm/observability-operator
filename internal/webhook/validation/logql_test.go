@@ -67,13 +67,13 @@ func TestValidateSelector(t *testing.T) {
 		{
 			name:     "or line filter",
 			selector: `{scrape_job="audit-logs"} |= "delete" or "create"`,
-			wantErr:  "cannot be negated term by term",
+			wantErr:  "uses `or`",
 			wantCode: codeLineFilterOr,
 		},
 		{
 			name:     "ip line filter",
 			selector: `{scrape_job="audit-logs"} |= ip("1.2.3.4")`,
-			wantErr:  "has no negated spelling",
+			wantErr:  "uses ip()",
 			wantCode: codeLineFilterOp,
 		},
 		{
@@ -86,7 +86,7 @@ func TestValidateSelector(t *testing.T) {
 		{
 			name:     "or later in a chain",
 			selector: `{scrape_job="audit-logs"} |= "a" |= "b" or "c"`,
-			wantErr:  "cannot be negated term by term",
+			wantErr:  "uses `or`",
 			wantCode: codeLineFilterOr,
 		},
 		{

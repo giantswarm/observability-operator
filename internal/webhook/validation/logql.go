@@ -173,18 +173,18 @@ func checkStages(stages syntax.MultiStageExpr) error {
 
 // checkLineFilters accepts only line filters the renderer can rewrite into a single
 // opposite filter -- `|= "x"` into `!= "x"`, `!~ "y"` into `|~ "y"`. `or` on a positive
-// filter and ip() have no such rewrite (LOGQL010, LOGQL011); `or` on a negative filter
-// does, because Loki flattens `!= "a" or "b"` into `!= "a" != "b"` before we see it.
+// filter and ip() are out (LOGQL010, LOGQL011); `or` on a negative filter is in, because
+// Loki flattens `!= "a" or "b"` into `!= "a" != "b"` before we see it.
 //
 // The chain is walked through Left, the previous filter. Or is set only where the parser
-// kept an alternation.
+// kept an alternation. Op is set only by ip(), the one filter operation LogQL has.
 func checkLineFilters(expr *syntax.LineFilterExpr) error {
 	for e := expr; e != nil; e = e.Left {
 		if e.Or != nil || e.IsOrChild {
-			return unsupported(codeLineFilterOr, "the line filter %q uses `or`, which cannot be negated term by term", spell(expr))
+			return unsupported(codeLineFilterOr, "the line filter %q uses `or`, which the exporter cannot rewrite", spell(expr))
 		}
 		if e.Op != "" {
-			return unsupported(codeLineFilterOp, "the line filter %q uses %s(), which has no negated spelling", spell(expr), e.Op)
+			return unsupported(codeLineFilterOp, "the line filter %q uses ip(), which the exporter does not support", spell(expr))
 		}
 	}
 	return nil
