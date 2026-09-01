@@ -586,6 +586,9 @@ func setupApplication() error {
 		if err = webhookcorev1alpha1.SetupAgentCredentialWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("unable to create webhook (AgentCredential v1alpha1): %w", err)
 		}
+		if err = webhookcorev1alpha1.SetupLogExportWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("unable to create webhook (LogExport v1alpha1): %w", err)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

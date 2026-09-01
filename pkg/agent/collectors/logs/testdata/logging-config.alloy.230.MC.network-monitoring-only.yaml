@@ -90,6 +90,11 @@ alloy:
             ]
           }
         }
+    mounts:
+      extra:
+      # This is needed to allow alloy to create files when using readOnlyRootFilesystem
+      - name: alloy-tmp
+        mountPath: /tmp/alloy
     # We decided to configure the alloy-logs resources as such after some investigation done https://github.com/giantswarm/giantswarm/issues/32655
     resources:
       limits:
@@ -121,6 +126,7 @@ alloy:
       runAsNonRoot: false
       seccompProfile:
         type: Unconfined
+    storagePath: /tmp/alloy
   controller:
     type: daemonset
     hostPID: true
@@ -142,8 +148,13 @@ alloy:
       - name: runlogjournal
         hostPath:
           path: /run/log/journal
+      # The positions files under the storage path must survive a pod restart.
+      # Without them, alloy replays every container log from the oldest entry
+      # the node still holds and Loki rejects the backfill.
       - name: alloy-tmp
-        emptyDir: {}
+        hostPath:
+          path: /var/lib/alloy-logs
+          type: DirectoryOrCreate
   image:
     tag: v1.12.0
   extraObjects:
