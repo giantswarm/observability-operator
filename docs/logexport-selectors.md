@@ -163,11 +163,11 @@ An export forwards lines unchanged, so the stages that reshape a line have nothi
 {scrape_job="audit-logs"} |= "delete" or "create"
 ```
 
-On a positive filter, `or` is a real alternation. Its opposite is a single filter matching neither term, so rewriting it term by term would turn the OR into an AND and export less than you selected.
+The exporter does not support `or` on a positive filter (`|=`, `|~`).
 
 **Instead:** use one regexp. `|~ "delete|create"`.
 
-`or` on a *negative* filter is accepted — Loki flattens `!= "a" or "b"` into `!= "a" != "b"` before the operator sees it, and each part inverts on its own.
+`or` on a negative filter (`!= "a" or "b"`) is accepted — Loki has already flattened it into `!= "a" != "b"` by the time the operator sees it.
 
 ### LOGQL011 — line filter uses `ip()`
 
@@ -175,7 +175,7 @@ On a positive filter, `or` is a real alternation. Its opposite is a single filte
 {scrape_job="audit-logs"} |= ip("1.2.3.4")
 ```
 
-LogQL has no negated `ip()` line filter, so there is nothing to invert it into.
+The exporter does not support `ip()` line filters, in any of the four operators.
 
 **Instead:** match the address as text. `|= "1.2.3.4"`, or a regexp such as `|~ "10\\.0\\.0\\..+"` for a range.
 
