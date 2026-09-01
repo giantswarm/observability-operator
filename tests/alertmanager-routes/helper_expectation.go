@@ -22,6 +22,11 @@ type Alert struct {
 
 	// Labels represents the set of labels representing the alert
 	Labels map[string]string
+
+	// Annotations represents the set of annotations attached to the alert.
+	// Notification templates render these (description, runbook_url,
+	// __dashboardUid__, ...), so they are required to test the rendered output.
+	Annotations map[string]string
 }
 
 // Expectation represents a matcher for an expected HTTP request

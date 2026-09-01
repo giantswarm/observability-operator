@@ -138,6 +138,11 @@ monitoring:
     # Requires Mimir to have exemplar storage enabled (max_global_exemplars_per_user > 0).
     enabled: true
 
+  vcenter:
+    # -- Enable vCenter resource metrics collection on vSphere and Cloud Director installations.
+    # Requires an externally-provided `alloy-vcenter-credentials` Secret in the Alloy namespace.
+    enabled: false
+
   # -- Timeout for Alloy Mimir remote write operations
   mimirRemoteWriteTimeout: "60s"
 
@@ -317,6 +322,9 @@ webhook:
       enabled: true
     # -- Validate AgentCredential CRs
     agentCredential:
+      enabled: true
+    # -- Validate LogExport CRs
+    logExport:
       enabled: true
 
 # Vertical Pod Autoscaler configuration for the operator deployment
