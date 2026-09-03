@@ -179,7 +179,7 @@ func TestRenderValuesAssertsSilentFailures(t *testing.T) {
 // files only ever render the defaults.
 func TestRenderValuesUsesConfig(t *testing.T) {
 	values, err := RenderValues(
-		[]observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit", `{scrape_job="audit-logs"}`, auditBucket)},
+		[]observabilityv1alpha1.LogExport{s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`, auditBucket)},
 		config.LogExportConfig{
 			Replicas:      5,
 			WALSize:       "50Gi",
