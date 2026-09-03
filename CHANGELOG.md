@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Reject `or` on `|=`/`|~` and `ip()` line filters in `LogExport.spec.selector`.
+- Prefix `LogExport.spec.selector` validation errors with a stable error code (`LOGQL001`-`LOGQL012`).
+
 ## [0.75.0] - 2026-09-01
 
 ### Added
