@@ -49,14 +49,4 @@ const (
 	// event carries no cluster identifier, and the body marshaler drops the Loki labels
 	// that would otherwise carry it.
 	ClusterIDField = "gs_cluster_id"
-
-	// Environment variable names for static S3 credentials. otelcol.exporter.awss3 has no
-	// credential arguments at all -- it reads the AWS SDK's default chain -- so these are
-	// the SDK's names rather than a choice of ours.
-	//
-	// The keys a customer has to use inside their credentialsRef Secret are the same two
-	// names, but that contract belongs to whoever reads the Secret: it is documented on
-	// LogExport.spec.destination.s3.credentialsRef and published in the CRD schema.
-	AccessKeyIDEnv     = "AWS_ACCESS_KEY_ID"
-	SecretAccessKeyEnv = "AWS_SECRET_ACCESS_KEY" //nolint:gosec // G101: an environment variable name, not a credential.
 )

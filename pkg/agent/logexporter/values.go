@@ -35,12 +35,6 @@ func init() {
 	alloyValuesTemplate = template.Must(template.New("alloy-logexporter-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyValues))
 }
 
-// Credentials are the resolved contents of a destination's credentialsRef Secret.
-type Credentials struct {
-	AccessKeyID     string
-	SecretAccessKey string
-}
-
 // export is one LogExport translated into everything the templates need.
 type export struct {
 	// Slug suffixes every Alloy component belonging to this export. It has to be stable:
@@ -114,38 +108,6 @@ func RenderValues(exports []observabilityv1alpha1.LogExport) (string, error) {
 		WALDirectory: WALDirectory,
 		WALSize:      WALSize,
 	})
-}
-
-// SecretEnv returns the environment the exporter needs for static credentials, keyed by
-// variable name, ready for common.GenerateSecretData.
-//
-// The awss3 exporter has no credential fields: it uses the AWS SDK's default chain, which
-// reads the process environment. Environment variables are per-container, not per
-// exporter, so only one export can carry static credentials. Additional destinations have
-// to authenticate by workload identity with roleARN, which is per exporter.
-func SecretEnv(exports []observabilityv1alpha1.LogExport, creds map[client.ObjectKey]Credentials) (map[string]string, error) {
-	env := map[string]string{}
-	var credentialed string
-
-	for _, e := range sorted(exports) {
-		if e.Spec.Destination.S3 == nil || e.Spec.Destination.S3.CredentialsRef == nil {
-			continue
-		}
-		ref := client.ObjectKey{Namespace: e.Namespace, Name: e.Name}
-		if credentialed != "" {
-			return nil, fmt.Errorf("%s and %s both set spec.destination.s3.credentialsRef, but static credentials reach the exporter as environment variables and cannot be set per destination: use roleARN on all but one", credentialed, ref)
-		}
-		credentialed = ref.String()
-
-		c, ok := creds[ref]
-		if !ok {
-			return nil, fmt.Errorf("no resolved credentials for %s", ref)
-		}
-		env[AccessKeyIDEnv] = c.AccessKeyID
-		env[SecretAccessKeyEnv] = c.SecretAccessKey
-	}
-
-	return env, nil
 }
 
 func buildExports(exports []observabilityv1alpha1.LogExport) ([]export, error) {
