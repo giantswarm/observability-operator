@@ -505,6 +505,32 @@
                 }
             }
         },
+        "logExport": {
+            "type": "object",
+            "description": "Sizing for alloy-logexporter, the installation-wide log export app",
+            "properties": {
+                "replicas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of alloy-logexporter replicas"
+                },
+                "wal": {
+                    "type": "object",
+                    "description": "Write-ahead log holding the sending queue",
+                    "properties": {
+                        "size": { "type": "string", "description": "Size of the per-replica WAL volume (e.g., '10Gi')" }
+                    }
+                },
+                "exportTimeout": {
+                    "type": "string",
+                    "description": "Durability window for uploads; a destination outage longer than this loses data (e.g., '5m')"
+                },
+                "resources": {
+                    "type": "object",
+                    "description": "Container resources for alloy-logexporter"
+                }
+            }
+        },
         "webhook": {
             "type": "object",
             "properties": {

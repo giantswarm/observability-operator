@@ -10,10 +10,13 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
+	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 var (
@@ -31,8 +34,19 @@ var (
 )
 
 func init() {
-	alloyConfigTemplate = template.Must(template.New("alloy-logexporter.alloy").Funcs(sprig.FuncMap()).Parse(alloyConfig))
-	alloyValuesTemplate = template.Must(template.New("alloy-logexporter-config.yaml").Funcs(sprig.FuncMap()).Parse(alloyValues))
+	// sprig ships toJson but not toYaml, and a Kubernetes type rendered as flow-style
+	// JSON makes the golden files unreadable.
+	funcs := sprig.FuncMap()
+	funcs["toYaml"] = func(v any) (string, error) {
+		out, err := yaml.Marshal(v)
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSuffix(string(out), "\n"), nil
+	}
+
+	alloyConfigTemplate = template.Must(template.New("alloy-logexporter.alloy").Funcs(funcs).Parse(alloyConfig))
+	alloyValuesTemplate = template.Must(template.New("alloy-logexporter-config.yaml").Funcs(funcs).Parse(alloyValues))
 }
 
 // export is one LogExport translated into everything the templates need.
@@ -52,13 +66,13 @@ type export struct {
 //
 // Order is not taken from the caller: exports are sorted so that the same set of
 // resources always renders byte-identically.
-func RenderValues(exports []observabilityv1alpha1.LogExport) (string, error) {
+func RenderValues(exports []observabilityv1alpha1.LogExport, cfg config.LogExportConfig) (string, error) {
 	rendered, err := buildExports(exports)
 	if err != nil {
 		return "", err
 	}
 
-	config, err := render(alloyConfigTemplate, struct {
+	alloy, err := render(alloyConfigTemplate, struct {
 		Exports           []export
 		Port              int
 		WALDirectory      string
@@ -76,7 +90,7 @@ func RenderValues(exports []observabilityv1alpha1.LogExport) (string, error) {
 		Port:              Port,
 		WALDirectory:      WALDirectory,
 		ClusterIDField:    ClusterIDField,
-		ExportTimeout:     ExportTimeout,
+		ExportTimeout:     cfg.ExportTimeout,
 		QueueSize:         QueueSize,
 		QueueConsumers:    QueueConsumers,
 		BatchMinSize:      BatchMinSize,
@@ -89,6 +103,11 @@ func RenderValues(exports []observabilityv1alpha1.LogExport) (string, error) {
 		return "", err
 	}
 
+	resources := DefaultResources
+	if cfg.Resources != nil {
+		resources = *cfg.Resources
+	}
+
 	return render(alloyValuesTemplate, struct {
 		AlloyConfig  string
 		AppName      string
@@ -98,15 +117,17 @@ func RenderValues(exports []observabilityv1alpha1.LogExport) (string, error) {
 		WALMountPath string
 		WALDirectory string
 		WALSize      string
+		Resources    corev1.ResourceRequirements
 	}{
-		AlloyConfig:  config,
+		AlloyConfig:  alloy,
 		AppName:      apps.AlloyLogExporterAppName,
 		Port:         Port,
-		Replicas:     Replicas,
+		Replicas:     cfg.Replicas,
 		RunAsUser:    RunAsUser,
 		WALMountPath: WALMountPath,
 		WALDirectory: WALDirectory,
-		WALSize:      WALSize,
+		WALSize:      cfg.WALSize,
+		Resources:    resources,
 	})
 }
 

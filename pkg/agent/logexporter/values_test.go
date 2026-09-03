@@ -1,6 +1,7 @@
 package logexporter
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,9 +10,11 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 // Fixtures asserted by more than one case. Named only because they repeat; the one-off
@@ -41,6 +44,17 @@ func s3Export(namespace, name, selector string, s3 observabilityv1alpha1.S3Desti
 var auditBucket = observabilityv1alpha1.S3Destination{
 	Bucket: auditBucketName,
 	Region: s3Region,
+}
+
+// testLogExportConfig is the operator configuration the golden files were rendered with.
+// It carries the chart defaults, so a change to those shows up as a golden diff rather
+// than passing unnoticed.
+func testLogExportConfig() config.LogExportConfig {
+	return config.LogExportConfig{
+		Replicas:      2,
+		WALSize:       "10Gi",
+		ExportTimeout: "5m",
+	}
 }
 
 func TestRenderValues(t *testing.T) {
@@ -97,7 +111,7 @@ func TestRenderValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := RenderValues(tt.exports)
+			result, err := RenderValues(tt.exports, testLogExportConfig())
 			if err != nil {
 				t.Fatalf("RenderValues() failed: %v", err)
 			}
@@ -125,13 +139,13 @@ func TestRenderValues(t *testing.T) {
 	}
 }
 
-// TestRenderValuesAssertsSilentFailures pins the settings from 01-findings.md that fail
-// silently when dropped: without them the export either misses data or costs a fortune,
-// and nothing in the pipeline reports it.
+// TestRenderValuesAssertsSilentFailures pins the settings that fail silently when
+// dropped: without them the export either misses data or costs a fortune, and nothing in
+// the pipeline reports it.
 func TestRenderValuesAssertsSilentFailures(t *testing.T) {
 	result, err := RenderValues([]observabilityv1alpha1.LogExport{
 		s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`, auditBucket),
-	})
+	}, testLogExportConfig())
 	if err != nil {
 		t.Fatalf("RenderValues() failed: %v", err)
 	}
@@ -139,13 +153,13 @@ func TestRenderValuesAssertsSilentFailures(t *testing.T) {
 	required := map[string]string{
 		`action              = "drop"`:                         "selection has to be a drop of the negated selector; a keep exports every line in the installation",
 		`selector            = "{scrape_job!=\"audit-logs\"}"`: "the drop selector has to be the negation of the customer's",
-		"batch {":                       "without a batch block every log line becomes its own S3 object",
-		`sizer             = "items"`:   "the queue counts requests by default, which is under a second of buffer",
-		"block_on_overflow = true":      "overflow has to be backpressure, not a silent drop",
-		`timeout = "5m"`:                "the 5s default makes any outage over 5s permanent silent loss",
-		`s3_partition_timezone = "UTC"`: "partitions otherwise shift with the pod's timezone",
-		"gs_cluster_id":                 "audit events carry no cluster identifier and body drops the Loki labels",
-		"stabilityLevel: experimental":  "Alloy refuses to load an awss3 exporter without it",
+		"batch {":                     "without a batch block every log line becomes its own S3 object",
+		`sizer             = "items"`: "the queue counts requests by default, which is under a second of buffer",
+		"block_on_overflow = true":    "overflow has to be backpressure, not a silent drop",
+		fmt.Sprintf("timeout = %q", testLogExportConfig().ExportTimeout): "the 5s default makes any outage over 5s permanent silent loss",
+		`s3_partition_timezone = "UTC"`:                                  "partitions otherwise shift with the pod's timezone",
+		"gs_cluster_id":                                                  "audit events carry no cluster identifier and body drops the Loki labels",
+		"stabilityLevel: experimental":                                   "Alloy refuses to load an awss3 exporter without it",
 	}
 	for snippet, why := range required {
 		if !strings.Contains(result, snippet) {
@@ -160,6 +174,42 @@ func TestRenderValuesAssertsSilentFailures(t *testing.T) {
 	}
 }
 
+// TestRenderValuesUsesConfig checks that the configurable values actually reach the
+// document. Nothing else would catch a field wired to the wrong template key: the golden
+// files only ever render the defaults.
+func TestRenderValuesUsesConfig(t *testing.T) {
+	values, err := RenderValues(
+		[]observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit", `{scrape_job="audit-logs"}`, auditBucket)},
+		config.LogExportConfig{
+			Replicas:      5,
+			WALSize:       "50Gi",
+			ExportTimeout: "30m",
+			Resources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("RenderValues() failed: %v", err)
+	}
+
+	for _, want := range []string{
+		"replicas: 5",
+		`storage: "50Gi"`,
+		`timeout = "30m"`,
+		"memory: 2Gi",
+	} {
+		if !strings.Contains(values, want) {
+			t.Errorf("rendered values do not contain %q", want)
+		}
+	}
+	// The defaults must be replaced, not merged with the configured resources. Asserting a
+	// default *value*, since the surrounding Kyverno comment mentions the key names.
+	if strings.Contains(values, "cpu: 100m") {
+		t.Error("rendered values still carry the default resources")
+	}
+}
+
 // TestRenderValuesIsValidYAML checks the two-stage nesting: the river config is rendered
 // first and then embedded as a string in the values document, so an indentation slip
 // produces a values file Flux cannot parse.
@@ -167,7 +217,7 @@ func TestRenderValuesIsValidYAML(t *testing.T) {
 	values, err := RenderValues([]observabilityv1alpha1.LogExport{
 		s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"} | json | verb="delete"`, auditBucket),
 		s3Export("org-fleetio", "teleport", `{scrape_job="teleport.giantswarm.io"}`, auditBucket),
-	})
+	}, testLogExportConfig())
 	if err != nil {
 		t.Fatalf("RenderValues() failed: %v", err)
 	}
@@ -251,7 +301,7 @@ func TestRenderValuesErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := RenderValues(tt.exports)
+			_, err := RenderValues(tt.exports, testLogExportConfig())
 			if err == nil {
 				t.Fatalf("RenderValues() succeeded, expected an error about %q", tt.wantErr)
 			}

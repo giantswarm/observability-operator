@@ -16,6 +16,9 @@ type Config struct {
 	Monitoring MonitoringConfig
 	Tracing    TracingConfig
 
+	// LogExport sizes alloy-logexporter, the installation-wide log archiving app
+	LogExport LogExportConfig
+
 	// HTTP client timeouts for external API calls
 	HTTP HTTPConfig
 
@@ -106,6 +109,9 @@ func (c Config) Validate() error {
 	}
 	if err := c.Cluster.Validate(); err != nil {
 		return fmt.Errorf("cluster config validation failed: %w", err)
+	}
+	if err := c.LogExport.Validate(); err != nil {
+		return fmt.Errorf("log export config validation failed: %w", err)
 	}
 	return nil
 }

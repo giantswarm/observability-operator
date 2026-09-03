@@ -199,6 +199,38 @@ logging:
     # -- Name of the HTTPRoute auth secret in the Loki gateway namespace
     httprouteSecretName: "loki-gateway-httproute-auth"
 
+# Sizing for alloy-logexporter, the installation-wide app that copies selected logs to a
+# destination outside the platform. What it exports is driven by LogExport resources, so
+# this section only sizes it -- deliberately not gated by `logging.enabled`, which controls
+# cluster log collection.
+logExport:
+  # -- Number of alloy-logexporter replicas. Pushes are load-balanced to one replica, so
+  # replicas add capacity without duplicating records.
+  replicas: 2
+
+  wal:
+    # -- Per-replica volume holding the sending queue. It only has to hold what accumulates
+    # while the destination is unavailable, so size it as the rate at which selected logs
+    # arrive multiplied by `exportTimeout` -- not as peak throughput.
+    size: 10Gi
+
+  # -- Durability window for uploads. The exporter does not expose retry_on_failure, so
+  # this is a hard ceiling: a destination outage longer than this loses data permanently.
+  exportTimeout: 5m
+
+  # -- Container resources for alloy-logexporter. ephemeral-storage is required by the
+  # require-emptydir-requests-and-limits Kyverno policy, because the container mounts the
+  # alloy-tmp emptyDir.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 400Mi
+      ephemeral-storage: 1Gi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+      ephemeral-storage: 2Gi
+
 # Resource and security configuration for the operator pod.
 # Defaults are appropriate for most deployments.
 operator:

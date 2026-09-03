@@ -1,7 +1,17 @@
 package logexporter
 
-// Tuning that is not exposed on the CRD. Every value here is set to a specific measured
-// failure, so change them only with the same kind of evidence.
+import (
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+)
+
+// Tuning that is neither on the CRD nor in the operator's configuration. Every value
+// here is set to a specific measured failure, and getting one wrong loses data silently
+// rather than merely performing differently, so change them only with the same kind of
+// evidence.
+//
+// Capacity and durability -- replicas, WAL size, the export timeout, container resources
+// -- are installation-wide configuration instead: see config.LogExportConfig.
 const (
 	// Port is the push endpoint mirrored requests arrive on. It must match the chart's
 	// extraPorts entry and the mirror backendRef.
@@ -11,22 +21,9 @@ const (
 	// is a per-replica PVC: the WAL is what carries buffered records across a pod restart.
 	WALMountPath = "/var/lib/alloy"
 	WALDirectory = WALMountPath + "/wal"
-	// WALSize only has to hold what accumulates while the destination is unavailable, so
-	// size it as the rate at which selected logs arrive times ExportTimeout -- not as peak
-	// throughput.
-	WALSize = "10Gi"
 
 	// RunAsUser is the chart's Alloy user, needed as fsGroup so a fresh PVC is writable.
 	RunAsUser = 473
-
-	// Replicas: pushes are load-balanced to one replica, so replicas add capacity without
-	// duplicating records.
-	Replicas = 2
-
-	// ExportTimeout is the durability window. The exporter does not expose
-	// retry_on_failure and it is disabled, so this is a hard ceiling on the AWS SDK's own
-	// retries: a destination outage longer than this loses data permanently.
-	ExportTimeout = "5m"
 
 	// QueueSize is in items because the queue holds one entry per Loki entry. The default
 	// of 1000 requests is under a second of buffer at installation scale and overflows
@@ -41,7 +38,8 @@ const (
 	BatchMaxSize      = 10000
 	BatchFlushTimeout = "60s"
 
-	// Retries inside ExportTimeout.
+	// Retries within the export timeout. Once it elapses the exporter gives up, so
+	// raising these past the configured timeout buys nothing.
 	RetryMaxAttempts = 10
 	RetryMaxBackoff  = "5m"
 
@@ -50,3 +48,19 @@ const (
 	// that would otherwise carry it.
 	ClusterIDField = "gs_cluster_id"
 )
+
+// DefaultResources is the exporter container's sizing when the operator is configured
+// with none. ephemeral-storage is required by the require-emptydir-requests-and-limits
+// Kyverno policy, because the container mounts the alloy-tmp emptyDir.
+var DefaultResources = corev1.ResourceRequirements{
+	Requests: corev1.ResourceList{
+		corev1.ResourceCPU:              resource.MustParse("100m"),
+		corev1.ResourceMemory:           resource.MustParse("400Mi"),
+		corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
+	},
+	Limits: corev1.ResourceList{
+		corev1.ResourceCPU:              resource.MustParse("1"),
+		corev1.ResourceMemory:           resource.MustParse("1Gi"),
+		corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+	},
+}
