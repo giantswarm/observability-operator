@@ -29,6 +29,7 @@ spec:
         - --controllers-cluster-enabled={{ $.Values.operator.controllers.cluster.enabled }}
         - --controllers-dashboard-enabled={{ $.Values.operator.controllers.dashboard.enabled }}
         - --controllers-grafana-organization-enabled={{ $.Values.operator.controllers.grafanaOrganization.enabled }}
+        - --controllers-log-export-enabled={{ $.Values.operator.controllers.logExport.enabled }}
         - --grafana-url={{ $.Values.grafana.url }}
         - --grafana-client-retries={{ $.Values.grafana.clientRetries }}
         - --grafana-admin-secret-namespace={{ $.Values.grafana.adminSecretNamespace }}

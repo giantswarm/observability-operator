@@ -168,6 +168,30 @@ rules:
       - get
       - patch
       - update
+  - apiGroups:
+      - observability.giantswarm.io
+    resources:
+      - logexports
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - observability.giantswarm.io
+    resources:
+      - logexports/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - observability.giantswarm.io
+    resources:
+      - logexports/status
+    verbs:
+      - get
+      - patch
+      - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

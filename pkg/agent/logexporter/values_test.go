@@ -17,8 +17,11 @@ import (
 // Fixtures asserted by more than one case. Named only because they repeat; the one-off
 // values below stay inline so each case still reads on its own.
 const (
-	auditBucketName = "audit-export"
-	s3Region        = "eu-west-2"
+	auditBucketName    = "audit-export"
+	teleportBucketName = "teleport-archive"
+	s3Region           = "eu-west-2"
+	auditExportName    = "audit"
+	platformNamespace  = "giantswarm"
 )
 
 // s3Export builds a LogExport with an S3 destination, for overriding per test.
@@ -48,18 +51,18 @@ func TestRenderValues(t *testing.T) {
 	}{
 		{
 			name:       "minimal selector",
-			exports:    []observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit", `{scrape_job="audit-logs"}`, auditBucket)},
+			exports:    []observabilityv1alpha1.LogExport{s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`, auditBucket)},
 			goldenPath: "alloy-logexporter-config.minimal.yaml",
 		},
 		{
 			name: "parse and filter",
-			exports: []observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit",
+			exports: []observabilityv1alpha1.LogExport{s3Export(platformNamespace, auditExportName,
 				`{scrape_job="audit-logs"} | json | verb="delete" | user=~"admin.*"`, auditBucket)},
 			goldenPath: "alloy-logexporter-config.parse-and-filter.yaml",
 		},
 		{
 			name: "s3 options",
-			exports: []observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit", `{scrape_job="audit-logs"}`,
+			exports: []observabilityv1alpha1.LogExport{s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`,
 				observabilityv1alpha1.S3Destination{
 					Bucket:         auditBucketName,
 					Region:         "us-east-1",
@@ -75,14 +78,14 @@ func TestRenderValues(t *testing.T) {
 			exports: []observabilityv1alpha1.LogExport{
 				// Deliberately out of order: rendering sorts, so the output is stable.
 				s3Export("org-fleetio", "teleport", `{scrape_job="teleport.giantswarm.io"}`,
-					observabilityv1alpha1.S3Destination{Bucket: "teleport-archive", Region: s3Region}),
-				s3Export("giantswarm", "audit", `{scrape_job="audit-logs"}`, auditBucket),
+					observabilityv1alpha1.S3Destination{Bucket: teleportBucketName, Region: s3Region}),
+				s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`, auditBucket),
 			},
 			goldenPath: "alloy-logexporter-config.two-exports.yaml",
 		},
 		{
 			name: "credentialsRef does not change the values document",
-			exports: []observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit", `{scrape_job="audit-logs"}`,
+			exports: []observabilityv1alpha1.LogExport{s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`,
 				observabilityv1alpha1.S3Destination{
 					Bucket:         auditBucketName,
 					Region:         s3Region,
@@ -127,7 +130,7 @@ func TestRenderValues(t *testing.T) {
 // and nothing in the pipeline reports it.
 func TestRenderValuesAssertsSilentFailures(t *testing.T) {
 	result, err := RenderValues([]observabilityv1alpha1.LogExport{
-		s3Export("giantswarm", "audit", `{scrape_job="audit-logs"}`, auditBucket),
+		s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`, auditBucket),
 	})
 	if err != nil {
 		t.Fatalf("RenderValues() failed: %v", err)
@@ -162,7 +165,7 @@ func TestRenderValuesAssertsSilentFailures(t *testing.T) {
 // produces a values file Flux cannot parse.
 func TestRenderValuesIsValidYAML(t *testing.T) {
 	values, err := RenderValues([]observabilityv1alpha1.LogExport{
-		s3Export("giantswarm", "audit", `{scrape_job="audit-logs"} | json | verb="delete"`, auditBucket),
+		s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"} | json | verb="delete"`, auditBucket),
 		s3Export("org-fleetio", "teleport", `{scrape_job="teleport.giantswarm.io"}`, auditBucket),
 	})
 	if err != nil {
@@ -217,7 +220,7 @@ func TestRenderValuesErrors(t *testing.T) {
 		{
 			name: "loki destination",
 			exports: []observabilityv1alpha1.LogExport{{
-				ObjectMeta: metav1.ObjectMeta{Name: "to-loki", Namespace: "giantswarm"},
+				ObjectMeta: metav1.ObjectMeta{Name: "to-loki", Namespace: platformNamespace},
 				Spec: observabilityv1alpha1.LogExportSpec{
 					Selector: `{scrape_job="audit-logs"}`,
 					Destination: observabilityv1alpha1.LogExportDestination{
@@ -240,7 +243,7 @@ func TestRenderValuesErrors(t *testing.T) {
 			// One case is enough: the selector subset is validation's to police, and
 			// selector_test.go covers the translation.
 			name: "selector rejected by validation",
-			exports: []observabilityv1alpha1.LogExport{s3Export("giantswarm", "audit",
+			exports: []observabilityv1alpha1.LogExport{s3Export(platformNamespace, auditExportName,
 				`sum by (verb) (rate({scrape_job="audit-logs"}[5m]))`, auditBucket)},
 			wantErr: "aggregations are not supported",
 		},

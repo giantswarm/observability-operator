@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reject `or` on `|=`/`|~` and `ip()` line filters in `LogExport.spec.selector`.
 - Prefix `LogExport.spec.selector` validation errors with a stable error code (`LOGQL001`-`LOGQL012`).
 - Add rendering of the `alloy-logexporter` Helm values from `LogExport` resources. Rendering only, no controller.
+- Add the `LogExport` controller, writing the `alloy-logexporter` ConfigMap and Secret. Gated by `operator.controllers.logExport.enabled` (default `true`).
 
 ## [0.75.0] - 2026-09-01
 

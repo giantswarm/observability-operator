@@ -127,6 +127,7 @@ rules:
   resources:
   - agentcredentials/finalizers
   - grafanaorganizations/finalizers
+  - logexports/finalizers
   verbs:
   - update
 - apiGroups:
@@ -134,7 +135,18 @@ rules:
   resources:
   - agentcredentials/status
   - grafanaorganizations/status
+  - logexports/status
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - observability.giantswarm.io
+  resources:
+  - logexports
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch

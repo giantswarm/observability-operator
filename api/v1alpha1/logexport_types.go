@@ -6,6 +6,12 @@ import (
 )
 
 const (
+	// LogExportFinalizer ensures the exporter configuration is re-rendered without
+	// this export before the resource goes away. The rendered values cover every
+	// LogExport at once, so a deletion that skipped this would leave the removed
+	// export still configured.
+	LogExportFinalizer = "observability.giantswarm.io/logexport"
+
 	// Condition types set on LogExportStatus.
 
 	// LogExportConditionReady is true once the export pipeline is configured and

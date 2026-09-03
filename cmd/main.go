@@ -48,6 +48,7 @@ const (
 	flagOperatorControllersClusterEnabled             = "controllers-cluster-enabled"
 	flagOperatorControllersDashboardEnabled           = "controllers-dashboard-enabled"
 	flagOperatorControllersGrafanaOrganizationEnabled = "controllers-grafana-organization-enabled"
+	flagOperatorControllersLogExportEnabled           = "controllers-log-export-enabled"
 
 	flagMetricsBindAddress     = "metrics-bind-address"
 	flagMetricsCertPath        = "metrics-cert-path"
@@ -205,6 +206,8 @@ func parseFlags() (err error) {
 		"Enable the dashboard controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.GrafanaOrganization.Enabled, flagOperatorControllersGrafanaOrganizationEnabled, true,
 		"Enable the grafana organization controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.LogExport.Enabled, flagOperatorControllersLogExportEnabled, true,
+		"Enable the log export controller which reconciles LogExport resources.")
 	pflag.StringVar(&cfg.Operator.MetricsAddr, flagMetricsBindAddress, ":8080",
 		"The address the metric endpoint binds to.")
 	pflag.StringVar(&cfg.Operator.ProbeAddr, flagHealthProbeBindAddress, ":8081",
@@ -544,6 +547,14 @@ func setupApplication() error {
 		err = controller.SetupGrafanaOrganizationReconciler(mgr, cfg, grafanaClientGen)
 		if err != nil {
 			return fmt.Errorf("unable to setup controller (GrafanaOrganizationReconciler): %w", err)
+		}
+	}
+
+	if cfg.Operator.Controllers.LogExport.Enabled {
+		// Setup controller for the LogExport resource.
+		err = controller.SetupLogExportReconciler(mgr, cfg)
+		if err != nil {
+			return fmt.Errorf("unable to setup controller (LogExportReconciler): %w", err)
 		}
 	}
 
