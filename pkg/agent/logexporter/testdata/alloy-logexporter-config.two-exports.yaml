@@ -119,12 +119,19 @@ alloy:
         // A Kubernetes audit event carries no cluster identifier of its own, and the `body`
         // marshaler writes only the log line, dropping every Loki label. Without this the archive
         // cannot be attributed to a cluster.
+        //
+        // The statement drops the closing brace and appends a field, so it is guarded to run only
+        // on a JSON object. A selector may legitimately match a stream that is not JSON -- plain
+        // application logs, for one -- and without the guard such a line loses its last character
+        // and gains a JSON fragment. Nothing errors: the surgery simply succeeds on the wrong
+        // input. A line that is not an object passes through unchanged and carries no cluster id,
+        // which is the honest outcome, since it has nowhere to put one.
         otelcol.processor.transform "inject_giantswarm_audit" {
         	error_mode = "ignore"
         	log_statements {
         		context = "log"
         		statements = [
-        			`set(log.body, Concat([Substring(log.body, 0, Len(log.body) - 1), ",\"gs_cluster_id\":\"", log.attributes["cluster_id"], "\"}"], ""))`,
+        			`set(log.body, Concat([Substring(log.body, 0, Len(log.body) - 1), ",\"gs_cluster_id\":\"", log.attributes["cluster_id"], "\"}"], "")) where IsMatch(log.body, "^\\{.*\\}$")`,
         		]
         	}
         	output {
@@ -198,12 +205,19 @@ alloy:
         // A Kubernetes audit event carries no cluster identifier of its own, and the `body`
         // marshaler writes only the log line, dropping every Loki label. Without this the archive
         // cannot be attributed to a cluster.
+        //
+        // The statement drops the closing brace and appends a field, so it is guarded to run only
+        // on a JSON object. A selector may legitimately match a stream that is not JSON -- plain
+        // application logs, for one -- and without the guard such a line loses its last character
+        // and gains a JSON fragment. Nothing errors: the surgery simply succeeds on the wrong
+        // input. A line that is not an object passes through unchanged and carries no cluster id,
+        // which is the honest outcome, since it has nowhere to put one.
         otelcol.processor.transform "inject_org_fleetio_teleport" {
         	error_mode = "ignore"
         	log_statements {
         		context = "log"
         		statements = [
-        			`set(log.body, Concat([Substring(log.body, 0, Len(log.body) - 1), ",\"gs_cluster_id\":\"", log.attributes["cluster_id"], "\"}"], ""))`,
+        			`set(log.body, Concat([Substring(log.body, 0, Len(log.body) - 1), ",\"gs_cluster_id\":\"", log.attributes["cluster_id"], "\"}"], "")) where IsMatch(log.body, "^\\{.*\\}$")`,
         		]
         	}
         	output {

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Inject `gs_cluster_id` only into log lines that are JSON objects, so a selector matching a non-JSON stream no longer corrupts the exported line.
+
 ### Added
 
 - Reject `or` on `|=`/`|~` and `ip()` line filters in `LogExport.spec.selector`.
