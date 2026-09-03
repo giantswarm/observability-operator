@@ -141,8 +141,8 @@ func SecretEnv(exports []observabilityv1alpha1.LogExport, creds map[client.Objec
 		if !ok {
 			return nil, fmt.Errorf("no resolved credentials for %s", ref)
 		}
-		env[AccessKeyIDKey] = c.AccessKeyID
-		env[SecretAccessKeyKey] = c.SecretAccessKey
+		env[AccessKeyIDEnv] = c.AccessKeyID
+		env[SecretAccessKeyEnv] = c.SecretAccessKey
 	}
 
 	return env, nil

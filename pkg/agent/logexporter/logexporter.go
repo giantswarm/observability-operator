@@ -11,7 +11,9 @@ const (
 	// is a per-replica PVC: the WAL is what carries buffered records across a pod restart.
 	WALMountPath = "/var/lib/alloy"
 	WALDirectory = WALMountPath + "/wal"
-	// WALSize is sized for rate x ExportTimeout, not for throughput.
+	// WALSize only has to hold what accumulates while the destination is unavailable, so
+	// size it as the rate at which selected logs arrive times ExportTimeout -- not as peak
+	// throughput.
 	WALSize = "10Gi"
 
 	// RunAsUser is the chart's Alloy user, needed as fsGroup so a fresh PVC is writable.
@@ -48,9 +50,13 @@ const (
 	// that would otherwise carry it.
 	ClusterIDField = "gs_cluster_id"
 
-	// Credential keys read from an S3 destination's credentialsRef Secret, and the
-	// environment variable names the AWS SDK's default chain looks for. They are the same
-	// names, which is why they appear once.
-	AccessKeyIDKey     = "AWS_ACCESS_KEY_ID"
-	SecretAccessKeyKey = "AWS_SECRET_ACCESS_KEY" //nolint:gosec // G101: a key name, not a credential.
+	// Environment variable names for static S3 credentials. otelcol.exporter.awss3 has no
+	// credential arguments at all -- it reads the AWS SDK's default chain -- so these are
+	// the SDK's names rather than a choice of ours.
+	//
+	// The keys a customer has to use inside their credentialsRef Secret are the same two
+	// names, but that contract belongs to whoever reads the Secret: it is documented on
+	// LogExport.spec.destination.s3.credentialsRef and published in the CRD schema.
+	AccessKeyIDEnv     = "AWS_ACCESS_KEY_ID"
+	SecretAccessKeyEnv = "AWS_SECRET_ACCESS_KEY" //nolint:gosec // G101: an environment variable name, not a credential.
 )

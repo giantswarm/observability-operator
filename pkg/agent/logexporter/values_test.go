@@ -283,7 +283,7 @@ func TestSecretEnv(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SecretEnv() failed: %v", err)
 		}
-		want := map[string]string{AccessKeyIDKey: testAccessKeyID, SecretAccessKeyKey: "s3cr3t"}
+		want := map[string]string{AccessKeyIDEnv: testAccessKeyID, SecretAccessKeyEnv: "s3cr3t"}
 		if diff := cmp.Diff(want, env); diff != "" {
 			t.Errorf("SecretEnv() mismatch (-want +got):\n%s", diff)
 		}
@@ -304,7 +304,7 @@ func TestSecretEnv(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SecretEnv() failed: %v", err)
 		}
-		if env[AccessKeyIDKey] != testAccessKeyID {
+		if env[AccessKeyIDEnv] != testAccessKeyID {
 			t.Errorf("SecretEnv() lost the credentials: %v", env)
 		}
 	})
