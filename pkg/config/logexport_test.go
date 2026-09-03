@@ -6,7 +6,14 @@ import (
 )
 
 func TestLogExportConfigValidate(t *testing.T) {
-	valid := LogExportConfig{Replicas: 2, WALSize: "10Gi", ExportTimeout: "5m"}
+	valid := LogExportConfig{ //nolint:gosec // G101: object names, not credentials.
+		Namespace:     "giantswarm",
+		ConfigMapName: "alloy-logexporter-config",
+		SecretName:    "alloy-logexporter-secret",
+		Replicas:      2,
+		WALSize:       "10Gi",
+		ExportTimeout: "5m",
+	}
 
 	tests := []struct {
 		name string
@@ -18,6 +25,21 @@ func TestLogExportConfigValidate(t *testing.T) {
 		{
 			name:   "defaults",
 			mutate: func(*LogExportConfig) {},
+		},
+		{
+			name:    "no namespace",
+			mutate:  func(c *LogExportConfig) { c.Namespace = "" },
+			wantErr: "namespace must be set",
+		},
+		{
+			name:    "no configmap name",
+			mutate:  func(c *LogExportConfig) { c.ConfigMapName = "" },
+			wantErr: "configmap name must be set",
+		},
+		{
+			name:    "no secret name",
+			mutate:  func(c *LogExportConfig) { c.SecretName = "" },
+			wantErr: "secret name must be set",
 		},
 		{
 			name:    "zero replicas",

@@ -155,6 +155,9 @@ const (
 	flagOTLPBatchTimeout                  = "otlp-batch-timeout"
 
 	// Log export flag names
+	flagLogExportNamespace     = "logexport-namespace"
+	flagLogExportConfigMapName = "logexport-configmap-name"
+	flagLogExportSecretName    = "logexport-secret-name"
 	flagLogExportReplicas      = "logexport-replicas"
 	flagLogExportWALSize       = "logexport-wal-size"
 	flagLogExportExportTimeout = "logexport-export-timeout"
@@ -389,6 +392,12 @@ func parseFlags() (err error) {
 	// Log export flags. Defaults match what alloy-logexporter was rendered with before
 	// these were configurable, so running without the chart behaves the same.
 	var logExportResources string
+	pflag.StringVar(&cfg.LogExport.Namespace, flagLogExportNamespace, "giantswarm",
+		"Namespace the alloy-logexporter Helm values are written to, which is not necessarily the namespace the app runs in.")
+	pflag.StringVar(&cfg.LogExport.ConfigMapName, flagLogExportConfigMapName, "alloy-logexporter-config",
+		"Name of the ConfigMap holding the alloy-logexporter Helm values.")
+	pflag.StringVar(&cfg.LogExport.SecretName, flagLogExportSecretName, "alloy-logexporter-secret",
+		"Name of the Secret holding the alloy-logexporter credentials.")
 	pflag.IntVar(&cfg.LogExport.Replicas, flagLogExportReplicas, 2,
 		"Number of alloy-logexporter replicas. Pushes are load-balanced, so replicas add capacity without duplicating records.")
 	pflag.StringVar(&cfg.LogExport.WALSize, flagLogExportWALSize, "10Gi",

@@ -17,6 +17,7 @@ import (
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/pkg/agent/logexporter"
+	"github.com/giantswarm/observability-operator/pkg/config"
 )
 
 // Ordered because every spec here writes the same two objects, whose names and namespace
@@ -40,10 +41,18 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		reconciler *LogExportReconciler
 	)
 
-	// configMapKey and secretKey are fixed by management-cluster-bases, so they are the
-	// same for every test.
-	configMapKey := types.NamespacedName{Namespace: logExportNamespace, Name: logExportConfigMapName}
-	secretKey := types.NamespacedName{Namespace: logExportNamespace, Name: logExportSecretName}
+	// The chart defaults, so the specs render the same values a real installation gets.
+	logExport := config.LogExportConfig{ //nolint:gosec // G101: object names, not credentials.
+		Namespace:     "giantswarm",
+		ConfigMapName: "alloy-logexporter-config",
+		SecretName:    "alloy-logexporter-secret",
+		Replicas:      2,
+		WALSize:       "10Gi",
+		ExportTimeout: "5m",
+	}
+
+	configMapKey := types.NamespacedName{Namespace: logExport.Namespace, Name: logExport.ConfigMapName}
+	secretKey := types.NamespacedName{Namespace: logExport.Namespace, Name: logExport.SecretName}
 
 	BeforeEach(func() {
 		ctx = context.Background()
@@ -52,7 +61,7 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})).To(Succeed())
 
 		// The exporter's objects live in a fixed namespace shared by every test.
-		err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: logExportNamespace}})
+		err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: logExport.Namespace}})
 		if err != nil && !apierrors.IsAlreadyExists(err) {
 			Expect(err).NotTo(HaveOccurred())
 		}
@@ -60,6 +69,7 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		reconciler = &LogExportReconciler{
 			Client:          k8sClient,
 			finalizerHelper: NewFinalizerHelper(k8sClient, observabilityv1alpha1.LogExportFinalizer),
+			logExport:       logExport,
 		}
 	})
 
@@ -83,8 +93,8 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		}, timeout, interval).Should(BeZero())
 
 		// The rendered objects are shared across specs too.
-		_ = k8sClient.Delete(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: logExportNamespace, Name: logExportConfigMapName}})
-		_ = k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: logExportNamespace, Name: logExportSecretName}})
+		_ = k8sClient.Delete(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: logExport.Namespace, Name: logExport.ConfigMapName}})
+		_ = k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: logExport.Namespace, Name: logExport.SecretName}})
 		_ = k8sClient.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
 	})
 

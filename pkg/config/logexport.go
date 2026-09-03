@@ -6,13 +6,24 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// LogExportConfig is installation-wide tuning for alloy-logexporter: how much it can
-// buffer, how long an outage it survives, and what it costs.
+// LogExportConfig is installation-wide configuration for alloy-logexporter: where its
+// rendered values go, how much it can buffer, how long an outage it survives, and what it
+// costs.
 //
-// Only capacity and durability are here. The queue, batch and retry settings stay
-// constants in pkg/agent/logexporter, because a wrong value there loses data silently
+// Only the target, capacity and durability are here. The queue, batch and retry settings
+// stay constants in pkg/agent/logexporter, because a wrong value there loses data silently
 // rather than merely performing differently.
 type LogExportConfig struct {
+	// Namespace is where the rendered ConfigMap and Secret are written: wherever
+	// alloy-logexporter's Helm release reads its values from, which is not necessarily the
+	// namespace the app itself runs in.
+	Namespace string
+
+	// ConfigMapName and SecretName name those two objects. They have to match what the
+	// Helm release is configured to read, or the values never reach the app.
+	ConfigMapName string
+	SecretName    string
+
 	// Replicas is the StatefulSet size. Pushes are load-balanced to one replica, so
 	// replicas add capacity without duplicating records.
 	Replicas int
@@ -34,6 +45,15 @@ type LogExportConfig struct {
 
 // Validate validates the log export configuration.
 func (l LogExportConfig) Validate() error {
+	if l.Namespace == "" {
+		return fmt.Errorf("namespace must be set")
+	}
+	if l.ConfigMapName == "" {
+		return fmt.Errorf("configmap name must be set")
+	}
+	if l.SecretName == "" {
+		return fmt.Errorf("secret name must be set")
+	}
 	if l.Replicas < 1 {
 		return fmt.Errorf("replicas must be at least 1, got %d", l.Replicas)
 	}
