@@ -6,8 +6,8 @@
 # - Alloy runs as a statefulset because otelcol.storage.file needs per-replica persistent
 #   storage: it is the write-ahead log that carries buffered records through a destination
 #   outage and across a pod restart.
-# - alloy.enabled overrides the `false` shipped by management-cluster-bases collections,
-#   which is what keeps this app inert on installations with no LogExport.
+# - alloy.enabled turns the app on; it ships disabled, which is what keeps it inert on
+#   installations with no LogExport.
 alloy:
   enabled: true
 

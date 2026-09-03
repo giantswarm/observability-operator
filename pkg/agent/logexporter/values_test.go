@@ -236,7 +236,7 @@ func TestRenderValuesErrors(t *testing.T) {
 				s3Export("a-b", "c", `{scrape_job="audit-logs"}`, auditBucket),
 				s3Export("a", "b-c", `{scrape_job="audit-logs"}`, auditBucket),
 			},
-			wantErr: "both map to the Alloy component name",
+			wantErr: "both render to the Alloy component name",
 		},
 		{
 			// One case is enough: the selector subset is validation's to police, and

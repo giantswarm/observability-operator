@@ -20,6 +20,6 @@ const (
 
 	// Log export. Unlike the collectors above this is not part of the
 	// observability-bundle: it is one app per management cluster, deployed in `monitoring`
-	// by management-cluster-bases collections and configured by LogExport resources.
+	// and configured by LogExport resources.
 	AlloyLogExporterAppName = "alloy-logexporter"
 )

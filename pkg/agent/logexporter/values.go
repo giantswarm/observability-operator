@@ -168,7 +168,7 @@ func buildExports(exports []observabilityv1alpha1.LogExport) ([]export, error) {
 
 		slug := slugify(e.Namespace, e.Name)
 		if other, taken := slugs[slug]; taken {
-			return nil, fmt.Errorf("%s and %s both map to the Alloy component name %q; rename one", other, ref, slug)
+			return nil, fmt.Errorf("LogExports %s and %s both render to the Alloy component name %q; recreate one under a name that does not fold to the same identifier", other, ref, slug)
 		}
 		slugs[slug] = ref
 
