@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/yaml"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	observabilityv1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
@@ -152,6 +153,12 @@ const (
 	flagOTLPBatchSendBatchSize            = "otlp-batch-send-batch-size"
 	flagOTLPBatchMaxSize                  = "otlp-batch-max-size"
 	flagOTLPBatchTimeout                  = "otlp-batch-timeout"
+
+	// Log export flag names
+	flagLogExportReplicas      = "logexport-replicas"
+	flagLogExportWALSize       = "logexport-wal-size"
+	flagLogExportExportTimeout = "logexport-export-timeout"
+	flagLogExportResources     = "logexport-resources"
 )
 
 var (
@@ -379,6 +386,21 @@ func parseFlags() (err error) {
 	pflag.StringVar(&cfg.OTLP.BatchTimeout, flagOTLPBatchTimeout, "500ms",
 		"Maximum wait time before flushing an incomplete OTLP batch.")
 
+	// Log export flags. Defaults match what alloy-logexporter was rendered with before
+	// these were configurable, so running without the chart behaves the same.
+	var logExportResources string
+	pflag.IntVar(&cfg.LogExport.Replicas, flagLogExportReplicas, 2,
+		"Number of alloy-logexporter replicas. Pushes are load-balanced, so replicas add capacity without duplicating records.")
+	pflag.StringVar(&cfg.LogExport.WALSize, flagLogExportWALSize, "10Gi",
+		"Size of the per-replica volume holding the alloy-logexporter sending queue.")
+	pflag.StringVar(&cfg.LogExport.ExportTimeout, flagLogExportExportTimeout, "5m",
+		"Durability window for alloy-logexporter uploads. A destination outage longer than this loses data permanently.")
+	// One flag rather than six, because this is a single Kubernetes type. Parsing here
+	// means a malformed block fails at startup instead of producing a values document
+	// Flux cannot apply.
+	pflag.StringVar(&logExportResources, flagLogExportResources, "",
+		"Container resources for alloy-logexporter, as JSON or YAML. Unset uses the built-in defaults.")
+
 	// Cronitor heartbeat monitor configuration flags
 	pflag.IntVar(&cfg.Cronitor.GraceSeconds, flagCronitorGraceSeconds, 1800,
 		"Number of seconds after a missed heartbeat before a Cronitor alert fires.")
@@ -438,6 +460,15 @@ func parseFlags() (err error) {
 	}
 	if pflag.CommandLine.Changed(flagQueueSampleAgeLimit) {
 		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
+	}
+
+	// Nil keeps the built-in defaults, so only overwrite when the flag was passed.
+	if pflag.CommandLine.Changed(flagLogExportResources) {
+		var resources v1.ResourceRequirements
+		if err := yaml.UnmarshalStrict([]byte(logExportResources), &resources); err != nil {
+			return fmt.Errorf("failed to parse --%s: %w", flagLogExportResources, err)
+		}
+		cfg.LogExport.Resources = &resources
 	}
 
 	return nil

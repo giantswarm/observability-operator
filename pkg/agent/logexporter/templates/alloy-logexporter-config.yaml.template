@@ -41,17 +41,10 @@ alloy:
     # preview; Alloy refuses to load the config without this.
     stabilityLevel: experimental
 
+    # ephemeral-storage is required by the require-emptydir-requests-and-limits Kyverno
+    # policy, because the container mounts the alloy-tmp emptyDir.
     resources:
-      requests:
-        cpu: "100m"
-        memory: "400Mi"
-        # Required by the require-emptydir-requests-and-limits Kyverno policy, because the
-        # container mounts the alloy-tmp emptyDir.
-        ephemeral-storage: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "1Gi"
-        ephemeral-storage: "2Gi"
+      {{- toYaml .Resources | nindent 6 }}
 
     # The chart's Service exposes only the 12345 metrics port, so the push endpoint has to
     # be added explicitly -- `extraPorts` puts it on both the container and the Service.

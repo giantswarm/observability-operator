@@ -153,6 +153,17 @@ spec:
         - --logging-gateway-httproute-secret-name={{ .httprouteSecretName }}
         {{- end }}
         {{- end }}
+        # Log export sizing
+        {{- with .Values.logExport }}
+        - --logexport-replicas={{ .replicas }}
+        - --logexport-wal-size={{ .wal.size }}
+        - --logexport-export-timeout={{ .exportTimeout }}
+        {{- if .resources }}
+        # Quote the whole argument: the JSON contains characters YAML would otherwise
+        # take as structure.
+        - {{ printf "--logexport-resources=%s" (.resources | toJson) | quote }}
+        {{- end }}
+        {{- end }}
         # Cronitor heartbeat monitor configuration
         {{- with .Values.cronitor }}
         - --cronitor-grace-seconds={{ .graceSeconds }}

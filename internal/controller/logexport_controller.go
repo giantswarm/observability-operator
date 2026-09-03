@@ -40,6 +40,7 @@ const (
 type LogExportReconciler struct {
 	client.Client
 	finalizerHelper FinalizerHelper
+	logExport       config.LogExportConfig
 }
 
 // SetupLogExportReconciler wires the reconciler into the manager. The caller gates this
@@ -48,6 +49,7 @@ func SetupLogExportReconciler(mgr manager.Manager, cfg config.Config) error {
 	r := &LogExportReconciler{
 		Client:          mgr.GetClient(),
 		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), observabilityv1alpha1.LogExportFinalizer),
+		logExport:       cfg.LogExport,
 	}
 
 	return r.SetupWithManager(mgr)
@@ -145,7 +147,7 @@ func (r *LogExportReconciler) renderExporterConfiguration(ctx context.Context) e
 		return err
 	}
 
-	values, err := logexporter.RenderValues(exports)
+	values, err := logexporter.RenderValues(exports, r.logExport)
 	if err != nil {
 		return fmt.Errorf("failed to render alloy-logexporter values: %w", err)
 	}
