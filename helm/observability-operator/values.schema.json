@@ -328,6 +328,14 @@
                                     "type": "boolean"
                                 }
                             }
+                        },
+                        "logExport": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
                     }
                 },
