@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	testAccessKeyID = "AKIAEXAMPLE"
+	testAccessKeyID     = "AKIAEXAMPLE"
+	testSecretAccessKey = "s3cr3t" //nolint:gosec // G101: a test fixture, not a credential.
 )
 
 func TestSecretEnv(t *testing.T) {
-	withCreds := s3Export("giantswarm", "audit", `{scrape_job="audit-logs"}`,
+	withCreds := s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`,
 		observabilityv1alpha1.S3Destination{
 			Bucket:         auditBucketName,
 			Region:         s3Region,
@@ -24,12 +25,12 @@ func TestSecretEnv(t *testing.T) {
 		})
 	withRole := s3Export("org-fleetio", "teleport", `{scrape_job="teleport.giantswarm.io"}`,
 		observabilityv1alpha1.S3Destination{
-			Bucket:  "teleport-archive",
+			Bucket:  teleportBucketName,
 			Region:  s3Region,
 			RoleARN: "arn:aws:iam::123456789012:role/log-archive-writer",
 		})
 	creds := map[client.ObjectKey]Credentials{
-		{Namespace: "giantswarm", Name: "audit"}: {AccessKeyID: testAccessKeyID, SecretAccessKey: "s3cr3t"},
+		{Namespace: platformNamespace, Name: auditExportName}: {AccessKeyID: testAccessKeyID, SecretAccessKey: testSecretAccessKey},
 	}
 
 	t.Run("static credentials become environment", func(t *testing.T) {
@@ -37,7 +38,7 @@ func TestSecretEnv(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SecretEnv() failed: %v", err)
 		}
-		want := map[string]string{AccessKeyIDEnv: testAccessKeyID, SecretAccessKeyEnv: "s3cr3t"}
+		want := map[string]string{AccessKeyIDEnv: testAccessKeyID, SecretAccessKeyEnv: testSecretAccessKey}
 		if diff := cmp.Diff(want, env); diff != "" {
 			t.Errorf("SecretEnv() mismatch (-want +got):\n%s", diff)
 		}
@@ -63,12 +64,39 @@ func TestSecretEnv(t *testing.T) {
 		}
 	})
 
-	t.Run("two credentialsRef exports are refused", func(t *testing.T) {
-		second := withRole
-		second.Spec.Destination.S3.CredentialsRef = &corev1.LocalObjectReference{Name: "other-credentials"}
-		_, err := SecretEnv([]observabilityv1alpha1.LogExport{withCreds, second}, creds)
+	// A fresh export rather than a copy of withRole: the two share the S3 pointer, so
+	// mutating one would edit the other.
+	alsoCredentialed := s3Export("org-fleetio", "teleport", `{scrape_job="teleport.giantswarm.io"}`,
+		observabilityv1alpha1.S3Destination{
+			Bucket:         teleportBucketName,
+			Region:         s3Region,
+			CredentialsRef: &corev1.LocalObjectReference{Name: "other-credentials"},
+		})
+	secondRef := client.ObjectKey{Namespace: "org-fleetio", Name: "teleport"}
+
+	t.Run("two exports may share one set of credentials", func(t *testing.T) {
+		same := map[client.ObjectKey]Credentials{
+			{Namespace: platformNamespace, Name: auditExportName}: {AccessKeyID: testAccessKeyID, SecretAccessKey: testSecretAccessKey},
+			secondRef: {AccessKeyID: testAccessKeyID, SecretAccessKey: testSecretAccessKey},
+		}
+		env, err := SecretEnv([]observabilityv1alpha1.LogExport{withCreds, alsoCredentialed}, same)
+		if err != nil {
+			t.Fatalf("SecretEnv() rejected two exports with identical credentials: %v", err)
+		}
+		want := map[string]string{AccessKeyIDEnv: testAccessKeyID, SecretAccessKeyEnv: testSecretAccessKey}
+		if diff := cmp.Diff(want, env); diff != "" {
+			t.Errorf("SecretEnv() mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("two exports with different credentials are refused", func(t *testing.T) {
+		differing := map[client.ObjectKey]Credentials{
+			{Namespace: platformNamespace, Name: auditExportName}: {AccessKeyID: testAccessKeyID, SecretAccessKey: testSecretAccessKey},
+			secondRef: {AccessKeyID: "AKIAOTHER", SecretAccessKey: "other"},
+		}
+		_, err := SecretEnv([]observabilityv1alpha1.LogExport{withCreds, alsoCredentialed}, differing)
 		if err == nil {
-			t.Fatal("SecretEnv() accepted two credentialsRef exports")
+			t.Fatal("SecretEnv() accepted two exports with different credentials")
 		}
 		if !strings.Contains(err.Error(), "cannot be set per destination") {
 			t.Errorf("SecretEnv() error does not explain the limitation: %v", err)

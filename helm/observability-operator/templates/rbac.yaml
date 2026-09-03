@@ -173,8 +173,6 @@ rules:
     resources:
       - logexports
     verbs:
-      - create
-      - delete
       - get
       - list
       - patch

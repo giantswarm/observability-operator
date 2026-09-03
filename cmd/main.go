@@ -207,7 +207,7 @@ func parseFlags() (err error) {
 	pflag.BoolVar(&cfg.Operator.Controllers.GrafanaOrganization.Enabled, flagOperatorControllersGrafanaOrganizationEnabled, true,
 		"Enable the grafana organization controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.LogExport.Enabled, flagOperatorControllersLogExportEnabled, true,
-		"Enable the log export controller. It idles until a LogExport resource exists, which is the per-installation opt-in.")
+		"Enable the log export controller which reconciles LogExport resources.")
 	pflag.StringVar(&cfg.Operator.MetricsAddr, flagMetricsBindAddress, ":8080",
 		"The address the metric endpoint binds to.")
 	pflag.StringVar(&cfg.Operator.ProbeAddr, flagHealthProbeBindAddress, ":8081",

@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/pkg/agent/logexporter"
 )
 
 // Ordered because every spec here writes the same two objects, whose names and namespace
@@ -148,8 +149,8 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		Expect(k8sClient.Create(ctx, &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: "archive-credentials", Namespace: ns},
 			Data: map[string][]byte{
-				logExportAccessKeyIDKey:     []byte("AKIAEXAMPLE"),
-				logExportSecretAccessKeyKey: []byte("s3cr3t"),
+				logexporter.AccessKeyIDEnv:     []byte("AKIAEXAMPLE"),
+				logexporter.SecretAccessKeyEnv: []byte("s3cr3t"),
 			},
 		})).To(Succeed())
 
@@ -274,31 +275,58 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		Expect(configMap.Data[logExportValuesKey]).To(ContainSubstring("teleport-archive"))
 	})
 
-	It("refuses two exports that both carry static credentials", func() {
-		// Static credentials reach the exporter as process environment, which is
-		// per-container, so only one export can carry them.
-		Expect(k8sClient.Create(ctx, &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "creds", Namespace: ns},
-			Data: map[string][]byte{
-				logExportAccessKeyIDKey:     []byte("AKIAEXAMPLE"),
-				logExportSecretAccessKeyKey: []byte("s3cr3t"),
-			},
-		})).To(Succeed())
-
-		for _, name := range []string{auditExport, "teleport"} {
+	// twoCredentialedExports creates one export per named Secret, each carrying static
+	// credentials, and drives the finalizer plus the render.
+	twoCredentialedExports := func(secretNames map[string]string) error {
+		for name, secretName := range secretNames {
 			export := newExport(name, fmt.Sprintf(`{scrape_job=%q}`, name), observabilityv1alpha1.S3Destination{
 				Bucket:         name + "-export",
 				Region:         s3Region,
-				CredentialsRef: &corev1.LocalObjectReference{Name: "creds"},
+				CredentialsRef: &corev1.LocalObjectReference{Name: secretName},
 			})
 			Expect(k8sClient.Create(ctx, export)).To(Succeed())
 		}
 
-		// First reconcile adds the finalizer and succeeds; the render then fails.
+		// First reconcile adds the finalizer; the second renders.
 		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: auditExport}})
 		Expect(err).NotTo(HaveOccurred())
 		_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: auditExport}})
-		Expect(err).To(MatchError(ContainSubstring("cannot be set per destination")))
+		return err
+	}
+
+	newCredentialsSecret := func(name, accessKeyID, secretAccessKey string) {
+		Expect(k8sClient.Create(ctx, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Data: map[string][]byte{
+				logexporter.AccessKeyIDEnv:     []byte(accessKeyID),
+				logexporter.SecretAccessKeyEnv: []byte(secretAccessKey),
+			},
+		})).To(Succeed())
+	}
+
+	It("accepts two exports whose credentials match", func() {
+		// Two destinations in one account is the normal shape, so identical credentials
+		// on both is allowed even though the environment is per-container.
+		newCredentialsSecret("creds", "AKIAEXAMPLE", "s3cr3t")
+		newCredentialsSecret("creds-copy", "AKIAEXAMPLE", "s3cr3t")
+
+		Expect(twoCredentialedExports(map[string]string{auditExport: "creds", "teleport": "creds-copy"})).To(Succeed())
+
+		secret := &corev1.Secret{}
+		Eventually(func() error {
+			return k8sClient.Get(ctx, secretKey, secret)
+		}, timeout, interval).Should(Succeed())
+		Expect(string(secret.Data[logExportValuesKey])).To(ContainSubstring("AKIAEXAMPLE"))
+	})
+
+	It("refuses two exports whose credentials differ", func() {
+		// Static credentials reach the exporter as process environment, which is
+		// per-container, so two different sets cannot both apply.
+		newCredentialsSecret("creds", "AKIAEXAMPLE", "s3cr3t")
+		newCredentialsSecret("creds-other", "AKIAOTHER", "other")
+
+		Expect(twoCredentialedExports(map[string]string{auditExport: "creds", "teleport": "creds-other"})).To(
+			MatchError(ContainSubstring("cannot be set per destination")))
 	})
 
 	It("reports a missing credentials Secret rather than rendering without it", func() {

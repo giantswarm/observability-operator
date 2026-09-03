@@ -114,7 +114,6 @@ rules:
   resources:
   - agentcredentials
   - grafanaorganizations
-  - logexports
   verbs:
   - create
   - delete
@@ -141,3 +140,13 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - observability.giantswarm.io
+  resources:
+  - logexports
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch

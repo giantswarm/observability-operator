@@ -29,14 +29,6 @@ const (
 
 	// logExportValuesKey is the valuesKey both objects are declared with.
 	logExportValuesKey = "values"
-
-	// The keys a credentialsRef Secret has to carry. This is the customer-facing
-	// contract, documented on LogExport.spec.destination.s3.credentialsRef and published
-	// in the CRD schema, so it is spelled out here rather than borrowed from the
-	// exporter's environment variable names, which happen to match but are a separate
-	// concern (see logexporter.AccessKeyIDEnv).
-	logExportAccessKeyIDKey     = "AWS_ACCESS_KEY_ID"
-	logExportSecretAccessKeyKey = "AWS_SECRET_ACCESS_KEY" //nolint:gosec // G101: a Secret key name, not a credential.
 )
 
 // LogExportReconciler reconciles LogExport objects into the single ConfigMap and Secret
@@ -63,16 +55,9 @@ func SetupLogExportReconciler(mgr manager.Manager, cfg config.Config) error {
 
 // SetupWithManager registers the controller with the manager.
 //
-// Deliberately no Owns(&corev1.ConfigMap{}): the rendered objects are derived from every
-// LogExport, so an ownerReference from any single one would make deleting that resource
-// garbage-collect the shared objects and stop every other export. They are written
-// without owner references and rebuilt from the resources that exist.
-//
-// There is also no Watches() on them, which would repair a manual delete. Nothing else in
-// this operator watches ConfigMaps, and the manager's cache is deliberately trimmed for
-// memory (see discardHelmSecretsSelector), so a cluster-wide ConfigMap informer is a poor
-// trade for that. If self-healing is wanted, scope the cache to these two objects with a
-// cache.ByObject field selector rather than adding a blanket watch.
+// The rendered objects carry no owner reference: they are derived from every LogExport, so
+// an ownerRef from any single one would make deleting that resource garbage-collect them
+// and stop every other export.
 func (r *LogExportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	err := ctrl.NewControllerManagedBy(mgr).
 		Named("logexport").
@@ -84,7 +69,7 @@ func (r *LogExportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-//+kubebuilder:rbac:groups=observability.giantswarm.io,resources=logexports,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=observability.giantswarm.io,resources=logexports,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=logexports/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=logexports/finalizers,verbs=update
 
@@ -216,13 +201,13 @@ func (r *LogExportReconciler) resolveCredentials(ctx context.Context, exports []
 			return nil, fmt.Errorf("failed to get credentials secret %s for log export %s/%s: %w", key, export.Namespace, export.Name, err)
 		}
 
-		accessKeyID, ok := secret.Data[logExportAccessKeyIDKey]
+		accessKeyID, ok := secret.Data[logexporter.AccessKeyIDEnv]
 		if !ok {
-			return nil, fmt.Errorf("credentials secret %s has no %s key", key, logExportAccessKeyIDKey)
+			return nil, fmt.Errorf("credentials secret %s has no %s key", key, logexporter.AccessKeyIDEnv)
 		}
-		secretAccessKey, ok := secret.Data[logExportSecretAccessKeyKey]
+		secretAccessKey, ok := secret.Data[logexporter.SecretAccessKeyEnv]
 		if !ok {
-			return nil, fmt.Errorf("credentials secret %s has no %s key", key, logExportSecretAccessKeyKey)
+			return nil, fmt.Errorf("credentials secret %s has no %s key", key, logexporter.SecretAccessKeyEnv)
 		}
 
 		// Keyed by the LogExport, not the Secret: that is what SecretEnv looks up.
@@ -289,7 +274,7 @@ func (r *LogExportReconciler) deleteObject(ctx context.Context, name string, obj
 	object.SetNamespace(logExportNamespace)
 
 	if err := r.Delete(ctx, object); err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete %s/%s: %w", logExportNamespace, name, err)
+		return fmt.Errorf("failed to delete %T %s/%s: %w", object, logExportNamespace, name, err)
 	}
 	return nil
 }
