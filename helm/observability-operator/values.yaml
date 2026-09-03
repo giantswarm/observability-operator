@@ -218,9 +218,10 @@ logExport:
   # this is a hard ceiling: a destination outage longer than this loses data permanently.
   exportTimeout: 5m
 
-  # -- Container resources for alloy-logexporter. ephemeral-storage is required by the
-  # require-emptydir-requests-and-limits Kyverno policy, because the container mounts the
-  # alloy-tmp emptyDir.
+  # -- Container resources for alloy-logexporter. Passed through as a Kubernetes
+  # ResourceRequirements, so extended resources such as `nvidia.com/gpu` work here too.
+  # ephemeral-storage is required by the require-emptydir-requests-and-limits Kyverno
+  # policy, because the container mounts the alloy-tmp emptyDir.
   resources:
     requests:
       cpu: 100m

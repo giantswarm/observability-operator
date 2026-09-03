@@ -465,7 +465,7 @@ func parseFlags() (err error) {
 	// Nil keeps the built-in defaults, so only overwrite when the flag was passed.
 	if pflag.CommandLine.Changed(flagLogExportResources) {
 		var resources v1.ResourceRequirements
-		if err := yaml.Unmarshal([]byte(logExportResources), &resources); err != nil {
+		if err := yaml.UnmarshalStrict([]byte(logExportResources), &resources); err != nil {
 			return fmt.Errorf("failed to parse --%s: %w", flagLogExportResources, err)
 		}
 		cfg.LogExport.Resources = &resources

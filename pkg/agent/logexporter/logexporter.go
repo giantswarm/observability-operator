@@ -9,9 +9,6 @@ import (
 // here is set to a specific measured failure, and getting one wrong loses data silently
 // rather than merely performing differently, so change them only with the same kind of
 // evidence.
-//
-// Capacity and durability -- replicas, WAL size, the export timeout, container resources
-// -- are installation-wide configuration instead: see config.LogExportConfig.
 const (
 	// Port is the push endpoint mirrored requests arrive on. It must match the chart's
 	// extraPorts entry and the mirror backendRef.
