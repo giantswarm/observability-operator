@@ -13,12 +13,7 @@ import (
 	"github.com/giantswarm/observability-operator/internal/webhook/validation"
 )
 
-// Failures translate() can report. Validation rejects every one of these before
-// translate() sees it, so they are guards rather than paths -- but they are wrapped and
-// matched with errors.Is so a test can prove which guard fired without matching on text.
-//
-// Unexported: nothing outside this package compares them yet. Export them when the
-// controller needs to tell a permanent failure from a transient one.
+// Failures translate() can report.
 var (
 	errNotRenderable   = errors.New("not renderable")
 	errNotNegatable    = errors.New("cannot be negated")

@@ -165,8 +165,7 @@ func TestTranslate(t *testing.T) {
 }
 
 func TestTranslateRejects(t *testing.T) {
-	// Every rejection here comes out of validation.ParseSelector, so the codes are matched
-	// across the package boundary -- which only works because validation wraps them.
+	// Every rejection here comes out of validation.ParseSelector, not from this package.
 	tests := []struct {
 		name     string
 		selector string

@@ -37,8 +37,7 @@ func TestValidateSelector(t *testing.T) {
 		// rejection has to explain its own reason.
 		selector string
 		wantErr  string
-		// wantCode is the code the error must carry. Codes get quoted in tickets and
-		// documented one by one, so pin them: renumbering one is a breaking change.
+		// wantCode is the code the error must carry.
 		wantCode error
 	}{
 		{
@@ -356,9 +355,8 @@ func TestValidateSelector(t *testing.T) {
 	}
 }
 
-// TestCodesAreDistinct guards against every sentinel collapsing to one value. The table
-// above would still pass in that case, because each of its rejections would match
-// whatever code it was asserted against.
+// TestCodesAreDistinct guards against the sentinels collapsing to one value, which the
+// table above would not catch.
 func TestCodesAreDistinct(t *testing.T) {
 	// LOGQL005 is unreachable through ValidateSelector, so it is not listed.
 	codes := []error{
@@ -375,9 +373,7 @@ func TestCodesAreDistinct(t *testing.T) {
 	}
 }
 
-// TestUnsupportedMessageShape pins the rendered message, which errors.Is cannot: the code
-// has to lead, because docs/logexport-selectors.md tells customers to read it off the
-// front of the admission error.
+// TestUnsupportedMessageShape pins the message format docs/logexport-selectors.md quotes.
 func TestUnsupportedMessageShape(t *testing.T) {
 	err := ValidateSelector(`{scrape_job="audit-logs"}[5m]`)
 	if err == nil {

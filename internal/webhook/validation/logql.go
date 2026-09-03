@@ -31,9 +31,7 @@ const SupportedSelectorSubset = `a stream selector ` +
 	`(e.g. {scrape_job="audit-logs"}), optional line filters (|=, !=, |~, !~), ` +
 	`an optional "| json", and optional label filters (e.g. | verb="delete")`
 
-// The code every rejection carries. Each is returned wrapped, so a caller matches it with
-// errors.Is rather than parsing the message, and it stays quotable in a ticket.
-// docs/logexport-selectors.md explains each one and how to work around it.
+// The code every rejection carries; docs/logexport-selectors.md explains each one.
 //
 // Codes are stable: append new ones, never renumber and never reuse.
 var (
@@ -225,9 +223,8 @@ func spell(e syntax.Expr) string {
 	return strings.TrimSpace(e.String())
 }
 
-// unsupported wraps the code so errors.Is finds it, and renders it first so the message
-// still reads "LOGQL001: ...; supported is ..." exactly as docs/logexport-selectors.md
-// quotes it.
+// unsupported puts the code at the front of the message, because
+// docs/logexport-selectors.md tells readers to find it there.
 func unsupported(code error, format string, args ...any) error {
 	return fmt.Errorf("%w: %s; supported is %s", code, fmt.Sprintf(format, args...), SupportedSelectorSubset)
 }
