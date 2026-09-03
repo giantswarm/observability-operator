@@ -27,9 +27,10 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		interval = time.Millisecond * 250
 
 		// Fixtures asserted by more than one spec. Named only because they repeat.
-		auditExport = "audit"
-		auditBucket = "audit-export"
-		s3Region    = "eu-west-2"
+		auditExport  = "audit"
+		auditBucket  = "audit-export"
+		s3Region     = "eu-west-2"
+		auditRoleARN = "arn:aws:iam::123456789012:role/a"
 	)
 
 	var (
@@ -172,7 +173,7 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 
 	It("keeps the other exports when one of several is deleted", func() {
 		audit := newExport(auditExport, `{scrape_job="audit-logs"}`, observabilityv1alpha1.S3Destination{
-			Bucket: auditBucket, Region: s3Region, RoleARN: "arn:aws:iam::123456789012:role/a",
+			Bucket: auditBucket, Region: s3Region, RoleARN: auditRoleARN,
 		})
 		teleport := newExport("teleport", `{scrape_job="teleport.giantswarm.io"}`, observabilityv1alpha1.S3Destination{
 			Bucket: "teleport-archive", Region: s3Region, RoleARN: "arn:aws:iam::123456789012:role/b",
@@ -207,7 +208,7 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 
 	It("removes both objects when the last export goes, returning the app to inert", func() {
 		export := newExport(auditExport, `{scrape_job="audit-logs"}`, observabilityv1alpha1.S3Destination{
-			Bucket: auditBucket, Region: s3Region, RoleARN: "arn:aws:iam::123456789012:role/a",
+			Bucket: auditBucket, Region: s3Region, RoleARN: auditRoleARN,
 		})
 		Expect(k8sClient.Create(ctx, export)).To(Succeed())
 		reconcileTwice(auditExport)
@@ -229,6 +230,48 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 			err := k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: auditExport}, &observabilityv1alpha1.LogExport{})
 			return apierrors.IsNotFound(err)
 		}, timeout, interval).Should(BeTrue())
+	})
+
+	It("converges when a resource vanishes without the delete path running", func() {
+		// A force delete, or a finalizer removed by hand, skips reconcileDelete
+		// entirely, so the render is never told the export is gone.
+		audit := newExport(auditExport, `{scrape_job="audit-logs"}`, observabilityv1alpha1.S3Destination{
+			Bucket: auditBucket, Region: s3Region, RoleARN: auditRoleARN,
+		})
+		teleport := newExport("teleport", `{scrape_job="teleport.giantswarm.io"}`, observabilityv1alpha1.S3Destination{
+			Bucket: "teleport-archive", Region: s3Region, RoleARN: "arn:aws:iam::123456789012:role/b",
+		})
+		Expect(k8sClient.Create(ctx, audit)).To(Succeed())
+		Expect(k8sClient.Create(ctx, teleport)).To(Succeed())
+
+		reconcileTwice(auditExport)
+		reconcileTwice("teleport")
+
+		configMap := &corev1.ConfigMap{}
+		Eventually(func() bool {
+			if err := k8sClient.Get(ctx, configMapKey, configMap); err != nil {
+				return false
+			}
+			return strings.Contains(configMap.Data[logExportValuesKey], auditBucket)
+		}, timeout, interval).Should(BeTrue())
+
+		By("making it disappear with no re-render, the way a force delete does")
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: auditExport}, audit)).To(Succeed())
+		audit.Finalizers = nil
+		Expect(k8sClient.Update(ctx, audit)).To(Succeed())
+		Expect(k8sClient.Delete(ctx, audit)).To(Succeed())
+		Eventually(func() bool {
+			err := k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: auditExport}, &observabilityv1alpha1.LogExport{})
+			return apierrors.IsNotFound(err)
+		}, timeout, interval).Should(BeTrue())
+
+		By("re-rendering on the reconcile for the resource that is already gone")
+		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: auditExport}})
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(k8sClient.Get(ctx, configMapKey, configMap)).To(Succeed())
+		Expect(configMap.Data[logExportValuesKey]).NotTo(ContainSubstring(auditBucket))
+		Expect(configMap.Data[logExportValuesKey]).To(ContainSubstring("teleport-archive"))
 	})
 
 	It("refuses two exports that both carry static credentials", func() {

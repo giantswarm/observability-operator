@@ -96,9 +96,11 @@ func (r *LogExportReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	export := &observabilityv1alpha1.LogExport{}
 	if err := r.Get(ctx, req.NamespacedName, export); err != nil {
 		if apierrors.IsNotFound(err) {
-			// Gone, and its finalizer already removed, so the delete path below has
-			// already re-rendered without it.
-			return ctrl.Result{}, nil
+			// Usually the delete path below has already re-rendered without it. A
+			// resource can also vanish without that happening -- a force delete, or a
+			// finalizer removed by hand -- so re-render rather than assume. Rendering
+			// is idempotent, so the ordinary delete just repeats itself here.
+			return ctrl.Result{}, r.renderExporterConfiguration(ctx)
 		}
 		return ctrl.Result{}, fmt.Errorf("failed to get log export: %w", err)
 	}
@@ -168,11 +170,14 @@ func (r *LogExportReconciler) renderExporterConfiguration(ctx context.Context) e
 		return fmt.Errorf("failed to build alloy-logexporter environment: %w", err)
 	}
 
-	if err := r.writeConfigMap(ctx, values); err != nil {
+	// The Secret goes first: the ConfigMap is what switches the app on, so writing it
+	// last means the credentials are already in place when the exporter starts. The
+	// teardown above is the same reasoning reversed -- switch off, then withdraw them.
+	if err := r.writeSecret(ctx, environment); err != nil {
 		return err
 	}
 
-	return r.writeSecret(ctx, environment)
+	return r.writeConfigMap(ctx, values)
 }
 
 // activeExports lists every LogExport on the installation, skipping those being deleted
