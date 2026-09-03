@@ -1,7 +1,9 @@
 package logexporter
 
 import (
+	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/grafana/loki/v3/pkg/logql/log"
@@ -9,6 +11,19 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/giantswarm/observability-operator/internal/webhook/validation"
+)
+
+// Failures translate() can report. Validation rejects every one of these before
+// translate() sees it, so they are guards rather than paths -- but they are wrapped and
+// matched with errors.Is so a test can prove which guard fired without matching on text.
+//
+// Unexported: nothing outside this package compares them yet. Export them when the
+// controller needs to tell a permanent failure from a transient one.
+var (
+	errNotRenderable   = errors.New("not renderable")
+	errNotNegatable    = errors.New("cannot be negated")
+	errOrNotRewritable = errors.New("`or` is not rewritable")
+	errIPNotSupported  = errors.New("ip() is not supported")
 )
 
 // pipeline is a customer selector translated into ordered loki.process stages.
@@ -44,7 +59,7 @@ func translate(selector string) (pipeline, error) {
 		matchers, stages = e.Left.Mts, e.MultiStages
 	default:
 		// ParseSelector returns only these two.
-		return pipeline{}, fmt.Errorf("selector %q is not renderable", selector)
+		return pipeline{}, fmt.Errorf("%w: selector %q", errNotRenderable, selector)
 	}
 
 	var p pipeline
@@ -80,7 +95,7 @@ func translate(selector string) (pipeline, error) {
 			m, ok := validation.StringMatcher(s.LabelFilterer)
 			if !ok {
 				// Validation rejects these, so this is a guard rather than a path.
-				return pipeline{}, fmt.Errorf("label filter %q is not renderable", strings.TrimSpace(s.String()))
+				return pipeline{}, fmt.Errorf("%w: label filter %q", errNotRenderable, strings.TrimSpace(s.String()))
 			}
 			negated, err := negateMatcher(m)
 			if err != nil {
@@ -93,7 +108,7 @@ func translate(selector string) (pipeline, error) {
 				p.StreamDrops = append(p.StreamDrops, "{"+negated.String()+"}")
 			}
 		default:
-			return pipeline{}, fmt.Errorf("stage %q is accepted by validation but not renderable", strings.TrimSpace(stage.String()))
+			return pipeline{}, fmt.Errorf("%w: stage %q is accepted by validation", errNotRenderable, strings.TrimSpace(stage.String()))
 		}
 	}
 
@@ -113,7 +128,7 @@ func negateMatcher(m *labels.Matcher) (*labels.Matcher, error) {
 	case labels.MatchNotRegexp:
 		negated = labels.MatchRegexp
 	default:
-		return nil, fmt.Errorf("matcher %q cannot be negated", m.String())
+		return nil, fmt.Errorf("%w: matcher %q", errNotNegatable, m.String())
 	}
 
 	out, err := labels.NewMatcher(negated, m.Name, m.Value)
@@ -132,10 +147,10 @@ func lineFilterTerms(expr *syntax.LineFilterExpr) ([]string, error) {
 	var terms []string
 	for e := expr; e != nil; e = e.Left {
 		if e.Or != nil || e.IsOrChild {
-			return nil, fmt.Errorf("line filter %q uses `or`, which is not rewritable", strings.TrimSpace(expr.String()))
+			return nil, fmt.Errorf("%w: line filter %q", errOrNotRewritable, strings.TrimSpace(expr.String()))
 		}
 		if e.Op != "" {
-			return nil, fmt.Errorf("line filter %q uses ip(), which is not supported", strings.TrimSpace(expr.String()))
+			return nil, fmt.Errorf("%w: line filter %q", errIPNotSupported, strings.TrimSpace(expr.String()))
 		}
 
 		negated, err := negateLineMatchType(e.Ty)
@@ -159,7 +174,7 @@ func negateLineMatchType(t log.LineMatchType) (string, error) {
 	case log.LineMatchNotRegexp:
 		return "|~", nil
 	}
-	return "", fmt.Errorf("line filter type %v cannot be negated", t)
+	return "", fmt.Errorf("%w: line filter type %v", errNotNegatable, t)
 }
 
 func matchersString(matchers []*labels.Matcher) string {
@@ -171,10 +186,8 @@ func matchersString(matchers []*labels.Matcher) string {
 }
 
 func appendUnique(values []string, value string) []string {
-	for _, v := range values {
-		if v == value {
-			return values
-		}
+	if slices.Contains(values, value) {
+		return values
 	}
 	return append(values, value)
 }

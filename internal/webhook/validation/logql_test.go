@@ -17,6 +17,7 @@ limitations under the License.
 package validation
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -36,9 +37,9 @@ func TestValidateSelector(t *testing.T) {
 		// rejection has to explain its own reason.
 		selector string
 		wantErr  string
-		// wantCode is the code the message must start with. Codes get quoted in tickets and
+		// wantCode is the code the error must carry. Codes get quoted in tickets and
 		// documented one by one, so pin them: renumbering one is a breaking change.
-		wantCode code
+		wantCode error
 	}{
 		{
 			name:     "stream selector only",
@@ -68,13 +69,13 @@ func TestValidateSelector(t *testing.T) {
 			name:     "or line filter",
 			selector: `{scrape_job="audit-logs"} |= "delete" or "create"`,
 			wantErr:  "uses `or`",
-			wantCode: codeLineFilterOr,
+			wantCode: ErrCodeLineFilterOr,
 		},
 		{
 			name:     "ip line filter",
 			selector: `{scrape_job="audit-logs"} |= ip("1.2.3.4")`,
 			wantErr:  "uses ip()",
-			wantCode: codeLineFilterOp,
+			wantCode: ErrCodeLineFilterOp,
 		},
 		{
 			// Accepted: on a negative operator Loki flattens `or` into an AND-chain of
@@ -87,7 +88,7 @@ func TestValidateSelector(t *testing.T) {
 			name:     "or later in a chain",
 			selector: `{scrape_job="audit-logs"} |= "a" |= "b" or "c"`,
 			wantErr:  "uses `or`",
-			wantCode: codeLineFilterOr,
+			wantCode: ErrCodeLineFilterOr,
 		},
 		{
 			// A keyword scan would reject this; the parser knows it is a line filter.
@@ -146,43 +147,43 @@ func TestValidateSelector(t *testing.T) {
 			name:     "aggregation",
 			selector: `sum by (verb) (rate({scrape_job="audit-logs"}[5m]))`,
 			wantErr:  "aggregations are not supported",
-			wantCode: codeAggregation,
+			wantCode: ErrCodeAggregation,
 		},
 		{
 			name:     "range aggregation",
 			selector: `count_over_time({scrape_job="audit-logs"}[1h])`,
 			wantErr:  "aggregations are not supported",
-			wantCode: codeAggregation,
+			wantCode: ErrCodeAggregation,
 		},
 		{
 			name:     "scalar literal",
 			selector: `1`,
 			wantErr:  "returns a value rather than log lines",
-			wantCode: codeNotLogLines,
+			wantCode: ErrCodeNotLogLines,
 		},
 		{
 			name:     "vector",
 			selector: `vector(0)`,
 			wantErr:  "returns a value rather than log lines",
-			wantCode: codeNotLogLines,
+			wantCode: ErrCodeNotLogLines,
 		},
 		{
 			name:     "time range",
 			selector: `{scrape_job="audit-logs"}[5m]`,
 			wantErr:  "time ranges are not supported",
-			wantCode: codeTimeRange,
+			wantCode: ErrCodeTimeRange,
 		},
 		{
 			name:     "not logql",
 			selector: "audit logs please",
 			wantErr:  errInvalidLogQL,
-			wantCode: codeSyntax,
+			wantCode: ErrCodeSyntax,
 		},
 		{
 			name:     "empty",
 			selector: "",
 			wantErr:  errInvalidLogQL,
-			wantCode: codeSyntax,
+			wantCode: ErrCodeSyntax,
 		},
 
 		// Stream selectors that name no stream at all. Loki's own validation rejects
@@ -192,13 +193,13 @@ func TestValidateSelector(t *testing.T) {
 			name:     "empty stream selector",
 			selector: `{}`,
 			wantErr:  errInvalidLogQL,
-			wantCode: codeSyntax,
+			wantCode: ErrCodeSyntax,
 		},
 		{
 			name:     "match-everything regex",
 			selector: `{job=~".*"}`,
 			wantErr:  errInvalidLogQL,
-			wantCode: codeSyntax,
+			wantCode: ErrCodeSyntax,
 		},
 		{
 			// A negative matcher matches streams missing the label entirely, so Loki
@@ -206,13 +207,13 @@ func TestValidateSelector(t *testing.T) {
 			name:     "negative matcher only",
 			selector: `{job!="x"}`,
 			wantErr:  errInvalidLogQL,
-			wantCode: codeSyntax,
+			wantCode: ErrCodeSyntax,
 		},
 		{
 			name:     "reserved label in the stream selector",
 			selector: `{__name__="x", job="y"}`,
 			wantErr:  `the label "__name__" is reserved`,
-			wantCode: codeReservedLabel,
+			wantCode: ErrCodeReservedLabel,
 		},
 
 		// Parsers the renderer cannot translate.
@@ -220,31 +221,31 @@ func TestValidateSelector(t *testing.T) {
 			name:     "logfmt parser",
 			selector: `{scrape_job="audit-logs"} | logfmt | verb="delete"`,
 			wantErr:  `the stage "| logfmt" is not supported`,
-			wantCode: codeStage,
+			wantCode: ErrCodeStage,
 		},
 		{
 			name:     "unpack parser",
 			selector: `{scrape_job="audit-logs"} | unpack`,
 			wantErr:  `the parser "| unpack" is not supported`,
-			wantCode: codeParser,
+			wantCode: ErrCodeParser,
 		},
 		{
 			name:     "pattern parser",
 			selector: `{scrape_job="audit-logs"} | pattern "<_> <msg>"`,
 			wantErr:  errUnsupported,
-			wantCode: codeParser,
+			wantCode: ErrCodeParser,
 		},
 		{
 			name:     "regexp parser",
 			selector: `{scrape_job="audit-logs"} | regexp "(?P<verb>\\w+)"`,
 			wantErr:  errUnsupported,
-			wantCode: codeParser,
+			wantCode: ErrCodeParser,
 		},
 		{
 			name:     "json with parser parameters",
 			selector: `{scrape_job="audit-logs"} | json verb="fields.verb"`,
 			wantErr:  errUnsupported,
-			wantCode: codeStage,
+			wantCode: ErrCodeStage,
 		},
 
 		// Stages the renderer cannot translate.
@@ -252,31 +253,31 @@ func TestValidateSelector(t *testing.T) {
 			name:     "line format",
 			selector: `{scrape_job="audit-logs"} | line_format "{{ .verb }}"`,
 			wantErr:  errUnsupported,
-			wantCode: codeStage,
+			wantCode: ErrCodeStage,
 		},
 		{
 			name:     "label format",
 			selector: `{scrape_job="audit-logs"} | json | label_format v=verb`,
 			wantErr:  errUnsupported,
-			wantCode: codeStage,
+			wantCode: ErrCodeStage,
 		},
 		{
 			name:     "drop labels",
 			selector: `{scrape_job="audit-logs"} | json | drop verb`,
 			wantErr:  errUnsupported,
-			wantCode: codeStage,
+			wantCode: ErrCodeStage,
 		},
 		{
 			name:     "keep labels",
 			selector: `{scrape_job="audit-logs"} | json | keep verb`,
 			wantErr:  errUnsupported,
-			wantCode: codeStage,
+			wantCode: ErrCodeStage,
 		},
 		{
 			name:     "decolorize",
 			selector: `{scrape_job="audit-logs"} | decolorize`,
 			wantErr:  `the stage "| decolorize" is not supported`,
-			wantCode: codeStage,
+			wantCode: ErrCodeStage,
 		},
 
 		// Label filters with no negated stream-selector spelling.
@@ -284,43 +285,43 @@ func TestValidateSelector(t *testing.T) {
 			name:     "duration label filter",
 			selector: `{scrape_job="audit-logs"} | json | duration > 10s`,
 			wantErr:  errUnsupported,
-			wantCode: codeLabelFilter,
+			wantCode: ErrCodeLabelFilter,
 		},
 		{
 			name:     "numeric label filter",
 			selector: `{scrape_job="audit-logs"} | json | status_code >= 400`,
 			wantErr:  errUnsupported,
-			wantCode: codeLabelFilter,
+			wantCode: ErrCodeLabelFilter,
 		},
 		{
 			name:     "bytes label filter",
 			selector: `{scrape_job="audit-logs"} | json | size > 1KB`,
 			wantErr:  errUnsupported,
-			wantCode: codeLabelFilter,
+			wantCode: ErrCodeLabelFilter,
 		},
 		{
 			name:     "ip label filter",
 			selector: `{scrape_job="audit-logs"} | json | remote_addr = ip("1.2.3.4")`,
 			wantErr:  errUnsupported,
-			wantCode: codeLabelFilter,
+			wantCode: ErrCodeLabelFilter,
 		},
 		{
 			name:     "or label filter",
 			selector: `{scrape_job="audit-logs"} | json | verb="delete" or verb="create"`,
 			wantErr:  errUnsupported,
-			wantCode: codeLabelFilter,
+			wantCode: ErrCodeLabelFilter,
 		},
 		{
 			name:     "and label filter",
 			selector: `{scrape_job="audit-logs"} | json | verb="delete" and user="x"`,
 			wantErr:  errUnsupported,
-			wantCode: codeLabelFilter,
+			wantCode: ErrCodeLabelFilter,
 		},
 		{
 			name:     "reserved label in a label filter",
 			selector: `{scrape_job="audit-logs"} | json | __error__=""`,
 			wantErr:  `the label "__error__" is reserved`,
-			wantCode: codeReservedLabel,
+			wantCode: ErrCodeReservedLabel,
 		},
 
 		// Parses, but cannot be built into a pipeline.
@@ -328,7 +329,7 @@ func TestValidateSelector(t *testing.T) {
 			name:     "uncompilable line filter regex",
 			selector: `{scrape_job="audit-logs"} |~ "("`,
 			wantErr:  "not a usable log selector",
-			wantCode: codePipelineBuild,
+			wantCode: ErrCodePipelineBuild,
 		},
 	}
 
@@ -348,9 +349,44 @@ func TestValidateSelector(t *testing.T) {
 			if err != nil && !strings.Contains(err.Error(), SupportedSelectorSubset) {
 				t.Errorf("ValidateSelector(%q) error does not describe the supported subset: %v", tt.selector, err)
 			}
-			if err != nil && tt.wantCode != "" && !strings.HasPrefix(err.Error(), string(tt.wantCode)+": ") {
-				t.Errorf("ValidateSelector(%q) error is not %s: %v", tt.selector, tt.wantCode, err)
+			if tt.wantCode != nil && !errors.Is(err, tt.wantCode) {
+				t.Errorf("ValidateSelector(%q) error is not %v: %v", tt.selector, tt.wantCode, err)
 			}
 		})
+	}
+}
+
+// TestCodesAreDistinct guards against every sentinel collapsing to one value. The table
+// above would still pass in that case, because each of its rejections would match
+// whatever code it was asserted against.
+func TestCodesAreDistinct(t *testing.T) {
+	// LOGQL005 is unreachable through ValidateSelector, so it is not listed.
+	codes := []error{
+		ErrCodeTimeRange, ErrCodeSyntax, ErrCodeNotLogLines, ErrCodeAggregation,
+		ErrCodeNotLogSelector, ErrCodePipelineBuild, ErrCodeParser, ErrCodeLabelFilter,
+		ErrCodeStage, ErrCodeLineFilterOr, ErrCodeLineFilterOp, ErrCodeReservedLabel,
+	}
+	for i, a := range codes {
+		for j, b := range codes {
+			if i != j && errors.Is(a, b) {
+				t.Errorf("%v and %v are the same error value", a, b)
+			}
+		}
+	}
+}
+
+// TestUnsupportedMessageShape pins the rendered message, which errors.Is cannot: the code
+// has to lead, because docs/logexport-selectors.md tells customers to read it off the
+// front of the admission error.
+func TestUnsupportedMessageShape(t *testing.T) {
+	err := ValidateSelector(`{scrape_job="audit-logs"}[5m]`)
+	if err == nil {
+		t.Fatal("ValidateSelector() accepted a time range")
+	}
+	if !strings.HasPrefix(err.Error(), ErrCodeTimeRange.Error()+": ") {
+		t.Errorf("message does not lead with the code: %v", err)
+	}
+	if !strings.Contains(err.Error(), SupportedSelectorSubset) {
+		t.Errorf("message does not describe the supported subset: %v", err)
 	}
 }

@@ -1,19 +1,20 @@
 package logexporter
 
 import (
-	"strings"
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/grafana/loki/v3/pkg/logql/syntax"
+
+	"github.com/giantswarm/observability-operator/internal/webhook/validation"
 )
 
 // Fragments asserted by more than one case. Named only because they repeat; the one-off
 // fragments below stay inline so each case still reads on its own.
 const (
-	dropAuditJob   = `{scrape_job!="audit-logs"}`
-	fieldVerb      = "verb"
-	errUnsupported = "is not supported"
+	dropAuditJob = `{scrape_job!="audit-logs"}`
+	fieldVerb    = "verb"
 )
 
 // TestTranslate pins the stages a selector becomes. Selection is a drop of the negated
@@ -164,45 +165,47 @@ func TestTranslate(t *testing.T) {
 }
 
 func TestTranslateRejects(t *testing.T) {
+	// Every rejection here comes out of validation.ParseSelector, so the codes are matched
+	// across the package boundary -- which only works because validation wraps them.
 	tests := []struct {
 		name     string
 		selector string
-		wantErr  string
+		wantErr  error
 	}{
 		{
 			name:     "aggregation",
 			selector: `sum by (verb) (rate({scrape_job="audit-logs"}[5m]))`,
-			wantErr:  "aggregations are not supported",
+			wantErr:  validation.ErrCodeAggregation,
 		},
 		{
 			name:     "unsupported parser",
 			selector: `{scrape_job="audit-logs"} | logfmt`,
-			wantErr:  errUnsupported,
+			wantErr:  validation.ErrCodeStage,
 		},
 		{
 			name:     "unsupported stage",
 			selector: `{scrape_job="audit-logs"} | line_format "{{.verb}}"`,
-			wantErr:  errUnsupported,
+			wantErr:  validation.ErrCodeStage,
 		},
 		{
 			name:     "numeric label filter",
 			selector: `{scrape_job="audit-logs"} | json | duration > 10s`,
-			wantErr:  errUnsupported,
+			wantErr:  validation.ErrCodeLabelFilter,
 		},
 		{
 			name:     "or line filter",
 			selector: `{scrape_job="audit-logs"} |= "a" or "b"`,
-			wantErr:  "uses `or`",
+			wantErr:  validation.ErrCodeLineFilterOr,
 		},
 		{
 			name:     "ip line filter",
 			selector: `{scrape_job="audit-logs"} |= ip("1.2.3.4")`,
-			wantErr:  "uses ip()",
+			wantErr:  validation.ErrCodeLineFilterOp,
 		},
 		{
 			name:     "match everything",
 			selector: `{}`,
-			wantErr:  "not a valid LogQL expression",
+			wantErr:  validation.ErrCodeSyntax,
 		},
 	}
 
@@ -210,10 +213,10 @@ func TestTranslateRejects(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := translate(tt.selector)
 			if err == nil {
-				t.Fatalf("translate(%q) succeeded, expected an error about %q", tt.selector, tt.wantErr)
+				t.Fatalf("translate(%q) succeeded, expected %v", tt.selector, tt.wantErr)
 			}
-			if !strings.Contains(err.Error(), tt.wantErr) {
-				t.Errorf("translate(%q) error does not mention %q: %v", tt.selector, tt.wantErr, err)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("translate(%q) error is not %v: %v", tt.selector, tt.wantErr, err)
 			}
 		})
 	}
@@ -225,10 +228,10 @@ func TestTranslateRejects(t *testing.T) {
 func TestLineFilterTermsGuards(t *testing.T) {
 	for _, tt := range []struct {
 		selector string
-		wantErr  string
+		wantErr  error
 	}{
-		{`{job="x"} |= "a" or "b"`, "uses `or`"},
-		{`{job="x"} |= ip("1.2.3.4")`, "uses ip()"},
+		{`{job="x"} |= "a" or "b"`, errOrNotRewritable},
+		{`{job="x"} |= ip("1.2.3.4")`, errIPNotSupported},
 	} {
 		expr, err := syntax.ParseExpr(tt.selector)
 		if err != nil {
@@ -239,8 +242,8 @@ func TestLineFilterTermsGuards(t *testing.T) {
 		if !ok {
 			t.Fatalf("%q: first stage is %T, expected a line filter", tt.selector, stages[0])
 		}
-		if _, err := lineFilterTerms(filter); err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-			t.Errorf("lineFilterTerms(%q) error does not mention %q: %v", tt.selector, tt.wantErr, err)
+		if _, err := lineFilterTerms(filter); !errors.Is(err, tt.wantErr) {
+			t.Errorf("lineFilterTerms(%q) error is not %v: %v", tt.selector, tt.wantErr, err)
 		}
 	}
 }
