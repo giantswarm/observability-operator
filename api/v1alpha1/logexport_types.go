@@ -133,7 +133,7 @@ type S3Destination struct {
 	// +kubebuilder:validation:MaxLength=2048
 	RoleARN string `json:"roleARN,omitempty"`
 
-	// Format selects how each record is written into an object.
+	// Format selects how each record is written into AWS S3 object storage.
 	//
 	// "otlp" wraps each batch in an OTLP document, keeping the labels as record attributes.
 	// "raw" writes the log lines alone, newline-delimited and unaltered: smaller and
