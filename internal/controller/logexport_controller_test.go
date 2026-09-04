@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,10 +30,13 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		interval = time.Millisecond * 250
 
 		// Fixtures asserted by more than one spec. Named only because they repeat.
-		auditExport  = "audit"
-		auditBucket  = "audit-export"
-		s3Region     = "eu-west-2"
-		auditRoleARN = "arn:aws:iam::123456789012:role/a"
+		auditExport    = "audit"
+		auditBucket    = "audit-export"
+		s3Region       = "eu-west-2"
+		auditRoleARN   = "arn:aws:iam::123456789012:role/a"
+		teleportExport = "teleport"
+		credsSecret    = "creds"
+		missingSecret  = "does-not-exist"
 	)
 
 	var (
@@ -120,6 +124,13 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		}
 	}
 
+	// readyCondition returns the Ready condition of an export, or nil when unset.
+	readyCondition := func(name string) *metav1.Condition {
+		export := &observabilityv1alpha1.LogExport{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, export)).To(Succeed())
+		return meta.FindStatusCondition(export.Status.Conditions, observabilityv1alpha1.LogExportConditionReady)
+	}
+
 	// deleteAndReconcile removes an export and drives the delete path to completion.
 	deleteAndReconcile := func(export *observabilityv1alpha1.LogExport) {
 		Expect(k8sClient.Delete(ctx, export)).To(Succeed())
@@ -153,6 +164,23 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 			err := k8sClient.Get(ctx, secretKey, &corev1.Secret{})
 			return apierrors.IsNotFound(err)
 		}, time.Second, interval).Should(BeTrue())
+
+		By("reporting Ready, so the printcolumn says something")
+		ready := readyCondition(auditExport)
+		Expect(ready).NotTo(BeNil())
+		Expect(ready.Status).To(Equal(metav1.ConditionTrue))
+		Expect(ready.Reason).To(Equal(logExportReasonConfigured))
+
+		stored := &observabilityv1alpha1.LogExport{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: auditExport}, stored)).To(Succeed())
+		Expect(stored.Status.ObservedGeneration).To(Equal(stored.Generation))
+
+		By("not touching the condition again when nothing changed")
+		// The write is skipped when SetStatusCondition reports no change, which is what
+		// stops a status update from waking the watch that produced it.
+		first := ready.LastTransitionTime
+		reconcileTwice(auditExport)
+		Expect(readyCondition(auditExport).LastTransitionTime).To(Equal(first))
 	})
 
 	It("writes the credential Secret when an export uses credentialsRef", func() {
@@ -186,14 +214,14 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		audit := newExport(auditExport, `{scrape_job="audit-logs"}`, observabilityv1alpha1.S3Destination{
 			Bucket: auditBucket, Region: s3Region, RoleARN: auditRoleARN,
 		})
-		teleport := newExport("teleport", `{scrape_job="teleport.giantswarm.io"}`, observabilityv1alpha1.S3Destination{
+		teleport := newExport(teleportExport, `{scrape_job="teleport.giantswarm.io"}`, observabilityv1alpha1.S3Destination{
 			Bucket: "teleport-archive", Region: s3Region, RoleARN: "arn:aws:iam::123456789012:role/b",
 		})
 		Expect(k8sClient.Create(ctx, audit)).To(Succeed())
 		Expect(k8sClient.Create(ctx, teleport)).To(Succeed())
 
 		reconcileTwice(auditExport)
-		reconcileTwice("teleport")
+		reconcileTwice(teleportExport)
 
 		By("rendering both into the one ConfigMap")
 		configMap := &corev1.ConfigMap{}
@@ -249,14 +277,14 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		audit := newExport(auditExport, `{scrape_job="audit-logs"}`, observabilityv1alpha1.S3Destination{
 			Bucket: auditBucket, Region: s3Region, RoleARN: auditRoleARN,
 		})
-		teleport := newExport("teleport", `{scrape_job="teleport.giantswarm.io"}`, observabilityv1alpha1.S3Destination{
+		teleport := newExport(teleportExport, `{scrape_job="teleport.giantswarm.io"}`, observabilityv1alpha1.S3Destination{
 			Bucket: "teleport-archive", Region: s3Region, RoleARN: "arn:aws:iam::123456789012:role/b",
 		})
 		Expect(k8sClient.Create(ctx, audit)).To(Succeed())
 		Expect(k8sClient.Create(ctx, teleport)).To(Succeed())
 
 		reconcileTwice(auditExport)
-		reconcileTwice("teleport")
+		reconcileTwice(teleportExport)
 
 		configMap := &corev1.ConfigMap{}
 		Eventually(func() bool {
@@ -317,10 +345,10 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 	It("accepts two exports whose credentials match", func() {
 		// Two destinations in one account is the normal shape, so identical credentials
 		// on both is allowed even though the environment is per-container.
-		newCredentialsSecret("creds", "AKIAEXAMPLE", "s3cr3t")
+		newCredentialsSecret(credsSecret, "AKIAEXAMPLE", "s3cr3t")
 		newCredentialsSecret("creds-copy", "AKIAEXAMPLE", "s3cr3t")
 
-		Expect(twoCredentialedExports(map[string]string{auditExport: "creds", "teleport": "creds-copy"})).To(Succeed())
+		Expect(twoCredentialedExports(map[string]string{auditExport: credsSecret, teleportExport: "creds-copy"})).To(Succeed())
 
 		secret := &corev1.Secret{}
 		Eventually(func() error {
@@ -332,18 +360,23 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 	It("refuses two exports whose credentials differ", func() {
 		// Static credentials reach the exporter as process environment, which is
 		// per-container, so two different sets cannot both apply.
-		newCredentialsSecret("creds", "AKIAEXAMPLE", "s3cr3t")
+		newCredentialsSecret(credsSecret, "AKIAEXAMPLE", "s3cr3t")
 		newCredentialsSecret("creds-other", "AKIAOTHER", "other")
 
-		Expect(twoCredentialedExports(map[string]string{auditExport: "creds", "teleport": "creds-other"})).To(
+		Expect(twoCredentialedExports(map[string]string{auditExport: credsSecret, teleportExport: "creds-other"})).To(
 			MatchError(ContainSubstring("cannot be set per destination")))
+
+		ready := readyCondition(auditExport)
+		Expect(ready).NotTo(BeNil())
+		Expect(ready.Status).To(Equal(metav1.ConditionFalse))
+		Expect(ready.Reason).To(Equal(logExportReasonRenderFailed))
 	})
 
 	It("reports a missing credentials Secret rather than rendering without it", func() {
 		export := newExport(auditExport, `{scrape_job="audit-logs"}`, observabilityv1alpha1.S3Destination{
 			Bucket:         auditBucket,
 			Region:         s3Region,
-			CredentialsRef: &corev1.LocalObjectReference{Name: "does-not-exist"},
+			CredentialsRef: &corev1.LocalObjectReference{Name: missingSecret},
 		})
 		Expect(k8sClient.Create(ctx, export)).To(Succeed())
 
@@ -353,5 +386,45 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		Expect(err).To(MatchError(ContainSubstring("failed to get credentials secret")))
 
 		Expect(apierrors.IsNotFound(k8sClient.Get(ctx, configMapKey, &corev1.ConfigMap{}))).To(BeTrue())
+
+		ready := readyCondition(auditExport)
+		Expect(ready).NotTo(BeNil())
+		Expect(ready.Status).To(Equal(metav1.ConditionFalse))
+		Expect(ready.Reason).To(Equal(logExportReasonCredentialsUnavailable))
+		Expect(ready.Message).To(ContainSubstring(missingSecret))
+	})
+
+	It("marks every export not ready when one of them breaks the render", func() {
+		// The rendering is aggregate: one export with an unreadable Secret means nothing
+		// is written, so the healthy export is not exported either and must say so.
+		newCredentialsSecret(credsSecret, "AKIAEXAMPLE", "s3cr3t")
+
+		healthy := newExport(auditExport, `{scrape_job="audit-logs"}`, observabilityv1alpha1.S3Destination{
+			Bucket:         auditBucket,
+			Region:         s3Region,
+			CredentialsRef: &corev1.LocalObjectReference{Name: credsSecret},
+		})
+		Expect(k8sClient.Create(ctx, healthy)).To(Succeed())
+		reconcileTwice(auditExport)
+		Expect(readyCondition(auditExport).Status).To(Equal(metav1.ConditionTrue))
+
+		broken := newExport(teleportExport, `{scrape_job="teleport.giantswarm.io"}`, observabilityv1alpha1.S3Destination{
+			Bucket:         "teleport-export",
+			Region:         s3Region,
+			CredentialsRef: &corev1.LocalObjectReference{Name: missingSecret},
+		})
+		Expect(k8sClient.Create(ctx, broken)).To(Succeed())
+
+		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: teleportExport}})
+		Expect(err).NotTo(HaveOccurred())
+		_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: teleportExport}})
+		Expect(err).To(HaveOccurred())
+
+		for _, name := range []string{auditExport, teleportExport} {
+			ready := readyCondition(name)
+			Expect(ready).NotTo(BeNil(), name)
+			Expect(ready.Status).To(Equal(metav1.ConditionFalse), name)
+			Expect(ready.Reason).To(Equal(logExportReasonCredentialsUnavailable), name)
+		}
 	})
 })
