@@ -158,6 +158,7 @@ See [docs/metrics.md](docs/metrics.md) for the full metrics reference.
 | [docs/alertmanager.md](docs/alertmanager.md) | Alertmanager config secret usage and examples |
 | [docs/dashboards.md](docs/dashboards.md) | Dashboard provisioning and folder support |
 | [docs/agent-credential.md](docs/agent-credential.md) | AgentCredential CRD reference and self-service usage |
+| [docs/logexport-tutorial.md](docs/logexport-tutorial.md) | Walkthrough of exporting logs to S3 with a LogExport |
 | [docs/logexport-selectors.md](docs/logexport-selectors.md) | LogExport selector subset and validation error reference |
 | [docs/cluster.md](docs/cluster.md) | Per-cluster observability feature flags and sharding overrides |
 | [docs/metrics.md](docs/metrics.md) | Operator metrics reference and example queries |
