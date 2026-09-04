@@ -2,10 +2,12 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,6 +23,12 @@ import (
 const (
 	// logExportValuesKey is the key inside both objects that holds the values.
 	logExportValuesKey = "values"
+
+	// Reasons for the Ready condition, one per stage that can fail.
+	logExportReasonConfigured             = "Configured"
+	logExportReasonCredentialsUnavailable = "CredentialsUnavailable"
+	logExportReasonRenderFailed           = "RenderFailed"
+	logExportReasonWriteFailed            = "WriteFailed"
 )
 
 // LogExportReconciler reconciles LogExport objects into the single ConfigMap and Secret
@@ -122,6 +130,7 @@ func (r *LogExportReconciler) reconcileDelete(ctx context.Context, export *obser
 func (r *LogExportReconciler) renderExporterConfiguration(ctx context.Context) error {
 	exports, err := r.activeExports(ctx)
 	if err != nil {
+		// Nothing to report a condition on, so this one stays log-only.
 		return err
 	}
 
@@ -134,29 +143,80 @@ func (r *LogExportReconciler) renderExporterConfiguration(ctx context.Context) e
 		return r.deleteObject(ctx, r.logExport.SecretName, &corev1.Secret{})
 	}
 
+	reason, renderErr := r.writeExporterConfiguration(ctx, exports)
+	return errors.Join(renderErr, r.reportReady(ctx, exports, reason, renderErr))
+}
+
+// writeExporterConfiguration renders both objects and returns the Ready reason for what
+// happened, so the status says which stage failed rather than only that something did.
+func (r *LogExportReconciler) writeExporterConfiguration(ctx context.Context, exports []observabilityv1alpha1.LogExport) (string, error) {
 	credentials, err := r.resolveCredentials(ctx, exports)
 	if err != nil {
-		return err
+		return logExportReasonCredentialsUnavailable, err
 	}
 
 	values, err := logexporter.RenderValues(exports, r.logExport)
 	if err != nil {
-		return fmt.Errorf("failed to render alloy-logexporter values: %w", err)
+		return logExportReasonRenderFailed, fmt.Errorf("failed to render alloy-logexporter values: %w", err)
 	}
 
 	environment, err := logexporter.SecretEnv(exports, credentials)
 	if err != nil {
-		return fmt.Errorf("failed to build alloy-logexporter environment: %w", err)
+		return logExportReasonRenderFailed, fmt.Errorf("failed to build alloy-logexporter environment: %w", err)
 	}
 
 	// The Secret goes first: the ConfigMap is what switches the app on, so writing it
 	// last means the credentials are already in place when the exporter starts. The
 	// teardown above is the same reasoning reversed -- switch off, then withdraw them.
 	if err := r.writeSecret(ctx, environment); err != nil {
-		return err
+		return logExportReasonWriteFailed, err
 	}
 
-	return r.writeConfigMap(ctx, values)
+	if err := r.writeConfigMap(ctx, values); err != nil {
+		return logExportReasonWriteFailed, err
+	}
+
+	return logExportReasonConfigured, nil
+}
+
+// reportReady records the render outcome on every active export. The rendering covers all
+// of them at once, so the outcome is theirs collectively: a failure means nothing was
+// written, and no export is configured. One export's message can therefore name another.
+func (r *LogExportReconciler) reportReady(ctx context.Context, exports []observabilityv1alpha1.LogExport, reason string, renderErr error) error {
+	status := metav1.ConditionTrue
+	message := "Export configured in alloy-logexporter"
+	if renderErr != nil {
+		status = metav1.ConditionFalse
+		message = renderErr.Error()
+	}
+
+	var errs []error
+	for i := range exports {
+		export := &exports[i]
+		original := export.DeepCopy()
+
+		changed := meta.SetStatusCondition(&export.Status.Conditions, metav1.Condition{
+			Type:    observabilityv1alpha1.LogExportConditionReady,
+			Status:  status,
+			Reason:  reason,
+			Message: message,
+		})
+		if export.Status.ObservedGeneration != export.Generation {
+			export.Status.ObservedGeneration = export.Generation
+			changed = true
+		}
+		// Skipping the unchanged case is what keeps a status write from waking the watch
+		// that produced it.
+		if !changed {
+			continue
+		}
+
+		if err := r.Status().Patch(ctx, export, client.MergeFrom(original)); err != nil {
+			errs = append(errs, fmt.Errorf("failed to update status of log export %s/%s: %w", export.Namespace, export.Name, err))
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 // activeExports lists every LogExport on the installation, skipping those being deleted
