@@ -132,21 +132,6 @@ alloy:
         }
         otelcol.receiver.loki "to_giantswarm_audit" {
         	output {
-        		logs = [otelcol.processor.transform.inject_giantswarm_audit.input]
-        	}
-        }
-        // A Kubernetes audit event carries no cluster identifier of its own, and the `body`
-        // marshaler writes only the log line, dropping every Loki label. Without this the archive
-        // cannot be attributed to a cluster.
-        otelcol.processor.transform "inject_giantswarm_audit" {
-        	error_mode = "ignore"
-        	log_statements {
-        		context = "log"
-        		statements = [
-        			`set(log.body, Concat([Substring(log.body, 0, Len(log.body) - 1), ",\"gs_cluster_id\":\"", log.attributes["cluster_id"], "\"}"], ""))`,
-        		]
-        	}
-        	output {
         		logs = [otelcol.exporter.awss3.giantswarm_audit.input]
         	}
         }
@@ -156,8 +141,7 @@ alloy:
         	// permanently, whatever the queue holds.
         	timeout = "5m"
         	marshaler {
-        		// Raw log lines, newline-delimited -- directly queryable as NDJSON.
-        		type = "body"
+        		type = "otlp_json"
         	}
         	sending_queue {
         		enabled = true

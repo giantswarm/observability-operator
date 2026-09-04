@@ -88,6 +88,18 @@ func TestRenderValues(t *testing.T) {
 			goldenPath: "alloy-logexporter-config.s3-options.yaml",
 		},
 		{
+			name: "raw format",
+			exports: []observabilityv1alpha1.LogExport{
+				s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`,
+					observabilityv1alpha1.S3Destination{
+						Bucket: auditBucketName,
+						Region: s3Region,
+						Format: observabilityv1alpha1.S3FormatRaw,
+					}),
+			},
+			goldenPath: "alloy-logexporter-config.raw.yaml",
+		},
+		{
 			name: "two exports, two destinations",
 			exports: []observabilityv1alpha1.LogExport{
 				// Deliberately out of order: rendering sorts, so the output is stable.
@@ -158,8 +170,8 @@ func TestRenderValuesAssertsSilentFailures(t *testing.T) {
 		"block_on_overflow = true":    "overflow has to be backpressure, not a silent drop",
 		fmt.Sprintf("timeout = %q", testLogExportConfig().ExportTimeout): "the 5s default makes any outage over 5s permanent silent loss",
 		`s3_partition_timezone = "UTC"`:                                  "partitions otherwise shift with the pod's timezone",
-		"gs_cluster_id":                                                  "audit events carry no cluster identifier and body drops the Loki labels",
 		"stabilityLevel: experimental":                                   "Alloy refuses to load an awss3 exporter without it",
+		`type = "otlp_json"`:                                             "the default ships all labels",
 	}
 	for snippet, why := range required {
 		if !strings.Contains(result, snippet) {
