@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.76.0] - 2026-09-04
+
 ### Added
 
 - Add the `LogExport` controller, rendering the `alloy-logexporter` ConfigMap and Secret from `LogExport` resources. Gated by `operator.controllers.logExport.enabled` (default `true`).
@@ -1234,7 +1236,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.75.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.76.0...HEAD
+[0.76.0]: https://github.com/giantswarm/observability-operator/compare/v0.75.0...v0.76.0
 [0.75.0]: https://github.com/giantswarm/observability-operator/compare/v0.74.1...v0.75.0
 [0.74.1]: https://github.com/giantswarm/observability-operator/compare/v0.74.0...v0.74.1
 [0.74.0]: https://github.com/giantswarm/observability-operator/compare/v0.73.0...v0.74.0
