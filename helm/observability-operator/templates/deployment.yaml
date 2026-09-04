@@ -155,6 +155,9 @@ spec:
         {{- end }}
         # Log export sizing
         {{- with .Values.logExport }}
+        - --logexport-namespace={{ .target.namespace }}
+        - --logexport-configmap-name={{ .target.configMapName }}
+        - --logexport-secret-name={{ .target.secretName }}
         - --logexport-replicas={{ .replicas }}
         - --logexport-wal-size={{ .wal.size }}
         - --logexport-export-timeout={{ .exportTimeout }}

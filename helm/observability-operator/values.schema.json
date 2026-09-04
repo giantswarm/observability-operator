@@ -507,8 +507,17 @@
         },
         "logExport": {
             "type": "object",
-            "description": "Sizing for alloy-logexporter, the installation-wide log export app",
+            "description": "Configuration for alloy-logexporter, the installation-wide log export app",
             "properties": {
+                "target": {
+                    "type": "object",
+                    "description": "Where the operator writes alloy-logexporter's Helm values; must match what its Helm release reads",
+                    "properties": {
+                        "namespace": { "type": "string", "description": "Namespace the values are written to, which is not necessarily the namespace alloy-logexporter runs in" },
+                        "configMapName": { "type": "string", "description": "Name of the ConfigMap holding the alloy-logexporter Helm values" },
+                        "secretName": { "type": "string", "description": "Name of the Secret holding the alloy-logexporter credentials" }
+                    }
+                },
                 "replicas": {
                     "type": "integer",
                     "minimum": 1,

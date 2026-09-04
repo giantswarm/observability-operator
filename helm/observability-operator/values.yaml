@@ -204,6 +204,15 @@ logging:
 # this section only sizes it -- deliberately not gated by `logging.enabled`, which controls
 # cluster log collection.
 logExport:
+  # -- Where the operator writes alloy-logexporter's Helm values. `configMapName` and
+  # `secretName` have to match the objects its Helm release is configured to read, or the
+  # values never reach the app. `namespace` is where the release reads them from, which is
+  # not necessarily the namespace the app runs in.
+  target:
+    namespace: giantswarm
+    configMapName: alloy-logexporter-config
+    secretName: alloy-logexporter-secret
+
   # -- Number of alloy-logexporter replicas. Pushes are load-balanced to one replica, so
   # replicas add capacity without duplicating records.
   replicas: 2

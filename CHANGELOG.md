@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prefix `LogExport.spec.selector` validation errors with a stable error code (`LOGQL001`-`LOGQL012`).
 - Add rendering of the `alloy-logexporter` Helm values from `LogExport` resources. Rendering only, no controller.
 - Add the `LogExport` controller, writing the `alloy-logexporter` ConfigMap and Secret. Gated by `operator.controllers.logExport.enabled` (default `true`).
-- Expose `alloy-logexporter` replicas, WAL size, export timeout and container resources as operator configuration.
+- Expose the `alloy-logexporter` values target, replicas, WAL size, export timeout and container resources as operator configuration.
 
 ## [0.75.0] - 2026-09-01
 

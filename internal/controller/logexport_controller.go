@@ -19,15 +19,7 @@ import (
 )
 
 const (
-	// The objects alloy-logexporter's HelmRelease reads. All three values are fixed by
-	// bases/collections/shared/base/alloy-logexporter.yaml in management-cluster-bases,
-	// which declares them as optional valuesFrom entries with the ConfigMap last so it
-	// wins, so they are not configurable here.
-	logExportNamespace     = "monitoring"
-	logExportConfigMapName = "alloy-logexporter-config"
-	logExportSecretName    = "alloy-logexporter-secret" //nolint:gosec // G101: an object name, not a credential.
-
-	// logExportValuesKey is the valuesKey both objects are declared with.
+	// logExportValuesKey is the key inside both objects that holds the values.
 	logExportValuesKey = "values"
 )
 
@@ -136,10 +128,10 @@ func (r *LogExportReconciler) renderExporterConfiguration(ctx context.Context) e
 	// Nothing selected any more: remove both objects so the HelmRelease falls back to
 	// alloy-logexporter-defaults and the app returns to zero replicas.
 	if len(exports) == 0 {
-		if err := r.deleteObject(ctx, logExportConfigMapName, &corev1.ConfigMap{}); err != nil {
+		if err := r.deleteObject(ctx, r.logExport.ConfigMapName, &corev1.ConfigMap{}); err != nil {
 			return err
 		}
-		return r.deleteObject(ctx, logExportSecretName, &corev1.Secret{})
+		return r.deleteObject(ctx, r.logExport.SecretName, &corev1.Secret{})
 	}
 
 	credentials, err := r.resolveCredentials(ctx, exports)
@@ -225,8 +217,8 @@ func (r *LogExportReconciler) resolveCredentials(ctx context.Context, exports []
 func (r *LogExportReconciler) writeConfigMap(ctx context.Context, values string) error {
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      logExportConfigMapName,
-			Namespace: logExportNamespace,
+			Name:      r.logExport.ConfigMapName,
+			Namespace: r.logExport.Namespace,
 		},
 	}
 
@@ -235,7 +227,7 @@ func (r *LogExportReconciler) writeConfigMap(ctx context.Context, values string)
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to write configmap %s/%s: %w", logExportNamespace, logExportConfigMapName, err)
+		return fmt.Errorf("failed to write configmap %s/%s: %w", r.logExport.Namespace, r.logExport.ConfigMapName, err)
 	}
 	return nil
 }
@@ -246,7 +238,7 @@ func (r *LogExportReconciler) writeConfigMap(ctx context.Context, values string)
 // relying on: absent is what management-cluster-bases declares as optional.
 func (r *LogExportReconciler) writeSecret(ctx context.Context, environment map[string]string) error {
 	if len(environment) == 0 {
-		return r.deleteObject(ctx, logExportSecretName, &corev1.Secret{})
+		return r.deleteObject(ctx, r.logExport.SecretName, &corev1.Secret{})
 	}
 
 	values, err := common.GenerateSecretData(environment, "")
@@ -256,8 +248,8 @@ func (r *LogExportReconciler) writeSecret(ctx context.Context, environment map[s
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      logExportSecretName,
-			Namespace: logExportNamespace,
+			Name:      r.logExport.SecretName,
+			Namespace: r.logExport.Namespace,
 		},
 	}
 
@@ -266,17 +258,17 @@ func (r *LogExportReconciler) writeSecret(ctx context.Context, environment map[s
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to write secret %s/%s: %w", logExportNamespace, logExportSecretName, err)
+		return fmt.Errorf("failed to write secret %s/%s: %w", r.logExport.Namespace, r.logExport.SecretName, err)
 	}
 	return nil
 }
 
 func (r *LogExportReconciler) deleteObject(ctx context.Context, name string, object client.Object) error {
 	object.SetName(name)
-	object.SetNamespace(logExportNamespace)
+	object.SetNamespace(r.logExport.Namespace)
 
 	if err := r.Delete(ctx, object); err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete %T %s/%s: %w", object, logExportNamespace, name, err)
+		return fmt.Errorf("failed to delete %T %s/%s: %w", object, r.logExport.Namespace, name, err)
 	}
 	return nil
 }
