@@ -14,8 +14,9 @@ const (
 
 	// Condition types set on LogExportStatus.
 
-	// LogExportConditionReady is true once the export pipeline is configured and
-	// the exporter has accepted it.
+	// LogExportConditionReady is true once the exporter configuration is written. It
+	// says nothing about the exporter having read it, or the destination accepting
+	// what arrives.
 	LogExportConditionReady = "Ready"
 	// LogExportConditionExporterAvailable reports whether alloy-logexporter is
 	// actually running on this installation. The app ships to every management
