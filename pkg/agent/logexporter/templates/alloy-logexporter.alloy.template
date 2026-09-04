@@ -58,21 +58,6 @@ loki.process "select_{{ .Slug }}" {
 }
 otelcol.receiver.loki "to_{{ .Slug }}" {
 	output {
-		logs = [otelcol.processor.transform.inject_{{ .Slug }}.input]
-	}
-}
-// A Kubernetes audit event carries no cluster identifier of its own, and the `body`
-// marshaler writes only the log line, dropping every Loki label. Without this the archive
-// cannot be attributed to a cluster.
-otelcol.processor.transform "inject_{{ .Slug }}" {
-	error_mode = "ignore"
-	log_statements {
-		context = "log"
-		statements = [
-			`set(log.body, Concat([Substring(log.body, 0, Len(log.body) - 1), ",\"{{ $.ClusterIDField }}\":\"", log.attributes["cluster_id"], "\"}"], ""))`,
-		]
-	}
-	output {
 		logs = [otelcol.exporter.awss3.{{ .Slug }}.input]
 	}
 }
@@ -82,8 +67,7 @@ otelcol.exporter.awss3 "{{ .Slug }}" {
 	// permanently, whatever the queue holds.
 	timeout = "{{ $.ExportTimeout }}"
 	marshaler {
-		// Raw log lines, newline-delimited -- directly queryable as NDJSON.
-		type = "body"
+		type = "{{ .Marshaler }}"
 	}
 	sending_queue {
 		enabled = true

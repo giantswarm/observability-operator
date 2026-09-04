@@ -58,6 +58,9 @@ type export struct {
 	Ref      string
 	Pipeline pipeline
 	S3       *observabilityv1alpha1.S3Destination
+
+	// Marshaler is the exporter's name for the format, which differs from the field's.
+	Marshaler string
 }
 
 // RenderValues renders the Helm values document for alloy-logexporter, covering every
@@ -76,7 +79,6 @@ func RenderValues(exports []observabilityv1alpha1.LogExport, cfg config.LogExpor
 		Exports           []export
 		Port              int
 		WALDirectory      string
-		ClusterIDField    string
 		ExportTimeout     string
 		QueueSize         int
 		QueueConsumers    int
@@ -89,7 +91,6 @@ func RenderValues(exports []observabilityv1alpha1.LogExport, cfg config.LogExpor
 		Exports:           rendered,
 		Port:              Port,
 		WALDirectory:      WALDirectory,
-		ClusterIDField:    ClusterIDField,
 		ExportTimeout:     cfg.ExportTimeout,
 		QueueSize:         QueueSize,
 		QueueConsumers:    QueueConsumers,
@@ -160,11 +161,17 @@ func buildExports(exports []observabilityv1alpha1.LogExport) ([]export, error) {
 			return nil, fmt.Errorf("%s: %w", ref, err)
 		}
 
+		marshaler := "otlp_json"
+		if e.Spec.Destination.S3.Format == observabilityv1alpha1.S3FormatRaw {
+			marshaler = "body"
+		}
+
 		out = append(out, export{
-			Slug:     slug,
-			Ref:      ref,
-			Pipeline: p,
-			S3:       e.Spec.Destination.S3,
+			Slug:      slug,
+			Ref:       ref,
+			Pipeline:  p,
+			S3:        e.Spec.Destination.S3,
+			Marshaler: marshaler,
 		})
 	}
 
