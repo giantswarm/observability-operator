@@ -9,20 +9,38 @@ For which selectors are accepted, see [LogExport selectors](logexport-selectors.
 
 A `LogExport` is namespaced, and works in **your own namespace on the management cluster** — your
 organization namespace, or any namespace you can write to. Nothing has to be requested from Giant
-Swarm.
-
-The exporter authenticates to S3 with the AWS SDK's default credential chain. For static credentials,
-put them in a Secret **in the same namespace as the `LogExport`** — the reference is by name only and
-cannot cross namespaces:
+Swarm. This walkthrough uses `my-namespace`:
 
 ```bash
-kubectl -n org-acme create secret generic archive-credentials \
-  --from-literal=AWS_ACCESS_KEY_ID=AKIA... \
-  --from-literal=AWS_SECRET_ACCESS_KEY=...
+kubectl create namespace my-namespace
 ```
 
-The two keys are fixed. To authenticate by role instead, omit `credentialsRef` and set `roleARN` —
-preferable where you can use it, since no key has to be handed over or rotated.
+The exporter authenticates to S3 with the AWS SDK's default credential chain, and static credentials
+are the only option that works today. Put them in a Secret **in the same namespace as the
+`LogExport`** — the reference is by name only and cannot cross namespaces.
+
+Write the file with the keys empty, so nothing secret is ever typed on the command line:
+
+```bash
+cat > aws.env <<'EOF'
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+EOF
+```
+
+Fill the two values in with an editor — passing them as arguments would leave them in your shell
+history. Then create the Secret from the file and remove the file:
+
+```bash
+kubectl -n my-namespace create secret generic logexport-aws-credentials --from-env-file=aws.env
+rm aws.env
+```
+
+The two keys are fixed.
+
+`roleARN` is for cross-account delivery, and **is not usable yet**: the exporter would assume the role
+with its own workload identity, and nothing currently gives it one. Until that exists, a
+`credentialsRef` is required.
 
 ## 2. Apply the LogExport
 
@@ -31,7 +49,7 @@ apiVersion: observability.giantswarm.io/v1alpha1
 kind: LogExport
 metadata:
   name: audit
-  namespace: org-acme
+  namespace: my-namespace
 spec:
   selector: '{scrape_job="audit-logs"}'
   destination:
@@ -41,11 +59,17 @@ spec:
       region: us-east-1
       prefix: audit
       credentialsRef:
-        name: archive-credentials
+        name: logexport-aws-credentials
 ```
 
 Creating the resource switches the export on; deleting it switches it off again. There is no separate
-feature flag, and one `LogExport` per destination is fine.
+feature flag.
+
+Several `LogExport`s may write to the same bucket — each one renders its own exporter, and object
+names never collide. They may each name a `credentialsRef` too, as long as those resolve to the same
+credentials, which is the usual shape for two destinations in one AWS account. Credentials that
+disagree are refused, naming both resources: static credentials reach the exporter as environment
+variables, so there is only one set to go round.
 
 `format` is not set above, so it defaults to `otlp`. Section 4 shows what each format produces.
 
@@ -80,45 +104,43 @@ log lines.
 
 `ContentEncoding: gzip` matters more than it looks. Some S3 clients see it and decompress `.gz`
 objects transparently, so the bytes you get may already be plain text; others hand you the compressed
-bytes. Athena treats a `ContentEncoding`-marked object differently from a plain `.gz` too. Check which
-behaviour your client has before assuming a download is compressed.
+bytes. Check which behaviour your client has before assuming a download is compressed.
 
 ## 4. What is inside an object
 
 ### `format: otlp` (the default)
 
 One OTLP document per object. The log line is untouched, in `body.stringValue`, and the labels the
-platform attached to it arrive as record attributes:
+platform attached to it arrive as record attributes.
+
+This is the format to use when the line does not describe itself — container output being the case
+that matters. Here is one such line, `[INFO] 10.0.0.1:38000 - 38341 "A IN cluster.local. udp"`, and
+everything the object holds around it:
 
 ```json
 {"resourceLogs":[{"resource":{},"scopeLogs":[{"scope":{},"logRecords":[{
   "timeUnixNano":"1788513842581338799",
-  "body":{"stringValue":"{\"kind\":\"Event\",\"apiVersion\":\"audit.k8s.io/v1\",\"level\":\"Request\",…}"},
+  "body":{"stringValue":"[INFO] 10.0.0.1:38000 - 38341 \"A IN cluster.local. udp\""},
   "attributes":[
     {"key":"cluster_id","value":{"stringValue":"wc01"}},
-    {"key":"node","value":{"stringValue":"ip-10-0-0-1.eu-west-1.compute.internal"}},
-    {"key":"namespace","value":{"stringValue":"acme-app"}},
-    {"key":"resource","value":{"stringValue":"pods"}},
-    {"key":"scrape_job","value":{"stringValue":"audit-logs"}},
+    {"key":"namespace","value":{"stringValue":"kube-system"}},
+    {"key":"pod","value":{"stringValue":"coredns-7d8f4b6c9-x2vlq"}},
+    {"key":"container","value":{"stringValue":"coredns"}},
+    {"key":"scrape_job","value":{"stringValue":"kubernetes-pods"}},
     {"key":"organization","value":{"stringValue":"acme"}},
-    {"key":"provider","value":{"stringValue":"capa"}},
-    {"key":"cluster_type","value":{"stringValue":"workload_cluster"}}
+    {"key":"log.file.path","value":{"stringValue":"/var/log/pods/kube-system_coredns-7d8f4b6c9-x2vlq_.../coredns/0.log"}},
+    {"key":"loki.attribute.labels","value":{"stringValue":"cluster_id,namespace,pod,container,scrape_job,organization"}}
   ]}]}]}]}
 ```
 
 Shown formatted; in the object it is one line with no trailing newline.
 
-This is the format to use when the line does not describe itself. Container output is the case that
-matters — `[INFO] 10.0.0.1:38000 - 38341 "A IN …"` means little without the pod, namespace and
-container that produced it, and only `otlp` carries them.
+The body on its own means nothing — the pod, namespace and container that produced it are in the
+attributes, and only `otlp` carries them. Note that the collector's own bookkeeping rides along too:
+`log.file.path` and `loki.attribute.labels` sit alongside the useful labels.
 
-Two things to expect:
-
-- **It also carries the collector's own attributes** — `log.file.path`, `log.file.name` and
-  `loki.attribute.labels` appear alongside the useful ones.
-- **Reading it takes more work.** A consumer walks `resourceLogs` → `scopeLogs` → `logRecords`, then
-  parses `body.stringValue` as its own document. In Athena that is three levels of unnesting plus a
-  `json_parse`.
+Reading it takes more work: a consumer walks `resourceLogs` → `scopeLogs` → `logRecords`, and parses
+`body.stringValue` as its own document where the line happens to be JSON.
 
 ### `format: raw`
 
@@ -129,17 +151,32 @@ Two things to expect:
       format: raw
 ```
 
-The log lines alone, newline-delimited and **unaltered** — no envelope, no added fields. `jq`, Athena
-and DuckDB read the decompressed object directly, and in Athena it is a plain
-`org.openx.data.jsonserde.JsonSerDe` table over the lines.
+The log lines alone, newline-delimited and **unaltered** — no envelope, no added fields.
 
 A Kubernetes audit event comes out exactly as the API server wrote it:
 
 ```json
-{"kind":"Event","apiVersion":"audit.k8s.io/v1","level":"Request","auditID":"1950fdcf-5e59-48b1-928c-…",
- …,"annotations":{"authorization.k8s.io/decision":"allow","authorization.k8s.io/reason":"RBAC: allowed by
- ClusterRoleBinding \"log-collector\" of ClusterRole \"log-collector\" to ServiceAccount \"collector/observability\""}}
+{
+  "kind": "Event",
+  "apiVersion": "audit.k8s.io/v1",
+  "level": "Request",
+  "auditID": "1950fdcf-5e59-48b1-928c-6f2b7c1d9a04",
+  "verb": "get",
+  "user": {
+    "username": "system:serviceaccount:collector:observability"
+  },
+  "objectRef": {
+    "resource": "pods",
+    "namespace": "acme-app"
+  },
+  "annotations": {
+    "authorization.k8s.io/decision": "allow",
+    "authorization.k8s.io/reason": "RBAC: allowed by ClusterRoleBinding \"log-collector\""
+  }
+}
 ```
+
+Shown formatted; in the object each record is one line.
 
 **`raw` carries no metadata at all.** None of the labels reach the object, so a `raw` archive cannot
 be traced back to a cluster, a node or a pod. A Kubernetes audit event happens to identify the user,
@@ -150,11 +187,11 @@ it came from. If you need that, use `otlp`.
 
 | | `otlp` | `raw` |
 |---|---|---|
-| Log line | untouched, inside an envelope | untouched, alone |
+| Storage file format | one JSON document | newline-delimited log lines |
+| Log line format | wrapped inside a JSON envelope | untouched |
 | Labels | kept as attributes | dropped |
-| Object | one JSON document | newline-delimited lines |
-| Reading | unnest, then parse the body | direct |
-| Size | larger, see below | smaller |
+| Read log line | decode JSON and read body field | direct |
+| Size | large, see below | small |
 
 `otlp` runs roughly one and a half to five times the compressed size of `raw` for the same records.
 The multiplier depends on how long the lines are and how many land in one object: the envelope
@@ -174,8 +211,6 @@ decides the format:
 | `kubernetes-events` | logfmt, not JSON | `otlp` |
 | `kubernetes-pods` | container output, mostly not JSON | `otlp` |
 
-For the last two, `raw` produces an archive nothing can be attributed to.
-
 ## 6. Reading the archive
 
 With `format: raw`:
@@ -186,7 +221,8 @@ aws s3 cp s3://acme-audit-archive/audit/year=2026/…/logs_01a06bbb-….txt.gz -
   | jq -c '{auditID, verb, user: .user.username}'
 ```
 
-With `format: otlp`, unwrap the envelope and parse the body:
+With `format: otlp`, unwrap the envelope and read the body. `fromjson` applies here only because an
+audit event is itself JSON — a container line you would take as it comes:
 
 ```bash
 aws s3 cp s3://acme-audit-archive/audit/year=2026/…/logs_01a06bbb-….json.gz - \
@@ -196,18 +232,18 @@ aws s3 cp s3://acme-audit-archive/audit/year=2026/…/logs_01a06bbb-….json.gz 
               event: (.body.stringValue | fromjson | {auditID, verb})}'
 ```
 
-Two caveats when loading it anywhere:
+One caveat when loading it anywhere:
 
-- **Delivery is at-least-once.** The same record can appear more than once, so deduplicate on
-  `auditID` for Kubernetes audit events, or `uid` for Teleport.
-- **Partition on upload time, event time in the record.** See the layout note above.
+- **Delivery is at-least-once**, so the same record can appear more than once. Both audit streams
+  carry their own unique identifier to deduplicate on — `auditID` on a Kubernetes audit event, `uid`
+  on a Teleport one.
 
 ## 7. Removing an export
 
 ```bash
-kubectl -n org-acme delete logexport audit
+kubectl -n my-namespace delete logexport audit
 ```
 
 **Objects already written stay in your bucket.** Nothing on the Giant Swarm side ever deletes them,
 so the archive is yours to keep and yours to expire — set a lifecycle policy on the bucket if you
-want the objects aged out.
+want the objects to be deleted.

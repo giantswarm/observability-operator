@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add a tutorial for exporting logs to S3.
+
 ### Changed
 
 - Align the `alloy-metrics` remote write `queue_config` with the upstream Prometheus/Alloy defaults: `capacity` `10000`, `maxSamplesPerSend` `2000`, `maxShards` `50`.
@@ -16,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add the `LogExport` controller, rendering the `alloy-logexporter` ConfigMap and Secret from `LogExport` resources. Gated by `operator.controllers.logExport.enabled` (default `true`).
-- Add a tutorial for exporting logs to S3.
 - Add `LogExport.spec.destination.s3.format`, selecting `otlp` (the default) or `raw`.
 - Expose the `alloy-logexporter` values target, replicas, WAL size, export timeout and container resources as operator configuration.
 
