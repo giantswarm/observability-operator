@@ -234,9 +234,9 @@ aws s3 cp s3://acme-audit-archive/audit/year=2026/…/logs_01a06bbb-….json.gz 
 
 One caveat when loading it anywhere:
 
-- **Delivery is at-least-once**, so the same record can appear more than once. Both audit streams
-  carry their own unique identifier to deduplicate on — `auditID` on a Kubernetes audit event, `uid`
-  on a Teleport one.
+- **Delivery is at-least-once**, so the same record can appear more than once. Usually structured
+  streams carry their own unique identifier to deduplicate on. For instance `auditID` on a Kubernetes
+  audit event, `uid` on a Teleport one.
 
 ## 7. Removing an export
 
