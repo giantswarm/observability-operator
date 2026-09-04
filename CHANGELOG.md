@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Align the `alloy-metrics` remote write `queue_config` with the upstream Prometheus/Alloy defaults: `capacity` `10000`, `maxSamplesPerSend` `2000`, `maxShards` `50`.
+
 ### Added
 
 - Reject `or` on `|=`/`|~` and `ip()` line filters in `LogExport.spec.selector`.
