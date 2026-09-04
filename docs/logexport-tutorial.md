@@ -58,6 +58,7 @@ spec:
       bucket: acme-audit-archive
       region: us-east-1
       prefix: audit
+      format: otlp
       credentialsRef:
         name: logexport-aws-credentials
 ```
@@ -65,13 +66,22 @@ spec:
 Creating the resource switches the export on; deleting it switches it off again. There is no separate
 feature flag.
 
-Several `LogExport`s may write to the same bucket — each one renders its own exporter, and object
-names never collide. They may each name a `credentialsRef` too, as long as those resolve to the same
-credentials, which is the usual shape for two destinations in one AWS account. Credentials that
-disagree are refused, naming both resources: static credentials reach the exporter as environment
-variables, so there is only one set to go round.
+`format` is set to its default, `otlp`. Section 4 shows what each format produces.
 
-`format` is not set above, so it defaults to `otlp`. Section 4 shows what each format produces.
+Several `LogExport`s may write to the same bucket, each rendering its own exporter.
+
+### AWS credentials are shared
+
+There is **one set of AWS credentials for the whole installation**, not one per `LogExport`. That has
+two consequences:
+
+- At least one `LogExport` has to name a `credentialsRef`, or nothing can be written. Nothing checks
+  this for you — an export with no credentials anywhere is accepted and then silently writes nothing.
+- Where several name a `credentialsRef`, they must all resolve to the same credentials. A genuine
+  disagreement is refused, naming both resources.
+
+So every destination has to be reachable with the same key. Exporting to two buckets in different AWS
+accounts is not possible today.
 
 ## 3. What appears in the bucket
 
@@ -91,10 +101,17 @@ Three things worth knowing about the layout:
   lands under `minute=24`. A query that filters only on the partition will miss late arrivals, so
   filter on the event's own timestamp as well.
 - **The timestamp is always UTC**, regardless of where the exporter runs.
-- **The name is a UUIDv7**, so object names sort in creation order and never collide.
+- **The name is a UUIDv7**, so object names sort in creation order and never collide — across
+  exports as well, so several `LogExport`s can safely write to one bucket.
 
 Each object holds a batch, not a single record, so the number of objects does not track the number of
 log lines.
+
+**The `prefix` is the only thing that says which `LogExport` wrote an object.** Nothing else in the
+key identifies it — not the resource name, not the namespace. Two exports sharing a prefix produce
+objects you cannot tell apart, so give each one its own prefix (or its own bucket) if you need to
+separate them later. Where they also differ in `format`, the extension distinguishes them, but that
+is a side effect rather than something to rely on.
 
 ### Object metadata
 
@@ -128,7 +145,6 @@ everything the object holds around it:
     {"key":"container","value":{"stringValue":"coredns"}},
     {"key":"scrape_job","value":{"stringValue":"kubernetes-pods"}},
     {"key":"organization","value":{"stringValue":"acme"}},
-    {"key":"log.file.path","value":{"stringValue":"/var/log/pods/kube-system_coredns-7d8f4b6c9-x2vlq_.../coredns/0.log"}},
     {"key":"loki.attribute.labels","value":{"stringValue":"cluster_id,namespace,pod,container,scrape_job,organization"}}
   ]}]}]}]}
 ```
@@ -137,7 +153,8 @@ Shown formatted; in the object it is one line with no trailing newline.
 
 The body on its own means nothing — the pod, namespace and container that produced it are in the
 attributes, and only `otlp` carries them. Note that the collector's own bookkeeping rides along too:
-`log.file.path` and `loki.attribute.labels` sit alongside the useful labels.
+`loki.attribute.labels` sits alongside the useful labels. The attributes shown here are a subset; a
+real record carries every label the platform attached to the stream.
 
 Reading it takes more work: a consumer walks `resourceLogs` → `scopeLogs` → `logRecords`, and parses
 `body.stringValue` as its own document where the line happens to be JSON.
@@ -193,10 +210,8 @@ it came from. If you need that, use `otlp`.
 | Read log line | decode JSON and read body field | direct |
 | Size | large, see below | small |
 
-`otlp` runs roughly one and a half to five times the compressed size of `raw` for the same records.
-The multiplier depends on how long the lines are and how many land in one object: the envelope
-repeats per record, so short lines and small batches pay most, and large batches of similar records
-compress well. Measure with your own data before sizing a bucket.
+We measured `otlp` compressed size to be 1.5x to 5x the compressed size of `raw` for the same
+records. Measure with your own data before sizing a bucket.
 
 ## 5. Picking a selector
 
