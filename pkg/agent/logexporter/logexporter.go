@@ -39,11 +39,6 @@ const (
 	// raising these past the configured timeout buys nothing.
 	RetryMaxAttempts = 10
 	RetryMaxBackoff  = "5m"
-
-	// ClusterIDField is the field injected into every exported line. A Kubernetes audit
-	// event carries no cluster identifier, and the body marshaler drops the Loki labels
-	// that would otherwise carry it.
-	ClusterIDField = "gs_cluster_id"
 )
 
 // DefaultResources is the exporter container's sizing when the operator is configured
