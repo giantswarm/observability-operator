@@ -45,3 +45,6 @@ CVE-2026-81872 until=2026-09-27
 
 # pkg:golang/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.44.0
 CVE-2026-81870 until=2026-09-27
+
+# pkg:golang/golang.org/x/crypto@v0.55.0
+CVE-2026-56855 until=2026-09-27
