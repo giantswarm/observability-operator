@@ -125,14 +125,18 @@ bytes. Check which behaviour your client has before assuming a download is compr
 
 ## 4. What is inside an object
 
+Both formats are shown below with the same record, so the difference is the format and nothing else.
+It is a container log line rather than one of the audit events this walkthrough exports, because a
+plain-text line shows the difference most clearly:
+
+```
+[INFO] 10.0.0.1:38000 - 38341 "A IN cluster.local. udp"
+```
+
 ### `format: otlp` (the default)
 
 One OTLP document per object. The log line is untouched, in `body.stringValue`, and the labels the
-platform attached to it arrive as record attributes.
-
-This is the format to use when the line does not describe itself — container output being the case
-that matters. Here is one such line, `[INFO] 10.0.0.1:38000 - 38341 "A IN cluster.local. udp"`, and
-everything the object holds around it:
+platform attached to it arrive as record attributes:
 
 ```json
 {"resourceLogs":[{"resource":{},"scopeLogs":[{"scope":{},"logRecords":[{
@@ -168,37 +172,15 @@ Reading it takes more work: a consumer walks `resourceLogs` → `scopeLogs` → 
       format: raw
 ```
 
-The log lines alone, newline-delimited and **unaltered** — no envelope, no added fields.
+The log lines alone, newline-delimited and **unaltered** — no envelope, no added fields. The same
+record is the whole object content:
 
-A Kubernetes audit event comes out exactly as the API server wrote it:
-
-```json
-{
-  "kind": "Event",
-  "apiVersion": "audit.k8s.io/v1",
-  "level": "Request",
-  "auditID": "1950fdcf-5e59-48b1-928c-6f2b7c1d9a04",
-  "verb": "get",
-  "user": {
-    "username": "system:serviceaccount:collector:observability"
-  },
-  "objectRef": {
-    "resource": "pods",
-    "namespace": "acme-app"
-  },
-  "annotations": {
-    "authorization.k8s.io/decision": "allow",
-    "authorization.k8s.io/reason": "RBAC: allowed by ClusterRoleBinding \"log-collector\""
-  }
-}
+```
+[INFO] 10.0.0.1:38000 - 38341 "A IN cluster.local. udp"
 ```
 
-Shown formatted; in the object each record is one line.
-
 **`raw` carries no metadata at all.** None of the labels reach the object, so a `raw` archive cannot
-be traced back to a cluster, a node or a pod. A Kubernetes audit event happens to identify the user,
-verb and object it concerns, so it is still useful on its own — but nothing in it says which cluster
-it came from. If you need that, use `otlp`.
+be traced back to a cluster, a node or a pod.
 
 ### Choosing
 
@@ -228,20 +210,27 @@ decides the format:
 
 ## 6. Reading the archive
 
-With `format: raw`:
+A `raw` object is the original lines, so read it with whatever you would use on the logs themselves:
 
 ```bash
-aws s3 cp s3://acme-audit-archive/audit/year=2026/…/logs_01a06bbb-….txt.gz - \
-  | gunzip -c \
-  | jq -c '{auditID, verb, user: .user.username}'
+aws s3 cp s3://acme-audit-archive/audit/year=2026/…/logs_01a06bbb-….txt.gz - | gunzip -c
 ```
 
-With `format: otlp`, unwrap the envelope and read the body. `fromjson` applies here only because an
-audit event is itself JSON — a container line you would take as it comes:
+An `otlp` object needs the envelope unwrapping first. This works whatever the lines are, because the
+body is carried as a string — here, each record as its cluster and its line:
 
 ```bash
 aws s3 cp s3://acme-audit-archive/audit/year=2026/…/logs_01a06bbb-….json.gz - \
   | gunzip -c \
+  | jq -r '.resourceLogs[].scopeLogs[].logRecords[]
+           | [(.attributes[] | select(.key=="cluster_id") | .value.stringValue), .body.stringValue]
+           | @tsv'
+```
+
+Where the lines are themselves JSON — audit events, for instance — put the body through `fromjson`
+to reach its fields:
+
+```bash
   | jq -c '.resourceLogs[].scopeLogs[].logRecords[]
            | {cluster: (.attributes[] | select(.key=="cluster_id") | .value.stringValue),
               event: (.body.stringValue | fromjson | {auditID, verb})}'
