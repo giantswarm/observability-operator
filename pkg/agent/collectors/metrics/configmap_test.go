@@ -86,9 +86,9 @@ func newTestService(monitoringEnabled, exemplarsEnabled, vcenterEnabled bool) *S
 				WALTruncateFrequency:    time.Minute,
 				MimirRemoteWriteTimeout: "60s",
 				QueueConfig: config.QueueConfig{
-					Capacity:          &[]int{30000}[0],
-					MaxShards:         &[]int{10}[0],
-					MaxSamplesPerSend: &[]int{150000}[0],
+					Capacity:          &[]int{10000}[0],
+					MaxShards:         &[]int{50}[0],
+					MaxSamplesPerSend: &[]int{2000}[0],
 					SampleAgeLimit:    &[]string{"30m"}[0],
 				},
 			},

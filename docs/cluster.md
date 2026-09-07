@@ -101,3 +101,16 @@ metadata:
     observability.giantswarm.io/monitoring-agent-scale-up-series-count: "500000"
     observability.giantswarm.io/monitoring-agent-scale-down-percentage: "0.15"
 ```
+
+## Remote write queue tuning
+
+The Alloy-Metrics remote write queue (`prometheus.remote_write`'s `queue_config`) is **installation-level only** — there is no per-cluster annotation for it. Set it via `monitoring.queueConfig` in the operator's Helm values, or via the matching `--monitoring-queue-config-*` CLI flags when running the binary directly.
+
+Note that shards come in two independent flavours:
+
+| Concept | Scope | Controlled by |
+|---|---|---|
+| Alloy-Metrics replicas | Pods in the StatefulSet, computed from head series | `monitoring.sharding` + the annotations above |
+| `max_shards` / `min_shards` | Remote write concurrency *inside each pod*, autoscaled by Alloy | `monitoring.queueConfig` |
+
+The defaults match upstream Prometheus/Alloy (`capacity: 10000`, `maxSamplesPerSend: 2000`, `maxShards: 50`), with `sampleAgeLimit: 30m` as a Giant Swarm addition. When tuning, keep `capacity` well above `maxSamplesPerSend` — if `capacity` is the smaller of the two, Prometheus gives each shard a single-batch channel and the queue loses its buffer.
