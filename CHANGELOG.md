@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add a tutorial for exporting logs to S3.
+
 ## [0.77.0] - 2026-09-07
 
 ### Changed
