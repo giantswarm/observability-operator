@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.77.0] - 2026-09-07
+
 ### Changed
 
 - Align the `alloy-metrics` remote write `queue_config` with the upstream Prometheus/Alloy defaults: `capacity` `10000`, `maxSamplesPerSend` `2000`, `maxShards` `50`.
@@ -1240,7 +1242,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.76.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.77.0...HEAD
+[0.77.0]: https://github.com/giantswarm/observability-operator/compare/v0.76.0...v0.77.0
 [0.76.0]: https://github.com/giantswarm/observability-operator/compare/v0.75.0...v0.76.0
 [0.75.0]: https://github.com/giantswarm/observability-operator/compare/v0.74.1...v0.75.0
 [0.74.1]: https://github.com/giantswarm/observability-operator/compare/v0.74.0...v0.74.1
