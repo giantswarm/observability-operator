@@ -48,16 +48,16 @@ with its own workload identity, and nothing currently gives it one. Until that e
 apiVersion: observability.giantswarm.io/v1alpha1
 kind: LogExport
 metadata:
-  name: audit
+  name: dns
   namespace: my-namespace
 spec:
-  selector: '{scrape_job="audit-logs"}'
+  selector: '{scrape_job="kubernetes-pods", namespace="kube-system", container="coredns"}'
   destination:
     type: s3
     s3:
-      bucket: acme-audit-archive
+      bucket: acme-dns-archive
       region: us-east-1
-      prefix: audit
+      prefix: dns
       format: otlp
       credentialsRef:
         name: logexport-aws-credentials
@@ -88,7 +88,7 @@ accounts is not possible today.
 Objects are written under the `prefix`, partitioned by time:
 
 ```
-audit/year=2026/month=09/day=04/hour=09/minute=24/logs_01a06bbb-75ac-72c3-8324-608193725750.json.gz
+dns/year=2026/month=09/day=04/hour=09/minute=24/logs_01a06bbb-75ac-72c3-8324-608193725750.json.gz
 └─┬─┘ └───────────────────┬──────────────────────┘ └───────────────────┬───────────────────────────┘
 prefix          partition, always UTC                       logs_<uuidv7>.<ext>.gz
 ```
@@ -126,8 +126,7 @@ bytes. Check which behaviour your client has before assuming a download is compr
 ## 4. What is inside an object
 
 Both formats are shown below with the same record, so the difference is the format and nothing else.
-It is a container log line rather than one of the audit events this walkthrough exports, because a
-plain-text line shows the difference most clearly:
+It is one of the lines the export above selects, a CoreDNS query:
 
 ```
 [INFO] 10.0.0.1:38000 - 38341 "A IN cluster.local. udp"
@@ -145,7 +144,7 @@ platform attached to it arrive as record attributes:
   "attributes":[
     {"key":"cluster_id","value":{"stringValue":"wc01"}},
     {"key":"namespace","value":{"stringValue":"kube-system"}},
-    {"key":"pod","value":{"stringValue":"coredns-7d8f4b6c9-x2vlq"}},
+    {"key":"pod","value":{"stringValue":"coredns-workers-5d9f7c8b6-k4xqz"}},
     {"key":"container","value":{"stringValue":"coredns"}},
     {"key":"scrape_job","value":{"stringValue":"kubernetes-pods"}},
     {"key":"organization","value":{"stringValue":"acme"}},
@@ -164,13 +163,6 @@ Reading it takes more work: a consumer walks `resourceLogs` → `scopeLogs` → 
 `body.stringValue` as its own document where the line happens to be JSON.
 
 ### `format: raw`
-
-```yaml
-    s3:
-      bucket: acme-audit-archive
-      region: us-east-1
-      format: raw
-```
 
 The log lines alone, newline-delimited and **unaltered** — no envelope, no added fields. The same
 record is the whole object content:
@@ -208,19 +200,30 @@ decides the format:
 | `kubernetes-events` | logfmt, not JSON | `otlp` |
 | `kubernetes-pods` | container output, mostly not JSON | `otlp` |
 
+### Useful selectors
+
+The audit streams are the usual reason to set an export up. These four are accepted as they stand:
+
+```
+{scrape_job="audit-logs"}
+{scrape_job="audit-logs"} | json | verb=~"create|update|patch|delete"
+{scrape_job="teleport.giantswarm.io"}
+{scrape_job="teleport.giantswarm.io"} | json | event_type="kube.request"
+```
+
 ## 6. Reading the archive
 
 A `raw` object is the original lines, so read it with whatever you would use on the logs themselves:
 
 ```bash
-aws s3 cp s3://acme-audit-archive/audit/year=2026/…/logs_01a06bbb-….txt.gz - | gunzip -c
+aws s3 cp s3://acme-dns-archive/dns/year=2026/…/logs_01a06bbb-….txt.gz - | gunzip -c
 ```
 
 An `otlp` object needs the envelope unwrapping first. This works whatever the lines are, because the
 body is carried as a string — here, each record as its cluster and its line:
 
 ```bash
-aws s3 cp s3://acme-audit-archive/audit/year=2026/…/logs_01a06bbb-….json.gz - \
+aws s3 cp s3://acme-dns-archive/dns/year=2026/…/logs_01a06bbb-….json.gz - \
   | gunzip -c \
   | jq -r '.resourceLogs[].scopeLogs[].logRecords[]
            | [(.attributes[] | select(.key=="cluster_id") | .value.stringValue), .body.stringValue]
@@ -245,7 +248,7 @@ One caveat when loading it anywhere:
 ## 7. Removing an export
 
 ```bash
-kubectl -n my-namespace delete logexport audit
+kubectl -n my-namespace delete logexport dns
 ```
 
 **Objects already written stay in your bucket.** Nothing on the Giant Swarm side ever deletes them,
