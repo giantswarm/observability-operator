@@ -29,6 +29,7 @@ spec:
         - --controllers-cluster-enabled={{ $.Values.operator.controllers.cluster.enabled }}
         - --controllers-dashboard-enabled={{ $.Values.operator.controllers.dashboard.enabled }}
         - --controllers-grafana-organization-enabled={{ $.Values.operator.controllers.grafanaOrganization.enabled }}
+        - --controllers-log-export-enabled={{ $.Values.operator.controllers.logExport.enabled }}
         - --grafana-url={{ $.Values.grafana.url }}
         - --grafana-client-retries={{ $.Values.grafana.clientRetries }}
         - --grafana-admin-secret-namespace={{ $.Values.grafana.adminSecretNamespace }}
@@ -150,6 +151,20 @@ spec:
         - --logging-gateway-namespace={{ .namespace }}
         - --logging-gateway-ingress-secret-name={{ .ingressSecretName }}
         - --logging-gateway-httproute-secret-name={{ .httprouteSecretName }}
+        {{- end }}
+        {{- end }}
+        # Log export sizing
+        {{- with .Values.logExport }}
+        - --logexport-namespace={{ .target.namespace }}
+        - --logexport-configmap-name={{ .target.configMapName }}
+        - --logexport-secret-name={{ .target.secretName }}
+        - --logexport-replicas={{ .replicas }}
+        - --logexport-wal-size={{ .wal.size }}
+        - --logexport-export-timeout={{ .exportTimeout }}
+        {{- if .resources }}
+        # Quote the whole argument: the JSON contains characters YAML would otherwise
+        # take as structure.
+        - {{ printf "--logexport-resources=%s" (.resources | toJson) | quote }}
         {{- end }}
         {{- end }}
         # Cronitor heartbeat monitor configuration

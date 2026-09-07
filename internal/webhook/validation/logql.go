@@ -17,6 +17,7 @@ limitations under the License.
 package validation
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -29,6 +30,24 @@ import (
 const SupportedSelectorSubset = `a stream selector ` +
 	`(e.g. {scrape_job="audit-logs"}), optional line filters (|=, !=, |~, !~), ` +
 	`an optional "| json", and optional label filters (e.g. | verb="delete")`
+
+// The code every rejection carries; docs/logexport-selectors.md explains each one.
+//
+// Codes are stable: append new ones, never renumber and never reuse.
+var (
+	ErrCodeTimeRange      = errors.New("LOGQL001")
+	ErrCodeSyntax         = errors.New("LOGQL002")
+	ErrCodeNotLogLines    = errors.New("LOGQL003")
+	ErrCodeAggregation    = errors.New("LOGQL004")
+	ErrCodeNotLogSelector = errors.New("LOGQL005")
+	ErrCodePipelineBuild  = errors.New("LOGQL006")
+	ErrCodeParser         = errors.New("LOGQL007")
+	ErrCodeLabelFilter    = errors.New("LOGQL008")
+	ErrCodeStage          = errors.New("LOGQL009")
+	ErrCodeLineFilterOr   = errors.New("LOGQL010")
+	ErrCodeLineFilterOp   = errors.New("LOGQL011")
+	ErrCodeReservedLabel  = errors.New("LOGQL012")
+)
 
 // ValidateSelector reports whether a LogExport selector is a LogQL expression the
 // export pipeline can honour.
@@ -51,6 +70,13 @@ const SupportedSelectorSubset = `a stream selector ` +
 // the raw field value: the parser tolerates trailing "# comment" and non-canonical
 // whitespace, so a negated term appended to the raw string can be commented out.
 func ValidateSelector(selector string) error {
+	_, err := ParseSelector(selector)
+	return err
+}
+
+// ParseSelector validates a selector and returns the parsed expression, so that config
+// rendering is driven from the same parse admission accepts and the two cannot drift.
+func ParseSelector(selector string) (syntax.LogSelectorExpr, error) {
 	// ParseExpr both parses and validates. Validation is what rejects a selector that
 	// names no stream -- `{}`, `{job=~".*"}`, `{job!="x"}` -- since Loki requires at least
 	// one matcher that cannot match empty. The parse phase recovers its own panics, so
@@ -64,40 +90,42 @@ func ValidateSelector(selector string) error {
 		// but `count_over_time({})` would still parse, so an unvalidated probe would
 		// blame a time range that the selector does not contain.
 		if _, rangeErr := syntax.ParseExpr(fmt.Sprintf("count_over_time(%s)", selector)); rangeErr == nil {
-			return unsupported("time ranges are not supported: an export forwards log lines as they arrive, so there is no past window to select from")
+			return nil, unsupported(ErrCodeTimeRange, "time ranges are not supported: an export forwards log lines as they arrive, so there is no past window to select from")
 		}
-		return unsupported("not a valid LogQL expression: %v", err)
+		return nil, unsupported(ErrCodeSyntax, "not a valid LogQL expression: %v", err)
 	}
 
 	switch e := expr.(type) {
 	case *syntax.MatchersExpr:
 		if err := checkMatchers(e.Mts); err != nil {
-			return err
+			return nil, err
 		}
 	case *syntax.PipelineExpr:
 		if err := checkMatchers(e.Left.Mts); err != nil {
-			return err
+			return nil, err
 		}
 		if err := checkStages(e.MultiStages); err != nil {
-			return err
+			return nil, err
 		}
 	case *syntax.LiteralExpr, *syntax.VectorExpr:
 		// These satisfy LogSelectorExpr as well as SampleExpr, so they have to be caught
 		// before the case below.
-		return unsupported("%q returns a value rather than log lines", spell(e))
+		return nil, unsupported(ErrCodeNotLogLines, "%q returns a value rather than log lines", spell(e))
 	case syntax.SampleExpr:
-		return unsupported("aggregations are not supported: an export is a continuous tee, not a query")
+		return nil, unsupported(ErrCodeAggregation, "aggregations are not supported: an export is a continuous tee, not a query")
 	default:
-		return unsupported("not a log selector")
+		return nil, unsupported(ErrCodeNotLogSelector, "not a log selector")
 	}
+
+	logSelector := expr.(syntax.LogSelectorExpr)
 
 	// Building the pipeline compiles the line filter regexps, which parsing alone does
 	// not. An expression that parses but fails to build would reach Alloy and stop every
 	// export on the installation.
-	if _, err := expr.(syntax.LogSelectorExpr).Pipeline(); err != nil {
-		return unsupported("not a usable log selector: %v", err)
+	if _, err := logSelector.Pipeline(); err != nil {
+		return nil, unsupported(ErrCodePipelineBuild, "not a usable log selector: %v", err)
 	}
-	return nil
+	return logSelector, nil
 }
 
 // checkMatchers rejects Loki-internal labels in the stream selector. How much the
@@ -116,31 +144,52 @@ func checkStages(stages syntax.MultiStageExpr) error {
 	for _, stage := range stages {
 		switch s := stage.(type) {
 		case *syntax.LineFilterExpr:
-			// Passed verbatim into stage.match, so anything the parser accepts works.
+			// The renderer selects by dropping the opposite of each filter, so every filter
+			// needs an opposite. checkLineFilters rejects the forms that have none.
+			if err := checkLineFilters(s); err != nil {
+				return err
+			}
 		case *syntax.LineParserExpr:
 			// Also where regexp, unpack and pattern land.
 			if s.Op != syntax.OpParserTypeJSON || s.Param != "" {
-				return unsupported("the parser %q is not supported: only \"| json\" is", spell(s))
+				return unsupported(ErrCodeParser, "the parser %q is not supported: only \"| json\" is", spell(s))
 			}
 		case *syntax.LabelFilterExpr:
-			// Selection is rendered as a drop of the *negated* filter, and a drop can only
-			// spell a string comparison. `| duration > 10s` has no negated stream-selector
-			// form, so there is nothing to render it into.
-			m, ok := stringMatcher(s.LabelFilterer)
+			// Same rule: only a string comparison has an opposite the renderer can drop (LOGQL008).
+			m, ok := StringMatcher(s.LabelFilterer)
 			if !ok {
-				return unsupported("the label filter %q is not supported: only string comparisons (=, !=, =~, !~) on a single label are", spell(s))
+				return unsupported(ErrCodeLabelFilter, "the label filter %q is not supported: only string comparisons (=, !=, =~, !~) on a single label are", spell(s))
 			}
 			if err := checkLabelName(m.Name); err != nil {
 				return err
 			}
 		default:
-			return unsupported("the stage %q is not supported", spell(s))
+			return unsupported(ErrCodeStage, "the stage %q is not supported", spell(s))
 		}
 	}
 	return nil
 }
 
-// stringMatcher reports the matcher behind a label filter, for the filterers that are a
+// checkLineFilters accepts only line filters the renderer can rewrite into a single
+// opposite filter -- `|= "x"` into `!= "x"`, `!~ "y"` into `|~ "y"`. `or` on a positive
+// filter and ip() are out (LOGQL010, LOGQL011); `or` on a negative filter is in, because
+// Loki flattens `!= "a" or "b"` into `!= "a" != "b"` before we see it.
+//
+// The chain is walked through Left, the previous filter. Or is set only where the parser
+// kept an alternation. Op is set only by ip(), the one filter operation LogQL has.
+func checkLineFilters(expr *syntax.LineFilterExpr) error {
+	for e := expr; e != nil; e = e.Left {
+		if e.Or != nil || e.IsOrChild {
+			return unsupported(ErrCodeLineFilterOr, "the line filter %q uses `or`, which the exporter cannot rewrite", spell(expr))
+		}
+		if e.Op != "" {
+			return unsupported(ErrCodeLineFilterOp, "the line filter %q uses ip(), which the exporter does not support", spell(expr))
+		}
+	}
+	return nil
+}
+
+// StringMatcher reports the matcher behind a label filter, for the filterers that are a
 // single string comparison.
 //
 // Note that `| verb="delete"` is not a StringLabelFilter: log.NewStringLabelFilter
@@ -148,7 +197,7 @@ func checkStages(stages syntax.MultiStageExpr) error {
 // reduces to a match-all, and a StringLabelFilter only on its fallback path. All three
 // carry a matcher; binary (and/or), numeric, duration, bytes and IP filters do not, and
 // have no stream-selector spelling once negated.
-func stringMatcher(f log.LabelFilterer) (*labels.Matcher, bool) {
+func StringMatcher(f log.LabelFilterer) (*labels.Matcher, bool) {
 	switch t := f.(type) {
 	case *log.LineFilterLabelFilter:
 		return t.Matcher, true
@@ -160,12 +209,11 @@ func stringMatcher(f log.LabelFilterer) (*labels.Matcher, bool) {
 	return nil, false
 }
 
-// checkLabelName rejects Loki's internal labels. `__error__` and friends are produced by
-// Loki's query-time parsers and do not exist in the exporter's pipeline, so filtering on
-// them would silently export more than the customer asked for.
+// checkLabelName rejects Loki's internal labels, which the exporter's pipeline never
+// produces and so cannot filter on (LOGQL012).
 func checkLabelName(name string) error {
 	if strings.HasPrefix(name, "__") {
-		return unsupported("the label %q is reserved for Loki internals and is not visible to the exporter", name)
+		return unsupported(ErrCodeReservedLabel, "the label %q is reserved for Loki internals and is not visible to the exporter", name)
 	}
 	return nil
 }
@@ -175,6 +223,8 @@ func spell(e syntax.Expr) string {
 	return strings.TrimSpace(e.String())
 }
 
-func unsupported(format string, args ...any) error {
-	return fmt.Errorf("%s; supported is %s", fmt.Sprintf(format, args...), SupportedSelectorSubset)
+// unsupported puts the code at the front of the message, because
+// docs/logexport-selectors.md tells readers to find it there.
+func unsupported(code error, format string, args ...any) error {
+	return fmt.Errorf("%w: %s; supported is %s", code, fmt.Sprintf(format, args...), SupportedSelectorSubset)
 }

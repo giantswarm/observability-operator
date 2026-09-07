@@ -328,6 +328,14 @@
                                     "type": "boolean"
                                 }
                             }
+                        },
+                        "logExport": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
                     }
                 },
@@ -494,6 +502,41 @@
                         "ingressSecretName": { "type": "string" },
                         "httprouteSecretName": { "type": "string" }
                     }
+                }
+            }
+        },
+        "logExport": {
+            "type": "object",
+            "description": "Configuration for alloy-logexporter, the installation-wide log export app",
+            "properties": {
+                "target": {
+                    "type": "object",
+                    "description": "Where the operator writes alloy-logexporter's Helm values; must match what its Helm release reads",
+                    "properties": {
+                        "namespace": { "type": "string", "description": "Namespace the values are written to, which is not necessarily the namespace alloy-logexporter runs in" },
+                        "configMapName": { "type": "string", "description": "Name of the ConfigMap holding the alloy-logexporter Helm values" },
+                        "secretName": { "type": "string", "description": "Name of the Secret holding the alloy-logexporter credentials" }
+                    }
+                },
+                "replicas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of alloy-logexporter replicas"
+                },
+                "wal": {
+                    "type": "object",
+                    "description": "Write-ahead log holding the sending queue",
+                    "properties": {
+                        "size": { "type": "string", "description": "Size of the per-replica WAL volume (e.g., '10Gi')" }
+                    }
+                },
+                "exportTimeout": {
+                    "type": "string",
+                    "description": "Durability window for uploads; a destination outage longer than this loses data (e.g., '5m')"
+                },
+                "resources": {
+                    "type": "object",
+                    "description": "Container resources for alloy-logexporter"
                 }
             }
         },

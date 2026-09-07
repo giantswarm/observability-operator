@@ -6,6 +6,12 @@ import (
 )
 
 const (
+	// LogExportFinalizer ensures the exporter configuration is re-rendered without
+	// this export before the resource goes away. The rendered values cover every
+	// LogExport at once, so a deletion that skipped this would leave the removed
+	// export still configured.
+	LogExportFinalizer = "observability.giantswarm.io/logexport"
+
 	// Condition types set on LogExportStatus.
 
 	// LogExportConditionReady is true once the export pipeline is configured and
@@ -78,7 +84,16 @@ type LogExportDestination struct {
 	Loki *LokiDestination `json:"loki,omitempty"`
 }
 
-// S3Destination writes gzipped, newline-delimited JSON objects to a bucket.
+// S3Format selects how each record is written into an object.
+// +kubebuilder:validation:Enum=raw;otlp
+type S3Format string
+
+const (
+	S3FormatRaw  S3Format = "raw"
+	S3FormatOTLP S3Format = "otlp"
+)
+
+// S3Destination writes objects to a bucket.
 type S3Destination struct {
 	// Bucket is the destination bucket name.
 	// +kubebuilder:validation:MinLength=1
@@ -117,6 +132,16 @@ type S3Destination struct {
 	// +kubebuilder:validation:Pattern="^$|^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+$"
 	// +kubebuilder:validation:MaxLength=2048
 	RoleARN string `json:"roleARN,omitempty"`
+
+	// Format selects how each record is written into AWS S3 object storage.
+	//
+	// "otlp" wraps each batch in an OTLP document, keeping the labels as record attributes.
+	// "raw" writes the log lines alone, newline-delimited and unaltered: smaller and
+	// directly queryable, but with no labels and so no way to tell which cluster or pod a
+	// line came from.
+	// +optional
+	// +kubebuilder:default=otlp
+	Format S3Format `json:"format,omitempty"`
 
 	// CredentialsRef names a Secret holding static credentials, with keys
 	// AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
