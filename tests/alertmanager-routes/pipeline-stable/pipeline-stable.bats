@@ -25,3 +25,15 @@ load ../helper.bash
   run amtool team=atlas severity=notify
   assert_line --partial team_atlas_slack
 }
+
+# Specific Planeteers slack conditions (Slack-only team, same shape as Atlas)
+
+@test "planeteers paging alerts are NOT delivered to Slack" {
+  run amtool team=planeteers severity=page
+  refute_line team_planeteers_slack
+}
+
+@test "planeteers notify alerts are delivered to Slack" {
+  run amtool team=planeteers severity=notify
+  assert_line team_planeteers_slack
+}
