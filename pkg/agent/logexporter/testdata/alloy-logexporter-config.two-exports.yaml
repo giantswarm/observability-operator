@@ -91,7 +91,7 @@ alloy:
         	}
         	forward_to = [
         		loki.process.select_giantswarm_audit.receiver,
-        		loki.process.select_org_fleetio_teleport.receiver,
+        		loki.process.select_org_acme_teleport.receiver,
         	]
         }
         otelcol.storage.file "wal" {
@@ -160,26 +160,26 @@ alloy:
         		retry_max_backoff     = "5m"
         	}
         }
-        // org-fleetio/teleport
+        // org-acme/teleport
         //
         // Selection is expressed as a DROP of the negated selector. stage.match with the default
         // action = "keep" does NOT drop non-matching entries -- it only gates its nested stages --
         // and it fails validation without one. Emitting one drop stage per negated term composes
         // as an AND of keeps.
-        loki.process "select_org_fleetio_teleport" {
+        loki.process "select_org_acme_teleport" {
         	stage.match {
         		selector            = "{scrape_job!=\"teleport.giantswarm.io\"}"
         		action              = "drop"
         		drop_counter_reason = "not_selected"
         	}
-        	forward_to = [otelcol.receiver.loki.to_org_fleetio_teleport.receiver]
+        	forward_to = [otelcol.receiver.loki.to_org_acme_teleport.receiver]
         }
-        otelcol.receiver.loki "to_org_fleetio_teleport" {
+        otelcol.receiver.loki "to_org_acme_teleport" {
         	output {
-        		logs = [otelcol.exporter.awss3.org_fleetio_teleport.input]
+        		logs = [otelcol.exporter.awss3.org_acme_teleport.input]
         	}
         }
-        otelcol.exporter.awss3 "org_fleetio_teleport" {
+        otelcol.exporter.awss3 "org_acme_teleport" {
         	// This exporter does not expose retry_on_failure and it is disabled, so `timeout` is
         	// the durability window: an object-store outage longer than this loses data
         	// permanently, whatever the queue holds.
