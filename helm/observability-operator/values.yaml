@@ -84,8 +84,13 @@ otlp:
 # the operator binary directly (e.g. make run-local):
 # --monitoring-queue-config-batch-send-deadline, --monitoring-queue-config-capacity,
 # --monitoring-queue-config-max-shards, etc. CLI flags take precedence over Helm values if explicitly set.
+# IMPORTANT: capacity is the buffer *per shard* and maxSamplesPerSend is the batch size, so
+#   capacity must stay well above maxSamplesPerSend (upstream uses a 5:1 ratio). If capacity is
+#   lower, Prometheus computes `capacity / maxSamplesPerSend == 0` batches and falls back to a
+#   single-batch channel, leaving each shard with effectively no buffer.
 # Tuning guidelines:
-#   High throughput: increase maxShards and maxSamplesPerSend; consider increasing capacity
+#   High throughput: increase maxShards (parallelism), not maxSamplesPerSend; bigger batches mean
+#     larger request bodies, longer sends, and a bigger blast radius when one request is rejected
 #   Low latency: decrease batchSendDeadline; increase minShards
 #   Memory constrained: decrease capacity and maxShards
 #   Unreliable network: increase maxBackoff; enable retryOnHttp429; set a sampleAgeLimit to avoid accumulating stale data
@@ -111,15 +116,18 @@ monitoring:
     truncateFrequency: 15m
   queueConfig:
     # -- Queue configuration for remote write. If not set, Alloy defaults will be used.
+    # The values below match the upstream Prometheus/Alloy defaults. They are pinned explicitly
+    # rather than omitted so the effective config is visible via `helm get values` and in the
+    # rendered Alloy config, and so an upstream default change cannot silently move the fleet.
     # All fields are optional; uncomment to override:
     # batchSendDeadline: "5s"  # Max time samples wait before sending
     # -- Samples buffered per shard
-    capacity: 30000
+    capacity: 10000
     # maxBackoff: "5s"  # Maximum retry delay
     # -- Maximum samples per send
-    maxSamplesPerSend: 150000
+    maxSamplesPerSend: 2000
     # -- Maximum concurrent shards
-    maxShards: 10
+    maxShards: 50
     # minBackoff: "30ms"  # Initial retry delay
     # minShards: 1  # Minimum concurrent shards
     # retryOnHttp429: true  # Retry on HTTP 429 responses
@@ -129,6 +137,11 @@ monitoring:
     # -- Enable exemplar forwarding in the remote write pipeline.
     # Requires Mimir to have exemplar storage enabled (max_global_exemplars_per_user > 0).
     enabled: true
+
+  vcenter:
+    # -- Enable vCenter resource metrics collection on vSphere and Cloud Director installations.
+    # Requires an externally-provided `alloy-vcenter-credentials` Secret in the Alloy namespace.
+    enabled: false
 
   # -- Timeout for Alloy Mimir remote write operations
   mimirRemoteWriteTimeout: "60s"
@@ -194,6 +207,48 @@ logging:
     # -- Name of the HTTPRoute auth secret in the Loki gateway namespace
     httprouteSecretName: "loki-gateway-httproute-auth"
 
+# Sizing for alloy-logexporter, the installation-wide app that copies selected logs to a
+# destination outside the platform. What it exports is driven by LogExport resources, so
+# this section only sizes it -- deliberately not gated by `logging.enabled`, which controls
+# cluster log collection.
+logExport:
+  # -- Where the operator writes alloy-logexporter's Helm values. `configMapName` and
+  # `secretName` have to match the objects its Helm release is configured to read, or the
+  # values never reach the app. `namespace` is where the release reads them from, which is
+  # not necessarily the namespace the app runs in.
+  target:
+    namespace: giantswarm
+    configMapName: alloy-logexporter-config
+    secretName: alloy-logexporter-secret
+
+  # -- Number of alloy-logexporter replicas. Pushes are load-balanced to one replica, so
+  # replicas add capacity without duplicating records.
+  replicas: 2
+
+  wal:
+    # -- Per-replica volume holding the sending queue. It only has to hold what accumulates
+    # while the destination is unavailable, so size it as the rate at which selected logs
+    # arrive multiplied by `exportTimeout` -- not as peak throughput.
+    size: 10Gi
+
+  # -- Durability window for uploads. The exporter does not expose retry_on_failure, so
+  # this is a hard ceiling: a destination outage longer than this loses data permanently.
+  exportTimeout: 5m
+
+  # -- Container resources for alloy-logexporter. Passed through as a Kubernetes
+  # ResourceRequirements, so extended resources such as `nvidia.com/gpu` work here too.
+  # ephemeral-storage is required by the require-emptydir-requests-and-limits Kyverno
+  # policy, because the container mounts the alloy-tmp emptyDir.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 400Mi
+      ephemeral-storage: 1Gi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+      ephemeral-storage: 2Gi
+
 # Resource and security configuration for the operator pod.
 # Defaults are appropriate for most deployments.
 operator:
@@ -207,6 +262,8 @@ operator:
     dashboard:
       enabled: true
     grafanaOrganization:
+      enabled: true
+    logExport:
       enabled: true
 
   networkPolicy:
@@ -309,6 +366,9 @@ webhook:
       enabled: true
     # -- Validate AgentCredential CRs
     agentCredential:
+      enabled: true
+    # -- Validate LogExport CRs
+    logExport:
       enabled: true
 
 # Vertical Pod Autoscaler configuration for the operator deployment

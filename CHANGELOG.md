@@ -9,8 +9,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a tutorial for exporting logs to S3.
+
+## [0.77.0] - 2026-09-07
+
+### Changed
+
+- Align the `alloy-metrics` remote write `queue_config` with the upstream Prometheus/Alloy defaults: `capacity` `10000`, `maxSamplesPerSend` `2000`, `maxShards` `50`.
+
+## [0.76.0] - 2026-09-04
+
+### Added
+
+- Add the `LogExport` controller, rendering the `alloy-logexporter` ConfigMap and Secret from `LogExport` resources. Gated by `operator.controllers.logExport.enabled` (default `true`).
+- Add `LogExport.spec.destination.s3.format`, selecting `otlp` (the default) or `raw`.
+- Expose the `alloy-logexporter` values target, replicas, WAL size, export timeout and container resources as operator configuration.
+
+### Changed
+
+- Tighten `LogExport.spec.selector` validation: reject `or` on `|=`/`|~` and `ip()` line filters, and prefix errors with stable codes (`LOGQL001`-`LOGQL012`).
+
+## [0.75.0] - 2026-09-01
+
+### Added
+
+- Enable `otelcol.receiver.vcenter` and `otelcol.exporter.prometheus` on the management cluster of vSphere and Cloud Director installations, to collect provider metrics.
+- Add the `monitoring.vcenter.enabled` Helm value to control vCenter resource metrics collection. Disabled by default, so installations must opt in.
+- Enforce the supported `LogExport.spec.selector` subset at admission, gated by `webhook.validatingWebhooks.logExport.enabled`.
+- Add a LogQL selector validator for expressions used in LogExport
+
+### Fixed
+
+- `alloy-logs` now tolerates all `NoSchedule` taints, so it is scheduled on every node.
+
+## [0.74.1] - 2026-08-31
+
+### Fixed
+
+- Fix missing descriptions in PagerDuty incidents.
+
+## [0.74.0] - 2026-08-25
+
+### Added
+
 - Add the `alerting.alertmanagerSecret.enabled` value (default `true`) to gate rendering of the Alertmanager configuration Secret, so the Alertmanager configuration can be shipped from another chart instead.
 - Add the namespaced `Heartbeat` CRD, with a `cronitor` provider variant carrying the monitor definition and a `credentialsRef` to the Cronitor API keys. API types only, no controller.
+
+### Fixed
+
+- The `alloy-logs` storage path is now a node `hostPath` instead of an `emptyDir`, so the `loki.source.podlogs` positions survive a pod restart.
+- The `alloy-tmp` volume is now always mounted to fix network-monitoring-only clusters.
+- Set `alloy.alloy.storagePath` to `/tmp/alloy` explicitly, matching the `alloy-tmp` mount path.
 
 ## [0.73.0] - 2026-08-10
 
@@ -1198,7 +1247,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.73.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.77.0...HEAD
+[0.77.0]: https://github.com/giantswarm/observability-operator/compare/v0.76.0...v0.77.0
+[0.76.0]: https://github.com/giantswarm/observability-operator/compare/v0.75.0...v0.76.0
+[0.75.0]: https://github.com/giantswarm/observability-operator/compare/v0.74.1...v0.75.0
+[0.74.1]: https://github.com/giantswarm/observability-operator/compare/v0.74.0...v0.74.1
+[0.74.0]: https://github.com/giantswarm/observability-operator/compare/v0.73.0...v0.74.0
 [0.73.0]: https://github.com/giantswarm/observability-operator/compare/v0.72.3...v0.73.0
 [0.72.3]: https://github.com/giantswarm/observability-operator/compare/v0.72.2...v0.72.3
 [0.72.2]: https://github.com/giantswarm/observability-operator/compare/v0.72.1...v0.72.2

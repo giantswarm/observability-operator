@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/yaml"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	observabilityv1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
@@ -48,6 +49,7 @@ const (
 	flagOperatorControllersClusterEnabled             = "controllers-cluster-enabled"
 	flagOperatorControllersDashboardEnabled           = "controllers-dashboard-enabled"
 	flagOperatorControllersGrafanaOrganizationEnabled = "controllers-grafana-organization-enabled"
+	flagOperatorControllersLogExportEnabled           = "controllers-log-export-enabled"
 
 	flagMetricsBindAddress     = "metrics-bind-address"
 	flagMetricsCertPath        = "metrics-cert-path"
@@ -89,6 +91,7 @@ const (
 	flagMonitoringMetricsQueryURL             = "monitoring-metrics-query-url"
 	flagMonitoringRulerURL                    = "monitoring-ruler-url"
 	flagMonitoringExemplarsEnabled            = "monitoring-exemplars-enabled"
+	flagMonitoringVCenterEnabled              = "monitoring-vcenter-enabled"
 
 	// Queue configuration flag names
 	flagQueueBatchSendDeadline = "monitoring-queue-config-batch-send-deadline"
@@ -150,6 +153,15 @@ const (
 	flagOTLPBatchSendBatchSize            = "otlp-batch-send-batch-size"
 	flagOTLPBatchMaxSize                  = "otlp-batch-max-size"
 	flagOTLPBatchTimeout                  = "otlp-batch-timeout"
+
+	// Log export flag names
+	flagLogExportNamespace     = "logexport-namespace"
+	flagLogExportConfigMapName = "logexport-configmap-name"
+	flagLogExportSecretName    = "logexport-secret-name"
+	flagLogExportReplicas      = "logexport-replicas"
+	flagLogExportWALSize       = "logexport-wal-size"
+	flagLogExportExportTimeout = "logexport-export-timeout"
+	flagLogExportResources     = "logexport-resources"
 )
 
 var (
@@ -204,6 +216,8 @@ func parseFlags() (err error) {
 		"Enable the dashboard controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.GrafanaOrganization.Enabled, flagOperatorControllersGrafanaOrganizationEnabled, true,
 		"Enable the grafana organization controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.LogExport.Enabled, flagOperatorControllersLogExportEnabled, true,
+		"Enable the log export controller which reconciles LogExport resources.")
 	pflag.StringVar(&cfg.Operator.MetricsAddr, flagMetricsBindAddress, ":8080",
 		"The address the metric endpoint binds to.")
 	pflag.StringVar(&cfg.Operator.ProbeAddr, flagHealthProbeBindAddress, ":8081",
@@ -272,6 +286,8 @@ func parseFlags() (err error) {
 		"URL to the Mimir ruler API for cleaning up rules on cluster deletion")
 	pflag.BoolVar(&cfg.Monitoring.ExemplarsEnabled, flagMonitoringExemplarsEnabled, true,
 		"Enable exemplar forwarding in the remote write pipeline. Opt-out: enabled by default.")
+	pflag.BoolVar(&cfg.Monitoring.VCenterEnabled, flagMonitoringVCenterEnabled, false,
+		"Enable vCenter resource metrics collection on vSphere and Cloud Director installations. Opt-in: disabled by default.")
 	pflag.BoolVar(&cfg.Monitoring.NetworkEnabled, flagMonitoringNetworkEnabled, true,
 		"Enable/disable network monitoring in Alloy configuration")
 	pflag.StringVar(&cfg.Monitoring.Gateway.Namespace, flagMonitoringGatewayNamespace, "mimir",
@@ -373,6 +389,27 @@ func parseFlags() (err error) {
 	pflag.StringVar(&cfg.OTLP.BatchTimeout, flagOTLPBatchTimeout, "500ms",
 		"Maximum wait time before flushing an incomplete OTLP batch.")
 
+	// Log export flags. Defaults match what alloy-logexporter was rendered with before
+	// these were configurable, so running without the chart behaves the same.
+	var logExportResources string
+	pflag.StringVar(&cfg.LogExport.Namespace, flagLogExportNamespace, "giantswarm",
+		"Namespace the alloy-logexporter Helm values are written to, which is not necessarily the namespace the app runs in.")
+	pflag.StringVar(&cfg.LogExport.ConfigMapName, flagLogExportConfigMapName, "alloy-logexporter-config",
+		"Name of the ConfigMap holding the alloy-logexporter Helm values.")
+	pflag.StringVar(&cfg.LogExport.SecretName, flagLogExportSecretName, "alloy-logexporter-secret",
+		"Name of the Secret holding the alloy-logexporter credentials.")
+	pflag.IntVar(&cfg.LogExport.Replicas, flagLogExportReplicas, 2,
+		"Number of alloy-logexporter replicas. Pushes are load-balanced, so replicas add capacity without duplicating records.")
+	pflag.StringVar(&cfg.LogExport.WALSize, flagLogExportWALSize, "10Gi",
+		"Size of the per-replica volume holding the alloy-logexporter sending queue.")
+	pflag.StringVar(&cfg.LogExport.ExportTimeout, flagLogExportExportTimeout, "5m",
+		"Durability window for alloy-logexporter uploads. A destination outage longer than this loses data permanently.")
+	// One flag rather than six, because this is a single Kubernetes type. Parsing here
+	// means a malformed block fails at startup instead of producing a values document
+	// Flux cannot apply.
+	pflag.StringVar(&logExportResources, flagLogExportResources, "",
+		"Container resources for alloy-logexporter, as JSON or YAML. Unset uses the built-in defaults.")
+
 	// Cronitor heartbeat monitor configuration flags
 	pflag.IntVar(&cfg.Cronitor.GraceSeconds, flagCronitorGraceSeconds, 1800,
 		"Number of seconds after a missed heartbeat before a Cronitor alert fires.")
@@ -432,6 +469,15 @@ func parseFlags() (err error) {
 	}
 	if pflag.CommandLine.Changed(flagQueueSampleAgeLimit) {
 		cfg.Monitoring.QueueConfig.SampleAgeLimit = &queueSampleAgeLimit
+	}
+
+	// Nil keeps the built-in defaults, so only overwrite when the flag was passed.
+	if pflag.CommandLine.Changed(flagLogExportResources) {
+		var resources v1.ResourceRequirements
+		if err := yaml.UnmarshalStrict([]byte(logExportResources), &resources); err != nil {
+			return fmt.Errorf("failed to parse --%s: %w", flagLogExportResources, err)
+		}
+		cfg.LogExport.Resources = &resources
 	}
 
 	return nil
@@ -544,6 +590,14 @@ func setupApplication() error {
 		}
 	}
 
+	if cfg.Operator.Controllers.LogExport.Enabled {
+		// Setup controller for the LogExport resource.
+		err = controller.SetupLogExportReconciler(mgr, cfg)
+		if err != nil {
+			return fmt.Errorf("unable to setup controller (LogExportReconciler): %w", err)
+		}
+	}
+
 	if cfg.Operator.Controllers.Alertmanager.Enabled {
 		// Setup controller for Alertmanager
 		err = controller.SetupAlertmanagerReconciler(mgr, cfg)
@@ -582,6 +636,9 @@ func setupApplication() error {
 		}
 		if err = webhookcorev1alpha1.SetupAgentCredentialWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("unable to create webhook (AgentCredential v1alpha1): %w", err)
+		}
+		if err = webhookcorev1alpha1.SetupLogExportWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("unable to create webhook (LogExport v1alpha1): %w", err)
 		}
 	}
 	//+kubebuilder:scaffold:builder
