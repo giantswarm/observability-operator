@@ -64,6 +64,11 @@ func TestRenderValues(t *testing.T) {
 		goldenPath string
 	}{
 		{
+			name:       "no exports renders the app idle",
+			exports:    nil,
+			goldenPath: "alloy-logexporter-config.idle.yaml",
+		},
+		{
 			name:       "minimal selector",
 			exports:    []observabilityv1alpha1.LogExport{s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`, auditBucket)},
 			goldenPath: "alloy-logexporter-config.minimal.yaml",
@@ -275,11 +280,6 @@ func TestRenderValuesErrors(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:    "no exports",
-			exports: nil,
-			wantErr: "no LogExport to render",
-		},
-		{
 			name: "loki destination",
 			exports: []observabilityv1alpha1.LogExport{{
 				ObjectMeta: metav1.ObjectMeta{Name: "to-loki", Namespace: platformNamespace},
@@ -321,5 +321,51 @@ func TestRenderValuesErrors(t *testing.T) {
 				t.Errorf("RenderValues() error does not mention %q: %v", tt.wantErr, err)
 			}
 		})
+	}
+}
+
+// volumeClaimTemplates, serviceName and the pod selector are immutable on a StatefulSet, so
+// any divergence beyond replicas and the config body fails the first scale-up.
+func TestIdleAndActiveDifferOnlyInReplicasAndConfig(t *testing.T) {
+	cfg := testLogExportConfig()
+
+	idle, err := RenderValues(nil, cfg)
+	if err != nil {
+		t.Fatalf("RenderValues() with no exports failed: %v", err)
+	}
+	active, err := RenderValues(
+		[]observabilityv1alpha1.LogExport{s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`, auditBucket)},
+		cfg)
+	if err != nil {
+		t.Fatalf("RenderValues() with one export failed: %v", err)
+	}
+
+	parse := func(document string) map[string]any {
+		t.Helper()
+		var out map[string]any
+		if err := yaml.Unmarshal([]byte(document), &out); err != nil {
+			t.Fatalf("failed to parse rendered values: %v", err)
+		}
+		return out
+	}
+
+	idleValues, activeValues := parse(idle), parse(active)
+
+	// Blank the two fields that are meant to differ; the rest must match.
+	for _, values := range []map[string]any{idleValues, activeValues} {
+		alloy, ok := values["alloy"].(map[string]any)
+		if !ok {
+			t.Fatal("rendered values have no alloy block")
+		}
+		alloy["controller"].(map[string]any)["replicas"] = nil
+		alloy["alloy"].(map[string]any)["configMap"].(map[string]any)["content"] = nil
+	}
+
+	if diff := cmp.Diff(activeValues, idleValues); diff != "" {
+		t.Errorf("idle and active values differ beyond replicas and the Alloy config (-active +idle):\n%s", diff)
+	}
+
+	if !strings.Contains(idle, "replicas: 0") {
+		t.Error("the idle document does not scale the app to zero")
 	}
 }

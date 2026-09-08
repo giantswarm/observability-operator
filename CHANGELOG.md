@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add a tutorial for exporting logs to S3.
 
+### Changed
+
+- Keep `alloy-logexporter` enabled at zero replicas when no `LogExport` exists, so its Service always exists, instead of removing its ConfigMap.
+
 ## [0.77.0] - 2026-09-07
 
 ### Changed

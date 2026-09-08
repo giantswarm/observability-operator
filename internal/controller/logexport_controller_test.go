@@ -217,7 +217,7 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 		Expect(configMap.Data[logExportValuesKey]).To(ContainSubstring("teleport-archive"))
 	})
 
-	It("removes both objects when the last export goes, returning the app to inert", func() {
+	It("parks the app at zero replicas when the last export goes, keeping its Service", func() {
 		export := newExport(auditExport, `{scrape_job="audit-logs"}`, observabilityv1alpha1.S3Destination{
 			Bucket: auditBucket, Region: s3Region, RoleARN: auditRoleARN,
 		})
@@ -230,11 +230,17 @@ var _ = Describe("LogExport Controller", Ordered, func() {
 
 		deleteAndReconcile(export)
 
-		By("removing the ConfigMap so the HelmRelease falls back to the defaults")
-		Eventually(func() bool {
-			err := k8sClient.Get(ctx, configMapKey, &corev1.ConfigMap{})
-			return apierrors.IsNotFound(err)
-		}, timeout, interval).Should(BeTrue())
+		By("keeping the ConfigMap so the chart still renders the Service")
+		configMap := &corev1.ConfigMap{}
+		Eventually(func() (string, error) {
+			if err := k8sClient.Get(ctx, configMapKey, configMap); err != nil {
+				return "", err
+			}
+			return configMap.Data[logExportValuesKey], nil
+		}, timeout, interval).Should(ContainSubstring("replicas: 0"))
+
+		By("dropping the export from the rendered configuration")
+		Expect(configMap.Data[logExportValuesKey]).NotTo(ContainSubstring(auditBucket))
 
 		By("removing the finalizer so the resource can go")
 		Eventually(func() bool {

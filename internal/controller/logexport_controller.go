@@ -37,11 +37,31 @@ type LogExportReconciler struct {
 
 // SetupLogExportReconciler wires the reconciler into the manager. The caller gates this
 // on --controllers-log-export-enabled.
+//
+// Disabling that flag deliberately leaves the rendered configuration behind. Removing it
+// would delete the exporter's Service, and a request mirror pointing at a Service that
+// does not exist fails the whole Loki route rule. Taking the app off an installation is a
+// management-cluster-bases change, not an operator one.
 func SetupLogExportReconciler(mgr manager.Manager, cfg config.Config) error {
 	r := &LogExportReconciler{
 		Client:          mgr.GetClient(),
 		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), observabilityv1alpha1.LogExportFinalizer),
 		logExport:       cfg.LogExport,
+	}
+
+	// No LogExport means no event, so without this the ConfigMap is never written on an
+	// installation that has never had one, and the exporter's Service never exists.
+	//
+	// Logged, not returned: the manager treats a Runnable error as fatal, so one broken
+	// LogExport here would crash-loop every controller in the operator.
+	err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		if err := r.renderExporterConfiguration(ctx); err != nil {
+			log.FromContext(ctx).Error(err, "failed to render the initial alloy-logexporter configuration")
+		}
+		return nil
+	}))
+	if err != nil {
+		return fmt.Errorf("failed to add the logexport startup renderer: %w", err)
 	}
 
 	return r.SetupWithManager(mgr)
@@ -125,15 +145,9 @@ func (r *LogExportReconciler) renderExporterConfiguration(ctx context.Context) e
 		return err
 	}
 
-	// Nothing selected any more: remove both objects so the HelmRelease falls back to
-	// alloy-logexporter-defaults and the app returns to zero replicas.
-	if len(exports) == 0 {
-		if err := r.deleteObject(ctx, r.logExport.ConfigMapName, &corev1.ConfigMap{}); err != nil {
-			return err
-		}
-		return r.deleteObject(ctx, r.logExport.SecretName, &corev1.Secret{})
-	}
-
+	// No exports parks the app at zero replicas rather than deleting the ConfigMap: the
+	// request mirror names its Service, and a backendRef to a Service that does not exist
+	// fails the whole route rule. The Secret still goes, in writeSecret.
 	credentials, err := r.resolveCredentials(ctx, exports)
 	if err != nil {
 		return err

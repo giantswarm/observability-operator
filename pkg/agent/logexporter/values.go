@@ -67,12 +67,23 @@ type export struct {
 // LogExport on the installation. The result is the `values` key of the ConfigMap the
 // HelmRelease reads last, so it is also what switches the app on.
 //
+// With no exports it renders the app idle: scaled to zero, but keeping the Service that the
+// request mirror's backendRef has to resolve.
+//
 // Order is not taken from the caller: exports are sorted so that the same set of
 // resources always renders byte-identically.
 func RenderValues(exports []observabilityv1alpha1.LogExport, cfg config.LogExportConfig) (string, error) {
 	rendered, err := buildExports(exports)
 	if err != nil {
 		return "", err
+	}
+
+	// Only this and the config body may differ from the active document: volumeClaimTemplates,
+	// serviceName and the selector are immutable, so any other divergence fails the first
+	// scale-up.
+	replicas := cfg.Replicas
+	if len(rendered) == 0 {
+		replicas = 0
 	}
 
 	alloy, err := render(alloyConfigTemplate, struct {
@@ -123,7 +134,7 @@ func RenderValues(exports []observabilityv1alpha1.LogExport, cfg config.LogExpor
 		AlloyConfig:  alloy,
 		AppName:      apps.AlloyLogExporterAppName,
 		Port:         Port,
-		Replicas:     cfg.Replicas,
+		Replicas:     replicas,
 		RunAsUser:    RunAsUser,
 		WALMountPath: WALMountPath,
 		WALDirectory: WALDirectory,
@@ -133,10 +144,6 @@ func RenderValues(exports []observabilityv1alpha1.LogExport, cfg config.LogExpor
 }
 
 func buildExports(exports []observabilityv1alpha1.LogExport) ([]export, error) {
-	if len(exports) == 0 {
-		return nil, fmt.Errorf("no LogExport to render")
-	}
-
 	out := make([]export, 0, len(exports))
 	slugs := map[string]string{}
 
