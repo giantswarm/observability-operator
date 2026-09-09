@@ -120,6 +120,55 @@ func TestPipelineStable(t *testing.T) {
 				},
 			},
 		},
+		// Planeteers page alert - SHOULD NOT go to Slack on stable
+		{
+			Alert: helper.Alert{
+				Name: "TestStablePagePlaneteersAlert",
+				Labels: map[string]string{
+					"cluster_id":   "test-cluster",
+					"installation": "test-installation",
+					"pipeline":     "stable",
+					"provider":     "aws",
+					"severity":     "page",
+					"status":       "firing",
+					"team":         "planeteers",
+				},
+			},
+			Expectations: []helper.Expectation{
+				{
+					URL:       "https://slack.com/api/chat.postMessage",
+					BodyParts: []string{`TestStablePagePlaneteersAlert`},
+					Negate:    true,
+				},
+			},
+		},
+		// Planeteers notify alert - SHOULD go to Slack (#alert-planeteers on stable)
+		{
+			Alert: helper.Alert{
+				Name: "TestStableNotifyPlaneteersAlert",
+				Labels: map[string]string{
+					"cluster_id":   "test-cluster",
+					"installation": "test-installation",
+					"pipeline":     "stable",
+					"provider":     "aws",
+					"severity":     "notify",
+					"status":       "firing",
+					"team":         "planeteers",
+				},
+			},
+			Expectations: []helper.Expectation{
+				{
+					URL:       "https://slack.com/api/chat.postMessage",
+					BodyParts: []string{`{"channel":"#alert-planeteers","username":"Alertmanager","attachments":[{"title":"FIRING[1] TestStableNotifyPlaneteersAlert - Team planeteers"`},
+				},
+				// Planeteers has no PagerDuty routing key
+				{
+					URL:       "https://events.eu.pagerduty.com/v2/enqueue",
+					BodyParts: []string{`TestStableNotifyPlaneteersAlert`},
+					Negate:    true,
+				},
+			},
+		},
 		// PagerDuty custom details MUST carry the alert description.
 		// PagerDuty parses the "_description" custom detail as YAML and renders
 		// it as a table, so the rendered block has to stay a single valid YAML

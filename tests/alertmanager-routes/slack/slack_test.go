@@ -246,6 +246,48 @@ func TestTeamsSlackRouting(t *testing.T) {
 				},
 			},
 		},
+		// Planeteers team - page alert
+		{
+			Alert: helper.Alert{
+				Name: "TestSlackPlaneteersPageAlert",
+				Labels: map[string]string{
+					"cluster_id":   "test-cluster",
+					"installation": "test-installation",
+					"pipeline":     "stable",
+					"provider":     "aws",
+					"team":         "planeteers",
+					"severity":     "page",
+					"status":       "firing",
+				},
+			},
+			Expectations: []helper.Expectation{
+				{
+					URL:       "https://slack.com/api/chat.postMessage",
+					BodyParts: []string{`{"channel":"#alert-planeteers-test","username":"Alertmanager","attachments":[{"title":"FIRING[1] TestSlackPlaneteersPageAlert - Team planeteers"`},
+				},
+			},
+		},
+		// Planeteers team - notify alert
+		{
+			Alert: helper.Alert{
+				Name: "TestSlackPlaneteersNotifyAlert",
+				Labels: map[string]string{
+					"cluster_id":   "test-cluster",
+					"installation": "test-installation",
+					"pipeline":     "stable",
+					"provider":     "aws",
+					"team":         "planeteers",
+					"severity":     "notify",
+					"status":       "firing",
+				},
+			},
+			Expectations: []helper.Expectation{
+				{
+					URL:       "https://slack.com/api/chat.postMessage",
+					BodyParts: []string{`{"channel":"#alert-planeteers-test","username":"Alertmanager","attachments":[{"title":"FIRING[1] TestSlackPlaneteersNotifyAlert - Team planeteers"`},
+				},
+			},
+		},
 		// Tenet team - notify alert
 		{
 			Alert: helper.Alert{

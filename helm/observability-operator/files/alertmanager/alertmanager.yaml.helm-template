@@ -167,6 +167,18 @@ route:
     - alertname!~"Inhibition.*"
     continue: false
 
+  # Team Planeteers Slack
+  - receiver: team_planeteers_slack
+    matchers:
+    {{- if eq .Values.managementCluster.pipeline "stable" }}
+    - severity="notify"
+    {{- else }}
+    - severity=~"page|notify"
+    {{- end }}
+    - team="planeteers"
+    - alertname!~"Inhibition.*"
+    continue: false
+
   # Team Phoenix Slack
   - receiver: team_phoenix_slack
     matchers:
@@ -268,6 +280,21 @@ receivers:
   - channel: '#alert-bumblebee'
   {{- else }}
   - channel: '#alert-bumblebee-test'
+  {{- end }}
+    http_config:
+      authorization:
+        type: Bearer
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      proxy_from_environment: true
+    send_resolved: true
+    actions: *slack-actions
+
+- name: team_planeteers_slack
+  slack_configs:
+  {{- if eq .Values.managementCluster.pipeline "stable" }}
+  - channel: '#alert-planeteers'
+  {{- else }}
+  - channel: '#alert-planeteers-test'
   {{- end }}
     http_config:
       authorization:

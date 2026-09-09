@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add a tutorial for exporting logs to S3.
+- Add team planeteers Slack alert routing (`#alert-planeteers`, `#alert-planeteers-test` on non-stable installations).
+
+### Changed
+
+- Bump `golang.org/x/crypto` to v0.56.0 (CVE-2026-78662, CVE-2026-56855).
 
 ## [0.77.0] - 2026-09-07
 
