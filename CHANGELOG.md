@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.78.0] - 2026-09-09
+
 ### Added
 
 - Add a tutorial for exporting logs to S3.
@@ -1252,7 +1254,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.77.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.78.0...HEAD
+[0.78.0]: https://github.com/giantswarm/observability-operator/compare/v0.77.0...v0.78.0
 [0.77.0]: https://github.com/giantswarm/observability-operator/compare/v0.76.0...v0.77.0
 [0.76.0]: https://github.com/giantswarm/observability-operator/compare/v0.75.0...v0.76.0
 [0.75.0]: https://github.com/giantswarm/observability-operator/compare/v0.74.1...v0.75.0
