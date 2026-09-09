@@ -23,7 +23,7 @@ func TestSecretEnv(t *testing.T) {
 			Region:         s3Region,
 			CredentialsRef: &corev1.LocalObjectReference{Name: "archive-credentials"},
 		})
-	withRole := s3Export("org-fleetio", "teleport", `{scrape_job="teleport.giantswarm.io"}`,
+	withRole := s3Export("org-acme", "teleport", `{scrape_job="teleport.giantswarm.io"}`,
 		observabilityv1alpha1.S3Destination{
 			Bucket:  teleportBucketName,
 			Region:  s3Region,
@@ -66,13 +66,13 @@ func TestSecretEnv(t *testing.T) {
 
 	// A fresh export rather than a copy of withRole: the two share the S3 pointer, so
 	// mutating one would edit the other.
-	alsoCredentialed := s3Export("org-fleetio", "teleport", `{scrape_job="teleport.giantswarm.io"}`,
+	alsoCredentialed := s3Export("org-acme", "teleport", `{scrape_job="teleport.giantswarm.io"}`,
 		observabilityv1alpha1.S3Destination{
 			Bucket:         teleportBucketName,
 			Region:         s3Region,
 			CredentialsRef: &corev1.LocalObjectReference{Name: "other-credentials"},
 		})
-	secondRef := client.ObjectKey{Namespace: "org-fleetio", Name: "teleport"}
+	secondRef := client.ObjectKey{Namespace: "org-acme", Name: "teleport"}
 
 	t.Run("two exports may share one set of credentials", func(t *testing.T) {
 		same := map[client.ObjectKey]Credentials{

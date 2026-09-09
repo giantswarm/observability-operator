@@ -103,7 +103,7 @@ func TestRenderValues(t *testing.T) {
 			name: "two exports, two destinations",
 			exports: []observabilityv1alpha1.LogExport{
 				// Deliberately out of order: rendering sorts, so the output is stable.
-				s3Export("org-fleetio", "teleport", `{scrape_job="teleport.giantswarm.io"}`,
+				s3Export("org-acme", "teleport", `{scrape_job="teleport.giantswarm.io"}`,
 					observabilityv1alpha1.S3Destination{Bucket: teleportBucketName, Region: s3Region}),
 				s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"}`, auditBucket),
 			},
@@ -228,7 +228,7 @@ func TestRenderValuesUsesConfig(t *testing.T) {
 func TestRenderValuesIsValidYAML(t *testing.T) {
 	values, err := RenderValues([]observabilityv1alpha1.LogExport{
 		s3Export(platformNamespace, auditExportName, `{scrape_job="audit-logs"} | json | verb="delete"`, auditBucket),
-		s3Export("org-fleetio", "teleport", `{scrape_job="teleport.giantswarm.io"}`, auditBucket),
+		s3Export("org-acme", "teleport", `{scrape_job="teleport.giantswarm.io"}`, auditBucket),
 	}, testLogExportConfig())
 	if err != nil {
 		t.Fatalf("RenderValues() failed: %v", err)
@@ -257,9 +257,9 @@ func TestRenderValuesIsValidYAML(t *testing.T) {
 	for _, want := range []string{
 		`loki.source.api "mirror"`,
 		`loki.process "select_giantswarm_audit"`,
-		`loki.process "select_org_fleetio_teleport"`,
+		`loki.process "select_org_acme_teleport"`,
 		`otelcol.exporter.awss3 "giantswarm_audit"`,
-		`otelcol.exporter.awss3 "org_fleetio_teleport"`,
+		`otelcol.exporter.awss3 "org_acme_teleport"`,
 		`otelcol.storage.file "wal"`,
 	} {
 		if !strings.Contains(config, want) {
