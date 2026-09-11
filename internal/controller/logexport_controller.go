@@ -130,7 +130,7 @@ func (r *LogExportReconciler) reconcileDelete(ctx context.Context, export *obser
 func (r *LogExportReconciler) renderExporterConfiguration(ctx context.Context) error {
 	exports, err := r.activeExports(ctx)
 	if err != nil {
-		// Nothing to report a condition on, so this one stays log-only.
+		// Nothing to report a condition on.
 		return err
 	}
 
