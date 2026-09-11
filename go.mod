@@ -254,7 +254,7 @@ replace (
 	// grafana/dskit's kv/etcd still uses. k8s.io/apiextensions-apiserver v0.37 raises it
 	// through MVS. Nothing we compile reaches etcd except through dskit.
 	go.etcd.io/etcd/api/v3 => go.etcd.io/etcd/api/v3 v3.6.10
-	go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.6.10
+	go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.7.1
 	go.etcd.io/etcd/client/v3 => go.etcd.io/etcd/client/v3 v3.6.10
 )
 
