@@ -42,6 +42,9 @@ networkPolicy:
       - ports:
         - port: "12345"
           protocol: TCP
+# Token Secret the kube-prometheus-stack control-plane ServiceMonitors authenticate with.
+serviceAccountTokenSecret:
+  enabled: true
 alloy:
   alloy:
     clustering:
