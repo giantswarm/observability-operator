@@ -51,6 +51,12 @@ mimir.rules.kubernetes "{{ . }}" {
 {{- if eq . $.DefaultTenantID }}
 prometheus.operator.servicemonitors "{{ . }}_legacy" {
   forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  {{- if $.IsSupportingArbitraryFileAccess }}
+  // kube-prometheus-stack's control plane ServiceMonitors reference the service account
+  // token and CA from Alloy's filesystem. Alloy rejects those endpoints by default since
+  // v1.19, dropping the whole ServiceMonitor, so opt back in.
+  allow_arbitrary_file_access = true
+  {{- end }}
   selector {
     match_expression {
       key      = "application.giantswarm.io/team"
@@ -121,6 +127,12 @@ prometheus.operator.podmonitors "{{ . }}_legacy" {
 
 prometheus.operator.servicemonitors "{{ . }}" {
   forward_to = [prometheus.remote_write.{{ . }}.receiver]
+  {{- if $.IsSupportingArbitraryFileAccess }}
+  // kube-prometheus-stack's control plane ServiceMonitors reference the service account
+  // token and CA from Alloy's filesystem. Alloy rejects those endpoints by default since
+  // v1.19, dropping the whole ServiceMonitor, so opt back in.
+  allow_arbitrary_file_access = true
+  {{- end }}
   selector {
     match_expression {
       key      = "observability.giantswarm.io/tenant"

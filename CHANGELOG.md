@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Set the `Ready` status condition on `LogExport`, naming the stage that failed.
+- Set `allow_arbitrary_file_access` on the alloy-metrics servicemonitors components, from observability-bundle 3.5.0 on.
 
 ## [0.78.0] - 2026-09-09
 

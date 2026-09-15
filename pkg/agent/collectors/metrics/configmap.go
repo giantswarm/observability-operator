@@ -36,6 +36,10 @@ var (
 	alloyMonitoringConfigTemplate *template.Template
 
 	versionSupportingScrapeConfigs = semver.MustParse("2.2.0")
+	// The observability-bundle release that ships alloy-app with Alloy >= 1.19, where
+	// prometheus.operator.servicemonitors gained allow_arbitrary_file_access. Alloy
+	// rejects the attribute outright on older versions, so it must stay gated.
+	versionSupportingArbitraryFileAccess = semver.MustParse("3.5.0")
 )
 
 func init() {
@@ -165,8 +169,9 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 
 		ExternalLabels map[string]string
 
-		IsSupportingScrapeConfigs bool
-		ExemplarsEnabled          bool
+		IsSupportingScrapeConfigs       bool
+		IsSupportingArbitraryFileAccess bool
+		ExemplarsEnabled                bool
 
 		VCenterEnabled               bool
 		VCenterSecretName            string
@@ -215,9 +220,10 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 			"service_priority": monitoring.GetServicePriority(cluster),
 		},
 
-		IsWorkloadCluster:         s.Config.Cluster.IsWorkloadCluster(cluster),
-		IsSupportingScrapeConfigs: observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
-		ExemplarsEnabled:          s.Config.Monitoring.ExemplarsEnabled,
+		IsWorkloadCluster:               s.Config.Cluster.IsWorkloadCluster(cluster),
+		IsSupportingScrapeConfigs:       observabilityBundleVersion.GE(versionSupportingScrapeConfigs),
+		IsSupportingArbitraryFileAccess: observabilityBundleVersion.GE(versionSupportingArbitraryFileAccess),
+		ExemplarsEnabled:                s.Config.Monitoring.ExemplarsEnabled,
 
 		VCenterEnabled:               vcenterEnabled,
 		VCenterSecretName:            common.VCenterSecretName,

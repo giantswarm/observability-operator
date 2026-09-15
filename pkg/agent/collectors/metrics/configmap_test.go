@@ -381,6 +381,46 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
 		},
+
+		// Version 3.5.0+ tests (with allow_arbitrary_file_access on the servicemonitors)
+		{
+			name: "ManagementCluster_DefaultTenant_v350",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: azureClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.350.MC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingArbitraryFileAccess,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ManagementCluster_TwoTenants_v350",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: awsClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{tenant1, tenant2},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.350.MC.multi-tenants.yaml"),
+			observabilityBundleVersion: versionSupportingArbitraryFileAccess,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
 		{
 			name: "ExemplarsDisabledInMC_v200",
 			cluster: &clusterv1.Cluster{
