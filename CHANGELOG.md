@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Set the `Ready` status condition on `LogExport`, naming the stage that failed.
+- Enable `serviceAccountTokenSecret` on alloy-metrics so kube-prometheus-stack's control-plane ServiceMonitors can authenticate.
 
 ## [0.78.0] - 2026-09-09
 
