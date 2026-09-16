@@ -47,10 +47,14 @@ func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 
 	var rendered bytes.Buffer
 	err := alloyMonitoringConfigTemplate.Execute(&rendered, struct {
-		AlloyConfig       string
-		HasCABundle       bool
-		PriorityClassName string
-		Replicas          int
+		AlloyConfig          string
+		AlloySecretName      string
+		AlloySecretNamespace string
+		HasCABundle          bool
+		MimirUsernameKey     string
+		MimirPasswordKey     string
+		PriorityClassName    string
+		Replicas             int
 	}{Replicas: want})
 	if err != nil {
 		t.Fatalf("failed to render monitoring config template: %v", err)

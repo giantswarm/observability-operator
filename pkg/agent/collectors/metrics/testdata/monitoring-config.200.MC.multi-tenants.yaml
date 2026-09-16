@@ -327,6 +327,23 @@ alloy:
         memory: 512Mi
     ## Needed to to be able to support ScrapeConfig CRs
     stabilityLevel: experimental
+    # Credentials the mimir.rules.kubernetes liveness probe authenticates to the
+    # Mimir ruler with. Without them a Mimir behind a gateway answers 401 whether
+    # its ruler is up or down, and the probe cannot tell an outage from the bug
+    # it works around, so it never restarts Alloy.
+    extraEnv:
+    - name: MIMIR_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: alloy-metrics
+          key: metrics-username
+          optional: true
+    - name: MIMIR_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: alloy-metrics
+          key: metrics-password
+          optional: true
   controller:
     type: statefulset
     replicas: 1
