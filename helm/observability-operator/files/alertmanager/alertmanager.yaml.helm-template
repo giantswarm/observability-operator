@@ -376,6 +376,10 @@ receivers:
   - routing_key: {{ .pagerdutyToken }}
     source: '{{`{{ template "pagerduty.default.source" . }}`}}'
     description: '{{`{{ template "pagerduty.default.message" . }}`}}'
+    # "Triggered via" on the PagerDuty Slack card: the default client_url is Alertmanager's
+    # relative external URL, which Slack cannot link. Point it at the alert in Grafana instead.
+    client: 'Grafana'
+    client_url: '{{`{{ template "__alert_url" . }}`}}'
     # There is currently no way to send all alerts labels to PagerDuty as details.
     # See https://github.com/prometheus/alertmanager/issues/3218
     details: {

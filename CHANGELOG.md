@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- PagerDuty incident titles now carry the description of the first firing alert (`<cluster> - <AlertName>: <description>`, plus the number of firing alerts when there is more than one), so the Slack incident card and push notifications show what is wrong instead of only the alert name.
+- The `Triggered via` link on the PagerDuty Slack card points to the alert in Grafana instead of Alertmanager's relative external URL, which Slack could not render as a link.
+
 ## [0.79.0] - 2026-09-16
 
 ### Added
