@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.80.0] - 2026-09-16
+
 ### Changed
 
 - PagerDuty incident titles now carry the description of the first firing alert (`<cluster> - <AlertName>: <description>`, plus the number of firing alerts when there is more than one), so the Slack incident card and push notifications show what is wrong instead of only the alert name.
@@ -1266,7 +1268,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.79.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.80.0...HEAD
+[0.80.0]: https://github.com/giantswarm/observability-operator/compare/v0.79.0...v0.80.0
 [0.79.0]: https://github.com/giantswarm/observability-operator/compare/v0.78.0...v0.79.0
 [0.78.0]: https://github.com/giantswarm/observability-operator/compare/v0.77.0...v0.78.0
 [0.77.0]: https://github.com/giantswarm/observability-operator/compare/v0.76.0...v0.77.0
