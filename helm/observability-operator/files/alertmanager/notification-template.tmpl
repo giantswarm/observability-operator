@@ -24,7 +24,20 @@
 {{- end }}
 {{ end }}
 
-{{ define "pagerduty.default.message" }}{{ .GroupLabels.installation }}{{ if not (eq .GroupLabels.cluster_id .GroupLabels.installation) }}-{{ .GroupLabels.cluster_id }}{{ end }} - {{ .GroupLabels.alertname }}{{ end }}
+{{/*
+  pagerduty.default.message is the Events API v2 summary and becomes the PagerDuty incident title:
+  the only alert content PagerDuty shows on its Slack incident card and in push notifications.
+  It keeps the "<cluster> - <AlertName>" prefix that tooling filters on and appends the
+  description of the first firing alert on a single line, plus the number of firing alerts when
+  there is more than one. Alertmanager truncates the summary to 1024 runes.
+*/}}
+{{ define "pagerduty.default.message" -}}
+{{ .GroupLabels.installation }}{{ if not (eq .GroupLabels.cluster_id .GroupLabels.installation) }}-{{ .GroupLabels.cluster_id }}{{ end }} - {{ .GroupLabels.alertname }}
+{{- with .Alerts.Firing }}
+{{- with (index . 0).Annotations.description }}: {{ reReplaceAll "\\s+" " " . | reReplaceAll "^ | $" "" }}{{ end }}
+{{- if gt (len .) 1 }} ({{ len . }} firing){{ end }}
+{{- end }}
+{{- end }}
 {{ define "pagerduty.default.source" }}{{ template "__alertmanager" . }}{{ end }}
 {{/*
   Alertmanager >= v0.30 parses each rendered detail as YAML and sends it as structured
