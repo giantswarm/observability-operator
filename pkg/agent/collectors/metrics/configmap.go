@@ -88,6 +88,7 @@ func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	}
 
 	data := struct {
+		AlloyAppName      string
 		AlloyConfig       string
 		AlloySecretName   string
 		HasCABundle       bool
@@ -96,6 +97,7 @@ func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		PriorityClassName string
 		Replicas          int
 	}{
+		AlloyAppName:      apps.AlloyMetricsAppName,
 		AlloyConfig:       alloyConfig,
 		AlloySecretName:   apps.AlloyMetricsAppName,
 		HasCABundle:       s.Config.Cluster.CASecretName != "",
