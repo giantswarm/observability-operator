@@ -48,7 +48,10 @@ func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 	var rendered bytes.Buffer
 	err := alloyMonitoringConfigTemplate.Execute(&rendered, struct {
 		AlloyConfig       string
+		AlloySecretName   string
 		HasCABundle       bool
+		MimirUsernameKey  string
+		MimirPasswordKey  string
 		PriorityClassName string
 		Replicas          int
 	}{Replicas: want})
