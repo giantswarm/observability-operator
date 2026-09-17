@@ -50,18 +50,6 @@
 Alerts 🔥
 {{ range .Alerts.Firing }}  {{ if .Labels.instance }}{{ .Labels.instance }}: {{ end }}{{ .Annotations.description }}
 {{ end }}
-{{- if (index .Alerts 0).Annotations.runbook_url -}}
-📗 Runbook: {{ template "__runbook_url" . }}
-{{ else -}}
-📗 Runbook: ⚠️ There is no **runbook** for this alert, time to get your pen.
-{{ end -}}
-{{ if or ((index .Alerts 0).Annotations.__dashboardUid__) ((index .Alerts 0).Annotations.dashboardExternalUrl) -}}
-📈 Dashboard: {{ template "__dashboard_url" . }}
-{{ else -}}
-📈 Dashboard: {{ template "__grafana_url" . }} (⚠️ There is no **dashboard** for this alert, time to sketch.)
-{{ end -}}
-👀 Explore: {{ template "__alert_url" . }}
-🔔 Silence: {{ template "__alert_silence_link" . }}
 {{- end }}
 
 # Link to the silence repository where silences should be created
