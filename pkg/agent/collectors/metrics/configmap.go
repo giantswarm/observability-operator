@@ -88,23 +88,21 @@ func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	}
 
 	data := struct {
-		AlloyConfig          string
-		AlloySecretName      string
-		AlloySecretNamespace string
-		HasCABundle          bool
-		MimirUsernameKey     string
-		MimirPasswordKey     string
-		PriorityClassName    string
-		Replicas             int
+		AlloyConfig       string
+		AlloySecretName   string
+		HasCABundle       bool
+		MimirUsernameKey  string
+		MimirPasswordKey  string
+		PriorityClassName string
+		Replicas          int
 	}{
-		AlloyConfig:          alloyConfig,
-		AlloySecretName:      apps.AlloyMetricsAppName,
-		AlloySecretNamespace: apps.AlloyNamespace,
-		HasCABundle:          s.Config.Cluster.CASecretName != "",
-		MimirUsernameKey:     common.MimirUsernameKey,
-		MimirPasswordKey:     common.MimirPasswordKey,
-		PriorityClassName:    common.PriorityClassName,
-		Replicas:             shards,
+		AlloyConfig:       alloyConfig,
+		AlloySecretName:   apps.AlloyMetricsAppName,
+		HasCABundle:       s.Config.Cluster.CASecretName != "",
+		MimirUsernameKey:  common.MimirUsernameKey,
+		MimirPasswordKey:  common.MimirPasswordKey,
+		PriorityClassName: common.PriorityClassName,
+		Replicas:          shards,
 	}
 
 	var values bytes.Buffer
