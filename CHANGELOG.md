@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Pass the Mimir credentials to the `alloy-metrics` container as `MIMIR_USERNAME` and `MIMIR_PASSWORD`, read from the Secret the Alloy configuration already authenticates with. The `mimir.rules.kubernetes` liveness probe needs them to tell a Mimir outage from the bug it works around: a Mimir behind a gateway answers `401` to an unauthenticated request whether its ruler is up or down.
+- Add `MIMIR_USERNAME` and `MIMIR_PASSWORD` to the `alloy-metrics` container, read from the `alloy-metrics` Secret. The `mimir.rules.kubernetes` liveness probe authenticates to the Mimir ruler with them.
 
 ## [0.80.0] - 2026-09-16
 
