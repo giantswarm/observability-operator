@@ -386,7 +386,7 @@ receivers:
     - href: '{{`{{ template "__runbook_url" . }}`}}'
       text: '📗 Runbook'
     - href: '{{`{{ template "__dashboard_url_or_empty" . }}`}}'
-      text: '📈 Dashboard'
+      text: '📊 Dashboard'
     - href: '{{`{{ template "__alert_url" . }}`}}'
       text: '👀 Explore'
     - href: '{{`{{ template "__alert_silence_link" . }}`}}'
