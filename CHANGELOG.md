@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Send the runbook, dashboard, explore and silence links to PagerDuty as `links`, which renders them as buttons in the incident and the mobile app. They were plain URLs in the incident description. An alert with no runbook or no dashboard shows only the links it has, and the description no longer carries a warning for the missing ones.
+- Send the runbook, dashboard, explore and silence links to PagerDuty as `links`, which renders them as buttons in the incident and the mobile app. The description no longer carries a warning for the missing ones.
 
 ## [0.80.0] - 2026-09-16
 
