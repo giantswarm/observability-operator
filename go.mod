@@ -130,8 +130,8 @@ require (
 	github.com/tjhop/slog-gokit v0.1.6 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
-	go.etcd.io/etcd/api/v3 v3.7.0 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.7.0 // indirect
+	go.etcd.io/etcd/api/v3 v3.7.1 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.7.1 // indirect
 	go.etcd.io/etcd/client/v3 v3.7.0 // indirect
 	go.opentelemetry.io/contrib/bridges/prometheus v0.64.0 // indirect
 	go.opentelemetry.io/contrib/exporters/autoexport v0.64.0 // indirect
@@ -255,7 +255,7 @@ replace (
 	// through MVS. Nothing we compile reaches etcd except through dskit.
 	go.etcd.io/etcd/api/v3 => go.etcd.io/etcd/api/v3 v3.6.10
 	go.etcd.io/etcd/client/pkg/v3 => go.etcd.io/etcd/client/pkg/v3 v3.6.10
-	go.etcd.io/etcd/client/v3 => go.etcd.io/etcd/client/v3 v3.6.10
+	go.etcd.io/etcd/client/v3 => go.etcd.io/etcd/client/v3 v3.7.1
 )
 
 exclude google.golang.org/genproto v0.0.0-20200825200019-8632dd797987
