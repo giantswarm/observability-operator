@@ -380,6 +380,17 @@ receivers:
     # relative external URL, which Slack cannot link. Point it at the alert in Grafana instead.
     client: 'Grafana'
     client_url: '{{`{{ template "__alert_url" . }}`}}'
+    # PagerDuty renders these as buttons in the incident and the mobile app, and drops
+    # any link whose href is empty.
+    links:
+    - href: '{{`{{ template "__runbook_url" . }}`}}'
+      text: '📗 Runbook'
+    - href: '{{`{{ template "__dashboard_url_or_empty" . }}`}}'
+      text: '📊 Dashboard'
+    - href: '{{`{{ template "__alert_url" . }}`}}'
+      text: '👀 Explore'
+    - href: '{{`{{ template "__alert_silence_link" . }}`}}'
+      text: '🔔 Silence'
     # There is currently no way to send all alerts labels to PagerDuty as details.
     # See https://github.com/prometheus/alertmanager/issues/3218
     details: {
