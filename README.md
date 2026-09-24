@@ -8,6 +8,8 @@
 
 </div>
 
+trigger build
+
 Brain of the Giant Swarm observability platform: provisions and configures the full observability stack (metrics, logs, traces, alerts, dashboards) for every managed cluster.
 
 It handles four responsibilities:
