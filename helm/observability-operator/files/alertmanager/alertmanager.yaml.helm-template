@@ -70,6 +70,15 @@ route:
     - alertname=~"Falco.*"
     continue: false
 
+  # app-to-hr migration tracking Slack
+  # Matched ahead of the per-team routes below so it claims the alert
+  # regardless of which team's `team` label the underlying HelmRelease
+  # carries.
+  - receiver: helmrelease_migration_slack
+    matchers:
+    - migration="app-to-hr"
+    continue: false
+
 {{- range $.Values.alerting.teams }}
 
   {{- if not .name }}
@@ -258,6 +267,17 @@ receivers:
       text: ':no_bell: Silence'
       url: '{{`{{ template "__alert_silence_link" .}}`}}'
       style: '{{`{{ if eq .Status "firing" }}danger{{ else }}default{{ end }}`}}'
+
+- name: helmrelease_migration_slack
+  slack_configs:
+  - channel: '#test-martin'
+    http_config:
+      authorization:
+        type: Bearer
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      proxy_from_environment: true
+    send_resolved: true
+    actions: *slack-actions
 
 - name: team_atlas_slack
   slack_configs:
