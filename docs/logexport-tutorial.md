@@ -5,7 +5,7 @@ your bucket and what is inside them.
 
 For which selectors are accepted, see [LogExport selectors](logexport-selectors.md).
 
-## 1. Provide the credentials
+## 1. Give the exporter access to your bucket
 
 A `LogExport` is namespaced, and works in **your own namespace on the management cluster** — your
 organization namespace, or any namespace you can write to. Nothing has to be requested from Giant
@@ -15,9 +15,60 @@ Swarm. This walkthrough uses `my-namespace`:
 kubectl create namespace my-namespace
 ```
 
-The exporter authenticates to S3 with the AWS SDK's default credential chain, and static credentials
-are the only option that works today. Put them in a Secret **in the same namespace as the
-`LogExport`** — the reference is by name only and cannot cross namespaces.
+There are two ways to authenticate. They cannot be mixed on one installation: see
+[Authentication is installation-wide](#authentication-is-installation-wide).
+
+### Option A: a role in your AWS account
+
+On AWS management clusters the exporter has its own identity, the IAM role
+`giantswarm-<installation>-alloy-logexporter` in the management cluster's account. That role can
+do one thing: assume a role whose name starts with **`giantswarm-logexport-`**, in any account. Read
+its ARN from the exporter's ServiceAccount:
+
+```bash
+kubectl -n monitoring get serviceaccount alloy-logexporter \
+  -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}'
+```
+
+In the account that owns the bucket, create a role named `giantswarm-logexport-<anything>` that
+trusts it:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::<MC_ACCOUNT_ID>:role/giantswarm-<installation>-alloy-logexporter" },
+      "Action": ["sts:AssumeRole", "sts:TagSession"]
+    }
+  ]
+}
+```
+
+Give it write access to the prefix and nothing else:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::acme-dns-archive/dns/*"
+    }
+  ]
+}
+```
+
+If the bucket uses SSE-KMS, also allow `kms:GenerateDataKey` on its key.
+
+Put the role's ARN in `roleARN`, and leave `credentialsRef` out.
+
+### Option B: static credentials
+
+Put an access key in a Secret **in the same namespace as the `LogExport`**. The reference is by name
+only and cannot cross namespaces.
 
 Write the file with the keys empty, so nothing secret is ever typed on the command line:
 
@@ -36,11 +87,7 @@ kubectl -n my-namespace create secret generic logexport-aws-credentials --from-e
 rm aws.env
 ```
 
-The two keys are fixed.
-
-`roleARN` is for cross-account delivery, and **is not usable yet**: the exporter would assume the role
-with its own workload identity, and nothing currently gives it one. Until that exists, a
-`credentialsRef` is required.
+The two keys are fixed. Name the Secret in `credentialsRef`, and leave `roleARN` out.
 
 ## 2. Apply the LogExport
 
@@ -59,8 +106,10 @@ spec:
       region: us-east-1
       prefix: dns
       format: otlp
-      credentialsRef:
-        name: logexport-aws-credentials
+      roleARN: arn:aws:iam::111122223333:role/giantswarm-logexport-dns
+      # Option B instead:
+      # credentialsRef:
+      #   name: logexport-aws-credentials
 ```
 
 Creating the resource switches the export on; deleting it switches it off again. There is no separate
@@ -70,18 +119,21 @@ feature flag.
 
 Several `LogExport`s may write to the same bucket, each rendering its own exporter.
 
-### AWS credentials are shared
+### Authentication is installation-wide
 
-There is **one set of AWS credentials for the whole installation**, not one per `LogExport`. That has
-two consequences:
+Every `LogExport` on the installation shares one exporter process, and static credentials reach it
+as environment variables. They take precedence over its own identity, so once one export sets a
+`credentialsRef`, every export authenticates with that key. So:
 
-- At least one `LogExport` has to name a `credentialsRef`, or nothing can be written. Nothing checks
-  this for you — an export with no credentials anywhere is accepted and then silently writes nothing.
-- Where several name a `credentialsRef`, they must all resolve to the same credentials. A genuine
-  disagreement is refused, naming both resources.
+- **Roles are per export.** With Option A, each `LogExport` names its own `roleARN`, so exports can
+  write to buckets in different AWS accounts.
+- **Static credentials are all or nothing.** If one `LogExport` sets a `credentialsRef`, every S3
+  export on the installation must, and all must resolve to the same credentials. A mix, or a
+  disagreement, is refused, naming both resources.
+- An export with neither is accepted, and then fails every write: the exporter's own role has no S3
+  permissions.
 
-So every destination has to be reachable with the same key. Exporting to two buckets in different AWS
-accounts is not possible today.
+A write that fails authentication is dropped, not retried.
 
 ## 3. What appears in the bucket
 

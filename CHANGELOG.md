@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Document `roleARN` delivery through the exporter's IRSA role.
+
 ## [0.80.0] - 2026-09-16
 
 ### Changed
