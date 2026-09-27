@@ -54,13 +54,15 @@ func TestSecretEnv(t *testing.T) {
 		}
 	})
 
-	t.Run("static credentials alongside a roleARN export", func(t *testing.T) {
-		env, err := SecretEnv([]observabilityv1alpha1.LogExport{withCreds, withRole}, creds)
-		if err != nil {
-			t.Fatalf("SecretEnv() failed: %v", err)
+	t.Run("static credentials alongside a roleARN export are refused", func(t *testing.T) {
+		_, err := SecretEnv([]observabilityv1alpha1.LogExport{withCreds, withRole}, creds)
+		if err == nil {
+			t.Fatal("SecretEnv() accepted static credentials alongside a workload identity export")
 		}
-		if env[AccessKeyIDEnv] != testAccessKeyID {
-			t.Errorf("SecretEnv() lost the credentials: %v", env)
+		for _, want := range []string{platformNamespace + "/" + auditExportName, "org-acme/teleport", "take precedence over workload identity"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("SecretEnv() error does not mention %q: %v", want, err)
+			}
 		}
 	})
 

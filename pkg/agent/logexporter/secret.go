@@ -30,15 +30,22 @@ type Credentials struct {
 //
 // The awss3 exporter has no credential fields: it uses the AWS SDK's default chain, which
 // reads the process environment. Environment variables are per-container, not per
-// exporter, so only one export can carry static credentials. Additional destinations have
-// to authenticate by workload identity with roleARN, which is per exporter.
+// exporter, so only one set of static credentials can exist. The chain also prefers them to
+// workload identity, so once they are set every export uses them, including the ones meant
+// to authenticate by IRSA, and those fail. Static and workload identity cannot be mixed.
 func SecretEnv(exports []observabilityv1alpha1.LogExport, creds map[client.ObjectKey]Credentials) (map[string]string, error) {
 	env := map[string]string{}
-	var credentialed string
+	var credentialed, credentialless string
 	var resolved Credentials
 
 	for _, e := range sorted(exports) {
-		if e.Spec.Destination.S3 == nil || e.Spec.Destination.S3.CredentialsRef == nil {
+		if e.Spec.Destination.S3 == nil {
+			continue
+		}
+		if e.Spec.Destination.S3.CredentialsRef == nil {
+			if credentialless == "" {
+				credentialless = client.ObjectKey{Namespace: e.Namespace, Name: e.Name}.String()
+			}
 			continue
 		}
 		ref := client.ObjectKey{Namespace: e.Namespace, Name: e.Name}
@@ -52,12 +59,16 @@ func SecretEnv(exports []observabilityv1alpha1.LogExport, creds map[client.Objec
 		// is the normal shape for two destinations in one account. Only a genuine
 		// disagreement is unrenderable.
 		if credentialed != "" && c != resolved {
-			return nil, fmt.Errorf("LogExports %s and %s set spec.destination.s3.credentialsRef to different credentials, but static credentials reach the exporter as environment variables and cannot be set per destination: use the same credentials, or roleARN on all but one", credentialed, ref)
+			return nil, fmt.Errorf("LogExports %s and %s set spec.destination.s3.credentialsRef to different credentials, but static credentials reach the exporter as environment variables and cannot be set per destination: use the same credentials", credentialed, ref)
 		}
 		credentialed, resolved = ref.String(), c
 
 		env[AccessKeyIDEnv] = c.AccessKeyID
 		env[SecretAccessKeyEnv] = c.SecretAccessKey
+	}
+
+	if credentialed != "" && credentialless != "" {
+		return nil, fmt.Errorf("LogExport %s sets spec.destination.s3.credentialsRef and %s does not, but static credentials reach the exporter as environment variables and take precedence over workload identity, so %s would authenticate with %s's credentials: set credentialsRef on every export, or on none", credentialed, credentialless, credentialless, credentialed)
 	}
 
 	return env, nil

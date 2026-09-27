@@ -150,6 +150,11 @@ type S3Destination struct {
 	// The Secret is read from THIS resource's namespace; cross-namespace
 	// references are not possible. Omit it to authenticate by workload identity
 	// (IRSA) instead, optionally combined with RoleARN.
+	//
+	// Static credentials apply to the whole exporter, not this destination: they
+	// take precedence over workload identity for every export on the installation.
+	// So either every S3 export sets credentialsRef, or none does; a mix is
+	// rejected.
 	// +optional
 	CredentialsRef *corev1.LocalObjectReference `json:"credentialsRef,omitempty"`
 }
