@@ -151,10 +151,8 @@ type S3Destination struct {
 	// references are not possible. Omit it to authenticate by workload identity
 	// (IRSA) instead, optionally combined with RoleARN.
 	//
-	// Static credentials apply to the whole exporter, not this destination: they
-	// take precedence over workload identity for every export on the installation.
-	// So either every S3 export sets credentialsRef, or none does; a mix is
-	// rejected.
+	// Static credentials apply to every export and override workload identity,
+	// so the two cannot be mixed.
 	// +optional
 	CredentialsRef *corev1.LocalObjectReference `json:"credentialsRef,omitempty"`
 }
