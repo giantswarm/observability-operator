@@ -40,5 +40,13 @@ mimir:
     enabled: false
   minio:
     enabled: true
+    # MinIO withdrew its public images from Docker Hub and quay.io.
+    # The Pigsty fork is a drop-in replacement.
+    image:
+      repository: docker.io/pgsty/silo
+      tag: RELEASE.2026-09-03T13-18-01Z
+    mcImage:
+      repository: docker.io/pgsty/mc
+      tag: RELEASE.2026-09-13T00-00-00Z
   mimir:
     enabled: false
