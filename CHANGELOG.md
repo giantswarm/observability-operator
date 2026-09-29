@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Route HelmRelease alerts carrying the `migration="app-to-hr"` label to a dedicated Slack channel, ahead of the per-team routes.
+- Route alerts carrying the `alertname=HelmReleaseAppToHrMigrationFailed` and `migration="app-to-hr` labels to a dedicated Slack channel, ahead of the per-team routes.
 
 ## [0.80.0] - 2026-09-16
 
