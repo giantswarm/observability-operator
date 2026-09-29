@@ -76,6 +76,7 @@ route:
   # carries.
   - receiver: helmrelease_migration_slack
     matchers:
+    - alertname="HelmReleaseAppToHrMigrationFailed"
     - migration="app-to-hr"
     continue: false
 
