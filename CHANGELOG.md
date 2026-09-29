@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Route alerts carrying the `alertname=HelmReleaseAppToHrMigrationFailed` and `migration="app-to-hr` labels to a dedicated Slack channel, ahead of the per-team routes.
 
+### Fixed
+
+- Reject `LogExport`s that mix `credentialsRef` with credential-less S3 exports.
+
 ## [0.80.0] - 2026-09-16
 
 ### Changed
