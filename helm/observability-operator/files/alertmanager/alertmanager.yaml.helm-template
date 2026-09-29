@@ -270,7 +270,7 @@ receivers:
 
 - name: helmrelease_migration_slack
   slack_configs:
-  - channel: '#test-martin'
+  - channel: 'C0BETGPDY8H'
     http_config:
       authorization:
         type: Bearer
