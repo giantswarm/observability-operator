@@ -28,7 +28,7 @@ def certmanager(app_factory: AppFactoryFunc) -> ConfiguredApp:
     """
     app_factory(
         "cert-manager-app",
-        "3.13.0",
+        "3.9.0",
         catalog_name="giantswarm-catalog",
         catalog_namespace=giantswarm_namespace,
         catalog_url="https://giantswarm.github.io/giantswarm-catalog/",
