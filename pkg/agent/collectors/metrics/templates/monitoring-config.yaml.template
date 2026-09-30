@@ -46,8 +46,9 @@ networkPolicy:
 serviceAccountTokenSecret:
   enabled: true
 {{- if .IsSupportingMimirRulesLivenessProbe }}
-# Script restarting Alloy when a mimir.rules.kubernetes component stays unhealthy while
-# its Mimir ruler answers 200, working around https://github.com/grafana/alloy/pull/6339.
+# Liveness probe script failing when a mimir.rules.kubernetes component stays unhealthy
+# while its Mimir ruler answers 200, so Kubernetes restarts Alloy. This works around
+# https://github.com/grafana/alloy/pull/6339.
 # The chart renders it as the {{ .AlloyAppName }}-mimir-rules-liveness-probe ConfigMap,
 # mounted and run by the liveness probe below.
 mimirRulesLivenessProbe:
