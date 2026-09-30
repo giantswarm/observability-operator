@@ -380,7 +380,7 @@ alloy:
         - /etc/mimir-rules-liveness-probe/mimir-rules-liveness-probe.sh
       initialDelaySeconds: 60
       periodSeconds: 60
-      timeoutSeconds: 15
+      timeoutSeconds: 60
       failureThreshold: 3
     # Credentials the mimir.rules.kubernetes liveness probe authenticates to the
     # Mimir ruler with. Without them a Mimir behind a gateway answers 401 whether
