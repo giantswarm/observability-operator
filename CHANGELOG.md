@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `MIMIR_USERNAME` and `MIMIR_PASSWORD` to the `alloy-metrics` container, read from the `alloy-metrics` Secret. The `mimir.rules.kubernetes` liveness probe authenticates to the Mimir ruler with them.
 - Enable the `mimir.rules.kubernetes` liveness probe on `alloy-metrics`: set `mimirRulesLivenessProbe.enabled`, mount the script ConfigMap rendered by the Alloy chart, and run it as the container liveness probe.
 
+## [0.81.0] - 2026-09-30
+
+### Added
+
+- Route alerts carrying the `alertname=HelmReleaseAppToHrMigrationFailed` and `migration="app-to-hr` labels to a dedicated Slack channel, ahead of the per-team routes.
+
+### Fixed
+
+- Reject `LogExport`s that mix `credentialsRef` with credential-less S3 exports.
+
 ## [0.80.0] - 2026-09-16
 
 ### Changed
@@ -1273,7 +1283,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.80.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.81.0...HEAD
+[0.81.0]: https://github.com/giantswarm/observability-operator/compare/v0.80.0...v0.81.0
 [0.80.0]: https://github.com/giantswarm/observability-operator/compare/v0.79.0...v0.80.0
 [0.79.0]: https://github.com/giantswarm/observability-operator/compare/v0.78.0...v0.79.0
 [0.78.0]: https://github.com/giantswarm/observability-operator/compare/v0.77.0...v0.78.0
