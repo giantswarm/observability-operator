@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.81.0] - 2026-09-30
+
 ### Added
 
 - Route alerts carrying the `alertname=HelmReleaseAppToHrMigrationFailed` and `migration="app-to-hr` labels to a dedicated Slack channel, ahead of the per-team routes.
@@ -1276,7 +1278,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.80.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.81.0...HEAD
+[0.81.0]: https://github.com/giantswarm/observability-operator/compare/v0.80.0...v0.81.0
 [0.80.0]: https://github.com/giantswarm/observability-operator/compare/v0.79.0...v0.80.0
 [0.79.0]: https://github.com/giantswarm/observability-operator/compare/v0.78.0...v0.79.0
 [0.78.0]: https://github.com/giantswarm/observability-operator/compare/v0.77.0...v0.78.0
