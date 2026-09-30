@@ -36,6 +36,9 @@ var (
 	alloyMonitoringConfigTemplate *template.Template
 
 	versionSupportingScrapeConfigs = semver.MustParse("2.2.0")
+	// First observability-bundle version shipping an Alloy chart that renders the
+	// mimir.rules.kubernetes liveness probe ConfigMap (giantswarm/alloy-app#311).
+	versionSupportingMimirRulesLivenessProbe = semver.MustParse("3.6.0")
 )
 
 func init() {
@@ -88,15 +91,27 @@ func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 	}
 
 	data := struct {
+		AlloyAppName      string
 		AlloyConfig       string
+		AlloySecretName   string
 		HasCABundle       bool
+		MimirUsernameKey  string
+		MimirPasswordKey  string
 		PriorityClassName string
 		Replicas          int
+
+		IsSupportingMimirRulesLivenessProbe bool
 	}{
+		AlloyAppName:      apps.AlloyMetricsAppName,
 		AlloyConfig:       alloyConfig,
+		AlloySecretName:   apps.AlloyMetricsAppName,
 		HasCABundle:       s.Config.Cluster.CASecretName != "",
+		MimirUsernameKey:  common.MimirUsernameKey,
+		MimirPasswordKey:  common.MimirPasswordKey,
 		PriorityClassName: common.PriorityClassName,
 		Replicas:          shards,
+
+		IsSupportingMimirRulesLivenessProbe: observabilityBundleVersion.GE(versionSupportingMimirRulesLivenessProbe),
 	}
 
 	var values bytes.Buffer

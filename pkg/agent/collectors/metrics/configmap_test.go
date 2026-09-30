@@ -47,11 +47,17 @@ func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 
 	var rendered bytes.Buffer
 	err := alloyMonitoringConfigTemplate.Execute(&rendered, struct {
+		AlloyAppName      string
 		AlloyConfig       string
+		AlloySecretName   string
 		HasCABundle       bool
+		MimirUsernameKey  string
+		MimirPasswordKey  string
 		PriorityClassName string
 		Replicas          int
-	}{Replicas: want})
+
+		IsSupportingMimirRulesLivenessProbe bool
+	}{Replicas: want, IsSupportingMimirRulesLivenessProbe: true})
 	if err != nil {
 		t.Fatalf("failed to render monitoring config template: %v", err)
 	}
@@ -378,6 +384,45 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			tenants:                    []string{organization.GiantSwarmDefaultTenant},
 			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.MC.vsphere.vcenter-disabled.yaml"),
 			observabilityBundleVersion: versionSupportingScrapeConfigs,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		// Mimir rules liveness probe tests
+		{
+			name: "WorkloadCluster_DefaultTenant_MimirRulesLivenessProbe",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testCluster,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: awsClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.mimir-rules-liveness-probe.WC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingMimirRulesLivenessProbe,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ManagementCluster_DefaultTenant_MimirRulesLivenessProbe",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: awsClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.mimir-rules-liveness-probe.MC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingMimirRulesLivenessProbe,
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
 		},
