@@ -45,12 +45,6 @@ networkPolicy:
 # Token Secret the kube-prometheus-stack control-plane ServiceMonitors authenticate with.
 serviceAccountTokenSecret:
   enabled: true
-# Script restarting Alloy when a mimir.rules.kubernetes component stays unhealthy while
-# its Mimir ruler answers 200, working around https://github.com/grafana/alloy/pull/6339.
-# The chart renders it as the alloy-metrics-mimir-rules-liveness-probe ConfigMap,
-# mounted and run by the liveness probe below.
-mimirRulesLivenessProbe:
-  enabled: true
 alloy:
   alloy:
     clustering:
@@ -379,52 +373,10 @@ alloy:
         memory: 512Mi
     ## Needed to to be able to support ScrapeConfig CRs
     stabilityLevel: experimental
-    mounts:
-      extra:
-      # Repeated from the chart defaults: Helm replaces this list, it does not merge it.
-      - name: alloy-tmp
-        mountPath: /tmp/alloy
-      - name: mimir-rules-liveness-probe
-        mountPath: /etc/mimir-rules-liveness-probe
-        readOnly: true
-    livenessProbe:
-      exec:
-        command:
-        - bash
-        - /etc/mimir-rules-liveness-probe/mimir-rules-liveness-probe.sh
-      initialDelaySeconds: 60
-      periodSeconds: 60
-      timeoutSeconds: 60
-      failureThreshold: 3
-    # Credentials the mimir.rules.kubernetes liveness probe authenticates to the
-    # Mimir ruler with. Without them a Mimir behind a gateway answers 401 whether
-    # its ruler is up or down, and the probe cannot tell an outage from the bug
-    # it works around, so it never restarts Alloy.
-    extraEnv:
-    - name: MIMIR_USERNAME
-      valueFrom:
-        secretKeyRef:
-          name: alloy-metrics
-          key: metrics-username
-          optional: true
-    - name: MIMIR_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: alloy-metrics
-          key: metrics-password
-          optional: true
   controller:
     type: statefulset
     replicas: 1
     priorityClassName: giantswarm-critical
-    volumes:
-      extra:
-      # Repeated from the chart defaults: Helm replaces this list, it does not merge it.
-      - name: alloy-tmp
-        emptyDir: {}
-      - name: mimir-rules-liveness-probe
-        configMap:
-          name: alloy-metrics-mimir-rules-liveness-probe
   crds:
     create: false
   affinity:
