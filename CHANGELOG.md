@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix false `LoggingAgentMissingOnNode` alerts caused by the `alloy-logs-beyla` ServiceMonitor sharing the `alloy-logs` job label.
+- Fix false `LoggingAgentMissingOnNode` alerts from the `alloy-logs-beyla` ServiceMonitor.
 
 ### Changed
 
