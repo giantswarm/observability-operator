@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Set `job="alloy-logs-beyla"` on the `alloy-logs-beyla` ServiceMonitor. Its scrape no longer writes into `up{job="alloy-logs"}`, so a failing Beyla scrape no longer fires `LoggingAgentMissingOnNode`.
+- Fix false `LoggingAgentMissingOnNode` alerts caused by the `alloy-logs-beyla` ServiceMonitor sharing the `alloy-logs` job label.
 
 ### Changed
 
