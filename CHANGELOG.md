@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Send the runbook, dashboard, explore and silence links to PagerDuty as `links`, which renders them as buttons in the incident and the mobile app.
+
 ## [0.81.0] - 2026-09-30
 
 ### Added

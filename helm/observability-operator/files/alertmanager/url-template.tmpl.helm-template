@@ -18,4 +18,15 @@
 {{ template "__grafana_url" }}
 {{- end -}}
 {{- end }}
+
+{{/*
+  __dashboard_url_or_empty renders __dashboard_url only when the alert references a dashboard.
+  __dashboard_url falls back to the Grafana home page, which is not worth a link of its own.
+  PagerDuty drops a link whose href is empty.
+*/}}
+{{ define "__dashboard_url_or_empty" -}}
+{{- if or ((index .Alerts 0).Annotations.__dashboardUid__) ((index .Alerts 0).Annotations.dashboardExternalUrl) -}}
+{{ template "__dashboard_url" . }}
+{{- end -}}
+{{- end }}
 `}}
