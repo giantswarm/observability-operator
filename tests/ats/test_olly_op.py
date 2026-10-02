@@ -34,6 +34,7 @@ def certmanager(app_factory: AppFactoryFunc) -> ConfiguredApp:
         catalog_url="https://giantswarm.github.io/giantswarm-catalog/",
         namespace=giantswarm_namespace,
         deployment_namespace="kube-system",
+        timeout_sec=timeout,
     )
 
 @pytest.fixture(scope="module")
@@ -50,6 +51,7 @@ def observabilityOperator(kube_cluster: Cluster, app_factory: AppFactoryFunc, ce
         catalog_url="https://giantswarm.github.io/control-plane-test-catalog",
         namespace=giantswarm_namespace,
         deployment_namespace=giantswarm_namespace,
+        timeout_sec=timeout,
     )
 
 @pytest.fixture(scope="module")
