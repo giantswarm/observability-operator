@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix false `LoggingAgentMissingOnNode` alerts caused by the `alloy-logs-beyla` ServiceMonitor sharing the `alloy-logs` job label.
+
 ### Changed
 
 - Send the runbook, dashboard, explore and silence links to PagerDuty as `links`, which renders them as buttons in the incident and the mobile app.
