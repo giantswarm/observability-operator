@@ -164,6 +164,10 @@ alloy:
         port: http-metrics
         path: /api/v0/component/beyla.ebpf.default/metric
         scheme: http
+        relabelings:
+        - action: replace
+          targetLabel: job
+          replacement: alloy-logs-beyla
       selector:
         matchLabels:
           app.kubernetes.io/instance: alloy-logs
