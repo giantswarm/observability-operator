@@ -40,7 +40,7 @@ trusts it:
     {
       "Effect": "Allow",
       "Principal": { "AWS": "arn:aws:iam::<MC_ACCOUNT_ID>:role/giantswarm-<installation>-alloy-logexporter" },
-      "Action": ["sts:AssumeRole", "sts:TagSession"]
+      "Action": "sts:AssumeRole"
     }
   ]
 }
