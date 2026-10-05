@@ -65,6 +65,9 @@ If the bucket uses SSE-KMS, also allow `kms:GenerateDataKey` on its key.
 
 Put the role's ARN in `roleARN`, and leave `credentialsRef` out.
 
+Anyone who can create a `LogExport` on the installation can write into a bucket whose role trusts
+the exporter. Use a dedicated bucket or prefix.
+
 ### Option B: static credentials
 
 Put an access key in a Secret **in the same namespace as the `LogExport`**. The reference is by name
