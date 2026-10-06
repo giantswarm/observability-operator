@@ -87,6 +87,13 @@ route:
   {{- end }}
 
   {{- if .pagerdutyToken }}
+  {{- $team := .name }}
+  {{- $pagerdutyTeams := list $team }}
+  {{- range $alias, $target := $.Values.alerting.pagerdutyTeamAliases }}
+  {{- if eq $target $team }}
+  {{- $pagerdutyTeams = append $pagerdutyTeams $alias }}
+  {{- end }}
+  {{- end }}
 
   {{- if eq $.Values.managementCluster.pipeline "stable" }}
   # PagerDuty pipeline=stable anytime
@@ -95,7 +102,7 @@ route:
     - severity="page"
     - pipeline="stable"
     - all_pipelines!="true"
-    - team="{{ .name }}"
+    - team=~"{{ join "|" $pagerdutyTeams }}"
     - cancel_if_outside_working_hours!="true"
     continue: true
 
@@ -105,7 +112,7 @@ route:
     - severity="page"
     - pipeline="stable"
     - all_pipelines!="true"
-    - team="{{ .name }}"
+    - team=~"{{ join "|" $pagerdutyTeams }}"
     - cancel_if_outside_working_hours="true"
     active_time_intervals:
     - business-hours
@@ -119,7 +126,7 @@ route:
     - severity="page"
     - pipeline="stable-testing"
     - all_pipelines!="true"
-    - team="{{ .name }}"
+    - team=~"{{ join "|" $pagerdutyTeams }}"
     active_time_intervals:
     - business-hours
     continue: true
@@ -129,7 +136,7 @@ route:
   - receiver: pagerduty-{{ .name }}
     matchers:
     - all_pipelines="true"
-    - team="{{ .name }}"
+    - team=~"{{ join "|" $pagerdutyTeams }}"
     - cancel_if_outside_working_hours!="true"
     continue: true
 
@@ -137,7 +144,7 @@ route:
   - receiver: pagerduty-{{ .name }}
     matchers:
     - all_pipelines="true"
-    - team="{{ .name }}"
+    - team=~"{{ join "|" $pagerdutyTeams }}"
     - cancel_if_outside_working_hours="true"
     active_time_intervals:
     - business-hours
