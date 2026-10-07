@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `podMonitor.enabled` Helm value to make the operator's `PodMonitor` optional, so the chart installs on clusters without the Prometheus Operator CRDs. It defaults to `false`; Giant Swarm installations enable it through shared-configs.
+
 ### Fixed
 
 - Fix false `LoggingAgentMissingOnNode` alerts caused by the `alloy-logs-beyla` ServiceMonitor sharing the `alloy-logs` job label.
