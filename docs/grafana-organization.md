@@ -7,7 +7,7 @@ The `GrafanaOrganization` CRD lets you declare a Grafana organization as a Kuber
 When a `GrafanaOrganization` is created:
 1. The operator creates the corresponding organization in Grafana
 2. Datasources are configured for each tenant associated with the organization
-3. SSO role mappings are applied so users are assigned the correct Grafana role based on their identity provider group membership
+3. SSO role mappings are applied so users are assigned the correct Grafana role based on their identity provider group membership (unless [SSO organization mapping](#sso-organization-mapping) is disabled)
 4. The organization's `orgID` is written back to `.status.orgID`
 
 ## CRD Reference
@@ -17,7 +17,7 @@ When a `GrafanaOrganization` is created:
 | Field | Required | Description |
 |---|---|---|
 | `spec.displayName` | yes | Name shown in the Grafana UI. Must be unique across all organizations. |
-| `spec.rbac` | yes | SSO role mappings (see below) |
+| `spec.rbac` | yes | SSO role mappings (see below). Ignored when SSO organization mapping is disabled. |
 | `spec.tenants` | yes | List of tenants associated with this org (minimum 1) |
 
 ### `spec.rbac`
@@ -45,6 +45,16 @@ Each tenant entry grants the organization access to data for that tenant in Mimi
 |---|---|
 | `status.orgID` | The Grafana organization ID assigned by Grafana |
 | `status.dataSources` | List of datasources provisioned for this organization |
+
+## SSO organization mapping
+
+When enabled, the operator writes the `org_mapping` setting of Grafana's `generic_oauth` SSO provider from the `spec.rbac` of all `GrafanaOrganization` resources.
+
+It is controlled by the `grafana.ssoOrgMapping.enabled` Helm value, which defaults to `false` (Giant Swarm installations enable it through shared-configs), and the `--grafana-sso-org-mapping-enabled` flag. Keep it off when Grafana has no generic OAuth provider configured. When it is off:
+
+- the operator neither reads nor writes Grafana's SSO provider settings
+- organizations and their datasources are still reconciled as usual
+- `spec.rbac` is still required by the API, but its contents are ignored
 
 ## Example
 

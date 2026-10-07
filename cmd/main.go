@@ -142,6 +142,7 @@ const (
 	flagGrafanaAdminSecretName           = "grafana-admin-secret-name"      // nolint:gosec // G101: CLI flag name, not a credential
 	flagGrafanaGatewayTLSSecretNamespace = "grafana-gateway-tls-secret-namespace"
 	flagGrafanaGatewayTLSSecretName      = "grafana-gateway-tls-secret-name"
+	flagGrafanaSSOOrgMappingEnabled      = "grafana-sso-org-mapping-enabled"
 
 	// Default tenant flag name
 	flagDefaultTenant = "default-tenant"
@@ -370,6 +371,8 @@ func parseFlags() (err error) {
 		"Kubernetes namespace containing the Grafana Gateway TLS secret.")
 	pflag.StringVar(&cfg.Grafana.GatewayTLSSecretName, flagGrafanaGatewayTLSSecretName, "gateway-giantswarm-default-https-tls",
 		"Name of the Kubernetes secret containing the Grafana Gateway TLS certificate.")
+	pflag.BoolVar(&cfg.Grafana.SSOOrgMappingEnabled, flagGrafanaSSOOrgMappingEnabled, true,
+		"Write the Grafana generic_oauth org_mapping from GrafanaOrganization RBAC settings. When disabled, SSO settings are left untouched and spec.rbac is ignored.")
 
 	// Default tenant flag
 	pflag.StringVar(&cfg.DefaultTenant, flagDefaultTenant, "giantswarm",
@@ -583,6 +586,10 @@ func setupApplication() error {
 	}
 
 	if cfg.Operator.Controllers.GrafanaOrganization.Enabled {
+		if !cfg.Grafana.SSOOrgMappingEnabled {
+			setupLog.Info("grafana SSO org mapping is disabled; GrafanaOrganization spec.rbac is ignored and SSO settings are left untouched")
+		}
+
 		// Setup controller for the GrafanaOrganization resource.
 		err = controller.SetupGrafanaOrganizationReconciler(mgr, cfg, grafanaClientGen)
 		if err != nil {
