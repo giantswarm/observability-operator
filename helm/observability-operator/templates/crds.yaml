@@ -1,0 +1,59 @@
+{{- /*
+CRDs are rendered from the generated sources in config/crd/bases, which the chart
+reaches through the files/crds symlink, so the chart can never drift from them.
+They are templates rather than files in crds/ so that `helm upgrade` updates them.
+Only the CRDs of enabled controllers are rendered.
+*/ -}}
+{{- if .Values.crds.install }}
+{{- $controllers := .Values.operator.controllers }}
+{{- $crds := list }}
+{{- if $controllers.agentCredential.enabled }}
+{{- $crds = append $crds "agentcredentials" }}
+{{- end }}
+{{- if $controllers.grafanaOrganization.enabled }}
+{{- $crds = append $crds "grafanaorganizations" }}
+{{- end }}
+{{- /* No controller reconciles Heartbeat resources yet; Cronitor heartbeats are managed by the cluster controller, which cannot run without the agent credential controller. */}}
+{{- if and $controllers.cluster.enabled $controllers.agentCredential.enabled }}
+{{- $crds = append $crds "heartbeats" }}
+{{- end }}
+{{- if $controllers.logExport.enabled }}
+{{- $crds = append $crds "logexports" }}
+{{- end }}
+{{- range $crds }}
+{{- $path := printf "files/crds/observability.giantswarm.io_%s.yaml" . }}
+{{- $content := $.Files.Get $path }}
+{{- if not $content }}
+{{- fail (printf "CRD source %s is missing: the files/crds symlink to config/crd/bases was not followed" $path) }}
+{{- end }}
+{{- $crd := fromYaml $content }}
+{{- $metadata := $crd.metadata }}
+{{- $annotations := $metadata.annotations | default dict }}
+{{- /* Deleting a CRD deletes all of its resources, and the GrafanaOrganization finalizer would delete the Grafana organizations with them. */}}
+{{- $_ := set $annotations "helm.sh/resource-policy" "keep" }}
+{{- $_ = set $metadata "labels" (include "labels.common" $ | fromYaml) }}
+{{- if eq . "grafanaorganizations" }}
+{{- if $.Values.webhook.enabled }}
+{{- /* The generated CRD hardcodes the webhook Service and Certificate of the Giant Swarm installation. */}}
+{{- $_ = set $annotations "cert-manager.io/inject-ca-from" (printf "%s/%s-webhook-cert" (include "resource.default.namespace" $) (include "resource.default.name" $)) }}
+{{- $service := $crd.spec.conversion.webhook.clientConfig.service }}
+{{- $_ = set $service "name" (printf "%s-webhook" (include "resource.default.name" $)) }}
+{{- $_ = set $service "namespace" (include "resource.default.namespace" $) }}
+{{- else }}
+{{- /* Without the conversion webhook, serve only the storage version so no object is returned unconverted. */}}
+{{- $_ = unset $annotations "cert-manager.io/inject-ca-from" }}
+{{- $versions := list }}
+{{- range $crd.spec.versions }}
+{{- if .storage }}
+{{- $versions = append $versions . }}
+{{- end }}
+{{- end }}
+{{- $_ = set $crd.spec "versions" $versions }}
+{{- $_ = set $crd.spec "conversion" (dict "strategy" "None") }}
+{{- end }}
+{{- end }}
+{{- $_ = set $metadata "annotations" $annotations }}
+---
+{{ toYaml $crd }}
+{{- end }}
+{{- end }}

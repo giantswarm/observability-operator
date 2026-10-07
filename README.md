@@ -30,7 +30,8 @@ observability-operator/
 ├── docs/                               # Feature documentation
 ├── helm/
 │   └── observability-operator/         # Helm chart for deployment
-│       └── files/alertmanager/         # Alertmanager config templates
+│       ├── files/alertmanager/         # Alertmanager config templates
+│       └── files/crds/                 # Symlink to config/crd/bases (CRDs installed by the chart)
 ├── internal/
 │   ├── controller/                     # Reconcilers (cluster, dashboard, alertmanager, grafanaorg)
 │   ├── mapper/                         # Watch event mappers (dashboard, organization)
@@ -126,6 +127,12 @@ See [docs/cluster.md](docs/cluster.md) for full details including per-cluster sh
 ## Getting Started
 
 The operator is deployed via the Helm chart in `helm/observability-operator/`.
+
+The chart can install the operator's CRDs with `crds.install: true` (default `false`; Giant Swarm installations enable it through shared-configs). They are rendered from the generated CRDs in `config/crd/bases` through the `helm/observability-operator/files/crds` symlink, so `helm upgrade` keeps them current:
+
+- Only the CRDs of enabled controllers (`operator.controllers.*`) are installed. `Heartbeat` follows the cluster controller, which manages Cronitor heartbeats today.
+- With `webhook.enabled: false`, the `GrafanaOrganization` CRD serves only its storage version (`v1alpha2`) and has no conversion webhook. Objects stored as `v1alpha1` must be migrated before turning webhooks off.
+- The CRDs are annotated `helm.sh/resource-policy: keep`, so `helm uninstall` leaves them, and every resource of their kinds, in place. Delete them with `kubectl` once the resources are gone.
 
 For local development and contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
 

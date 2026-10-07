@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Install the operator's CRDs from the Helm chart, behind `crds.install` (default `false`; Giant Swarm installations enable it through shared-configs). The CRDs are rendered from the generated ones in `config/crd/bases`, only for enabled controllers, and are kept on `helm uninstall`. With `webhook.enabled=false`, the `GrafanaOrganization` CRD serves only `v1alpha2` without a conversion webhook.
+
 ### Fixed
 
 - Fix false `LoggingAgentMissingOnNode` alerts caused by the `alloy-logs-beyla` ServiceMonitor sharing the `alloy-logs` job label.
