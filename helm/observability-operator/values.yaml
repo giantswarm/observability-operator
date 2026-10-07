@@ -256,7 +256,7 @@ logExport:
 # (v1alpha2) when `webhook.enabled` is false, since conversion needs the webhook.
 # Rendered CRDs carry `helm.sh/resource-policy: keep`, so `helm uninstall` leaves
 # them and their resources in place.
-# Disabled by default; Giant Swarm installations enable it through shared-configs.
+# Enabled by default; Giant Swarm installations disable it through shared-configs.
 crds:
   # -- Install the operator's CRDs with the chart
   install: true
