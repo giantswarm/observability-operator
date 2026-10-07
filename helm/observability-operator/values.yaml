@@ -259,7 +259,7 @@ logExport:
 # Disabled by default; Giant Swarm installations enable it through shared-configs.
 crds:
   # -- Install the operator's CRDs with the chart
-  install: false
+  install: true
 
 # Resource and security configuration for the operator pod.
 # Defaults are appropriate for most deployments.
