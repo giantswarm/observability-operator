@@ -252,6 +252,12 @@ logExport:
       memory: 1Gi
       ephemeral-storage: 2Gi
 
+# Rendered CRDs carry `helm.sh/resource-policy: keep`, so `helm uninstall` leaves
+# them and their resources in place.
+crds:
+  # -- Install the operator's CRDs with the chart
+  install: true
+
 # Resource and security configuration for the operator pod.
 # Defaults are appropriate for most deployments.
 operator:

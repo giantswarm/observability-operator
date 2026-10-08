@@ -289,6 +289,15 @@
                 }
             }
         },
+        "crds": {
+            "type": "object",
+            "properties": {
+                "install": {
+                    "type": "boolean",
+                    "description": "Install all of the operator's CRDs with the chart, whether or not their controller is enabled."
+                }
+            }
+        },
         "operator": {
             "type": "object",
             "properties": {
