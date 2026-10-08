@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Install the operator's CRDs from the Helm chart, behind `crds.install` (default `true`; Giant Swarm installations disable it through shared-configs).
+- Install the operator's CRDs from the Helm chart, behind `crds.install`. Defaults to `true`.
 - Add `alerting.pagerdutyTeamAliases` to page another team's PagerDuty receiver, defaulting to `tenet: phoenix`.
 
 ### Fixed
