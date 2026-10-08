@@ -344,6 +344,13 @@ grafana:
   gatewayTLSSecretNamespace: "envoy-gateway-system"
   # -- Name of the Kubernetes secret containing the Grafana Gateway TLS certificate
   gatewayTLSSecretName: "gateway-giantswarm-default-https-tls"
+  # -- Grafana SSO organization mapping. When enabled, the operator writes the `org_mapping`
+  # of Grafana's `generic_oauth` SSO provider from the `spec.rbac` of every GrafanaOrganization.
+  # Disable it when Grafana has no generic OAuth provider configured: SSO settings are then left
+  # untouched and `spec.rbac` is ignored, while organizations and datasources are still reconciled.
+  ssoOrgMapping:
+    # -- Enable the Grafana SSO organization mapping
+    enabled: false
   # -- Service URLs for Grafana datasources provisioned by the operator.
   # Override these if your stack uses non-standard namespaces or service names.
   datasources:

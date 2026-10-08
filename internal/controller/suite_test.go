@@ -41,6 +41,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	observabilityv1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -114,6 +115,12 @@ var _ = BeforeSuite(func() {
 	cfg, err = testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
+
+	// Register v1alpha2 only once the CRDs are installed: with both versions in the scheme
+	// envtest would point the GrafanaOrganization conversion webhook at a local webhook
+	// server, which these tests don't run.
+	err = observabilityv1alpha2.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())

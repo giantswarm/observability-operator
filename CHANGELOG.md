@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add the `grafana.ssoOrgMapping.enabled` Helm value (`--grafana-sso-org-mapping-enabled` flag). Defaults to `false`.
 - Install the operator's CRDs from the Helm chart, behind `crds.install`. Defaults to `true`.
 - Add the `podMonitor.enabled` Helm value. Defaults to `false`.
 - Add `alerting.pagerdutyTeamAliases` to page another team's PagerDuty receiver, defaulting to `tenet: phoenix`.
