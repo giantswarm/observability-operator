@@ -252,14 +252,8 @@ logExport:
       memory: 1Gi
       ephemeral-storage: 2Gi
 
-# Controls whether the chart installs the operator's CustomResourceDefinitions.
-# They are rendered from the generated CRDs in config/crd/bases, so `helm upgrade`
-# updates them. All of them are installed, whether or not their controller
-# (`operator.controllers`) is enabled. The GrafanaOrganization CRD serves only its storage version
-# (v1alpha2) when `webhook.enabled` is false, since conversion needs the webhook.
 # Rendered CRDs carry `helm.sh/resource-policy: keep`, so `helm uninstall` leaves
 # them and their resources in place.
-# Enabled by default; Giant Swarm installations disable it through shared-configs.
 crds:
   # -- Install the operator's CRDs with the chart
   install: true
