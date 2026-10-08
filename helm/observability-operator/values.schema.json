@@ -606,6 +606,16 @@
                 }
             }
         },
+        "podMonitor": {
+            "type": "object",
+            "description": "PodMonitor for scraping the operator's own metrics",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Render the PodMonitor. Requires the Prometheus Operator CRDs."
+                }
+            }
+        },
         "verticalPodAutoscaler": {
             "type": "object",
             "description": "Vertical Pod Autoscaler configuration for the operator deployment",
