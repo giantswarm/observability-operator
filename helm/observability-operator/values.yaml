@@ -386,6 +386,12 @@ webhook:
     logExport:
       enabled: true
 
+# PodMonitor for scraping the operator's own metrics. Requires the Prometheus Operator CRDs.
+# Disabled by default; Giant Swarm installations enable it through shared-configs.
+podMonitor:
+  # -- Render the PodMonitor. Requires the Prometheus Operator CRDs.
+  enabled: false
+
 # Vertical Pod Autoscaler configuration for the operator deployment
 verticalPodAutoscaler:
   # -- Enable VPA for the operator deployment
