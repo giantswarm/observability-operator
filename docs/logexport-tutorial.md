@@ -31,7 +31,7 @@ kubectl -n monitoring get serviceaccount alloy-logexporter \
 ```
 
 In the account that owns the bucket, create a role named `giantswarm-logexport-<anything>` that
-trusts it:
+trusts the exporter's role:
 
 ```json
 {
@@ -46,7 +46,7 @@ trusts it:
 }
 ```
 
-Give it write access to the prefix and nothing else:
+Give your role write access to the prefix and nothing else:
 
 ```json
 {
