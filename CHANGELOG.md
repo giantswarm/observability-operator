@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add the `grafana.ssoOrgMapping.enabled` Helm value (`--grafana-sso-org-mapping-enabled` flag) to turn off writing the Grafana SSO organization mapping. The Helm value defaults to `false` (Giant Swarm installations enable it through shared-configs).
+- Add the `grafana.ssoOrgMapping.enabled` Helm value (`--grafana-sso-org-mapping-enabled` flag) to turn off writing the Grafana SSO organization mapping. Defaults to `false`..
 - Add the `podMonitor.enabled` Helm value. Defaults to `false`.
 - Add `alerting.pagerdutyTeamAliases` to page another team's PagerDuty receiver, defaulting to `tenet: phoenix`.
 
