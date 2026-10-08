@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `alerting.pagerdutyTeamAliases` to page another team's PagerDuty receiver, defaulting to `tenet: phoenix`.
+
 ### Fixed
 
 - Fix false `LoggingAgentMissingOnNode` alerts caused by the `alloy-logs-beyla` ServiceMonitor sharing the `alloy-logs` job label.

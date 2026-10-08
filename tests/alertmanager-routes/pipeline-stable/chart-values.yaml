@@ -6,3 +6,5 @@ alerting:
   teams:
     - name: foo
       pagerdutyToken: foo-pagerduty-token
+  pagerdutyTeamAliases:
+    bar: foo
