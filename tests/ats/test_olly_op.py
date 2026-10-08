@@ -2,14 +2,12 @@ import logging
 from typing import List
 
 import os
+import subprocess  # nosec: ATS 1.x installs charts with the bundled helm CLI
+from pathlib import Path
 import pykube
 import pytest
 
 from pytest_helm_charts.clusters import Cluster
-from pytest_helm_charts.giantswarm_app_platform.app import (
-  AppFactoryFunc,
-  ConfiguredApp
-)
 from pytest_helm_charts.k8s.deployment import wait_for_deployments_to_run
 from pytest_helm_charts.k8s.namespace import ensure_namespace_exists
 
@@ -21,41 +19,49 @@ monitoring_namespace = "monitoring"
 giantswarm_namespace = "giantswarm"
 deployment_name = "observability-operator"
 
-@pytest.fixture(scope="module")
-def certmanager(app_factory: AppFactoryFunc) -> ConfiguredApp:
-    """
-    Deploy cert-manager.
-    """
-    app_factory(
-        "cert-manager-app",
-        "3.9.0",
-        catalog_name="giantswarm-catalog",
-        catalog_namespace=giantswarm_namespace,
-        catalog_url="https://giantswarm.github.io/giantswarm-catalog/",
-        namespace=giantswarm_namespace,
-        deployment_namespace="kube-system",
-        timeout_sec=timeout,
+# ATS_CHART_PATH is relative to the repository root; pytest runs in tests/ats.
+repo_root = Path(__file__).resolve().parents[2]
+
+def helm_install(release: str, chart: str, namespace: str, *args: str) -> None:
+    subprocess.run(
+        ["helm", "upgrade", "--install", release, chart, "--namespace", namespace, "--create-namespace", *args],
+        check=True,
     )
 
 @pytest.fixture(scope="module")
-def observabilityOperator(kube_cluster: Cluster, app_factory: AppFactoryFunc, certmanager: ConfiguredApp) -> ConfiguredApp:
+def certmanager(kube_cluster: Cluster) -> None:
+    """
+    Deploy cert-manager.
+    """
+    # cert-manager-app renders a NetworkPolicy in the giantswarm namespace.
+    ensure_namespace_exists(kube_cluster.kube_client, giantswarm_namespace)
+    helm_install(
+        "cert-manager-app",
+        "oci://gsoci.azurecr.io/charts/giantswarm/cert-manager-app",
+        "kube-system",
+        "--version", "4.1.1",
+        # The PodLogs CRD is not installed on the test cluster.
+        "--set", "podLogs.enabled=false",
+        "--set", "webhook.podLogs.enabled=false",
+        "--set", "cainjector.podLogs.enabled=false",
+        "--wait",
+        "--timeout", f"{timeout}s",
+    )
+
+@pytest.fixture(scope="module")
+def observabilityOperator(kube_cluster: Cluster, certmanager: None) -> None:
     """
     Deploy observability-operator.
     """
     ensure_namespace_exists(kube_cluster.kube_client, monitoring_namespace)
-    app_factory(
+    helm_install(
         deployment_name,
-        os.environ["ATS_CHART_VERSION"],
-        catalog_name="control-plane-test-catalog",
-        catalog_namespace=giantswarm_namespace,
-        catalog_url="https://giantswarm.github.io/control-plane-test-catalog",
-        namespace=giantswarm_namespace,
-        deployment_namespace=giantswarm_namespace,
-        timeout_sec=timeout,
+        str(repo_root / os.environ["ATS_CHART_PATH"]),
+        giantswarm_namespace,
     )
 
 @pytest.fixture(scope="module")
-def deployments(kube_cluster: Cluster, observabilityOperator: ConfiguredApp) -> List[pykube.Deployment]:
+def deployments(kube_cluster: Cluster, observabilityOperator: None) -> List[pykube.Deployment]:
     logger.info("create mandatory grafana secrets for deployment")
     grafanaSecretObject = {
     "apiVersion": "v1",

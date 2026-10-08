@@ -3,6 +3,4 @@ app-tests-skip-app-deploy: true
 # We ensure the upgrade tests deploys the observability operator in the monitoring namespace
 app-tests-deploy-namespace: giantswarm
 
-smoke-tests-cluster-type: kind
-
 skip-steps: [functional, upgrade]
