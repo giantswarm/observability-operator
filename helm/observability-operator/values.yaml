@@ -47,6 +47,9 @@ alerting:
   #  - name: teamA
   #    pagerdutyToken: token-for-teamA
   teams: []
+  # -- Map of team label to the team whose PagerDuty receiver also pages its alerts
+  pagerdutyTeamAliases:
+    tenet: phoenix
 
 # Cronitor heartbeat monitor operational settings.
 cronitor:

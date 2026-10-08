@@ -57,6 +57,12 @@
                 "grafanaAddress": {
                     "type": "string"
                 },
+                "pagerdutyTeamAliases": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "slackAPIToken": {
                     "type": "string"
                 }
