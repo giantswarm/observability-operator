@@ -20,7 +20,7 @@ There are two ways to authenticate. They cannot be mixed on one installation: se
 
 ### Option A: a role in your AWS account
 
-On AWS management clusters the exporter has its own identity, the IAM role
+On AWS (CAPA) management clusters the exporter has its own identity, the IAM role
 `giantswarm-<installation>-alloy-logexporter` in the management cluster's account. That role can
 do one thing: assume a role whose name starts with **`giantswarm-logexport-`**, in any account. Read
 its ARN from the exporter's ServiceAccount:
