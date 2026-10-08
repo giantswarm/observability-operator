@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add the `podMonitor.enabled` Helm value. Defaults to `false`.
+- Add `alerting.pagerdutyTeamAliases` to page another team's PagerDuty receiver, defaulting to `tenet: phoenix`.
 
 ### Fixed
 
