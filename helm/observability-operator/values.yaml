@@ -342,7 +342,6 @@ grafana:
   # of Grafana's `generic_oauth` SSO provider from the `spec.rbac` of every GrafanaOrganization.
   # Disable it when Grafana has no generic OAuth provider configured: SSO settings are then left
   # untouched and `spec.rbac` is ignored, while organizations and datasources are still reconciled.
-  # Disabled by default; Giant Swarm installations enable it through shared-configs.
   ssoOrgMapping:
     # -- Enable the Grafana SSO organization mapping
     enabled: false
