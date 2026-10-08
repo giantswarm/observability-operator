@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Install the operator's CRDs from the Helm chart, behind `crds.install` (default `true`; Giant Swarm installations disable it through shared-configs). The CRDs are rendered from the generated ones in `config/crd/bases`, only for enabled controllers, and are kept on `helm uninstall`. With `webhook.enabled=false`, the `GrafanaOrganization` CRD serves only `v1alpha2` without a conversion webhook.
+- Install the operator's CRDs from the Helm chart, behind `crds.install` (default `true`; Giant Swarm installations disable it through shared-configs).
 
 ### Fixed
 
