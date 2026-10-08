@@ -50,7 +50,7 @@ Each tenant entry grants the organization access to data for that tenant in Mimi
 
 When enabled, the operator writes the `org_mapping` setting of Grafana's `generic_oauth` SSO provider from the `spec.rbac` of all `GrafanaOrganization` resources.
 
-It is controlled by the `grafana.ssoOrgMapping.enabled` Helm value, which defaults to `false` (Giant Swarm installations enable it through shared-configs), and the `--grafana-sso-org-mapping-enabled` flag. Keep it off when Grafana has no generic OAuth provider configured. When it is off:
+It is controlled by the `grafana.ssoOrgMapping.enabled` Helm value, which defaults to `false`, and the `--grafana-sso-org-mapping-enabled` flag. Keep it off when Grafana has no generic OAuth provider configured. When it is off:
 
 - the operator neither reads nor writes Grafana's SSO provider settings
 - organizations and their datasources are still reconciled as usual
