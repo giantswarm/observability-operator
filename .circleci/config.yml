@@ -19,6 +19,8 @@ jobs:
     - checkout
     - run: cd helm/observability-operator && helm dep up
     - run: helm template helm/observability-operator
+    # Render the CRDs without webhooks, which drops GrafanaOrganization v1alpha1.
+    - run: helm template helm/observability-operator --set webhook.enabled=false
   validate-alertmanager-config:
     executor: architect/architect
     steps:
