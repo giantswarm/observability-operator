@@ -294,7 +294,7 @@
             "properties": {
                 "install": {
                     "type": "boolean",
-                    "description": "Install the operator's CRDs with the chart. Only the CRDs of enabled controllers are installed."
+                    "description": "Install all of the operator's CRDs with the chart, whether or not their controller is enabled."
                 }
             }
         },

@@ -2,37 +2,21 @@
 CRDs are rendered from the generated sources in config/crd/bases, which the chart
 reaches through the files/crds symlink, so the chart can never drift from them.
 They are templates rather than files in crds/ so that `helm upgrade` updates them.
-Only the CRDs of enabled controllers are rendered.
+Every generated CRD is rendered, whether or not its controller is enabled.
 */ -}}
 {{- if .Values.crds.install }}
-{{- $controllers := .Values.operator.controllers }}
-{{- $crds := list }}
-{{- if $controllers.agentCredential.enabled }}
-{{- $crds = append $crds "agentcredentials" }}
+{{- $files := .Files.Glob "files/crds/*.yaml" }}
+{{- if not $files }}
+{{- fail "no CRD sources found in files/crds: the files/crds symlink to config/crd/bases was not followed" }}
 {{- end }}
-{{- if $controllers.grafanaOrganization.enabled }}
-{{- $crds = append $crds "grafanaorganizations" }}
-{{- end }}
-{{- /* No controller reconciles Heartbeat resources yet; Cronitor heartbeats are managed by the cluster controller, which cannot run without the agent credential controller. */}}
-{{- if and $controllers.cluster.enabled $controllers.agentCredential.enabled }}
-{{- $crds = append $crds "heartbeats" }}
-{{- end }}
-{{- if $controllers.logExport.enabled }}
-{{- $crds = append $crds "logexports" }}
-{{- end }}
-{{- range $crds }}
-{{- $path := printf "files/crds/observability.giantswarm.io_%s.yaml" . }}
-{{- $content := $.Files.Get $path }}
-{{- if not $content }}
-{{- fail (printf "CRD source %s is missing: the files/crds symlink to config/crd/bases was not followed" $path) }}
-{{- end }}
-{{- $crd := fromYaml $content }}
+{{- range $path, $content := $files }}
+{{- $crd := fromYaml (toString $content) }}
 {{- $metadata := $crd.metadata }}
 {{- $annotations := $metadata.annotations | default dict }}
 {{- /* Deleting a CRD deletes all of its resources, and the GrafanaOrganization finalizer would delete the Grafana organizations with them. */}}
 {{- $_ := set $annotations "helm.sh/resource-policy" "keep" }}
 {{- $_ = set $metadata "labels" (include "labels.common" $ | fromYaml) }}
-{{- if eq . "grafanaorganizations" }}
+{{- if eq $crd.metadata.name "grafanaorganizations.observability.giantswarm.io" }}
 {{- if $.Values.webhook.enabled }}
 {{- /* The generated CRD hardcodes the webhook Service and Certificate of the Giant Swarm installation. */}}
 {{- $_ = set $annotations "cert-manager.io/inject-ca-from" (printf "%s/%s-webhook-cert" (include "resource.default.namespace" $) (include "resource.default.name" $)) }}

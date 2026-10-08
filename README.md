@@ -130,7 +130,7 @@ The operator is deployed via the Helm chart in `helm/observability-operator/`.
 
 The chart can install the operator's CRDs with `crds.install: true` (default `true`; Giant Swarm installations disable it through shared-configs). They are rendered from the generated CRDs in `config/crd/bases` through the `helm/observability-operator/files/crds` symlink, so `helm upgrade` keeps them current:
 
-- Only the CRDs of enabled controllers (`operator.controllers.*`) are installed. `Heartbeat` follows the cluster controller, which manages Cronitor heartbeats today.
+- All of the operator's CRDs are installed, whether or not their controller (`operator.controllers.*`) is enabled.
 - With `webhook.enabled: false`, the `GrafanaOrganization` CRD serves only its storage version (`v1alpha2`) and has no conversion webhook. Objects stored as `v1alpha1` must be migrated before turning webhooks off.
 - The CRDs are annotated `helm.sh/resource-policy: keep`, so `helm uninstall` leaves them, and every resource of their kinds, in place. Delete them with `kubectl` once the resources are gone.
 
