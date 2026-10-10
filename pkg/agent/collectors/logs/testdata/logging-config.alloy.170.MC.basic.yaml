@@ -7,7 +7,7 @@
 #   This is required to collect machine logs from every node.
 # - Running as root user is required for:
 #   - Reading log files within /run/log/journal directories
-# - NODE_NAME env var is used as additional label for kubernetes_audit logs.
+# - NODE_NAME env var is used as the node label for system and audit logs.
 networkPolicy:
   cilium:
     # Egress rules define outbound traffic allowed from alloy-logs pods
@@ -212,10 +212,6 @@ alloy:
             source_labels = ["__tmp_systemd_unit"]
             target_label  = "systemd_unit"
           }
-          rule {
-            source_labels = ["__journal__hostname"]
-            target_label  = "node"
-          }
         }
         loki.source.journal "systemd_journal_run" {
           format_as_json = true
@@ -224,6 +220,7 @@ alloy:
           relabel_rules  = discovery.relabel.systemd_journal_run.rules
           forward_to     = [loki.process.systemd_journal_run.receiver]
           labels         = {
+            node       = coalesce(sys.env("NODE_NAME"), "unknown"),
             scrape_job = "system-logs",
           }
         }

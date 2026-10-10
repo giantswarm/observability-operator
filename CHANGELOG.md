@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Set the `node` label on `system-logs` from the Kubernetes node name instead of the journald hostname.
+
 ## [0.82.0] - 2026-10-08
 
 ### Added
