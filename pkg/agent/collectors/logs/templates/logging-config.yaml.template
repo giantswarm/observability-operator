@@ -26,7 +26,7 @@
 #   - Beyla eBPF-based network monitoring with elevated capabilities (BPF, SYS_ADMIN, etc.)
 {{- end }}
 {{- if .LoggingEnabled }}
-# - NODE_NAME env var is used as additional label for kubernetes_audit logs.
+# - NODE_NAME env var is used as the node label for system and audit logs.
 {{- end }}
 {{- end }}
 networkPolicy:
