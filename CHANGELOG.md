@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Make the Grafana client certificate optional: the operator no longer reads a TLS Secret for an `http://` Grafana URL, and connects without a client certificate when no TLS Secret is found.
+- Run the chart tests with app-test-suite 1.1.0 and install the charts with Helm.
 
 ## [0.82.0] - 2026-10-08
 
