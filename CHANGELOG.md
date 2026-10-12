@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Set the `node` label on `system-logs` from the Kubernetes node name instead of the journald hostname.
+
 ### Changed
 
 - Make the Grafana client certificate optional: the operator no longer reads a TLS Secret for an `http://` Grafana URL, and connects without a client certificate when no TLS Secret is found.
