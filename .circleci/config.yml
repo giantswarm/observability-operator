@@ -182,6 +182,8 @@ workflows:
     # Run end to end tests.
     - architect/run-tests-with-ats:
         name: run-chart-tests-with-ats
+        app-test-suite_container_tag: "1.1.0"
+        create_kind_cluster: true
         filters:
             # Do not trigger the job on merge to main.
           branches:
