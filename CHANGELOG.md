@@ -12,15 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document `roleARN` delivery through the exporter's IRSA role.
 - Mute Team Atlas Slack notifications outside business hours on `testing` and `stable-testing` installations.
 - Run the chart tests with app-test-suite 1.1.0 and install the charts with Helm.
+- Make the Grafana client certificate optional: the operator no longer reads a TLS Secret for an `http://` Grafana URL, and connects without a client certificate when no TLS Secret is found.
 
 ### Fixed
 
 - Set the `node` label on `system-logs` from the Kubernetes node name instead of the journald hostname.
-
-### Changed
-
-- Make the Grafana client certificate optional: the operator no longer reads a TLS Secret for an `http://` Grafana URL, and connects without a client certificate when no TLS Secret is found.
-- Run the chart tests with app-test-suite 1.1.0 and install the charts with Helm.
 
 ## [0.82.0] - 2026-10-08
 
