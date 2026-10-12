@@ -170,6 +170,11 @@ route:
     - team="atlas"
     - alertname!~"Inhibition.*"
     - alertname!="Heartbeat"
+    {{- if has .Values.managementCluster.pipeline (list "testing" "stable-testing") }}
+    # Test installations: no Slack notifications outside business hours.
+    active_time_intervals:
+    - business-hours
+    {{- end }}
     continue: false
 
   # Team Bumblebee Slack
