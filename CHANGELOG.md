@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Document `roleARN` delivery through the exporter's IRSA role.
+- Mute Team Atlas Slack notifications outside business hours on `testing` and `stable-testing` installations.
+- Run the chart tests with app-test-suite 1.1.0 and install the charts with Helm.
+
 ### Fixed
 
 - Set the `node` label on `system-logs` from the Kubernetes node name instead of the journald hostname.
