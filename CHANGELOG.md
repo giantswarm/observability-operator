@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Set the `node` label on `system-logs` from the Kubernetes node name instead of the journald hostname.
 
+### Changed
+
+- Run the chart tests with app-test-suite 1.1.0 and install the charts with Helm.
+
 ## [0.82.0] - 2026-10-08
 
 ### Added
