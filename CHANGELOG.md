@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.84.0] - 2026-10-13
 
+### Changed
+
+- Make the Grafana client certificate optional.
+
 ## [0.83.0] - 2026-10-13
 
 ### Changed
@@ -16,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document `roleARN` delivery through the exporter's IRSA role.
 - Mute Team Atlas Slack notifications outside business hours on `testing` and `stable-testing` installations.
 - Run the chart tests with app-test-suite 1.1.0 and install the charts with Helm.
-- Make the Grafana client certificate optional.
 
 ### Fixed
 
