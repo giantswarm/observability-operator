@@ -186,7 +186,7 @@ alloy:
       endpoints:
       - honorLabels: true
         port: http-metrics
-        path: /api/v0/component/beyla.ebpf.default/metric
+        path: /api/v0/component/beyla.ebpf.default/metrics
         scheme: http
         relabelings:
         - action: replace
