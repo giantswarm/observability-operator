@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Scrape Beyla metrics from `/api/v0/component/beyla.ebpf.default/metrics`.
+- Fix beyla metrics scrape path.
 
 ## [0.83.0] - 2026-10-13
 
