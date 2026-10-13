@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Scrape Beyla metrics from `/api/v0/component/beyla.ebpf.default/metrics`. Alloy v1.19 answers 404 on the old `/metric` path.
+
 ## [0.83.0] - 2026-10-13
 
 ### Changed
