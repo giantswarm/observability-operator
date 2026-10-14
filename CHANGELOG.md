@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.84.1] - 2026-10-14
+
 ### Fixed
 
 - Fix beyla metrics scrape path.
@@ -1317,7 +1319,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.84.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.84.1...HEAD
+[0.84.1]: https://github.com/giantswarm/observability-operator/compare/v0.84.0...v0.84.1
 [0.84.0]: https://github.com/giantswarm/observability-operator/compare/v0.83.0...v0.84.0
 [0.83.0]: https://github.com/giantswarm/observability-operator/compare/v0.82.0...v0.83.0
 [0.82.0]: https://github.com/giantswarm/observability-operator/compare/v0.81.0...v0.82.0
