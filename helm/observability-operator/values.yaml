@@ -158,6 +158,26 @@ monitoring:
     # -- Name of the HTTPRoute auth secret in the Mimir gateway namespace
     httprouteSecretName: "mimir-gateway-httproute-auth"
 
+  # Liveness probe restarting alloy-metrics when a mimir.rules.kubernetes component stays unhealthy.
+  # Requires observability-bundle 3.6.0 or later. Constraint: httpTimeout <= probeTimeout < timeoutSeconds.
+  mimirRulesLivenessProbe:
+    # -- Enable the probe. Disabled, the upstream Alloy chart liveness probe applies.
+    enabled: true
+    # -- Timeout of each HTTP request the probe sends
+    httpTimeout: 20s
+    # -- Total budget of one probe run. The probe succeeds when exceeded.
+    probeTimeout: 50s
+    # -- Pattern matched against the component health message. Empty uses the probe script default.
+    unhealthyMessagePattern: ""
+    # -- Liveness probe initialDelaySeconds
+    initialDelaySeconds: 60
+    # -- Liveness probe periodSeconds
+    periodSeconds: 60
+    # -- Liveness probe timeoutSeconds
+    timeoutSeconds: 60
+    # -- Liveness probe failureThreshold
+    failureThreshold: 3
+
 # Enable or disable distributed tracing support
 tracing:
   # -- Enable distributed tracing support

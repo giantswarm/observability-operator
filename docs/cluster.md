@@ -114,3 +114,20 @@ Note that shards come in two independent flavours:
 | `max_shards` / `min_shards` | Remote write concurrency *inside each pod*, autoscaled by Alloy | `monitoring.queueConfig` |
 
 The defaults match upstream Prometheus/Alloy (`capacity: 10000`, `maxSamplesPerSend: 2000`, `maxShards: 50`), with `sampleAgeLimit: 30m` as a Giant Swarm addition. When tuning, keep `capacity` well above `maxSamplesPerSend` — if `capacity` is the smaller of the two, Prometheus gives each shard a single-batch channel and the queue loses its buffer.
+
+## Mimir rules liveness probe
+
+With observability-bundle 3.6.0 or later, the operator adds a liveness probe to `alloy-metrics`. The probe fails when a `mimir.rules.kubernetes` component stays unhealthy while the Mimir ruler answers. Kubernetes then restarts Alloy. This probe is **installation-level only**. Set it via `monitoring.mimirRulesLivenessProbe` in the operator's Helm values, or via the matching `--monitoring-mimir-rules-liveness-probe-*` CLI flags.
+
+| Value | Default | Description |
+|---|---|---|
+| `enabled` | `true` | `false` removes the probe. The upstream Alloy chart liveness probe applies. |
+| `httpTimeout` | `20s` | Timeout of each HTTP request the probe sends. Sets `HTTP_TIMEOUT`. |
+| `probeTimeout` | `50s` | Total budget of one probe run. The probe succeeds when exceeded. Sets `PROBE_TIMEOUT`. |
+| `unhealthyMessagePattern` | `""` | Pattern matched against the component health message. Empty uses the probe script default. Sets `UNHEALTHY_MESSAGE_PATTERN`. |
+| `initialDelaySeconds` | `60` | Liveness probe `initialDelaySeconds` |
+| `periodSeconds` | `60` | Liveness probe `periodSeconds` |
+| `timeoutSeconds` | `60` | Liveness probe `timeoutSeconds` |
+| `failureThreshold` | `3` | Liveness probe `failureThreshold` |
+
+The operator fails at startup unless `httpTimeout <= probeTimeout < timeoutSeconds`.

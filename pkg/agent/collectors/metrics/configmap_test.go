@@ -56,8 +56,9 @@ func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 		PriorityClassName string
 		Replicas          int
 
-		IsSupportingMimirRulesLivenessProbe bool
-	}{Replicas: want, IsSupportingMimirRulesLivenessProbe: true})
+		MimirRulesLivenessProbeEnabled bool
+		MimirRulesLivenessProbe        config.MimirRulesLivenessProbeConfig
+	}{Replicas: want, MimirRulesLivenessProbeEnabled: true})
 	if err != nil {
 		t.Fatalf("failed to render monitoring config template: %v", err)
 	}
@@ -72,6 +73,16 @@ func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 			"but monitoringConfig struct read %d — the read path no longer matches the template",
 			want, parsed.Alloy.Controller.Replicas)
 	}
+}
+
+var defaultMimirRulesLivenessProbe = config.MimirRulesLivenessProbeConfig{
+	Enabled:             true,
+	HTTPTimeout:         20 * time.Second,
+	ProbeTimeout:        50 * time.Second,
+	InitialDelaySeconds: 60,
+	PeriodSeconds:       60,
+	TimeoutSeconds:      60,
+	FailureThreshold:    3,
 }
 
 func newTestService(monitoringEnabled, exemplarsEnabled, vcenterEnabled bool) *Service {
@@ -97,6 +108,7 @@ func newTestService(monitoringEnabled, exemplarsEnabled, vcenterEnabled bool) *S
 					MaxSamplesPerSend: &[]int{2000}[0],
 					SampleAgeLimit:    &[]string{"30m"}[0],
 				},
+				MimirRulesLivenessProbe: defaultMimirRulesLivenessProbe,
 			},
 			HTTP: config.HTTPConfig{
 				MimirQueryTimeout: 2 * time.Minute,
@@ -116,6 +128,8 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		monitoringEnabled          bool
 		exemplarsEnabled           bool
 		vcenterEnabled             bool
+		// mimirRulesLivenessProbe overrides defaultMimirRulesLivenessProbe when set.
+		mimirRulesLivenessProbe *config.MimirRulesLivenessProbeConfig
 	}{
 		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
@@ -427,6 +441,55 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			exemplarsEnabled:           true,
 		},
 		{
+			name: "WorkloadCluster_DefaultTenant_MimirRulesLivenessProbeDisabled",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testCluster,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: awsClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.mimir-rules-liveness-probe-disabled.WC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingMimirRulesLivenessProbe,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+			mimirRulesLivenessProbe:    &config.MimirRulesLivenessProbeConfig{Enabled: false},
+		},
+		{
+			name: "WorkloadCluster_DefaultTenant_MimirRulesLivenessProbeCustom",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testCluster,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: awsClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.mimir-rules-liveness-probe-custom.WC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingMimirRulesLivenessProbe,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+			mimirRulesLivenessProbe: &config.MimirRulesLivenessProbeConfig{
+				Enabled:                 true,
+				HTTPTimeout:             10 * time.Second,
+				ProbeTimeout:            80 * time.Second,
+				UnhealthyMessagePattern: "connection refused|i/o timeout",
+				InitialDelaySeconds:     120,
+				PeriodSeconds:           30,
+				TimeoutSeconds:          90,
+				FailureThreshold:        5,
+			},
+		},
+		{
 			name: "ExemplarsDisabledInMC_v200",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -469,6 +532,9 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			ctx := context.Background()
 
 			service := newTestService(tt.monitoringEnabled, tt.exemplarsEnabled, tt.vcenterEnabled)
+			if tt.mimirRulesLivenessProbe != nil {
+				service.Config.Monitoring.MimirRulesLivenessProbe = *tt.mimirRulesLivenessProbe
+			}
 
 			resultMap, err := service.GenerateAlloyMonitoringConfigMapData(
 				ctx,

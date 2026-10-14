@@ -45,7 +45,7 @@ networkPolicy:
 # Token Secret the kube-prometheus-stack control-plane ServiceMonitors authenticate with.
 serviceAccountTokenSecret:
   enabled: true
-{{- if .IsSupportingMimirRulesLivenessProbe }}
+{{- if .MimirRulesLivenessProbeEnabled }}
 # Liveness probe script failing when a mimir.rules.kubernetes component stays unhealthy
 # while its Mimir ruler answers 200, so Kubernetes restarts Alloy. This works around
 # https://github.com/grafana/alloy/pull/6339.
@@ -72,7 +72,7 @@ alloy:
         memory: 512Mi
     ## Needed to to be able to support ScrapeConfig CRs
     stabilityLevel: experimental
-    {{- if .IsSupportingMimirRulesLivenessProbe }}
+    {{- if .MimirRulesLivenessProbeEnabled }}
     mounts:
       extra:
       # Repeated from the chart defaults: Helm replaces this list, it does not merge it.
@@ -86,15 +86,23 @@ alloy:
         command:
         - bash
         - /etc/mimir-rules-liveness-probe/mimir-rules-liveness-probe.sh
-      initialDelaySeconds: 60
-      periodSeconds: 60
-      timeoutSeconds: 60
-      failureThreshold: 3
-    # Credentials the mimir.rules.kubernetes liveness probe authenticates to the
-    # Mimir ruler with. Without them a Mimir behind a gateway answers 401 whether
+      initialDelaySeconds: {{ .MimirRulesLivenessProbe.InitialDelaySeconds }}
+      periodSeconds: {{ .MimirRulesLivenessProbe.PeriodSeconds }}
+      timeoutSeconds: {{ .MimirRulesLivenessProbe.TimeoutSeconds }}
+      failureThreshold: {{ .MimirRulesLivenessProbe.FailureThreshold }}
+    # Settings of the mimir.rules.kubernetes liveness probe, and the credentials
+    # it authenticates to the Mimir ruler with. Without them a Mimir behind a gateway answers 401 whether
     # its ruler is up or down, and the probe cannot tell an outage from the bug
     # it works around, so it never restarts Alloy.
     extraEnv:
+    - name: HTTP_TIMEOUT
+      value: {{ int .MimirRulesLivenessProbe.HTTPTimeout.Seconds | quote }}
+    - name: PROBE_TIMEOUT
+      value: {{ int .MimirRulesLivenessProbe.ProbeTimeout.Seconds | quote }}
+    {{- if .MimirRulesLivenessProbe.UnhealthyMessagePattern }}
+    - name: UNHEALTHY_MESSAGE_PATTERN
+      value: {{ .MimirRulesLivenessProbe.UnhealthyMessagePattern | quote }}
+    {{- end }}
     - name: MIMIR_USERNAME
       valueFrom:
         secretKeyRef:
@@ -112,7 +120,7 @@ alloy:
     type: statefulset
     replicas: {{ .Replicas }}
     priorityClassName: {{ .PriorityClassName }}
-    {{- if .IsSupportingMimirRulesLivenessProbe }}
+    {{- if .MimirRulesLivenessProbeEnabled }}
     volumes:
       extra:
       # Repeated from the chart defaults: Helm replaces this list, it does not merge it.

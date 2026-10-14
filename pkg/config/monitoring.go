@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"time"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -59,12 +60,54 @@ type MonitoringConfig struct {
 	// MimirRemoteWriteTimeout is the remote_timeout for the Mimir remote write endpoint in Alloy
 	// agent ConfigMaps (e.g. "60s").
 	MimirRemoteWriteTimeout string
+
+	// MimirRulesLivenessProbe configures the alloy-metrics liveness probe that restarts Alloy
+	// when a mimir.rules.kubernetes component stays unhealthy.
+	MimirRulesLivenessProbe MimirRulesLivenessProbeConfig
+}
+
+// MimirRulesLivenessProbeConfig configures the alloy-metrics mimir.rules.kubernetes liveness probe.
+type MimirRulesLivenessProbeConfig struct {
+	// Enabled renders the probe for observability-bundle versions supporting it.
+	// Disabled, the upstream Alloy chart liveness probe applies.
+	Enabled bool
+
+	// HTTPTimeout is the timeout of each HTTP request the probe script sends.
+	HTTPTimeout time.Duration
+	// ProbeTimeout is the total budget of one probe script run. The script exits 0 when exceeded.
+	ProbeTimeout time.Duration
+	// UnhealthyMessagePattern is matched against the component health message.
+	// Empty uses the probe script default.
+	UnhealthyMessagePattern string
+
+	InitialDelaySeconds int
+	PeriodSeconds       int
+	TimeoutSeconds      int
+	FailureThreshold    int
+}
+
+// Validate validates the mimir.rules.kubernetes liveness probe configuration.
+func (c MimirRulesLivenessProbeConfig) Validate() error {
+	if !c.Enabled {
+		return nil
+	}
+	if c.HTTPTimeout < time.Second {
+		return fmt.Errorf("HTTP timeout must be at least 1s, got %s", c.HTTPTimeout)
+	}
+	if c.HTTPTimeout > c.ProbeTimeout {
+		return fmt.Errorf("HTTP timeout %s must not exceed probe timeout %s", c.HTTPTimeout, c.ProbeTimeout)
+	}
+	if timeout := time.Duration(c.TimeoutSeconds) * time.Second; c.ProbeTimeout >= timeout {
+		return fmt.Errorf("probe timeout %s must be lower than timeoutSeconds %s", c.ProbeTimeout, timeout)
+	}
+	return nil
 }
 
 // Validate validates the monitoring configuration
 func (c MonitoringConfig) Validate() error {
-	// Add validation logic here if needed
-	// For now, monitoring config is always valid
+	if err := c.MimirRulesLivenessProbe.Validate(); err != nil {
+		return fmt.Errorf("mimir rules liveness probe: %w", err)
+	}
 	return nil
 }
 

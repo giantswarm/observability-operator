@@ -280,6 +280,32 @@
                         "ingressSecretName": { "type": "string" },
                         "httprouteSecretName": { "type": "string" }
                     }
+                },
+                "mimirRulesLivenessProbe": {
+                    "type": "object",
+                    "description": "Liveness probe restarting alloy-metrics when a mimir.rules.kubernetes component stays unhealthy. Requires httpTimeout <= probeTimeout < timeoutSeconds.",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enable the probe. Disabled, the upstream Alloy chart liveness probe applies."
+                        },
+                        "httpTimeout": {
+                            "type": "string",
+                            "description": "Timeout of each HTTP request the probe sends (e.g., '20s')"
+                        },
+                        "probeTimeout": {
+                            "type": "string",
+                            "description": "Total budget of one probe run (e.g., '50s'). The probe succeeds when exceeded."
+                        },
+                        "unhealthyMessagePattern": {
+                            "type": "string",
+                            "description": "Pattern matched against the component health message. Empty uses the probe script default."
+                        },
+                        "initialDelaySeconds": { "type": "integer", "minimum": 0 },
+                        "periodSeconds": { "type": "integer", "minimum": 1 },
+                        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+                        "failureThreshold": { "type": "integer", "minimum": 1 }
+                    }
                 }
             }
         },

@@ -21,6 +21,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
@@ -100,7 +101,8 @@ func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		PriorityClassName string
 		Replicas          int
 
-		IsSupportingMimirRulesLivenessProbe bool
+		MimirRulesLivenessProbeEnabled bool
+		MimirRulesLivenessProbe        config.MimirRulesLivenessProbeConfig
 	}{
 		AlloyAppName:      apps.AlloyMetricsAppName,
 		AlloyConfig:       alloyConfig,
@@ -111,7 +113,9 @@ func (s *Service) GenerateAlloyMonitoringConfigMapData(ctx context.Context, curr
 		PriorityClassName: common.PriorityClassName,
 		Replicas:          shards,
 
-		IsSupportingMimirRulesLivenessProbe: observabilityBundleVersion.GE(versionSupportingMimirRulesLivenessProbe),
+		MimirRulesLivenessProbeEnabled: s.Config.Monitoring.MimirRulesLivenessProbe.Enabled &&
+			observabilityBundleVersion.GE(versionSupportingMimirRulesLivenessProbe),
+		MimirRulesLivenessProbe: s.Config.Monitoring.MimirRulesLivenessProbe,
 	}
 
 	var values bytes.Buffer
