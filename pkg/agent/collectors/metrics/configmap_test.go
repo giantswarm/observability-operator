@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -86,6 +87,10 @@ type mimirRulesLivenessProbeValues struct {
 					Command []string `json:"command"`
 				} `json:"exec"`
 			} `json:"livenessProbe"`
+			ExtraEnv []struct {
+				Name  string `json:"name"`
+				Value string `json:"value"`
+			} `json:"extraEnv"`
 		} `json:"alloy"`
 		Controller struct {
 			Volumes struct {
@@ -141,6 +146,40 @@ func TestMimirRulesLivenessProbeVolume(t *testing.T) {
 		return
 	}
 	t.Fatalf("liveness probe volume not rendered")
+}
+
+// TestMimirRulesLivenessProbeEnv decodes the rendered script settings and compares them with
+// the config, so that a quoting change cannot alter the pattern.
+func TestMimirRulesLivenessProbeEnv(t *testing.T) {
+	custom := config.DefaultMimirRulesLivenessProbeConfig()
+	custom.UnhealthyMessagePattern = `^(a|b) "c" $d \. 'e' {{ f }}`
+	custom.MimirReadyPath = `/a #b: "c" $d`
+
+	for name, probe := range map[string]config.MimirRulesLivenessProbeConfig{
+		"defaults": config.DefaultMimirRulesLivenessProbeConfig(),
+		"custom":   custom,
+	} {
+		t.Run(name, func(t *testing.T) {
+			values := renderMimirRulesLivenessProbeValues(t, probe)
+			got := map[string]string{}
+			for _, e := range values.Alloy.Alloy.ExtraEnv {
+				got[e.Name] = e.Value
+			}
+			want := map[string]string{
+				"HTTP_TIMEOUT":              strconv.Itoa(int(probe.HTTPTimeout.Seconds())),
+				"PROBE_TIMEOUT":             strconv.Itoa(int(probe.ProbeTimeout.Seconds())),
+				"HEALTH_AGE_MARGIN":         strconv.Itoa(int(probe.HealthAgeMargin.Seconds())),
+				"UNHEALTHY_MESSAGE_PATTERN": probe.UnhealthyMessagePattern,
+				"MIMIR_READY_PATH":          probe.MimirReadyPath,
+				// Read from secretKeyRef.
+				"MIMIR_USERNAME": "",
+				"MIMIR_PASSWORD": "",
+			}
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("rendered extraEnv mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
 }
 
 // TestMimirRulesLivenessProbeCommand runs the rendered liveness probe command. A missing
