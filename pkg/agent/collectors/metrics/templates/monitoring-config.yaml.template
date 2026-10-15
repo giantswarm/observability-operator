@@ -103,10 +103,8 @@ alloy:
       value: {{ int .MimirRulesLivenessProbe.HTTPTimeout.Seconds | quote }}
     - name: PROBE_TIMEOUT
       value: {{ int .MimirRulesLivenessProbe.ProbeTimeout.Seconds | quote }}
-    {{- if .MimirRulesLivenessProbe.UnhealthyMessagePattern }}
     - name: UNHEALTHY_MESSAGE_PATTERN
       value: {{ .MimirRulesLivenessProbe.UnhealthyMessagePattern | quote }}
-    {{- end }}
     - name: MIMIR_USERNAME
       valueFrom:
         secretKeyRef:

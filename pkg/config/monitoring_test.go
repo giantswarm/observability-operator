@@ -1,10 +1,88 @@
 package config
 
 import (
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
+	"sigs.k8s.io/yaml"
 )
+
+// mimirRulesLivenessProbeScriptDefaults are the defaults of the probe script
+// helm/alloy/scripts/mimir-rules-liveness-probe.sh in giantswarm/alloy-app at SCRIPT_COMMIT.
+// Update them, and docs/cluster.md, when the script defaults change.
+var mimirRulesLivenessProbeScriptDefaults = map[string]string{
+	"HTTP_TIMEOUT":              "20",
+	"PROBE_TIMEOUT":             "50",
+	"UNHEALTHY_MESSAGE_PATTERN": `^(error GET [^ ]*/rules: server returned HTTP status (429|5[0-9]{2}) |Get "[^"]*/rules": )`,
+}
+
+// TestDefaultMimirRulesLivenessProbeConfigMatchesScript asserts the operator renders the
+// probe script defaults. The script is the single source of the defaults.
+func TestDefaultMimirRulesLivenessProbeConfigMatchesScript(t *testing.T) {
+	c := DefaultMimirRulesLivenessProbeConfig()
+	got := map[string]string{
+		"HTTP_TIMEOUT":              strconv.Itoa(int(c.HTTPTimeout.Seconds())),
+		"PROBE_TIMEOUT":             strconv.Itoa(int(c.ProbeTimeout.Seconds())),
+		"UNHEALTHY_MESSAGE_PATTERN": c.UnhealthyMessagePattern,
+	}
+	if diff := cmp.Diff(mimirRulesLivenessProbeScriptDefaults, got); diff != "" {
+		t.Errorf("operator defaults differ from the probe script defaults (-script +operator):\n%s", diff)
+	}
+}
+
+// TestDefaultMimirRulesLivenessProbeConfigMatchesHelmValues asserts the Helm chart values
+// default to the operator defaults.
+func TestDefaultMimirRulesLivenessProbeConfigMatchesHelmValues(t *testing.T) {
+	data, err := os.ReadFile("../../helm/observability-operator/values.yaml")
+	if err != nil {
+		t.Fatalf("failed to read Helm values: %v", err)
+	}
+	var values struct {
+		Monitoring struct {
+			MimirRulesLivenessProbe struct {
+				Enabled                 bool   `json:"enabled"`
+				HTTPTimeout             string `json:"httpTimeout"`
+				ProbeTimeout            string `json:"probeTimeout"`
+				UnhealthyMessagePattern string `json:"unhealthyMessagePattern"`
+				InitialDelaySeconds     int    `json:"initialDelaySeconds"`
+				PeriodSeconds           int    `json:"periodSeconds"`
+				TimeoutSeconds          int    `json:"timeoutSeconds"`
+				FailureThreshold        int    `json:"failureThreshold"`
+			} `json:"mimirRulesLivenessProbe"`
+		} `json:"monitoring"`
+	}
+	if err := yaml.Unmarshal(data, &values); err != nil {
+		t.Fatalf("failed to unmarshal Helm values: %v", err)
+	}
+	v := values.Monitoring.MimirRulesLivenessProbe
+
+	got := MimirRulesLivenessProbeConfig{
+		Enabled:                 v.Enabled,
+		UnhealthyMessagePattern: v.UnhealthyMessagePattern,
+		InitialDelaySeconds:     v.InitialDelaySeconds,
+		PeriodSeconds:           v.PeriodSeconds,
+		TimeoutSeconds:          v.TimeoutSeconds,
+		FailureThreshold:        v.FailureThreshold,
+	}
+	for _, d := range []struct {
+		value string
+		into  *time.Duration
+	}{
+		{v.HTTPTimeout, &got.HTTPTimeout},
+		{v.ProbeTimeout, &got.ProbeTimeout},
+	} {
+		if *d.into, err = time.ParseDuration(d.value); err != nil {
+			t.Fatalf("failed to parse Helm value %q: %v", d.value, err)
+		}
+	}
+	if diff := cmp.Diff(DefaultMimirRulesLivenessProbeConfig(), got); diff != "" {
+		t.Errorf("Helm values differ from the operator defaults (-operator +helm):\n%s", diff)
+	}
+}
 
 func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
 	valid := MimirRulesLivenessProbeConfig{

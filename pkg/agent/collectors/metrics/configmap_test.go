@@ -77,16 +77,6 @@ func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 	}
 }
 
-var defaultMimirRulesLivenessProbe = config.MimirRulesLivenessProbeConfig{
-	Enabled:             true,
-	HTTPTimeout:         20 * time.Second,
-	ProbeTimeout:        50 * time.Second,
-	InitialDelaySeconds: 60,
-	PeriodSeconds:       60,
-	TimeoutSeconds:      60,
-	FailureThreshold:    3,
-}
-
 // TestMimirRulesLivenessProbeCommand runs the rendered liveness probe command. A values
 // layer replacing mounts.extra or volumes.extra removes the script: the probe must then
 // succeed, or the kubelet restarts Alloy forever.
@@ -190,7 +180,7 @@ func newTestService(monitoringEnabled, exemplarsEnabled, vcenterEnabled bool) *S
 					MaxSamplesPerSend: &[]int{2000}[0],
 					SampleAgeLimit:    &[]string{"30m"}[0],
 				},
-				MimirRulesLivenessProbe: defaultMimirRulesLivenessProbe,
+				MimirRulesLivenessProbe: config.DefaultMimirRulesLivenessProbeConfig(),
 			},
 			HTTP: config.HTTPConfig{
 				MimirQueryTimeout: 2 * time.Minute,
@@ -210,7 +200,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		monitoringEnabled          bool
 		exemplarsEnabled           bool
 		vcenterEnabled             bool
-		// mimirRulesLivenessProbe overrides defaultMimirRulesLivenessProbe when set.
+		// mimirRulesLivenessProbe overrides config.DefaultMimirRulesLivenessProbeConfig() when set.
 		mimirRulesLivenessProbe *config.MimirRulesLivenessProbeConfig
 	}{
 		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)

@@ -124,7 +124,7 @@ With observability-bundle 3.6.0 or later, the operator adds a liveness probe to 
 | `enabled` | `true` | `false` removes the probe. The upstream Alloy chart liveness probe applies. |
 | `httpTimeout` | `20s` | Timeout of each HTTP request the probe sends. Sets `HTTP_TIMEOUT`. |
 | `probeTimeout` | `50s` | Total budget of one probe run. The probe succeeds when exceeded. Sets `PROBE_TIMEOUT`. |
-| `unhealthyMessagePattern` | `""` | Pattern matched against the component health message. Empty uses the probe script default. Sets `UNHEALTHY_MESSAGE_PATTERN`. |
+| `unhealthyMessagePattern` | `^(error GET [^ ]*/rules: server returned HTTP status (429\|5[0-9]{2}) \|Get "[^"]*/rules": )` | Extended regular expression matched against the component health message. Sets `UNHEALTHY_MESSAGE_PATTERN`. |
 | `initialDelaySeconds` | `60` | Liveness probe `initialDelaySeconds` |
 | `periodSeconds` | `60` | Liveness probe `periodSeconds` |
 | `timeoutSeconds` | `60` | Liveness probe `timeoutSeconds` |

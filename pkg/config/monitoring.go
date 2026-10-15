@@ -76,14 +76,29 @@ type MimirRulesLivenessProbeConfig struct {
 	HTTPTimeout time.Duration
 	// ProbeTimeout is the total budget of one probe script run. The script exits 0 when exceeded.
 	ProbeTimeout time.Duration
-	// UnhealthyMessagePattern is matched against the component health message.
-	// Empty uses the probe script default.
+	// UnhealthyMessagePattern is the extended regular expression matched against the component
+	// health message.
 	UnhealthyMessagePattern string
 
 	InitialDelaySeconds int
 	PeriodSeconds       int
 	TimeoutSeconds      int
 	FailureThreshold    int
+}
+
+// DefaultMimirRulesLivenessProbeConfig returns the default mimir.rules.kubernetes liveness
+// probe configuration. The script settings equal the probe script defaults, see docs/cluster.md.
+func DefaultMimirRulesLivenessProbeConfig() MimirRulesLivenessProbeConfig {
+	return MimirRulesLivenessProbeConfig{
+		Enabled:                 true,
+		HTTPTimeout:             20 * time.Second,
+		ProbeTimeout:            50 * time.Second,
+		UnhealthyMessagePattern: `^(error GET [^ ]*/rules: server returned HTTP status (429|5[0-9]{2}) |Get "[^"]*/rules": )`,
+		InitialDelaySeconds:     60,
+		PeriodSeconds:           60,
+		TimeoutSeconds:          60,
+		FailureThreshold:        3,
+	}
 }
 
 // Validate validates the mimir.rules.kubernetes liveness probe configuration.

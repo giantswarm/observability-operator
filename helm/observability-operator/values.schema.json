@@ -299,7 +299,8 @@
                         },
                         "unhealthyMessagePattern": {
                             "type": "string",
-                            "description": "Pattern matched against the component health message. Empty uses the probe script default."
+                            "minLength": 1,
+                            "description": "Extended regular expression matched against the component health message."
                         },
                         "initialDelaySeconds": { "type": "integer", "minimum": 0 },
                         "periodSeconds": { "type": "integer", "minimum": 1 },

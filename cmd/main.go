@@ -308,21 +308,22 @@ func parseFlags() (err error) {
 		"Name of the HTTPRoute auth secret in the Mimir gateway namespace.")
 
 	// Mimir rules liveness probe flags
-	pflag.BoolVar(&cfg.Monitoring.MimirRulesLivenessProbe.Enabled, flagMimirRulesLivenessProbeEnabled, true,
+	mimirRulesLivenessProbe := config.DefaultMimirRulesLivenessProbeConfig()
+	pflag.BoolVar(&cfg.Monitoring.MimirRulesLivenessProbe.Enabled, flagMimirRulesLivenessProbeEnabled, mimirRulesLivenessProbe.Enabled,
 		"Enable the alloy-metrics mimir.rules.kubernetes liveness probe on supported observability-bundle versions.")
-	pflag.DurationVar(&cfg.Monitoring.MimirRulesLivenessProbe.HTTPTimeout, flagMimirRulesLivenessProbeHTTPTimeout, 20*time.Second,
+	pflag.DurationVar(&cfg.Monitoring.MimirRulesLivenessProbe.HTTPTimeout, flagMimirRulesLivenessProbeHTTPTimeout, mimirRulesLivenessProbe.HTTPTimeout,
 		"Timeout of each HTTP request the mimir.rules.kubernetes liveness probe sends.")
-	pflag.DurationVar(&cfg.Monitoring.MimirRulesLivenessProbe.ProbeTimeout, flagMimirRulesLivenessProbeProbeTimeout, 50*time.Second,
+	pflag.DurationVar(&cfg.Monitoring.MimirRulesLivenessProbe.ProbeTimeout, flagMimirRulesLivenessProbeProbeTimeout, mimirRulesLivenessProbe.ProbeTimeout,
 		"Total budget of one mimir.rules.kubernetes liveness probe run. The probe succeeds when exceeded.")
-	pflag.StringVar(&cfg.Monitoring.MimirRulesLivenessProbe.UnhealthyMessagePattern, flagMimirRulesLivenessProbeUnhealthyMessagePattern, "",
-		"Pattern matched against the mimir.rules.kubernetes component health message. Empty uses the probe script default.")
-	pflag.IntVar(&cfg.Monitoring.MimirRulesLivenessProbe.InitialDelaySeconds, flagMimirRulesLivenessProbeInitialDelaySeconds, 60,
+	pflag.StringVar(&cfg.Monitoring.MimirRulesLivenessProbe.UnhealthyMessagePattern, flagMimirRulesLivenessProbeUnhealthyMessagePattern, mimirRulesLivenessProbe.UnhealthyMessagePattern,
+		"Extended regular expression matched against the mimir.rules.kubernetes component health message.")
+	pflag.IntVar(&cfg.Monitoring.MimirRulesLivenessProbe.InitialDelaySeconds, flagMimirRulesLivenessProbeInitialDelaySeconds, mimirRulesLivenessProbe.InitialDelaySeconds,
 		"initialDelaySeconds of the mimir.rules.kubernetes liveness probe.")
-	pflag.IntVar(&cfg.Monitoring.MimirRulesLivenessProbe.PeriodSeconds, flagMimirRulesLivenessProbePeriodSeconds, 60,
+	pflag.IntVar(&cfg.Monitoring.MimirRulesLivenessProbe.PeriodSeconds, flagMimirRulesLivenessProbePeriodSeconds, mimirRulesLivenessProbe.PeriodSeconds,
 		"periodSeconds of the mimir.rules.kubernetes liveness probe.")
-	pflag.IntVar(&cfg.Monitoring.MimirRulesLivenessProbe.TimeoutSeconds, flagMimirRulesLivenessProbeTimeoutSeconds, 60,
+	pflag.IntVar(&cfg.Monitoring.MimirRulesLivenessProbe.TimeoutSeconds, flagMimirRulesLivenessProbeTimeoutSeconds, mimirRulesLivenessProbe.TimeoutSeconds,
 		"timeoutSeconds of the mimir.rules.kubernetes liveness probe.")
-	pflag.IntVar(&cfg.Monitoring.MimirRulesLivenessProbe.FailureThreshold, flagMimirRulesLivenessProbeFailureThreshold, 3,
+	pflag.IntVar(&cfg.Monitoring.MimirRulesLivenessProbe.FailureThreshold, flagMimirRulesLivenessProbeFailureThreshold, mimirRulesLivenessProbe.FailureThreshold,
 		"failureThreshold of the mimir.rules.kubernetes liveness probe.")
 
 	// Queue configuration flags for Alloy remote write

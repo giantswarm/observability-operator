@@ -124,9 +124,7 @@ spec:
         - --monitoring-mimir-rules-liveness-probe-enabled={{ .enabled }}
         - --monitoring-mimir-rules-liveness-probe-http-timeout={{ .httpTimeout }}
         - --monitoring-mimir-rules-liveness-probe-probe-timeout={{ .probeTimeout }}
-        {{- if .unhealthyMessagePattern }}
         - {{ printf "--monitoring-mimir-rules-liveness-probe-unhealthy-message-pattern=%s" .unhealthyMessagePattern | quote }}
-        {{- end }}
         - --monitoring-mimir-rules-liveness-probe-initial-delay-seconds={{ .initialDelaySeconds }}
         - --monitoring-mimir-rules-liveness-probe-period-seconds={{ .periodSeconds }}
         - --monitoring-mimir-rules-liveness-probe-timeout-seconds={{ .timeoutSeconds }}
