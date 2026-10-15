@@ -144,9 +144,9 @@ func (c MimirRulesLivenessProbeConfig) Validate() error {
 	if strings.ContainsAny(c.UnhealthyMessagePattern, "\n\r") {
 		return fmt.Errorf("unhealthy message pattern %q must be a single line", c.UnhealthyMessagePattern)
 	}
-	// Go regexp syntax approximates the POSIX extended regular expressions the probe script
-	// passes to grep -E.
-	if _, err := regexp.Compile(c.UnhealthyMessagePattern); err != nil {
+	// POSIX syntax approximates the extended regular expressions the probe script passes to
+	// grep -E. It rejects Perl syntax, such as \d, which grep -E reads differently.
+	if _, err := regexp.CompilePOSIX(c.UnhealthyMessagePattern); err != nil {
 		return fmt.Errorf("unhealthy message pattern %q is invalid: %w", c.UnhealthyMessagePattern, err)
 	}
 	if !strings.HasPrefix(c.MimirReadyPath, "/") {

@@ -220,6 +220,21 @@ func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
 			wantErr: errPatternSingleLine,
 		},
 		{
+			name:    "unhealthy message pattern with \\d",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.UnhealthyMessagePattern = `HTTP status 5\d\d` },
+			wantErr: "is invalid",
+		},
+		{
+			name:    "unhealthy message pattern with (?i)",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.UnhealthyMessagePattern = `(?i)error get` },
+			wantErr: "is invalid",
+		},
+		{
+			// grep -E reads *? as (.*)?, which matches the same lines.
+			name:   "unhealthy message pattern with *?",
+			mutate: func(c *MimirRulesLivenessProbeConfig) { c.UnhealthyMessagePattern = `^error.*?rules` },
+		},
+		{
 			name:    "invalid unhealthy message pattern",
 			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.UnhealthyMessagePattern = "^(error GET" },
 			wantErr: "unhealthy message pattern \"^(error GET\" is invalid",
