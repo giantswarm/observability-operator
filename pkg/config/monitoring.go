@@ -73,7 +73,7 @@ type MonitoringConfig struct {
 // MimirRulesLivenessProbeConfig configures the alloy-metrics mimir.rules.kubernetes liveness probe.
 type MimirRulesLivenessProbeConfig struct {
 	// Enabled renders the probe for observability-bundle versions supporting it.
-	// Disabled, the upstream Alloy chart liveness probe applies.
+	// Disabled, alloy-metrics has no liveness probe.
 	Enabled bool
 
 	// HTTPTimeout is the timeout of each HTTP request the probe script sends.

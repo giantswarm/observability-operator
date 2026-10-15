@@ -13,7 +13,7 @@ import (
 )
 
 // mimirRulesLivenessProbeScriptDefaults are the defaults of the probe script
-// helm/alloy/scripts/mimir-rules-liveness-probe.sh in giantswarm/alloy-app at SCRIPT_COMMIT.
+// helm/alloy/scripts/mimir-rules-liveness-probe.sh in giantswarm/alloy-app at commit 0aa2062.
 // Update them, and docs/cluster.md, when the script defaults change.
 var mimirRulesLivenessProbeScriptDefaults = map[string]string{
 	"HTTP_TIMEOUT":              "20",

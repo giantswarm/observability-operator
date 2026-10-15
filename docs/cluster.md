@@ -121,7 +121,7 @@ With observability-bundle 3.6.0 or later, the operator adds a liveness probe to 
 
 | Value | Default | Description |
 |---|---|---|
-| `enabled` | `true` | `false` removes the probe. The upstream Alloy chart liveness probe applies. |
+| `enabled` | `true` | `false` renders the `alloy-metrics` values of an operator without the probe. The upstream Alloy chart default `livenessProbe: {}` applies, so Alloy has no liveness probe. |
 | `httpTimeout` | `20s` | Timeout of each HTTP request the probe sends. Sets `HTTP_TIMEOUT`. |
 | `probeTimeout` | `50s` | Total budget of one probe run. The probe succeeds when exceeded. Sets `PROBE_TIMEOUT`. |
 | `healthAgeMargin` | `60s` | Margin added to the component `sync_interval`. The probe only fails for a component health older than both. Sets `HEALTH_AGE_MARGIN`. |
@@ -131,6 +131,8 @@ With observability-bundle 3.6.0 or later, the operator adds a liveness probe to 
 | `periodSeconds` | `60` | Liveness probe `periodSeconds` |
 | `timeoutSeconds` | `60` | Liveness probe `timeoutSeconds` |
 | `failureThreshold` | `3` | Liveness probe `failureThreshold` |
+
+The probe script `helm/alloy/scripts/mimir-rules-liveness-probe.sh` in [giantswarm/alloy-app](https://github.com/giantswarm/alloy-app) is the single source of the script setting defaults. The defaults of every value that sets a script variable above equal the script defaults. The operator always renders these variables. `TestDefaultMimirRulesLivenessProbeConfigMatchesScript` in `pkg/config/monitoring_test.go` pins the operator defaults to the script defaults. `TestDefaultMimirRulesLivenessProbeConfigMatchesHelmValues` pins the Helm values to the operator defaults. Update both tests and this table when the script defaults change.
 
 The operator fails at startup unless:
 

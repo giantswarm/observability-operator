@@ -287,7 +287,7 @@
                     "properties": {
                         "enabled": {
                             "type": "boolean",
-                            "description": "Enable the probe. Disabled, the upstream Alloy chart liveness probe applies."
+                            "description": "Enable the probe. Disabled, alloy-metrics has no liveness probe."
                         },
                         "httpTimeout": {
                             "type": "string",
