@@ -1,6 +1,7 @@
 package config
 
 import (
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -92,20 +93,17 @@ func TestDefaultMimirRulesLivenessProbeConfigMatchesHelmValues(t *testing.T) {
 	}
 }
 
-func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
-	valid := MimirRulesLivenessProbeConfig{
-		Enabled:             true,
-		HTTPTimeout:         20 * time.Second,
-		ProbeTimeout:        50 * time.Second,
-		InitialDelaySeconds: 60,
-		PeriodSeconds:       60,
-		TimeoutSeconds:      60,
-		FailureThreshold:    3,
-	}
+const (
+	errHTTPTimeoutRange     = "HTTP timeout must be whole seconds from 1s to 999999s"
+	errProbeTimeoutRange    = "probe timeout must be whole seconds from 1s to 999999s"
+	errHealthAgeMarginRange = "health age margin must be whole seconds from 1s to 999999s"
+	errProbeTimeoutMargin   = "must be at least 2s lower than timeoutSeconds"
+)
 
+func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
 	tests := []struct {
 		name string
-		// mutate turns the valid config into the one under test. wantErr is the fragment
+		// mutate turns the default config into the one under test. wantErr is the fragment
 		// the message must contain; empty means the config is accepted.
 		mutate  func(*MimirRulesLivenessProbeConfig)
 		wantErr string
@@ -115,20 +113,85 @@ func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
 			mutate: func(*MimirRulesLivenessProbeConfig) {},
 		},
 		{
-			name:   "HTTP timeout equal to probe timeout",
-			mutate: func(c *MimirRulesLivenessProbeConfig) { c.HTTPTimeout = c.ProbeTimeout },
-		},
-		{
 			name: "disabled with invalid values",
 			mutate: func(c *MimirRulesLivenessProbeConfig) {
 				c.Enabled = false
 				c.ProbeTimeout = 2 * time.Minute
+				c.UnhealthyMessagePattern = "("
 			},
+		},
+		{
+			name: "smallest values",
+			mutate: func(c *MimirRulesLivenessProbeConfig) {
+				c.HTTPTimeout = time.Second
+				c.ProbeTimeout = time.Second
+				c.HealthAgeMargin = time.Second
+				c.InitialDelaySeconds = 0
+				c.PeriodSeconds = 1
+				c.TimeoutSeconds = 3
+				c.FailureThreshold = 1
+			},
+		},
+		{
+			name: "largest values",
+			mutate: func(c *MimirRulesLivenessProbeConfig) {
+				c.HTTPTimeout = 999999 * time.Second
+				c.ProbeTimeout = 999999 * time.Second
+				c.HealthAgeMargin = 999999 * time.Second
+				c.InitialDelaySeconds = math.MaxInt32
+				c.PeriodSeconds = math.MaxInt32
+				c.TimeoutSeconds = math.MaxInt32
+				c.FailureThreshold = math.MaxInt32
+			},
+		},
+		{
+			name:   "HTTP timeout equal to probe timeout",
+			mutate: func(c *MimirRulesLivenessProbeConfig) { c.HTTPTimeout = c.ProbeTimeout },
 		},
 		{
 			name:    "HTTP timeout below 1s",
 			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.HTTPTimeout = 500 * time.Millisecond },
-			wantErr: "HTTP timeout must be at least 1s",
+			wantErr: errHTTPTimeoutRange,
+		},
+		{
+			name:    "HTTP timeout not whole seconds",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.HTTPTimeout = 1500 * time.Millisecond },
+			wantErr: errHTTPTimeoutRange,
+		},
+		{
+			name:    "HTTP timeout above 999999s",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.HTTPTimeout = 1000000 * time.Second },
+			wantErr: errHTTPTimeoutRange,
+		},
+		{
+			name:    "probe timeout below 1s",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.ProbeTimeout = 0 },
+			wantErr: errProbeTimeoutRange,
+		},
+		{
+			name:    "probe timeout not whole seconds",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.ProbeTimeout = 50*time.Second + time.Millisecond },
+			wantErr: errProbeTimeoutRange,
+		},
+		{
+			name:    "probe timeout above 999999s",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.ProbeTimeout = 1000000 * time.Second },
+			wantErr: errProbeTimeoutRange,
+		},
+		{
+			name:    "health age margin below 1s",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.HealthAgeMargin = 0 },
+			wantErr: errHealthAgeMarginRange,
+		},
+		{
+			name:    "health age margin not whole seconds",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.HealthAgeMargin = 90500 * time.Millisecond },
+			wantErr: errHealthAgeMarginRange,
+		},
+		{
+			name:    "health age margin above 999999s",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.HealthAgeMargin = 1000000 * time.Second },
+			wantErr: errHealthAgeMarginRange,
 		},
 		{
 			name:    "HTTP timeout above probe timeout",
@@ -136,20 +199,89 @@ func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
 			wantErr: "must not exceed probe timeout",
 		},
 		{
+			name:    "empty unhealthy message pattern",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.UnhealthyMessagePattern = "" },
+			wantErr: "unhealthy message pattern must not be empty",
+		},
+		{
+			name:    "invalid unhealthy message pattern",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.UnhealthyMessagePattern = "^(error GET" },
+			wantErr: "unhealthy message pattern \"^(error GET\" is invalid",
+		},
+		{
+			name:    "relative Mimir ready path",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.MimirReadyPath = "prometheus/config/v1/rules" },
+			wantErr: "ready path must start with /",
+		},
+		{
+			name:    "empty Mimir ready path",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.MimirReadyPath = "" },
+			wantErr: "ready path must start with /",
+		},
+		{
+			name:    "negative initialDelaySeconds",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.InitialDelaySeconds = -1 },
+			wantErr: "initialDelaySeconds must be from 0 to 2147483647",
+		},
+		{
+			name:    "initialDelaySeconds above int32",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.InitialDelaySeconds = math.MaxInt32 + 1 },
+			wantErr: "initialDelaySeconds must be from 0 to 2147483647",
+		},
+		{
+			name:    "periodSeconds below 1",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.PeriodSeconds = 0 },
+			wantErr: "periodSeconds must be from 1 to 2147483647",
+		},
+		{
+			name:    "periodSeconds above int32",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.PeriodSeconds = math.MaxInt32 + 1 },
+			wantErr: "periodSeconds must be from 1 to 2147483647",
+		},
+		{
+			name:    "timeoutSeconds below 1",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.TimeoutSeconds = 0 },
+			wantErr: "timeoutSeconds must be from 1 to 2147483647",
+		},
+		{
+			name:    "timeoutSeconds above int32",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.TimeoutSeconds = math.MaxInt32 + 1 },
+			wantErr: "timeoutSeconds must be from 1 to 2147483647",
+		},
+		{
+			name:    "failureThreshold below 1",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.FailureThreshold = 0 },
+			wantErr: "failureThreshold must be from 1 to 2147483647",
+		},
+		{
+			name:    "failureThreshold above int32",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.FailureThreshold = math.MaxInt32 + 1 },
+			wantErr: "failureThreshold must be from 1 to 2147483647",
+		},
+		{
+			name:   "probe timeout 2s below timeoutSeconds",
+			mutate: func(c *MimirRulesLivenessProbeConfig) { c.ProbeTimeout = 58 * time.Second },
+		},
+		{
+			name:    "probe timeout 1s below timeoutSeconds",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.ProbeTimeout = 59 * time.Second },
+			wantErr: errProbeTimeoutMargin,
+		},
+		{
 			name:    "probe timeout equal to timeoutSeconds",
 			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.ProbeTimeout = 60 * time.Second },
-			wantErr: "must be lower than timeoutSeconds",
+			wantErr: errProbeTimeoutMargin,
 		},
 		{
 			name:    "probe timeout above timeoutSeconds",
 			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.TimeoutSeconds = 30 },
-			wantErr: "must be lower than timeoutSeconds",
+			wantErr: errProbeTimeoutMargin,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := valid
+			c := DefaultMimirRulesLivenessProbeConfig()
 			tt.mutate(&c)
 
 			err := c.Validate()
@@ -162,5 +294,17 @@ func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
 				t.Errorf("Validate() error does not mention %q: %v", tt.wantErr, err)
 			}
 		})
+	}
+}
+
+// TestMonitoringConfigValidate asserts the startup validation covers the liveness probe.
+func TestMonitoringConfigValidate(t *testing.T) {
+	c := MonitoringConfig{MimirRulesLivenessProbe: DefaultMimirRulesLivenessProbeConfig()}
+	if err := c.Validate(); err != nil {
+		t.Errorf("Validate() failed: %v", err)
+	}
+	c.MimirRulesLivenessProbe.HTTPTimeout = 1500 * time.Millisecond
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "mimir rules liveness probe: HTTP timeout") {
+		t.Errorf("Validate() error = %v, expected a mimir rules liveness probe error", err)
 	}
 }

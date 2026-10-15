@@ -283,7 +283,7 @@
                 },
                 "mimirRulesLivenessProbe": {
                     "type": "object",
-                    "description": "Liveness probe restarting alloy-metrics when a mimir.rules.kubernetes component stays unhealthy. Requires httpTimeout <= probeTimeout < timeoutSeconds.",
+                    "description": "Liveness probe restarting alloy-metrics when a mimir.rules.kubernetes component stays unhealthy. Requires httpTimeout <= probeTimeout and probeTimeout + 2s <= timeoutSeconds.",
                     "properties": {
                         "enabled": {
                             "type": "boolean",
@@ -291,14 +291,17 @@
                         },
                         "httpTimeout": {
                             "type": "string",
+                            "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
                             "description": "Timeout of each HTTP request the probe sends (e.g., '20s')"
                         },
                         "probeTimeout": {
                             "type": "string",
+                            "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
                             "description": "Total budget of one probe run (e.g., '50s'). The probe succeeds when exceeded."
                         },
                         "healthAgeMargin": {
                             "type": "string",
+                            "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
                             "description": "Margin added to the component sync_interval (e.g., '60s'). The probe only fails for a component health older than both."
                         },
                         "unhealthyMessagePattern": {
@@ -311,10 +314,10 @@
                             "pattern": "^/",
                             "description": "Path the probe requests on the Mimir ruler to check it answers."
                         },
-                        "initialDelaySeconds": { "type": "integer", "minimum": 0 },
-                        "periodSeconds": { "type": "integer", "minimum": 1 },
-                        "timeoutSeconds": { "type": "integer", "minimum": 1 },
-                        "failureThreshold": { "type": "integer", "minimum": 1 }
+                        "initialDelaySeconds": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+                        "periodSeconds": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+                        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+                        "failureThreshold": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
                     }
                 }
             }

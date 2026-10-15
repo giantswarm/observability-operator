@@ -159,7 +159,7 @@ monitoring:
     httprouteSecretName: "mimir-gateway-httproute-auth"
 
   # Liveness probe restarting alloy-metrics when a mimir.rules.kubernetes component stays unhealthy.
-  # Requires observability-bundle 3.6.0 or later. Constraint: httpTimeout <= probeTimeout < timeoutSeconds.
+  # Requires observability-bundle 3.6.0 or later. Constraint: httpTimeout <= probeTimeout and probeTimeout + 2s <= timeoutSeconds.
   mimirRulesLivenessProbe:
     # -- Enable the probe. Disabled, the upstream Alloy chart liveness probe applies.
     enabled: true

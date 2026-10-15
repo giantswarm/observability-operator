@@ -1,7 +1,11 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"math"
+	"regexp"
+	"strings"
 	"time"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -108,19 +112,60 @@ func DefaultMimirRulesLivenessProbeConfig() MimirRulesLivenessProbeConfig {
 	}
 }
 
+// mimirRulesLivenessProbeMaxSeconds is the largest number of seconds the probe script accepts.
+const mimirRulesLivenessProbeMaxSeconds = 999999
+
 // Validate validates the mimir.rules.kubernetes liveness probe configuration.
 func (c MimirRulesLivenessProbeConfig) Validate() error {
 	if !c.Enabled {
 		return nil
 	}
-	if c.HTTPTimeout < time.Second {
-		return fmt.Errorf("HTTP timeout must be at least 1s, got %s", c.HTTPTimeout)
+	// The probe script takes whole seconds from 1 to 999999.
+	for _, d := range []struct {
+		name  string
+		value time.Duration
+	}{
+		{"HTTP timeout", c.HTTPTimeout},
+		{"probe timeout", c.ProbeTimeout},
+		{"health age margin", c.HealthAgeMargin},
+	} {
+		if d.value < time.Second || d.value > mimirRulesLivenessProbeMaxSeconds*time.Second || d.value%time.Second != 0 {
+			return fmt.Errorf("%s must be whole seconds from 1s to %ds, got %s", d.name, mimirRulesLivenessProbeMaxSeconds, d.value)
+		}
 	}
 	if c.HTTPTimeout > c.ProbeTimeout {
 		return fmt.Errorf("HTTP timeout %s must not exceed probe timeout %s", c.HTTPTimeout, c.ProbeTimeout)
 	}
-	if timeout := time.Duration(c.TimeoutSeconds) * time.Second; c.ProbeTimeout >= timeout {
-		return fmt.Errorf("probe timeout %s must be lower than timeoutSeconds %s", c.ProbeTimeout, timeout)
+	if c.UnhealthyMessagePattern == "" {
+		return errors.New("unhealthy message pattern must not be empty")
+	}
+	// Go regexp syntax approximates the POSIX extended regular expressions the probe script
+	// passes to grep -E.
+	if _, err := regexp.Compile(c.UnhealthyMessagePattern); err != nil {
+		return fmt.Errorf("unhealthy message pattern %q is invalid: %w", c.UnhealthyMessagePattern, err)
+	}
+	if !strings.HasPrefix(c.MimirReadyPath, "/") {
+		return fmt.Errorf("mimir ready path must start with /, got %q", c.MimirReadyPath)
+	}
+
+	// The Kubernetes API stores the probe fields as int32.
+	for _, f := range []struct {
+		name  string
+		value int
+		min   int
+	}{
+		{"initialDelaySeconds", c.InitialDelaySeconds, 0},
+		{"periodSeconds", c.PeriodSeconds, 1},
+		{"timeoutSeconds", c.TimeoutSeconds, 1},
+		{"failureThreshold", c.FailureThreshold, 1},
+	} {
+		if f.value < f.min || f.value > math.MaxInt32 {
+			return fmt.Errorf("%s must be from %d to %d, got %d", f.name, f.min, math.MaxInt32, f.value)
+		}
+	}
+	// One probe run takes up to the probe timeout plus a second, and the process start.
+	if timeout := time.Duration(c.TimeoutSeconds) * time.Second; c.ProbeTimeout+2*time.Second > timeout {
+		return fmt.Errorf("probe timeout %s must be at least 2s lower than timeoutSeconds %s", c.ProbeTimeout, timeout)
 	}
 	return nil
 }
