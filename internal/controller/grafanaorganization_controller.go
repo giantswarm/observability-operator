@@ -301,8 +301,14 @@ func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx conte
 	return organizations, nil
 }
 
-// configureGrafanaSSOSettings configures Grafana SSO settings based on all active GrafanaOrganizations
+// configureGrafanaSSOSettings configures Grafana SSO settings based on all active GrafanaOrganizations.
+// It is a no-op when SSO org mapping is disabled, so the SSO provider settings are never read nor written.
 func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
+	if !r.cfg.Grafana.SSOOrgMappingEnabled {
+		log.FromContext(ctx).V(1).Info("skipping SSO configuration, SSO org mapping is disabled")
+		return nil
+	}
+
 	allOrganizations, err := r.listActiveGrafanaOrganizations(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get all organizations for SSO configuration: %w", err)

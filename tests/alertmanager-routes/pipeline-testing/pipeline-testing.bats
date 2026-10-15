@@ -13,3 +13,13 @@ load ../helper.bash
   run amtool team=foo all_pipelines=true
   assert_line --partial pagerduty-foo
 }
+
+@test "aliased team paging alerts with pipeline=testing are NOT delivered to PagerDuty" {
+  run amtool team=bar severity=page pipeline=testing
+  refute_line --partial pagerduty-foo
+}
+
+@test "aliased team alerts with all_pipelines=true are delivered to PagerDuty" {
+  run amtool team=bar all_pipelines=true
+  assert_line --partial pagerduty-foo
+}

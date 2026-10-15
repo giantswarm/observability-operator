@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  architect: giantswarm/architect@10.11.1
+  architect: giantswarm/architect@10.13.5
 
 jobs:
   go-tests:
@@ -19,6 +19,8 @@ jobs:
     - checkout
     - run: cd helm/observability-operator && helm dep up
     - run: helm template helm/observability-operator
+    # Render the CRDs without webhooks, which drops GrafanaOrganization v1alpha1.
+    - run: helm template helm/observability-operator --set webhook.enabled=false
   validate-alertmanager-config:
     executor: architect/architect
     steps:
@@ -180,6 +182,8 @@ workflows:
     # Run end to end tests.
     - architect/run-tests-with-ats:
         name: run-chart-tests-with-ats
+        app-test-suite_container_tag: "1.1.0"
+        create_kind_cluster: true
         filters:
             # Do not trigger the job on merge to main.
           branches:

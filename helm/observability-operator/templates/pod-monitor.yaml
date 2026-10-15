@@ -1,3 +1,4 @@
+{{- if .Values.podMonitor.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
@@ -33,3 +34,4 @@ spec:
       {{- else }}
       scheme: http
       {{- end }}
+{{- end }}

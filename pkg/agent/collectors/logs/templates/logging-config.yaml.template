@@ -26,7 +26,7 @@
 #   - Beyla eBPF-based network monitoring with elevated capabilities (BPF, SYS_ADMIN, etc.)
 {{- end }}
 {{- if .LoggingEnabled }}
-# - NODE_NAME env var is used as additional label for kubernetes_audit logs.
+# - NODE_NAME env var is used as the node label for system and audit logs.
 {{- end }}
 {{- end }}
 networkPolicy:
@@ -186,8 +186,12 @@ alloy:
       endpoints:
       - honorLabels: true
         port: http-metrics
-        path: /api/v0/component/beyla.ebpf.default/metric
+        path: /api/v0/component/beyla.ebpf.default/metrics
         scheme: http
+        relabelings:
+        - action: replace
+          targetLabel: job
+          replacement: alloy-logs-beyla
       selector:
         matchLabels:
           app.kubernetes.io/instance: alloy-logs

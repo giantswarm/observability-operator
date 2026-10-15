@@ -13,6 +13,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enable the `mimir.rules.kubernetes` liveness probe on `alloy-metrics` with observability-bundle 3.6.0 or later.
 - Add `monitoring.mimirRulesLivenessProbe` Helm values to disable or tune the `mimir.rules.kubernetes` liveness probe.
 
+## [0.84.1] - 2026-10-14
+
+### Fixed
+
+- Fix beyla metrics scrape path.
+
+## [0.84.0] - 2026-10-13
+
+### Changed
+
+- Make the Grafana client certificate optional.
+
+## [0.83.0] - 2026-10-13
+
+### Changed
+
+- Document `roleARN` delivery through the exporter's IRSA role.
+- Mute Team Atlas Slack notifications outside business hours on `testing` and `stable-testing` installations.
+- Run the chart tests with app-test-suite 1.1.0 and install the charts with Helm.
+
+### Fixed
+
+- Set the `node` label on `system-logs` from the Kubernetes node name instead of the journald hostname.
+
+## [0.82.0] - 2026-10-08
+
+### Added
+
+- Add the `grafana.ssoOrgMapping.enabled` Helm value (`--grafana-sso-org-mapping-enabled` flag). Defaults to `false`.
+- Install the operator's CRDs from the Helm chart, behind `crds.install`. Defaults to `true`.
+- Add the `podMonitor.enabled` Helm value. Defaults to `false`.
+- Add `alerting.pagerdutyTeamAliases` to page another team's PagerDuty receiver, defaulting to `tenet: phoenix`.
+
+### Fixed
+
+- Fix false `LoggingAgentMissingOnNode` alerts caused by the `alloy-logs-beyla` ServiceMonitor sharing the `alloy-logs` job label.
+
+### Changed
+
+- Send the runbook, dashboard, explore and silence links to PagerDuty as `links`, which renders them as buttons in the incident and the mobile app.
+
 ## [0.81.0] - 2026-09-30
 
 ### Added
@@ -1284,7 +1325,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.81.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.84.1...HEAD
+[0.84.1]: https://github.com/giantswarm/observability-operator/compare/v0.84.0...v0.84.1
+[0.84.0]: https://github.com/giantswarm/observability-operator/compare/v0.83.0...v0.84.0
+[0.83.0]: https://github.com/giantswarm/observability-operator/compare/v0.82.0...v0.83.0
+[0.82.0]: https://github.com/giantswarm/observability-operator/compare/v0.81.0...v0.82.0
 [0.81.0]: https://github.com/giantswarm/observability-operator/compare/v0.80.0...v0.81.0
 [0.80.0]: https://github.com/giantswarm/observability-operator/compare/v0.79.0...v0.80.0
 [0.79.0]: https://github.com/giantswarm/observability-operator/compare/v0.78.0...v0.79.0

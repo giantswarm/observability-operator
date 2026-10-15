@@ -246,11 +246,6 @@ discovery.relabel "systemd_journal_run" {
     source_labels = ["__tmp_systemd_unit"]
     target_label  = "systemd_unit"
   }
-
-  rule {
-    source_labels = ["__journal__hostname"]
-    target_label  = "node"
-  }
 }
 
 loki.source.journal "systemd_journal_run" {
@@ -260,6 +255,7 @@ loki.source.journal "systemd_journal_run" {
   relabel_rules  = discovery.relabel.systemd_journal_run.rules
   forward_to     = [loki.process.systemd_journal_run.receiver]
   labels         = {
+    node       = coalesce(sys.env("NODE_NAME"), "unknown"),
     scrape_job = "system-logs",
   }
 }
