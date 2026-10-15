@@ -47,6 +47,9 @@ alerting:
   #  - name: teamA
   #    pagerdutyToken: token-for-teamA
   teams: []
+  # -- Map of team label to the team whose PagerDuty receiver also pages its alerts
+  pagerdutyTeamAliases:
+    tenet: phoenix
 
 # Cronitor heartbeat monitor operational settings.
 cronitor:
@@ -273,6 +276,12 @@ logExport:
       memory: 1Gi
       ephemeral-storage: 2Gi
 
+# Rendered CRDs carry `helm.sh/resource-policy: keep`, so `helm uninstall` leaves
+# them and their resources in place.
+crds:
+  # -- Install the operator's CRDs with the chart
+  install: true
+
 # Resource and security configuration for the operator pod.
 # Defaults are appropriate for most deployments.
 operator:
@@ -359,6 +368,13 @@ grafana:
   gatewayTLSSecretNamespace: "envoy-gateway-system"
   # -- Name of the Kubernetes secret containing the Grafana Gateway TLS certificate
   gatewayTLSSecretName: "gateway-giantswarm-default-https-tls"
+  # -- Grafana SSO organization mapping. When enabled, the operator writes the `org_mapping`
+  # of Grafana's `generic_oauth` SSO provider from the `spec.rbac` of every GrafanaOrganization.
+  # Disable it when Grafana has no generic OAuth provider configured: SSO settings are then left
+  # untouched and `spec.rbac` is ignored, while organizations and datasources are still reconciled.
+  ssoOrgMapping:
+    # -- Enable the Grafana SSO organization mapping
+    enabled: false
   # -- Service URLs for Grafana datasources provisioned by the operator.
   # Override these if your stack uses non-standard namespaces or service names.
   datasources:
@@ -394,6 +410,12 @@ webhook:
     # -- Validate LogExport CRs
     logExport:
       enabled: true
+
+# PodMonitor for scraping the operator's own metrics. Requires the Prometheus Operator CRDs.
+# Disabled by default; Giant Swarm installations enable it through shared-configs.
+podMonitor:
+  # -- Render the PodMonitor. Requires the Prometheus Operator CRDs.
+  enabled: false
 
 # Vertical Pod Autoscaler configuration for the operator deployment
 verticalPodAutoscaler:

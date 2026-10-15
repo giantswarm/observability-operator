@@ -127,8 +127,11 @@ type S3Destination struct {
 	ForcePathStyle bool `json:"forcePathStyle,omitempty"`
 
 	// RoleARN is an IAM role to assume before writing, for cross-account delivery.
-	// When set, CredentialsRef is usually unnecessary: the exporter authenticates
-	// with its own ServiceAccount identity and assumes this role.
+	// The exporter authenticates with its own workload identity, the role
+	// giantswarm-<installation>-alloy-logexporter in the management cluster's
+	// account, and assumes this one. It may only assume roles whose name starts
+	// with giantswarm-logexport-, so this role must be named that way and trust
+	// the exporter's role. Leave CredentialsRef unset.
 	// +optional
 	// +kubebuilder:validation:Pattern="^$|^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+$"
 	// +kubebuilder:validation:MaxLength=2048

@@ -57,6 +57,12 @@
                 "grafanaAddress": {
                     "type": "string"
                 },
+                "pagerdutyTeamAliases": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "slackAPIToken": {
                     "type": "string"
                 }
@@ -101,6 +107,16 @@
                 "gatewayTLSSecretName": {
                     "type": "string",
                     "description": "Name of the Kubernetes secret containing the Grafana Gateway TLS certificate"
+                },
+                "ssoOrgMapping": {
+                    "type": "object",
+                    "description": "Grafana SSO organization mapping. When enabled, the operator writes the org_mapping of Grafana's generic_oauth SSO provider from the spec.rbac of every GrafanaOrganization. When disabled, SSO settings are left untouched and spec.rbac is ignored.",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enable the Grafana SSO organization mapping"
+                        }
+                    }
                 },
                 "datasources": {
                     "type": "object",
@@ -323,6 +339,15 @@
                         "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
                         "failureThreshold": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
                     }
+                }
+            }
+        },
+        "crds": {
+            "type": "object",
+            "properties": {
+                "install": {
+                    "type": "boolean",
+                    "description": "Install all of the operator's CRDs with the chart, whether or not their controller is enabled."
                 }
             }
         },
@@ -640,6 +665,16 @@
                             }
                         }
                     }
+                }
+            }
+        },
+        "podMonitor": {
+            "type": "object",
+            "description": "PodMonitor for scraping the operator's own metrics",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Render the PodMonitor. Requires the Prometheus Operator CRDs."
                 }
             }
         },
