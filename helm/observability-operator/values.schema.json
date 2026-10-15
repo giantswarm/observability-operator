@@ -291,16 +291,19 @@
                         },
                         "httpTimeout": {
                             "type": "string",
+                            "minLength": 1,
                             "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
                             "description": "Timeout of each HTTP request the probe sends (e.g., '20s')"
                         },
                         "probeTimeout": {
                             "type": "string",
+                            "minLength": 1,
                             "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
                             "description": "Total budget of one probe run (e.g., '50s'). The probe succeeds when exceeded."
                         },
                         "healthAgeMargin": {
                             "type": "string",
+                            "minLength": 1,
                             "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
                             "description": "Margin added to the component sync_interval (e.g., '60s'). The probe only fails for a component health older than both."
                         },
