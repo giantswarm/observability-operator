@@ -134,6 +134,8 @@ With observability-bundle 3.6.0 or later, the operator adds a liveness probe to 
 
 The probe script `helm/alloy/scripts/mimir-rules-liveness-probe.sh` in [giantswarm/alloy-app](https://github.com/giantswarm/alloy-app) is the single source of the script setting defaults. The defaults of every value that sets a script variable above equal the script defaults. The operator always renders these variables. `TestDefaultMimirRulesLivenessProbeConfigMatchesScript` in `pkg/config/monitoring_test.go` pins the operator defaults to the script defaults. `TestDefaultMimirRulesLivenessProbeConfigMatchesHelmValues` pins the Helm values to the operator defaults. Update both tests and this table when the script defaults change.
 
+The probe reads `MIMIR_USERNAME` and `MIMIR_PASSWORD` from the `alloy-metrics` Secret at container start. After a credential rotation the ruler answers 401 to the probe, and the probe skips the check until the next Alloy restart. It never restarts Alloy on its own stale credentials.
+
 The operator fails at startup unless:
 
 - `httpTimeout`, `probeTimeout` and `healthAgeMargin` are whole seconds from `1s` to `999999s`. `1500ms` is rejected.
