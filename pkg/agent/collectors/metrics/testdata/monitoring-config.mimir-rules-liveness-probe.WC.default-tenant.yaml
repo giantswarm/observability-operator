@@ -310,8 +310,12 @@ alloy:
         readOnly: true
     livenessProbe:
       exec:
+        # Succeeds when the script is missing, e.g. when a values layer replaces mounts.extra
+        # or volumes.extra above. A missing script must not restart Alloy.
         command:
         - bash
+        - -c
+        - 'test -f "$0" || exit 0; exec bash "$0"'
         - /etc/mimir-rules-liveness-probe/mimir-rules-liveness-probe.sh
       initialDelaySeconds: 60
       periodSeconds: 60

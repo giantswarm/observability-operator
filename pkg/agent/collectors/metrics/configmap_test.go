@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -83,6 +85,86 @@ var defaultMimirRulesLivenessProbe = config.MimirRulesLivenessProbeConfig{
 	PeriodSeconds:       60,
 	TimeoutSeconds:      60,
 	FailureThreshold:    3,
+}
+
+// TestMimirRulesLivenessProbeCommand runs the rendered liveness probe command. A values
+// layer replacing mounts.extra or volumes.extra removes the script: the probe must then
+// succeed, or the kubelet restarts Alloy forever.
+func TestMimirRulesLivenessProbeCommand(t *testing.T) {
+	bash, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash not found")
+	}
+
+	service := newTestService(true, true, false)
+	result, err := service.GenerateAlloyMonitoringConfigMapData(context.Background(), nil, &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: testCluster, Namespace: defaultNamespace},
+		Spec: clusterv1.ClusterSpec{
+			InfrastructureRef: clusterv1.ContractVersionedObjectReference{Kind: awsClusterKind},
+		},
+	}, []string{organization.GiantSwarmDefaultTenant}, versionSupportingMimirRulesLivenessProbe)
+	if err != nil {
+		t.Fatalf("GenerateAlloyMonitoringConfigMapData() failed: %v", err)
+	}
+
+	var values struct {
+		Alloy struct {
+			Alloy struct {
+				LivenessProbe struct {
+					Exec struct {
+						Command []string `json:"command"`
+					} `json:"exec"`
+				} `json:"livenessProbe"`
+			} `json:"alloy"`
+		} `json:"alloy"`
+	}
+	if err := yaml.Unmarshal([]byte(result["values"]), &values); err != nil {
+		t.Fatalf("failed to unmarshal rendered values: %v", err)
+	}
+	command := values.Alloy.Alloy.LivenessProbe.Exec.Command
+	const scriptPath = "/etc/mimir-rules-liveness-probe/mimir-rules-liveness-probe.sh"
+	if len(command) == 0 || command[0] != "bash" || command[len(command)-1] != scriptPath {
+		t.Fatalf("unexpected liveness probe command %q", command)
+	}
+
+	tests := []struct {
+		name string
+		// script is the probe script content; empty means the script is missing.
+		script   string
+		wantCode int
+		wantOut  string
+	}{
+		{name: "missing script", wantCode: 0},
+		{name: "healthy", script: "exit 0", wantCode: 0},
+		{name: "unhealthy", script: "exit 1", wantCode: 1},
+		// The script re-executes itself through $0.
+		{name: "script path in $0", script: `echo "$0"`, wantOut: "/mimir-rules-liveness-probe.sh\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "mimir-rules-liveness-probe.sh")
+			if tt.script != "" {
+				if err := os.WriteFile(path, []byte(tt.script), 0o600); err != nil {
+					t.Fatalf("failed to write script: %v", err)
+				}
+			}
+			args := append(slices.Clone(command[1:len(command)-1]), path)
+
+			out, err := exec.Command(bash, args...).Output() //nolint:gosec
+			code := 0
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				code = exitErr.ExitCode()
+			} else if err != nil {
+				t.Fatalf("failed to run liveness probe command: %v", err)
+			}
+			if code != tt.wantCode {
+				t.Errorf("liveness probe command exited %d, want %d", code, tt.wantCode)
+			}
+			if tt.wantOut != "" && string(out) != filepath.Dir(path)+tt.wantOut {
+				t.Errorf("liveness probe command printed %q, want %q", out, filepath.Dir(path)+tt.wantOut)
+			}
+		})
+	}
 }
 
 func newTestService(monitoringEnabled, exemplarsEnabled, vcenterEnabled bool) *Service {
