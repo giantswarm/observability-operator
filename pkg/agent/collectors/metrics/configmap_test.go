@@ -3,6 +3,7 @@ package metrics
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -223,7 +224,8 @@ func TestMimirRulesLivenessProbeCommand(t *testing.T) {
 
 			out, err := exec.Command(bash, args...).Output() //nolint:gosec
 			code := 0
-			if exitErr, ok := err.(*exec.ExitError); ok {
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
 				code = exitErr.ExitCode()
 			} else if err != nil {
 				t.Fatalf("failed to run liveness probe command: %v", err)
