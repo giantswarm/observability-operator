@@ -315,7 +315,7 @@
                         },
                         "mimirReadyPath": {
                             "type": "string",
-                            "pattern": "^/",
+                            "pattern": "^/[^\\s\\x00-\\x1f\\x7f]*$",
                             "description": "Path the probe requests on the Mimir ruler to check it answers."
                         },
                         "initialDelaySeconds": { "type": "integer", "minimum": 0, "maximum": 2147483647 },

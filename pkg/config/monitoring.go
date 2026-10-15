@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 
@@ -151,6 +152,10 @@ func (c MimirRulesLivenessProbeConfig) Validate() error {
 	}
 	if !strings.HasPrefix(c.MimirReadyPath, "/") {
 		return fmt.Errorf("mimir ready path must start with /, got %q", c.MimirReadyPath)
+	}
+	// The probe script writes the path into an HTTP request line.
+	if strings.ContainsFunc(c.MimirReadyPath, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) {
+		return fmt.Errorf("mimir ready path %q must not contain whitespace or control characters", c.MimirReadyPath)
 	}
 
 	// The Kubernetes API stores the probe fields as int32.

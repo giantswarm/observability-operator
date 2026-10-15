@@ -99,6 +99,7 @@ const (
 	errHealthAgeMarginRange = "health age margin must be whole seconds from 1s to 999999s"
 	errProbeTimeoutMargin   = "must be at least 2s lower than timeoutSeconds"
 	errPatternSingleLine    = "must be a single line"
+	errReadyPathCharacters  = "must not contain whitespace or control characters"
 )
 
 func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
@@ -243,6 +244,30 @@ func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
 			name:    "relative Mimir ready path",
 			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.MimirReadyPath = "prometheus/config/v1/rules" },
 			wantErr: "ready path must start with /",
+		},
+		{
+			name:    "Mimir ready path with a space",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.MimirReadyPath = "/a b" },
+			wantErr: errReadyPathCharacters,
+		},
+		{
+			name:    "Mimir ready path with CRLF",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.MimirReadyPath = "/rules\r\nX-Injected: 1" },
+			wantErr: errReadyPathCharacters,
+		},
+		{
+			name:    "Mimir ready path with a tab",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.MimirReadyPath = "/a\tb" },
+			wantErr: errReadyPathCharacters,
+		},
+		{
+			name:    "Mimir ready path with DEL",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.MimirReadyPath = "/a\x7fb" },
+			wantErr: errReadyPathCharacters,
+		},
+		{
+			name:   "Mimir ready path with request line safe characters",
+			mutate: func(c *MimirRulesLivenessProbeConfig) { c.MimirReadyPath = "/a$b:c#d'e?f=g" },
 		},
 		{
 			name:    "empty Mimir ready path",
