@@ -126,11 +126,11 @@ spec:
         - --monitoring-mimir-rules-liveness-probe-probe-timeout={{ .probeTimeout }}
         - --monitoring-mimir-rules-liveness-probe-health-age-margin={{ .healthAgeMargin }}
         - {{ printf "--monitoring-mimir-rules-liveness-probe-unhealthy-message-pattern=%s" .unhealthyMessagePattern | quote }}
-        - --monitoring-mimir-rules-liveness-probe-mimir-ready-path={{ .mimirReadyPath }}
-        - --monitoring-mimir-rules-liveness-probe-initial-delay-seconds={{ .initialDelaySeconds }}
-        - --monitoring-mimir-rules-liveness-probe-period-seconds={{ .periodSeconds }}
-        - --monitoring-mimir-rules-liveness-probe-timeout-seconds={{ .timeoutSeconds }}
-        - --monitoring-mimir-rules-liveness-probe-failure-threshold={{ .failureThreshold }}
+        - {{ printf "--monitoring-mimir-rules-liveness-probe-mimir-ready-path=%s" .mimirReadyPath | quote }}
+        - --monitoring-mimir-rules-liveness-probe-initial-delay-seconds={{ int64 .initialDelaySeconds }}
+        - --monitoring-mimir-rules-liveness-probe-period-seconds={{ int64 .periodSeconds }}
+        - --monitoring-mimir-rules-liveness-probe-timeout-seconds={{ int64 .timeoutSeconds }}
+        - --monitoring-mimir-rules-liveness-probe-failure-threshold={{ int64 .failureThreshold }}
         {{- end }}
         {{- end }}
         - --tracing-enabled={{ $.Values.tracing.enabled }}
