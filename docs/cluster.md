@@ -124,6 +124,7 @@ With observability-bundle 3.6.0 or later, the operator adds a liveness probe to 
 | `enabled` | `true` | `false` removes the probe. The upstream Alloy chart liveness probe applies. |
 | `httpTimeout` | `20s` | Timeout of each HTTP request the probe sends. Sets `HTTP_TIMEOUT`. |
 | `probeTimeout` | `50s` | Total budget of one probe run. The probe succeeds when exceeded. Sets `PROBE_TIMEOUT`. |
+| `healthAgeMargin` | `60s` | Margin added to the component `sync_interval`. The probe only fails for a component health older than both. Sets `HEALTH_AGE_MARGIN`. |
 | `unhealthyMessagePattern` | `^(error GET [^ ]*/rules: server returned HTTP status (429\|5[0-9]{2}) \|Get "[^"]*/rules": )` | Extended regular expression matched against the component health message. Sets `UNHEALTHY_MESSAGE_PATTERN`. |
 | `mimirReadyPath` | `/prometheus/config/v1/rules` | Path the probe requests on the Mimir ruler to check it answers. Sets `MIMIR_READY_PATH`. |
 | `initialDelaySeconds` | `60` | Liveness probe `initialDelaySeconds` |

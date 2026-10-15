@@ -167,6 +167,8 @@ monitoring:
     httpTimeout: 20s
     # -- Total budget of one probe run. The probe succeeds when exceeded.
     probeTimeout: 50s
+    # -- Margin added to the component sync_interval. The probe only fails for a component health older than both.
+    healthAgeMargin: 60s
     # -- Extended regular expression matched against the component health message
     unhealthyMessagePattern: '^(error GET [^ ]*/rules: server returned HTTP status (429|5[0-9]{2}) |Get "[^"]*/rules": )'
     # -- Path the probe requests on the Mimir ruler to check it answers

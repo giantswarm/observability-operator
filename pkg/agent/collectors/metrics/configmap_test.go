@@ -554,6 +554,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 				Enabled:                 true,
 				HTTPTimeout:             10 * time.Second,
 				ProbeTimeout:            80 * time.Second,
+				HealthAgeMargin:         30 * time.Second,
 				UnhealthyMessagePattern: "connection refused|i/o timeout",
 				MimirReadyPath:          "/ruler/ready",
 				InitialDelaySeconds:     120,

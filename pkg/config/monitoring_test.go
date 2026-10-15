@@ -17,6 +17,7 @@ import (
 var mimirRulesLivenessProbeScriptDefaults = map[string]string{
 	"HTTP_TIMEOUT":              "20",
 	"PROBE_TIMEOUT":             "50",
+	"HEALTH_AGE_MARGIN":         "60",
 	"UNHEALTHY_MESSAGE_PATTERN": `^(error GET [^ ]*/rules: server returned HTTP status (429|5[0-9]{2}) |Get "[^"]*/rules": )`,
 	"MIMIR_READY_PATH":          "/prometheus/config/v1/rules",
 }
@@ -28,6 +29,7 @@ func TestDefaultMimirRulesLivenessProbeConfigMatchesScript(t *testing.T) {
 	got := map[string]string{
 		"HTTP_TIMEOUT":              strconv.Itoa(int(c.HTTPTimeout.Seconds())),
 		"PROBE_TIMEOUT":             strconv.Itoa(int(c.ProbeTimeout.Seconds())),
+		"HEALTH_AGE_MARGIN":         strconv.Itoa(int(c.HealthAgeMargin.Seconds())),
 		"UNHEALTHY_MESSAGE_PATTERN": c.UnhealthyMessagePattern,
 		"MIMIR_READY_PATH":          c.MimirReadyPath,
 	}
@@ -49,6 +51,7 @@ func TestDefaultMimirRulesLivenessProbeConfigMatchesHelmValues(t *testing.T) {
 				Enabled                 bool   `json:"enabled"`
 				HTTPTimeout             string `json:"httpTimeout"`
 				ProbeTimeout            string `json:"probeTimeout"`
+				HealthAgeMargin         string `json:"healthAgeMargin"`
 				UnhealthyMessagePattern string `json:"unhealthyMessagePattern"`
 				MimirReadyPath          string `json:"mimirReadyPath"`
 				InitialDelaySeconds     int    `json:"initialDelaySeconds"`
@@ -78,6 +81,7 @@ func TestDefaultMimirRulesLivenessProbeConfigMatchesHelmValues(t *testing.T) {
 	}{
 		{v.HTTPTimeout, &got.HTTPTimeout},
 		{v.ProbeTimeout, &got.ProbeTimeout},
+		{v.HealthAgeMargin, &got.HealthAgeMargin},
 	} {
 		if *d.into, err = time.ParseDuration(d.value); err != nil {
 			t.Fatalf("failed to parse Helm value %q: %v", d.value, err)

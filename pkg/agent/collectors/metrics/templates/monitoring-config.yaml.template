@@ -103,6 +103,8 @@ alloy:
       value: {{ int .MimirRulesLivenessProbe.HTTPTimeout.Seconds | quote }}
     - name: PROBE_TIMEOUT
       value: {{ int .MimirRulesLivenessProbe.ProbeTimeout.Seconds | quote }}
+    - name: HEALTH_AGE_MARGIN
+      value: {{ int .MimirRulesLivenessProbe.HealthAgeMargin.Seconds | quote }}
     - name: UNHEALTHY_MESSAGE_PATTERN
       value: {{ .MimirRulesLivenessProbe.UnhealthyMessagePattern | quote }}
     - name: MIMIR_READY_PATH

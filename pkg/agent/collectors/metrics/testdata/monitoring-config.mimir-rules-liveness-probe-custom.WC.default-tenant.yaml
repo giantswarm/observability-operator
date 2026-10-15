@@ -330,6 +330,8 @@ alloy:
       value: "10"
     - name: PROBE_TIMEOUT
       value: "80"
+    - name: HEALTH_AGE_MARGIN
+      value: "30"
     - name: UNHEALTHY_MESSAGE_PATTERN
       value: "connection refused|i/o timeout"
     - name: MIMIR_READY_PATH

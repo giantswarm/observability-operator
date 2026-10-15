@@ -76,6 +76,9 @@ type MimirRulesLivenessProbeConfig struct {
 	HTTPTimeout time.Duration
 	// ProbeTimeout is the total budget of one probe script run. The script exits 0 when exceeded.
 	ProbeTimeout time.Duration
+	// HealthAgeMargin is added to the component sync_interval. The probe only restarts Alloy
+	// for a component whose health is older than both.
+	HealthAgeMargin time.Duration
 	// UnhealthyMessagePattern is the extended regular expression matched against the component
 	// health message.
 	UnhealthyMessagePattern string
@@ -95,6 +98,7 @@ func DefaultMimirRulesLivenessProbeConfig() MimirRulesLivenessProbeConfig {
 		Enabled:                 true,
 		HTTPTimeout:             20 * time.Second,
 		ProbeTimeout:            50 * time.Second,
+		HealthAgeMargin:         60 * time.Second,
 		UnhealthyMessagePattern: `^(error GET [^ ]*/rules: server returned HTTP status (429|5[0-9]{2}) |Get "[^"]*/rules": )`,
 		MimirReadyPath:          "/prometheus/config/v1/rules",
 		InitialDelaySeconds:     60,

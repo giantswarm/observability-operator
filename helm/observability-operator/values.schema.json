@@ -297,6 +297,10 @@
                             "type": "string",
                             "description": "Total budget of one probe run (e.g., '50s'). The probe succeeds when exceeded."
                         },
+                        "healthAgeMargin": {
+                            "type": "string",
+                            "description": "Margin added to the component sync_interval (e.g., '60s'). The probe only fails for a component health older than both."
+                        },
                         "unhealthyMessagePattern": {
                             "type": "string",
                             "minLength": 1,

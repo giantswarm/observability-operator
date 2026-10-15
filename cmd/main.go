@@ -108,6 +108,7 @@ const (
 	flagMimirRulesLivenessProbeEnabled                 = "monitoring-mimir-rules-liveness-probe-enabled"
 	flagMimirRulesLivenessProbeHTTPTimeout             = "monitoring-mimir-rules-liveness-probe-http-timeout"
 	flagMimirRulesLivenessProbeProbeTimeout            = "monitoring-mimir-rules-liveness-probe-probe-timeout"
+	flagMimirRulesLivenessProbeHealthAgeMargin         = "monitoring-mimir-rules-liveness-probe-health-age-margin"
 	flagMimirRulesLivenessProbeUnhealthyMessagePattern = "monitoring-mimir-rules-liveness-probe-unhealthy-message-pattern"
 	flagMimirRulesLivenessProbeMimirReadyPath          = "monitoring-mimir-rules-liveness-probe-mimir-ready-path"
 	flagMimirRulesLivenessProbeInitialDelaySeconds     = "monitoring-mimir-rules-liveness-probe-initial-delay-seconds"
@@ -316,6 +317,8 @@ func parseFlags() (err error) {
 		"Timeout of each HTTP request the mimir.rules.kubernetes liveness probe sends.")
 	pflag.DurationVar(&cfg.Monitoring.MimirRulesLivenessProbe.ProbeTimeout, flagMimirRulesLivenessProbeProbeTimeout, mimirRulesLivenessProbe.ProbeTimeout,
 		"Total budget of one mimir.rules.kubernetes liveness probe run. The probe succeeds when exceeded.")
+	pflag.DurationVar(&cfg.Monitoring.MimirRulesLivenessProbe.HealthAgeMargin, flagMimirRulesLivenessProbeHealthAgeMargin, mimirRulesLivenessProbe.HealthAgeMargin,
+		"Margin added to the component sync_interval. The mimir.rules.kubernetes liveness probe only fails for a component health older than both.")
 	pflag.StringVar(&cfg.Monitoring.MimirRulesLivenessProbe.UnhealthyMessagePattern, flagMimirRulesLivenessProbeUnhealthyMessagePattern, mimirRulesLivenessProbe.UnhealthyMessagePattern,
 		"Extended regular expression matched against the mimir.rules.kubernetes component health message.")
 	pflag.StringVar(&cfg.Monitoring.MimirRulesLivenessProbe.MimirReadyPath, flagMimirRulesLivenessProbeMimirReadyPath, mimirRulesLivenessProbe.MimirReadyPath,
