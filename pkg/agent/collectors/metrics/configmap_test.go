@@ -154,7 +154,7 @@ func TestMimirRulesLivenessProbeVolume(t *testing.T) {
 func TestMimirRulesLivenessProbeEnv(t *testing.T) {
 	custom := config.DefaultMimirRulesLivenessProbeConfig()
 	custom.UnhealthyMessagePattern = `^(a|b) "c" $d \. 'e' {{ f }}`
-	custom.MimirReadyPath = `/a #b: "c" $d`
+	custom.MimirReadyPath = `/a$b:c#d`
 
 	for name, probe := range map[string]config.MimirRulesLivenessProbeConfig{
 		"defaults": config.DefaultMimirRulesLivenessProbeConfig(),
