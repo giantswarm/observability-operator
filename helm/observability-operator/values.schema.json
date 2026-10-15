@@ -302,6 +302,11 @@
                             "minLength": 1,
                             "description": "Extended regular expression matched against the component health message."
                         },
+                        "mimirReadyPath": {
+                            "type": "string",
+                            "pattern": "^/",
+                            "description": "Path the probe requests on the Mimir ruler to check it answers."
+                        },
                         "initialDelaySeconds": { "type": "integer", "minimum": 0 },
                         "periodSeconds": { "type": "integer", "minimum": 1 },
                         "timeoutSeconds": { "type": "integer", "minimum": 1 },

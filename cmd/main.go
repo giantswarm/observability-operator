@@ -109,6 +109,7 @@ const (
 	flagMimirRulesLivenessProbeHTTPTimeout             = "monitoring-mimir-rules-liveness-probe-http-timeout"
 	flagMimirRulesLivenessProbeProbeTimeout            = "monitoring-mimir-rules-liveness-probe-probe-timeout"
 	flagMimirRulesLivenessProbeUnhealthyMessagePattern = "monitoring-mimir-rules-liveness-probe-unhealthy-message-pattern"
+	flagMimirRulesLivenessProbeMimirReadyPath          = "monitoring-mimir-rules-liveness-probe-mimir-ready-path"
 	flagMimirRulesLivenessProbeInitialDelaySeconds     = "monitoring-mimir-rules-liveness-probe-initial-delay-seconds"
 	flagMimirRulesLivenessProbePeriodSeconds           = "monitoring-mimir-rules-liveness-probe-period-seconds"
 	flagMimirRulesLivenessProbeTimeoutSeconds          = "monitoring-mimir-rules-liveness-probe-timeout-seconds"
@@ -317,6 +318,8 @@ func parseFlags() (err error) {
 		"Total budget of one mimir.rules.kubernetes liveness probe run. The probe succeeds when exceeded.")
 	pflag.StringVar(&cfg.Monitoring.MimirRulesLivenessProbe.UnhealthyMessagePattern, flagMimirRulesLivenessProbeUnhealthyMessagePattern, mimirRulesLivenessProbe.UnhealthyMessagePattern,
 		"Extended regular expression matched against the mimir.rules.kubernetes component health message.")
+	pflag.StringVar(&cfg.Monitoring.MimirRulesLivenessProbe.MimirReadyPath, flagMimirRulesLivenessProbeMimirReadyPath, mimirRulesLivenessProbe.MimirReadyPath,
+		"Path the mimir.rules.kubernetes liveness probe requests on the Mimir ruler to check it answers.")
 	pflag.IntVar(&cfg.Monitoring.MimirRulesLivenessProbe.InitialDelaySeconds, flagMimirRulesLivenessProbeInitialDelaySeconds, mimirRulesLivenessProbe.InitialDelaySeconds,
 		"initialDelaySeconds of the mimir.rules.kubernetes liveness probe.")
 	pflag.IntVar(&cfg.Monitoring.MimirRulesLivenessProbe.PeriodSeconds, flagMimirRulesLivenessProbePeriodSeconds, mimirRulesLivenessProbe.PeriodSeconds,

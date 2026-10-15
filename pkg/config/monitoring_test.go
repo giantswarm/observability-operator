@@ -18,6 +18,7 @@ var mimirRulesLivenessProbeScriptDefaults = map[string]string{
 	"HTTP_TIMEOUT":              "20",
 	"PROBE_TIMEOUT":             "50",
 	"UNHEALTHY_MESSAGE_PATTERN": `^(error GET [^ ]*/rules: server returned HTTP status (429|5[0-9]{2}) |Get "[^"]*/rules": )`,
+	"MIMIR_READY_PATH":          "/prometheus/config/v1/rules",
 }
 
 // TestDefaultMimirRulesLivenessProbeConfigMatchesScript asserts the operator renders the
@@ -28,6 +29,7 @@ func TestDefaultMimirRulesLivenessProbeConfigMatchesScript(t *testing.T) {
 		"HTTP_TIMEOUT":              strconv.Itoa(int(c.HTTPTimeout.Seconds())),
 		"PROBE_TIMEOUT":             strconv.Itoa(int(c.ProbeTimeout.Seconds())),
 		"UNHEALTHY_MESSAGE_PATTERN": c.UnhealthyMessagePattern,
+		"MIMIR_READY_PATH":          c.MimirReadyPath,
 	}
 	if diff := cmp.Diff(mimirRulesLivenessProbeScriptDefaults, got); diff != "" {
 		t.Errorf("operator defaults differ from the probe script defaults (-script +operator):\n%s", diff)
@@ -48,6 +50,7 @@ func TestDefaultMimirRulesLivenessProbeConfigMatchesHelmValues(t *testing.T) {
 				HTTPTimeout             string `json:"httpTimeout"`
 				ProbeTimeout            string `json:"probeTimeout"`
 				UnhealthyMessagePattern string `json:"unhealthyMessagePattern"`
+				MimirReadyPath          string `json:"mimirReadyPath"`
 				InitialDelaySeconds     int    `json:"initialDelaySeconds"`
 				PeriodSeconds           int    `json:"periodSeconds"`
 				TimeoutSeconds          int    `json:"timeoutSeconds"`
@@ -63,6 +66,7 @@ func TestDefaultMimirRulesLivenessProbeConfigMatchesHelmValues(t *testing.T) {
 	got := MimirRulesLivenessProbeConfig{
 		Enabled:                 v.Enabled,
 		UnhealthyMessagePattern: v.UnhealthyMessagePattern,
+		MimirReadyPath:          v.MimirReadyPath,
 		InitialDelaySeconds:     v.InitialDelaySeconds,
 		PeriodSeconds:           v.PeriodSeconds,
 		TimeoutSeconds:          v.TimeoutSeconds,

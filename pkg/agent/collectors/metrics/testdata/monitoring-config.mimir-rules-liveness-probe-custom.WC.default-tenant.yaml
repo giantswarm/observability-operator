@@ -332,6 +332,8 @@ alloy:
       value: "80"
     - name: UNHEALTHY_MESSAGE_PATTERN
       value: "connection refused|i/o timeout"
+    - name: MIMIR_READY_PATH
+      value: "/ruler/ready"
     - name: MIMIR_USERNAME
       valueFrom:
         secretKeyRef:

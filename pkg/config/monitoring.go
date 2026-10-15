@@ -79,6 +79,8 @@ type MimirRulesLivenessProbeConfig struct {
 	// UnhealthyMessagePattern is the extended regular expression matched against the component
 	// health message.
 	UnhealthyMessagePattern string
+	// MimirReadyPath is the path the probe script requests on the Mimir ruler to check it answers.
+	MimirReadyPath string
 
 	InitialDelaySeconds int
 	PeriodSeconds       int
@@ -94,6 +96,7 @@ func DefaultMimirRulesLivenessProbeConfig() MimirRulesLivenessProbeConfig {
 		HTTPTimeout:             20 * time.Second,
 		ProbeTimeout:            50 * time.Second,
 		UnhealthyMessagePattern: `^(error GET [^ ]*/rules: server returned HTTP status (429|5[0-9]{2}) |Get "[^"]*/rules": )`,
+		MimirReadyPath:          "/prometheus/config/v1/rules",
 		InitialDelaySeconds:     60,
 		PeriodSeconds:           60,
 		TimeoutSeconds:          60,

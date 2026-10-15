@@ -169,6 +169,8 @@ monitoring:
     probeTimeout: 50s
     # -- Extended regular expression matched against the component health message
     unhealthyMessagePattern: '^(error GET [^ ]*/rules: server returned HTTP status (429|5[0-9]{2}) |Get "[^"]*/rules": )'
+    # -- Path the probe requests on the Mimir ruler to check it answers
+    mimirReadyPath: /prometheus/config/v1/rules
     # -- Liveness probe initialDelaySeconds
     initialDelaySeconds: 60
     # -- Liveness probe periodSeconds

@@ -105,6 +105,8 @@ alloy:
       value: {{ int .MimirRulesLivenessProbe.ProbeTimeout.Seconds | quote }}
     - name: UNHEALTHY_MESSAGE_PATTERN
       value: {{ .MimirRulesLivenessProbe.UnhealthyMessagePattern | quote }}
+    - name: MIMIR_READY_PATH
+      value: {{ .MimirRulesLivenessProbe.MimirReadyPath | quote }}
     - name: MIMIR_USERNAME
       valueFrom:
         secretKeyRef:

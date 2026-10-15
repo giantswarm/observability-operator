@@ -125,6 +125,7 @@ With observability-bundle 3.6.0 or later, the operator adds a liveness probe to 
 | `httpTimeout` | `20s` | Timeout of each HTTP request the probe sends. Sets `HTTP_TIMEOUT`. |
 | `probeTimeout` | `50s` | Total budget of one probe run. The probe succeeds when exceeded. Sets `PROBE_TIMEOUT`. |
 | `unhealthyMessagePattern` | `^(error GET [^ ]*/rules: server returned HTTP status (429\|5[0-9]{2}) \|Get "[^"]*/rules": )` | Extended regular expression matched against the component health message. Sets `UNHEALTHY_MESSAGE_PATTERN`. |
+| `mimirReadyPath` | `/prometheus/config/v1/rules` | Path the probe requests on the Mimir ruler to check it answers. Sets `MIMIR_READY_PATH`. |
 | `initialDelaySeconds` | `60` | Liveness probe `initialDelaySeconds` |
 | `periodSeconds` | `60` | Liveness probe `periodSeconds` |
 | `timeoutSeconds` | `60` | Liveness probe `timeoutSeconds` |
