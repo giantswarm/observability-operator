@@ -310,8 +310,8 @@ alloy:
         readOnly: true
     livenessProbe:
       exec:
-        # Succeeds when the script is missing, e.g. when a values layer replaces mounts.extra
-        # or volumes.extra above. A missing script must not restart Alloy.
+        # Succeeds when the script is missing, e.g. without the ConfigMap or when a values layer
+        # replaces mounts.extra above. A missing script must not restart Alloy.
         command:
         - bash
         - -c
@@ -357,9 +357,12 @@ alloy:
       # Repeated from the chart defaults: Helm replaces this list, it does not merge it.
       - name: alloy-tmp
         emptyDir: {}
+      # Optional: alloy-app renders the ConfigMap only with mimirRulesLivenessProbe.enabled.
+      # Without it the script is missing and the probe succeeds.
       - name: mimir-rules-liveness-probe
         configMap:
           name: alloy-metrics-mimir-rules-liveness-probe
+          optional: true
   crds:
     create: false
   affinity:

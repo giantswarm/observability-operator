@@ -77,16 +77,35 @@ func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 	}
 }
 
-// TestMimirRulesLivenessProbeCommand runs the rendered liveness probe command. A values
-// layer replacing mounts.extra or volumes.extra removes the script: the probe must then
-// succeed, or the kubelet restarts Alloy forever.
-func TestMimirRulesLivenessProbeCommand(t *testing.T) {
-	bash, err := exec.LookPath("bash")
-	if err != nil {
-		t.Skip("bash not found")
-	}
+// mimirRulesLivenessProbeValues holds the rendered alloy-metrics values of the liveness probe.
+type mimirRulesLivenessProbeValues struct {
+	Alloy struct {
+		Alloy struct {
+			LivenessProbe struct {
+				Exec struct {
+					Command []string `json:"command"`
+				} `json:"exec"`
+			} `json:"livenessProbe"`
+		} `json:"alloy"`
+		Controller struct {
+			Volumes struct {
+				Extra []struct {
+					Name      string `json:"name"`
+					ConfigMap *struct {
+						Name     string `json:"name"`
+						Optional *bool  `json:"optional"`
+					} `json:"configMap"`
+				} `json:"extra"`
+			} `json:"volumes"`
+		} `json:"controller"`
+	} `json:"alloy"`
+}
 
+// renderMimirRulesLivenessProbeValues renders the alloy-metrics values with the given probe config.
+func renderMimirRulesLivenessProbeValues(t *testing.T, probe config.MimirRulesLivenessProbeConfig) mimirRulesLivenessProbeValues {
+	t.Helper()
 	service := newTestService(true, true, false)
+	service.Config.Monitoring.MimirRulesLivenessProbe = probe
 	result, err := service.GenerateAlloyMonitoringConfigMapData(context.Background(), nil, &clusterv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: testCluster, Namespace: defaultNamespace},
 		Spec: clusterv1.ClusterSpec{
@@ -97,20 +116,43 @@ func TestMimirRulesLivenessProbeCommand(t *testing.T) {
 		t.Fatalf("GenerateAlloyMonitoringConfigMapData() failed: %v", err)
 	}
 
-	var values struct {
-		Alloy struct {
-			Alloy struct {
-				LivenessProbe struct {
-					Exec struct {
-						Command []string `json:"command"`
-					} `json:"exec"`
-				} `json:"livenessProbe"`
-			} `json:"alloy"`
-		} `json:"alloy"`
-	}
+	var values mimirRulesLivenessProbeValues
 	if err := yaml.Unmarshal([]byte(result["values"]), &values); err != nil {
 		t.Fatalf("failed to unmarshal rendered values: %v", err)
 	}
+	return values
+}
+
+// TestMimirRulesLivenessProbeVolume asserts the script ConfigMap volume is optional. alloy-app
+// renders the ConfigMap only with mimirRulesLivenessProbe.enabled. A required volume keeps
+// alloy-metrics in ContainerCreating without it.
+func TestMimirRulesLivenessProbeVolume(t *testing.T) {
+	values := renderMimirRulesLivenessProbeValues(t, config.DefaultMimirRulesLivenessProbeConfig())
+	for _, v := range values.Alloy.Controller.Volumes.Extra {
+		if v.Name != "mimir-rules-liveness-probe" {
+			continue
+		}
+		if v.ConfigMap == nil || v.ConfigMap.Name != "alloy-metrics-mimir-rules-liveness-probe" {
+			t.Fatalf("unexpected liveness probe volume %+v", v)
+		}
+		if v.ConfigMap.Optional == nil || !*v.ConfigMap.Optional {
+			t.Errorf("liveness probe ConfigMap volume is not optional")
+		}
+		return
+	}
+	t.Fatalf("liveness probe volume not rendered")
+}
+
+// TestMimirRulesLivenessProbeCommand runs the rendered liveness probe command. A missing
+// ConfigMap, or a values layer replacing mounts.extra, removes the script: the probe must
+// then succeed, or the kubelet restarts Alloy forever.
+func TestMimirRulesLivenessProbeCommand(t *testing.T) {
+	bash, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash not found")
+	}
+
+	values := renderMimirRulesLivenessProbeValues(t, config.DefaultMimirRulesLivenessProbeConfig())
 	command := values.Alloy.Alloy.LivenessProbe.Exec.Command
 	const scriptPath = "/etc/mimir-rules-liveness-probe/mimir-rules-liveness-probe.sh"
 	if len(command) == 0 || command[0] != "bash" || command[len(command)-1] != scriptPath {
