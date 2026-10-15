@@ -307,7 +307,8 @@
                         "unhealthyMessagePattern": {
                             "type": "string",
                             "minLength": 1,
-                            "description": "Extended regular expression matched against the component health message."
+                            "pattern": "^[^\\n\\r]+$",
+                            "description": "Extended regular expression matched against the component health message, on one line."
                         },
                         "mimirReadyPath": {
                             "type": "string",

@@ -139,6 +139,11 @@ func (c MimirRulesLivenessProbeConfig) Validate() error {
 	if c.UnhealthyMessagePattern == "" {
 		return errors.New("unhealthy message pattern must not be empty")
 	}
+	// grep -E reads each line as a pattern. A trailing newline adds an empty pattern,
+	// which matches every message.
+	if strings.ContainsAny(c.UnhealthyMessagePattern, "\n\r") {
+		return fmt.Errorf("unhealthy message pattern %q must be a single line", c.UnhealthyMessagePattern)
+	}
 	// Go regexp syntax approximates the POSIX extended regular expressions the probe script
 	// passes to grep -E.
 	if _, err := regexp.Compile(c.UnhealthyMessagePattern); err != nil {

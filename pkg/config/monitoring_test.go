@@ -98,6 +98,7 @@ const (
 	errProbeTimeoutRange    = "probe timeout must be whole seconds from 1s to 999999s"
 	errHealthAgeMarginRange = "health age margin must be whole seconds from 1s to 999999s"
 	errProbeTimeoutMargin   = "must be at least 2s lower than timeoutSeconds"
+	errPatternSingleLine    = "must be a single line"
 )
 
 func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
@@ -202,6 +203,21 @@ func TestMimirRulesLivenessProbeConfigValidate(t *testing.T) {
 			name:    "empty unhealthy message pattern",
 			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.UnhealthyMessagePattern = "" },
 			wantErr: "unhealthy message pattern must not be empty",
+		},
+		{
+			name:    "unhealthy message pattern with a trailing newline",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.UnhealthyMessagePattern += "\n" },
+			wantErr: errPatternSingleLine,
+		},
+		{
+			name:    "unhealthy message pattern with a newline",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.UnhealthyMessagePattern = "a\nb" },
+			wantErr: errPatternSingleLine,
+		},
+		{
+			name:    "unhealthy message pattern with a carriage return",
+			mutate:  func(c *MimirRulesLivenessProbeConfig) { c.UnhealthyMessagePattern = "a\rb" },
+			wantErr: errPatternSingleLine,
 		},
 		{
 			name:    "invalid unhealthy message pattern",

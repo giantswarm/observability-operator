@@ -139,7 +139,7 @@ The operator fails at startup unless:
 - `httpTimeout`, `probeTimeout` and `healthAgeMargin` are whole seconds from `1s` to `999999s`. `1500ms` is rejected.
 - `httpTimeout <= probeTimeout`.
 - `probeTimeout + 2s <= timeoutSeconds`. One probe run takes up to `probeTimeout` plus a second.
-- `unhealthyMessagePattern` is not empty and compiles as a Go regular expression. The probe script runs `grep -E`. A pattern Go accepts can still be invalid for `grep -E`, for example `\d` or `(?i)`. The probe then never fails.
+- `unhealthyMessagePattern` is one line, not empty, and compiles as a Go regular expression. The probe script runs `grep -E`. A pattern Go accepts can still be invalid for `grep -E`, for example `\d` or `(?i)`. The probe then never fails.
 - `mimirReadyPath` starts with `/`.
 - `initialDelaySeconds` is from `0` to `2147483647`. `periodSeconds`, `timeoutSeconds` and `failureThreshold` are from `1` to `2147483647`.
 
