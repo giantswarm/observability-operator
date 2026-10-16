@@ -114,3 +114,35 @@ Note that shards come in two independent flavours:
 | `max_shards` / `min_shards` | Remote write concurrency *inside each pod*, autoscaled by Alloy | `monitoring.queueConfig` |
 
 The defaults match upstream Prometheus/Alloy (`capacity: 10000`, `maxSamplesPerSend: 2000`, `maxShards: 50`), with `sampleAgeLimit: 30m` as a Giant Swarm addition. When tuning, keep `capacity` well above `maxSamplesPerSend` — if `capacity` is the smaller of the two, Prometheus gives each shard a single-batch channel and the queue loses its buffer.
+
+## Mimir rules liveness probe
+
+With observability-bundle 3.6.0 or later, the operator adds a liveness probe to `alloy-metrics`. The probe fails when a `mimir.rules.kubernetes` component stays unhealthy while the Mimir ruler answers. Kubernetes then restarts Alloy. The probe succeeds when its script is missing, for example when a values layer replaces `alloy.alloy.mounts.extra`. A values layer replacing `alloy.controller.volumes.extra` without the `mimir-rules-liveness-probe` volume breaks `alloy-metrics`: Kubernetes rejects pods with a mount and no volume. The script ConfigMap volume is optional. Without the ConfigMap, for example with `mimirRulesLivenessProbe.enabled: false` in an `alloy-metrics` cluster user config, the script is missing. This probe is **installation-level only**. Set it via `monitoring.mimirRulesLivenessProbe` in the operator's Helm values, or via the matching `--monitoring-mimir-rules-liveness-probe-*` CLI flags.
+
+| Value | Default | Description |
+|---|---|---|
+| `enabled` | `true` | `false` renders the `alloy-metrics` values of an operator without the probe. The upstream Alloy chart default `livenessProbe: {}` applies, so Alloy has no liveness probe. |
+| `httpTimeout` | `20s` | Timeout of each HTTP request the probe sends. Sets `HTTP_TIMEOUT`. |
+| `probeTimeout` | `50s` | Total budget of one probe run. The probe succeeds when exceeded. Sets `PROBE_TIMEOUT`. |
+| `healthAgeMargin` | `60s` | Margin added to the component `sync_interval`. The probe only fails for a component health older than both. Sets `HEALTH_AGE_MARGIN`. |
+| `unhealthyMessagePattern` | `^(error GET [^ ]*/rules: server returned HTTP status (429\|5[0-9]{2}) \|Get "[^"]*/rules": )` | Extended regular expression matched against the component health message. Sets `UNHEALTHY_MESSAGE_PATTERN`. |
+| `mimirReadyPath` | `/prometheus/config/v1/rules` | Path the probe requests on the Mimir ruler to check it answers. Sets `MIMIR_READY_PATH`. |
+| `initialDelaySeconds` | `60` | Liveness probe `initialDelaySeconds` |
+| `periodSeconds` | `60` | Liveness probe `periodSeconds` |
+| `timeoutSeconds` | `60` | Liveness probe `timeoutSeconds` |
+| `failureThreshold` | `3` | Liveness probe `failureThreshold` |
+
+The probe script `helm/alloy/scripts/mimir-rules-liveness-probe.sh` in [giantswarm/alloy-app](https://github.com/giantswarm/alloy-app) is the single source of the script setting defaults. The defaults of every value that sets a script variable above equal the script defaults. The operator always renders these variables. `TestDefaultMimirRulesLivenessProbeConfigMatchesScript` in `pkg/config/monitoring_test.go` pins the operator defaults to the script defaults. `TestDefaultMimirRulesLivenessProbeConfigMatchesHelmValues` pins the Helm values to the operator defaults. Update both tests and this table when the script defaults change.
+
+The probe reads `MIMIR_USERNAME` and `MIMIR_PASSWORD` from the `alloy-metrics` Secret at container start. After a credential rotation the ruler answers 401 to the probe, and the probe skips the check until the next Alloy restart. It never restarts Alloy on its own stale credentials.
+
+The operator fails at startup unless:
+
+- `httpTimeout`, `probeTimeout` and `healthAgeMargin` are whole seconds from `1s` to `999999s`. `1500ms` is rejected.
+- `httpTimeout <= probeTimeout`.
+- `probeTimeout + 2s <= timeoutSeconds`. One probe run takes up to `probeTimeout` plus a second.
+- `unhealthyMessagePattern` is one line, not empty, and compiles as a POSIX extended regular expression (Go `regexp.CompilePOSIX`). The probe script runs `grep -E`. The check rejects Perl syntax such as `\d` and `(?i)`, which `grep -E` reads differently: GNU grep warns on `\d` and matches a literal `d`. It also rejects GNU extensions such as `\b`, `\w` and `\s`, which `grep -E` accepts. A pattern `grep -E` rejects makes the probe skip the check, so it never restarts Alloy.
+- `mimirReadyPath` starts with `/` and contains no whitespace or control characters. The probe script writes it into an HTTP request line.
+- `initialDelaySeconds` is from `0` to `2147483647`. `periodSeconds`, `timeoutSeconds` and `failureThreshold` are from `1` to `2147483647`.
+
+A disabled probe skips these checks.

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `MIMIR_USERNAME` and `MIMIR_PASSWORD` to the `alloy-metrics` container, read from the `alloy-metrics` Secret. The `mimir.rules.kubernetes` liveness probe authenticates to the Mimir ruler with them.
+- Enable the `mimir.rules.kubernetes` liveness probe on `alloy-metrics` with observability-bundle 3.6.0 or later.
+- Add `monitoring.mimirRulesLivenessProbe` Helm values to disable or tune the `mimir.rules.kubernetes` liveness probe.
+
 ## [0.84.1] - 2026-10-14
 
 ### Fixed

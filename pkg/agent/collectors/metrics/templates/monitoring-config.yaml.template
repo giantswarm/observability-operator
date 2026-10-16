@@ -45,6 +45,15 @@ networkPolicy:
 # Token Secret the kube-prometheus-stack control-plane ServiceMonitors authenticate with.
 serviceAccountTokenSecret:
   enabled: true
+{{- if .MimirRulesLivenessProbeEnabled }}
+# Liveness probe script failing when a mimir.rules.kubernetes component stays unhealthy
+# while its Mimir ruler answers 200, so Kubernetes restarts Alloy. This works around
+# https://github.com/grafana/alloy/pull/6339.
+# The chart renders it as the {{ .AlloyAppName }}-mimir-rules-liveness-probe ConfigMap,
+# mounted and run by the liveness probe below.
+mimirRulesLivenessProbe:
+  enabled: true
+{{- end }}
 alloy:
   alloy:
     clustering:
@@ -63,10 +72,73 @@ alloy:
         memory: 512Mi
     ## Needed to to be able to support ScrapeConfig CRs
     stabilityLevel: experimental
+    {{- if .MimirRulesLivenessProbeEnabled }}
+    mounts:
+      extra:
+      # Repeated from the chart defaults: Helm replaces this list, it does not merge it.
+      - name: alloy-tmp
+        mountPath: /tmp/alloy
+      - name: mimir-rules-liveness-probe
+        mountPath: /etc/mimir-rules-liveness-probe
+        readOnly: true
+    livenessProbe:
+      exec:
+        # Succeeds when the script is missing, e.g. without the ConfigMap or when a values layer
+        # replaces mounts.extra above. A missing script must not restart Alloy.
+        command:
+        - bash
+        - -c
+        - 'test -f "$0" || exit 0; exec bash "$0"'
+        - /etc/mimir-rules-liveness-probe/mimir-rules-liveness-probe.sh
+      initialDelaySeconds: {{ .MimirRulesLivenessProbe.InitialDelaySeconds }}
+      periodSeconds: {{ .MimirRulesLivenessProbe.PeriodSeconds }}
+      timeoutSeconds: {{ .MimirRulesLivenessProbe.TimeoutSeconds }}
+      failureThreshold: {{ .MimirRulesLivenessProbe.FailureThreshold }}
+    # Settings of the mimir.rules.kubernetes liveness probe, and the credentials
+    # it authenticates to the Mimir ruler with. Without them a Mimir behind a gateway answers 401 whether
+    # its ruler is up or down, and the probe cannot tell an outage from the bug
+    # it works around, so it never restarts Alloy.
+    extraEnv:
+    - name: HTTP_TIMEOUT
+      value: {{ int .MimirRulesLivenessProbe.HTTPTimeout.Seconds | quote }}
+    - name: PROBE_TIMEOUT
+      value: {{ int .MimirRulesLivenessProbe.ProbeTimeout.Seconds | quote }}
+    - name: HEALTH_AGE_MARGIN
+      value: {{ int .MimirRulesLivenessProbe.HealthAgeMargin.Seconds | quote }}
+    - name: UNHEALTHY_MESSAGE_PATTERN
+      value: {{ .MimirRulesLivenessProbe.UnhealthyMessagePattern | quote }}
+    - name: MIMIR_READY_PATH
+      value: {{ .MimirRulesLivenessProbe.MimirReadyPath | quote }}
+    - name: MIMIR_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: {{ .AlloySecretName }}
+          key: {{ .MimirUsernameKey }}
+          optional: true
+    - name: MIMIR_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: {{ .AlloySecretName }}
+          key: {{ .MimirPasswordKey }}
+          optional: true
+    {{- end }}
   controller:
     type: statefulset
     replicas: {{ .Replicas }}
     priorityClassName: {{ .PriorityClassName }}
+    {{- if .MimirRulesLivenessProbeEnabled }}
+    volumes:
+      extra:
+      # Repeated from the chart defaults: Helm replaces this list, it does not merge it.
+      - name: alloy-tmp
+        emptyDir: {}
+      # Optional: alloy-app renders the ConfigMap only with mimirRulesLivenessProbe.enabled.
+      # Without it the script is missing and the probe succeeds.
+      - name: mimir-rules-liveness-probe
+        configMap:
+          name: {{ .AlloyAppName }}-mimir-rules-liveness-probe
+          optional: true
+    {{- end }}
   crds:
     create: false
   affinity:

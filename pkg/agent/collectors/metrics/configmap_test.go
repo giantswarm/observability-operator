@@ -3,8 +3,12 @@ package metrics
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -47,11 +51,18 @@ func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 
 	var rendered bytes.Buffer
 	err := alloyMonitoringConfigTemplate.Execute(&rendered, struct {
+		AlloyAppName      string
 		AlloyConfig       string
+		AlloySecretName   string
 		HasCABundle       bool
+		MimirUsernameKey  string
+		MimirPasswordKey  string
 		PriorityClassName string
 		Replicas          int
-	}{Replicas: want})
+
+		MimirRulesLivenessProbeEnabled bool
+		MimirRulesLivenessProbe        config.MimirRulesLivenessProbeConfig
+	}{Replicas: want, MimirRulesLivenessProbeEnabled: true})
 	if err != nil {
 		t.Fatalf("failed to render monitoring config template: %v", err)
 	}
@@ -65,6 +76,167 @@ func TestMonitoringConfigReplicasRoundTrip(t *testing.T) {
 		t.Errorf("read/write format drift: template wrote replicas=%d under alloy.controller.replicas, "+
 			"but monitoringConfig struct read %d — the read path no longer matches the template",
 			want, parsed.Alloy.Controller.Replicas)
+	}
+}
+
+// mimirRulesLivenessProbeValues holds the rendered alloy-metrics values of the liveness probe.
+type mimirRulesLivenessProbeValues struct {
+	Alloy struct {
+		Alloy struct {
+			LivenessProbe struct {
+				Exec struct {
+					Command []string `json:"command"`
+				} `json:"exec"`
+			} `json:"livenessProbe"`
+			ExtraEnv []struct {
+				Name  string `json:"name"`
+				Value string `json:"value"`
+			} `json:"extraEnv"`
+		} `json:"alloy"`
+		Controller struct {
+			Volumes struct {
+				Extra []struct {
+					Name      string `json:"name"`
+					ConfigMap *struct {
+						Name     string `json:"name"`
+						Optional *bool  `json:"optional"`
+					} `json:"configMap"`
+				} `json:"extra"`
+			} `json:"volumes"`
+		} `json:"controller"`
+	} `json:"alloy"`
+}
+
+// renderMimirRulesLivenessProbeValues renders the alloy-metrics values with the given probe config.
+func renderMimirRulesLivenessProbeValues(t *testing.T, probe config.MimirRulesLivenessProbeConfig) mimirRulesLivenessProbeValues {
+	t.Helper()
+	service := newTestService(true, true, false)
+	service.Config.Monitoring.MimirRulesLivenessProbe = probe
+	result, err := service.GenerateAlloyMonitoringConfigMapData(context.Background(), nil, &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: testCluster, Namespace: defaultNamespace},
+		Spec: clusterv1.ClusterSpec{
+			InfrastructureRef: clusterv1.ContractVersionedObjectReference{Kind: awsClusterKind},
+		},
+	}, []string{organization.GiantSwarmDefaultTenant}, versionSupportingMimirRulesLivenessProbe)
+	if err != nil {
+		t.Fatalf("GenerateAlloyMonitoringConfigMapData() failed: %v", err)
+	}
+
+	var values mimirRulesLivenessProbeValues
+	if err := yaml.Unmarshal([]byte(result["values"]), &values); err != nil {
+		t.Fatalf("failed to unmarshal rendered values: %v", err)
+	}
+	return values
+}
+
+// TestMimirRulesLivenessProbeVolume asserts the script ConfigMap volume is optional. alloy-app
+// renders the ConfigMap only with mimirRulesLivenessProbe.enabled. A required volume keeps
+// alloy-metrics in ContainerCreating without it.
+func TestMimirRulesLivenessProbeVolume(t *testing.T) {
+	values := renderMimirRulesLivenessProbeValues(t, config.DefaultMimirRulesLivenessProbeConfig())
+	for _, v := range values.Alloy.Controller.Volumes.Extra {
+		if v.Name != "mimir-rules-liveness-probe" {
+			continue
+		}
+		if v.ConfigMap == nil || v.ConfigMap.Name != "alloy-metrics-mimir-rules-liveness-probe" {
+			t.Fatalf("unexpected liveness probe volume %+v", v)
+		}
+		if v.ConfigMap.Optional == nil || !*v.ConfigMap.Optional {
+			t.Errorf("liveness probe ConfigMap volume is not optional")
+		}
+		return
+	}
+	t.Fatalf("liveness probe volume not rendered")
+}
+
+// TestMimirRulesLivenessProbeEnv decodes the rendered script settings and compares them with
+// the config, so that a quoting change cannot alter the pattern.
+func TestMimirRulesLivenessProbeEnv(t *testing.T) {
+	custom := config.DefaultMimirRulesLivenessProbeConfig()
+	custom.UnhealthyMessagePattern = `^(a|b) "c" $d \. 'e' {{ f }}`
+	custom.MimirReadyPath = `/a$b:c#d`
+
+	for name, probe := range map[string]config.MimirRulesLivenessProbeConfig{
+		"defaults": config.DefaultMimirRulesLivenessProbeConfig(),
+		"custom":   custom,
+	} {
+		t.Run(name, func(t *testing.T) {
+			values := renderMimirRulesLivenessProbeValues(t, probe)
+			got := map[string]string{}
+			for _, e := range values.Alloy.Alloy.ExtraEnv {
+				got[e.Name] = e.Value
+			}
+			want := map[string]string{
+				"HTTP_TIMEOUT":              strconv.Itoa(int(probe.HTTPTimeout.Seconds())),
+				"PROBE_TIMEOUT":             strconv.Itoa(int(probe.ProbeTimeout.Seconds())),
+				"HEALTH_AGE_MARGIN":         strconv.Itoa(int(probe.HealthAgeMargin.Seconds())),
+				"UNHEALTHY_MESSAGE_PATTERN": probe.UnhealthyMessagePattern,
+				"MIMIR_READY_PATH":          probe.MimirReadyPath,
+				// Read from secretKeyRef.
+				"MIMIR_USERNAME": "",
+				"MIMIR_PASSWORD": "",
+			}
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("rendered extraEnv mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+// TestMimirRulesLivenessProbeCommand runs the rendered liveness probe command. A missing
+// ConfigMap, or a values layer replacing mounts.extra, removes the script: the probe must
+// then succeed, or the kubelet restarts Alloy forever.
+func TestMimirRulesLivenessProbeCommand(t *testing.T) {
+	bash, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash not found")
+	}
+
+	values := renderMimirRulesLivenessProbeValues(t, config.DefaultMimirRulesLivenessProbeConfig())
+	command := values.Alloy.Alloy.LivenessProbe.Exec.Command
+	const scriptPath = "/etc/mimir-rules-liveness-probe/mimir-rules-liveness-probe.sh"
+	if len(command) == 0 || command[0] != "bash" || command[len(command)-1] != scriptPath {
+		t.Fatalf("unexpected liveness probe command %q", command)
+	}
+
+	tests := []struct {
+		name string
+		// script is the probe script content; empty means the script is missing.
+		script   string
+		wantCode int
+		wantOut  string
+	}{
+		{name: "missing script", wantCode: 0},
+		{name: "healthy", script: "exit 0", wantCode: 0},
+		{name: "unhealthy", script: "exit 1", wantCode: 1},
+		// The script re-executes itself through $0.
+		{name: "script path in $0", script: `echo "$0"`, wantOut: "/mimir-rules-liveness-probe.sh\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "mimir-rules-liveness-probe.sh")
+			if tt.script != "" {
+				if err := os.WriteFile(path, []byte(tt.script), 0o600); err != nil {
+					t.Fatalf("failed to write script: %v", err)
+				}
+			}
+			args := append(slices.Clone(command[1:len(command)-1]), path)
+
+			out, err := exec.Command(bash, args...).Output() //nolint:gosec
+			code := 0
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				code = exitErr.ExitCode()
+			} else if err != nil {
+				t.Fatalf("failed to run liveness probe command: %v", err)
+			}
+			if code != tt.wantCode {
+				t.Errorf("liveness probe command exited %d, want %d", code, tt.wantCode)
+			}
+			if tt.wantOut != "" && string(out) != filepath.Dir(path)+tt.wantOut {
+				t.Errorf("liveness probe command printed %q, want %q", out, filepath.Dir(path)+tt.wantOut)
+			}
+		})
 	}
 }
 
@@ -91,6 +263,7 @@ func newTestService(monitoringEnabled, exemplarsEnabled, vcenterEnabled bool) *S
 					MaxSamplesPerSend: &[]int{2000}[0],
 					SampleAgeLimit:    &[]string{"30m"}[0],
 				},
+				MimirRulesLivenessProbe: config.DefaultMimirRulesLivenessProbeConfig(),
 			},
 			HTTP: config.HTTPConfig{
 				MimirQueryTimeout: 2 * time.Minute,
@@ -110,6 +283,8 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		monitoringEnabled          bool
 		exemplarsEnabled           bool
 		vcenterEnabled             bool
+		// mimirRulesLivenessProbe overrides config.DefaultMimirRulesLivenessProbeConfig() when set.
+		mimirRulesLivenessProbe *config.MimirRulesLivenessProbeConfig
 	}{
 		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
@@ -381,6 +556,96 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			monitoringEnabled:          true,
 			exemplarsEnabled:           true,
 		},
+		// Mimir rules liveness probe tests
+		{
+			name: "WorkloadCluster_DefaultTenant_MimirRulesLivenessProbe",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testCluster,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: awsClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.mimir-rules-liveness-probe.WC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingMimirRulesLivenessProbe,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "ManagementCluster_DefaultTenant_MimirRulesLivenessProbe",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      managementClusterName,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: awsClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.mimir-rules-liveness-probe.MC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingMimirRulesLivenessProbe,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+		},
+		{
+			name: "WorkloadCluster_DefaultTenant_MimirRulesLivenessProbeDisabled",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testCluster,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: awsClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.mimir-rules-liveness-probe-disabled.WC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingMimirRulesLivenessProbe,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+			mimirRulesLivenessProbe:    &config.MimirRulesLivenessProbeConfig{Enabled: false},
+		},
+		{
+			name: "WorkloadCluster_DefaultTenant_MimirRulesLivenessProbeCustom",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testCluster,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: awsClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{organization.GiantSwarmDefaultTenant},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.mimir-rules-liveness-probe-custom.WC.default-tenant.yaml"),
+			observabilityBundleVersion: versionSupportingMimirRulesLivenessProbe,
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+			mimirRulesLivenessProbe: &config.MimirRulesLivenessProbeConfig{
+				Enabled:                 true,
+				HTTPTimeout:             10 * time.Second,
+				ProbeTimeout:            80 * time.Second,
+				HealthAgeMargin:         30 * time.Second,
+				UnhealthyMessagePattern: "connection refused|i/o timeout",
+				MimirReadyPath:          "/ruler/ready",
+				InitialDelaySeconds:     120,
+				PeriodSeconds:           30,
+				TimeoutSeconds:          90,
+				FailureThreshold:        5,
+			},
+		},
 		{
 			name: "ExemplarsDisabledInMC_v200",
 			cluster: &clusterv1.Cluster{
@@ -424,6 +689,9 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			ctx := context.Background()
 
 			service := newTestService(tt.monitoringEnabled, tt.exemplarsEnabled, tt.vcenterEnabled)
+			if tt.mimirRulesLivenessProbe != nil {
+				service.Config.Monitoring.MimirRulesLivenessProbe = *tt.mimirRulesLivenessProbe
+			}
 
 			resultMap, err := service.GenerateAlloyMonitoringConfigMapData(
 				ctx,
