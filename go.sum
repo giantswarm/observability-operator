@@ -253,8 +253,8 @@ github.com/grafana/dskit v0.0.0-20260209132809-8d1c6d34bb5a h1:a/GywXjGvbhyra9fG
 github.com/grafana/dskit v0.0.0-20260209132809-8d1c6d34bb5a/go.mod h1:M2NzmN1SL1duPeCTEJmttPyiAlYAxPS+G+Btza5F0Q8=
 github.com/grafana/gomemcache v0.0.0-20251127154401-74f93547077b h1:5qp8/5YPt/Z2RW5QHsxvwE05+LWQYIXydP2MwOkMfb8=
 github.com/grafana/gomemcache v0.0.0-20251127154401-74f93547077b/go.mod h1:j/s0jkda4UXTemDs7Pgw/vMT06alWc42CHisvYac0qw=
-github.com/grafana/grafana-openapi-client-go v0.0.0-20261013083051-889b34a0d1de h1:wKZFUUWG89rOCb/fav3QiI5b2v2D9qdTutxlomm1u2o=
-github.com/grafana/grafana-openapi-client-go v0.0.0-20261013083051-889b34a0d1de/go.mod h1:B8oGvuuigU4O3RLlioMZlE+lwTGsCbVsk2dKGCyGZFs=
+github.com/grafana/grafana-openapi-client-go v0.0.0-20261015192556-fcf0a80b71e9 h1:Syibw2nqTKqFFH+A0uJ0WrgtS1lXz855BCkJ3jRfsW4=
+github.com/grafana/grafana-openapi-client-go v0.0.0-20261015192556-fcf0a80b71e9/go.mod h1:PXtva3h2Xdf1uzsYtF5QP+ln8/VjBKRLVZCVhMFlsQE=
 github.com/grafana/jsonparser v0.0.0-20241004153430-023329977675 h1:U94jQ2TQr1m3HNyE8efSdyaBbDrdPaWImXyenuKZ/nw=
 github.com/grafana/jsonparser v0.0.0-20241004153430-023329977675/go.mod h1:796sq+UcONnSlzA3RtlBZ+b/hrerkZXiEmO8oMjyRwY=
 github.com/grafana/loki/pkg/push v0.0.0-20250630054201-94c0ba7b0952 h1:rLzoJGDnoXsZV2j/2atL6OVk9AHluTbDOD8Ls9trtIA=
