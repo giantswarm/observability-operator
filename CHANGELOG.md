@@ -9,9 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Deleting a `GrafanaOrganization` or dashboard ConfigMap no longer gets stuck once Grafana's admin Secret is gone, for example after Grafana was uninstalled with it.
+
+## [0.85.0] - 2026-10-21
+
+### Changed
+
 - List tenants from `v1alpha2` `GrafanaOrganization` resources. Without the conversion webhook, the CRD serves `v1alpha2` only, and the Alertmanager controller failed to list tenants.
 - Watch `v1alpha2` `GrafanaOrganization` resources in the cluster controller. Without the conversion webhook, the cluster controller failed to start.
-- Deleting a `GrafanaOrganization` or dashboard ConfigMap no longer gets stuck once Grafana's admin Secret is gone, for example after Grafana was uninstalled with it.
 
 ## [0.84.1] - 2026-10-14
 
@@ -1325,7 +1330,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.84.1...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.85.0...HEAD
+[0.85.0]: https://github.com/giantswarm/observability-operator/compare/v0.84.1...v0.85.0
 [0.84.1]: https://github.com/giantswarm/observability-operator/compare/v0.84.0...v0.84.1
 [0.84.0]: https://github.com/giantswarm/observability-operator/compare/v0.83.0...v0.84.0
 [0.83.0]: https://github.com/giantswarm/observability-operator/compare/v0.82.0...v0.83.0
