@@ -13,7 +13,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/pkg/common/organization/mocks"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 	"github.com/giantswarm/observability-operator/pkg/config"
@@ -324,16 +324,16 @@ func TestGenerateAlloyEventsConfig(t *testing.T) {
 
 			// Create a fake client with a GrafanaOrganization to provide tenants
 			scheme := runtime.NewScheme()
-			_ = v1alpha1.AddToScheme(scheme)
+			_ = v1alpha2.AddToScheme(scheme)
 			_ = clusterv1.AddToScheme(scheme)
 
-			grafanaOrg := &v1alpha1.GrafanaOrganization{
+			grafanaOrg := &v1alpha2.GrafanaOrganization{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-org",
 					Namespace: defaultNamespace,
 				},
-				Spec: v1alpha1.GrafanaOrganizationSpec{
-					Tenants: []v1alpha1.TenantID{giantswarm},
+				Spec: v1alpha2.GrafanaOrganizationSpec{
+					Tenants: []v1alpha2.TenantConfig{{Name: giantswarm}},
 				},
 			}
 

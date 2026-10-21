@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- List tenants from `v1alpha2` `GrafanaOrganization` resources. Without the conversion webhook, the CRD serves `v1alpha2` only, and the Alertmanager controller failed to list tenants.
+- Watch `v1alpha2` `GrafanaOrganization` resources in the cluster controller. Without the conversion webhook, the cluster controller failed to start.
 - Deleting a `GrafanaOrganization` or dashboard ConfigMap no longer gets stuck once Grafana's admin Secret is gone, for example after Grafana was uninstalled with it.
 
 ## [0.84.1] - 2026-10-14
