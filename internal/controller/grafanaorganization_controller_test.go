@@ -255,7 +255,7 @@ var _ = Describe("Grafana Organization Controller", func() {
 	Context("When deleting a GrafanaOrganization after Grafana is gone", func() {
 		const (
 			orgName              = "grafana-gone-org"
-			adminSecretName      = "grafana-uninstalled"
+			adminSecretName      = "grafana-uninstalled" // nolint:gosec // G101: Secret resource name, not a credential
 			adminSecretNamespace = "default"
 		)
 

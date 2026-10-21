@@ -649,7 +649,7 @@ var _ = Describe("Dashboard Controller", func() {
 			BeforeEach(func() {
 				// The real client generator, pointed at an admin Secret that does not exist,
 				// as after the Grafana that owned it was uninstalled.
-				reconciler.grafanaClientGen = grafanaclient.NewDefaultGrafanaClientGenerator(config.GrafanaConfig{
+				reconciler.grafanaClientGen = grafanaclient.NewDefaultGrafanaClientGenerator(config.GrafanaConfig{ // nolint:gosec // G101: Secret resource name, not a credential
 					AdminSecretNamespace: dashboardNamespace,
 					AdminSecretName:      "grafana-uninstalled",
 				})
