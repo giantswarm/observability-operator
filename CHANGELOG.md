@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Changed
 
 - List tenants from `v1alpha2` `GrafanaOrganization` resources. Without the conversion webhook, the CRD serves `v1alpha2` only, and the Alertmanager controller failed to list tenants.
 - Watch `v1alpha2` `GrafanaOrganization` resources in the cluster controller. Without the conversion webhook, the cluster controller failed to start.
