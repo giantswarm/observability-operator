@@ -86,4 +86,4 @@ spec:
 
 - `GrafanaOrganization` is cluster-scoped (no namespace)
 - Use `v1alpha2` — it is the current and storage version. `v1alpha1` is accepted but deprecated; the conversion webhook handles it automatically.
-- Deleting a `GrafanaOrganization` removes the finalizer and cleans up the Grafana organization
+- Deleting a `GrafanaOrganization` removes the finalizer and cleans up the Grafana organization. If the Grafana admin Secret no longer exists, for example because Grafana was uninstalled along with it, the operator removes the finalizer without contacting Grafana.

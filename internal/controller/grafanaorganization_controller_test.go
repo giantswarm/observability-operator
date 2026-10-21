@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,6 +23,7 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/internal/mapper"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
 
@@ -247,6 +249,89 @@ var _ = Describe("Grafana Organization Controller", func() {
 			mockSsoSettings.AssertNumberOfCalls(GinkgoT(), "UpdateProviderSettings", 1)
 
 			deleteAndReconcile()
+		})
+	})
+
+	Context("When deleting a GrafanaOrganization after Grafana is gone", func() {
+		const (
+			orgName              = "grafana-gone-org"
+			adminSecretName      = "grafana-uninstalled"
+			adminSecretNamespace = "default"
+		)
+
+		var (
+			ctx        context.Context
+			reconciler *GrafanaOrganizationReconciler
+			request    reconcile.Request
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			request = reconcile.Request{NamespacedName: types.NamespacedName{Name: orgName}}
+
+			grafanaURL, _ := url.Parse("http://localhost:3000")
+			grafanaCfg := config.GrafanaConfig{
+				URL:                  grafanaURL,
+				AdminSecretNamespace: adminSecretNamespace,
+				AdminSecretName:      adminSecretName,
+			}
+			reconciler = &GrafanaOrganizationReconciler{
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				grafanaURL:      grafanaURL,
+				finalizerHelper: NewFinalizerHelper(k8sClient, v1alpha2.GrafanaOrganizationFinalizer),
+				// The real client generator, pointed at an admin Secret that does not exist,
+				// as after the Grafana that owned it was uninstalled.
+				grafanaClientGen:   grafanaclient.NewDefaultGrafanaClientGenerator(grafanaCfg),
+				cfg:                config.Config{Grafana: grafanaCfg},
+				organizationMapper: mapper.NewOrganizationMapper(),
+			}
+
+			grafanaOrg := &v1alpha2.GrafanaOrganization{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       orgName,
+					Finalizers: []string{v1alpha2.GrafanaOrganizationFinalizer},
+				},
+				Spec: v1alpha2.GrafanaOrganizationSpec{
+					DisplayName: "Main Org.",
+					Tenants:     []v1alpha2.TenantConfig{{Name: "default"}},
+					RBAC:        &v1alpha2.RBAC{Admins: []string{"admins"}},
+				},
+			}
+			Expect(k8sClient.Create(ctx, grafanaOrg)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, grafanaOrg)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			leftover := &v1alpha2.GrafanaOrganization{}
+			if err := k8sClient.Get(ctx, request.NamespacedName, leftover); err == nil {
+				leftover.Finalizers = nil
+				_ = k8sClient.Update(ctx, leftover)
+			}
+		})
+
+		It("should release the finalizer when the Grafana admin Secret no longer exists", func() {
+			_, err := reconciler.Reconcile(ctx, request)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = k8sClient.Get(ctx, request.NamespacedName, &v1alpha2.GrafanaOrganization{})
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+		})
+
+		It("should keep the finalizer when the Grafana admin Secret exists but is unusable", func() {
+			brokenSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: adminSecretName, Namespace: adminSecretNamespace},
+				Data:       map[string][]byte{"admin-user": []byte("admin")},
+			}
+			Expect(k8sClient.Create(ctx, brokenSecret)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, brokenSecret) })
+
+			_, err := reconciler.Reconcile(ctx, request)
+			Expect(err).To(HaveOccurred())
+
+			remaining := &v1alpha2.GrafanaOrganization{}
+			Expect(k8sClient.Get(ctx, request.NamespacedName, remaining)).To(Succeed())
+			Expect(remaining.Finalizers).To(ContainElement(v1alpha2.GrafanaOrganizationFinalizer))
 		})
 	})
 })

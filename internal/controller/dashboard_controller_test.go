@@ -21,6 +21,8 @@ import (
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/internal/labels"
 	"github.com/giantswarm/observability-operator/internal/mapper"
+	"github.com/giantswarm/observability-operator/pkg/config"
+	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
 
@@ -640,6 +642,49 @@ var _ = Describe("Dashboard Controller", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("dashboard deletion failed"))
 				Expect(result).To(Equal(reconcile.Result{}))
+			})
+		})
+
+		Context("When deleting a dashboard after Grafana is gone", func() {
+			BeforeEach(func() {
+				// The real client generator, pointed at an admin Secret that does not exist,
+				// as after the Grafana that owned it was uninstalled.
+				reconciler.grafanaClientGen = grafanaclient.NewDefaultGrafanaClientGenerator(config.GrafanaConfig{
+					AdminSecretNamespace: dashboardNamespace,
+					AdminSecretName:      "grafana-uninstalled",
+				})
+
+				dashboardConfigMap.Finalizers = []string{DashboardFinalizer}
+				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
+				Expect(k8sClient.Delete(ctx, dashboardConfigMap)).To(Succeed())
+			})
+
+			It("should keep the finalizer when the Grafana admin Secret exists but is unusable", func() {
+				brokenSecret := &v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "grafana-uninstalled", Namespace: dashboardNamespace},
+					Data:       map[string][]byte{"admin-user": []byte("admin")},
+				}
+				Expect(k8sClient.Create(ctx, brokenSecret)).To(Succeed())
+				DeferCleanup(func() { _ = k8sClient.Delete(ctx, brokenSecret) })
+
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+				Expect(err).To(HaveOccurred())
+
+				remaining := &v1.ConfigMap{}
+				Expect(k8sClient.Get(ctx, namespacedName, remaining)).To(Succeed())
+				Expect(remaining.Finalizers).To(ContainElement(DashboardFinalizer))
+
+				// Release the finalizer so the next spec starts clean.
+				remaining.Finalizers = nil
+				Expect(k8sClient.Update(ctx, remaining)).To(Succeed())
+			})
+
+			It("should release the finalizer when the Grafana admin Secret no longer exists", func() {
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+				Expect(err).NotTo(HaveOccurred())
+
+				err = k8sClient.Get(ctx, namespacedName, &v1.ConfigMap{})
+				Expect(apierrors.IsNotFound(err)).To(BeTrue())
 			})
 		})
 
