@@ -7,7 +7,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/api/v1alpha2"
 )
 
 const (
@@ -32,7 +32,7 @@ func NewTenantRepository(client client.Client) TenantRepository {
 
 // List retrieves a unique, sorted list of tenant IDs from all active GrafanaOrganization resources.
 func (r KubernetesTenantRepository) List(ctx context.Context) ([]string, error) {
-	var grafanaOrganizations v1alpha1.GrafanaOrganizationList
+	var grafanaOrganizations v1alpha2.GrafanaOrganizationList
 	if err := r.Client.List(ctx, &grafanaOrganizations); err != nil {
 		return nil, fmt.Errorf("failed to list GrafanaOrganizations: %w", err)
 	}
@@ -48,7 +48,7 @@ func (r KubernetesTenantRepository) List(ctx context.Context) ([]string, error) 
 		}
 
 		for _, tenant := range organization.Spec.Tenants {
-			uniqueTenants[string(tenant)] = struct{}{}
+			uniqueTenants[string(tenant.Name)] = struct{}{}
 		}
 	}
 

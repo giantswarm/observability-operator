@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
+	observabilityv1alpha2 "github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/pkg/alerting/alertmanager"
 	"github.com/giantswarm/observability-operator/pkg/common/tenancy"
 )
@@ -54,7 +54,7 @@ var _ = Describe("Alertmanager Controller", func() {
 	var (
 		testCtx        context.Context
 		secret         *v1.Secret
-		grafanaOrg     *observabilityv1alpha1.GrafanaOrganization
+		grafanaOrg     *observabilityv1alpha2.GrafanaOrganization
 		namespacedName types.NamespacedName
 		svc            *mockAlertmanagerService
 		reconciler     AlertmanagerReconciler
@@ -99,12 +99,12 @@ var _ = Describe("Alertmanager Controller", func() {
 		svc = &mockAlertmanagerService{}
 
 		// Create the GrafanaOrganization that exposes testTenant in the TenantRepository.
-		grafanaOrg = &observabilityv1alpha1.GrafanaOrganization{
+		grafanaOrg = &observabilityv1alpha2.GrafanaOrganization{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-alertmanager-org"},
-			Spec: observabilityv1alpha1.GrafanaOrganizationSpec{
+			Spec: observabilityv1alpha2.GrafanaOrganizationSpec{
 				DisplayName: "Test Alertmanager Org",
-				RBAC:        &observabilityv1alpha1.RBAC{Admins: []string{"admin"}},
-				Tenants:     []observabilityv1alpha1.TenantID{observabilityv1alpha1.TenantID(testTenant)},
+				RBAC:        &observabilityv1alpha2.RBAC{Admins: []string{"admin"}},
+				Tenants:     []observabilityv1alpha2.TenantConfig{{Name: observabilityv1alpha2.TenantID(testTenant)}},
 			},
 		}
 		err := k8sClient.Create(testCtx, grafanaOrg)

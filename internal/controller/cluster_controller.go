@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/giantswarm/observability-operator/api/v1alpha1"
+	"github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/pkg/agent"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors"
 	"github.com/giantswarm/observability-operator/pkg/agent/collectors/events"
@@ -210,7 +211,7 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return requests
 			})).
 		// Reconcile all clusters when the grafana organizations have changed to update agents configs with the new list of tenants where metrics are sent to.
-		Watches(&v1alpha1.GrafanaOrganization{},
+		Watches(&v1alpha2.GrafanaOrganization{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
 				logger := log.FromContext(ctx)
 				var clusters clusterv1.ClusterList
