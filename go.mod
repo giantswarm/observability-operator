@@ -20,7 +20,7 @@ require (
 	github.com/prometheus/alertmanager v0.34.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.72.1
-	github.com/prometheus/prometheus v0.315.0
+	github.com/prometheus/prometheus v0.315.1
 	github.com/sanity-io/litter v1.5.8
 	github.com/stretchr/testify v1.12.1
 	k8s.io/api v0.37.1
