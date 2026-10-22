@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.86.0] - 2026-10-22
+
 ### Fixed
 
 - Deleting a `GrafanaOrganization` or dashboard ConfigMap no longer gets stuck once Grafana's admin Secret is gone.
@@ -1330,7 +1332,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.85.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.86.0...HEAD
+[0.86.0]: https://github.com/giantswarm/observability-operator/compare/v0.85.0...v0.86.0
 [0.85.0]: https://github.com/giantswarm/observability-operator/compare/v0.84.1...v0.85.0
 [0.84.1]: https://github.com/giantswarm/observability-operator/compare/v0.84.0...v0.84.1
 [0.84.0]: https://github.com/giantswarm/observability-operator/compare/v0.83.0...v0.84.0
