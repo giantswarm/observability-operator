@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Deleting a `GrafanaOrganization` or dashboard ConfigMap no longer gets stuck once Grafana's admin Secret is gone.
+
 ## [0.85.0] - 2026-10-21
 
 ### Changed
