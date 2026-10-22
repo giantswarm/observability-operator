@@ -296,6 +296,49 @@
                         "ingressSecretName": { "type": "string" },
                         "httprouteSecretName": { "type": "string" }
                     }
+                },
+                "mimirRulesLivenessProbe": {
+                    "type": "object",
+                    "description": "Liveness probe restarting alloy-metrics when a mimir.rules.kubernetes component stays unhealthy. Requires httpTimeout <= probeTimeout and probeTimeout + 2s <= timeoutSeconds.",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enable the probe. Disabled, alloy-metrics has no liveness probe."
+                        },
+                        "httpTimeout": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
+                            "description": "Timeout of each HTTP request the probe sends (e.g., '20s')"
+                        },
+                        "probeTimeout": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
+                            "description": "Total budget of one probe run (e.g., '50s'). The probe succeeds when exceeded."
+                        },
+                        "healthAgeMargin": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
+                            "description": "Margin added to the component sync_interval (e.g., '60s'). The probe only fails for a component health older than both."
+                        },
+                        "unhealthyMessagePattern": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": "^[^\\n\\r]+$",
+                            "description": "Extended regular expression matched against the component health message, on one line."
+                        },
+                        "mimirReadyPath": {
+                            "type": "string",
+                            "pattern": "^/[^\\s\\x00-\\x1f\\x7f]*$",
+                            "description": "Path the probe requests on the Mimir ruler to check it answers."
+                        },
+                        "initialDelaySeconds": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+                        "periodSeconds": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+                        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+                        "failureThreshold": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+                    }
                 }
             }
         },
