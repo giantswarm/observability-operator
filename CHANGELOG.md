@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- When two `AgentCredential`s share a backend and agent name, only the oldest one's password is accepted by the gateway, and the others report `GatewaySynced=False` with reason `DuplicateAgentName` until they take over.
+- When two `AgentCredential`s share a backend and agent name, only the oldest one's password is accepted by the gateway.
 
 ## [0.86.0] - 2026-10-22
 
