@@ -319,6 +319,10 @@
                             "properties": {
                                 "enabled": {
                                     "type": "boolean"
+                                },
+                                "ingressSecretEnabled": {
+                                    "type": "boolean",
+                                    "description": "Also write the nginx Ingress htpasswd Secret (key `auth`) for each backend. The HTTPRoute Secret is always written."
                                 }
                             }
                         },

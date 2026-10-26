@@ -21,15 +21,34 @@ import (
 type Aggregator struct {
 	Client         client.Client
 	GatewayConfigs GatewayConfigs
+	// IngressSecretEnabled controls whether the nginx Ingress htpasswd Secret
+	// is written alongside the HTTPRoute one. Off by default.
+	IngressSecretEnabled bool
+}
+
+// AggregatorOption configures an Aggregator.
+type AggregatorOption func(*Aggregator)
+
+// WithIngressSecret enables or disables writing the nginx Ingress htpasswd
+// Secret. The HTTPRoute Secret is always written.
+func WithIngressSecret(enabled bool) AggregatorOption {
+	return func(a *Aggregator) {
+		a.IngressSecretEnabled = enabled
+	}
 }
 
 // NewAggregator builds an Aggregator.
-func NewAggregator(c client.Client, configs GatewayConfigs) *Aggregator {
-	return &Aggregator{Client: c, GatewayConfigs: configs}
+func NewAggregator(c client.Client, configs GatewayConfigs, opts ...AggregatorOption) *Aggregator {
+	a := &Aggregator{Client: c, GatewayConfigs: configs}
+	for _, opt := range opts {
+		opt(a)
+	}
+	return a
 }
 
-// Aggregate rewrites both gateway secrets (ingress and HTTPRoute) for the given
-// backend to reflect the current set of AgentCredentials.
+// Aggregate rewrites the HTTPRoute gateway secret, and the Ingress one when
+// enabled, for the given backend to reflect the current set of
+// AgentCredentials. An existing Ingress secret is left untouched when disabled.
 func (a *Aggregator) Aggregate(ctx context.Context, backend observabilityv1alpha1.CredentialBackend) error {
 	cfg, ok := a.GatewayConfigs[backend]
 	if !ok {
@@ -41,8 +60,10 @@ func (a *Aggregator) Aggregate(ctx context.Context, backend observabilityv1alpha
 		return fmt.Errorf("failed to build htpasswd content for backend %q: %w", backend, err)
 	}
 
-	if err := a.writeGatewaySecret(ctx, cfg.Namespace, cfg.IngressSecretName, cfg.IngressDataKey, content); err != nil {
-		return fmt.Errorf("failed to update ingress gateway secret: %w", err)
+	if a.IngressSecretEnabled {
+		if err := a.writeGatewaySecret(ctx, cfg.Namespace, cfg.IngressSecretName, cfg.IngressDataKey, content); err != nil {
+			return fmt.Errorf("failed to update ingress gateway secret: %w", err)
+		}
 	}
 
 	if err := a.writeGatewaySecret(ctx, cfg.Namespace, cfg.HTTPRouteSecretName, cfg.HTTPRouteDataKey, content); err != nil {

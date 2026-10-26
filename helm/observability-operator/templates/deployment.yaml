@@ -25,6 +25,7 @@ spec:
         args:
         - --leader-elect
         - --controllers-agent-credential-enabled={{ $.Values.operator.controllers.agentCredential.enabled }}
+        - --controllers-agent-credential-ingress-secret-enabled={{ $.Values.operator.controllers.agentCredential.ingressSecretEnabled }}
         - --controllers-alertmanager-enabled={{ $.Values.operator.controllers.alertmanager.enabled }}
         - --controllers-cluster-enabled={{ $.Values.operator.controllers.cluster.enabled }}
         - --controllers-dashboard-enabled={{ $.Values.operator.controllers.dashboard.enabled }}

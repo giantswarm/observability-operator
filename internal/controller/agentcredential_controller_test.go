@@ -102,14 +102,43 @@ var _ = Describe("AgentCredential Controller", func() {
 		Expect(getConditionStatus(updated, observabilityv1alpha1.AgentCredentialConditionReady)).To(Equal(metav1.ConditionTrue))
 		Expect(getConditionStatus(updated, observabilityv1alpha1.AgentCredentialConditionGatewaySynced)).To(Equal(metav1.ConditionTrue))
 
-		By("aggregating the entry into both gateway secrets")
-		ingress := &corev1.Secret{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress)).To(Succeed())
-		Expect(string(ingress.Data[credential.IngressDataKey])).To(HavePrefix("agent-1:{SHA}"))
-
+		By("aggregating the entry into the HTTPRoute gateway secret")
 		httproute := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute)).To(Succeed())
 		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(HavePrefix("agent-1:{SHA}"))
+
+		By("not writing the Ingress gateway secret by default")
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: ingressSecretName}, &corev1.Secret{})
+		Expect(apierrors.IsNotFound(err)).To(BeTrue(), "expected Ingress secret to be absent, got %v", err)
+	})
+
+	It("also aggregates into the Ingress gateway secret when enabled", func() {
+		const (
+			enabledIngressSecretName   = "ingress-enabled-ingress-auth"
+			enabledHTTPRouteSecretName = "ingress-enabled-httproute-auth"
+		)
+		// Dedicated secret names so the default-off cases never see this Ingress secret.
+		reconciler.Aggregator = credential.NewAggregator(k8sClient, credential.GatewayConfigs{
+			observabilityv1alpha1.CredentialBackendMetrics: credential.NewGatewayConfig(gatewayNamespace, enabledIngressSecretName, enabledHTTPRouteSecretName),
+		}, credential.WithIngressSecret(true))
+
+		cred := &observabilityv1alpha1.AgentCredential{
+			ObjectMeta: metav1.ObjectMeta{Name: "ingress-on", Namespace: ns},
+			Spec: observabilityv1alpha1.AgentCredentialSpec{
+				Backend:   observabilityv1alpha1.CredentialBackendMetrics,
+				AgentName: "ingress-on-agent",
+			},
+		}
+		Expect(k8sClient.Create(ctx, cred)).To(Succeed())
+		reconcileTwice("ingress-on")
+
+		ingress := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: enabledIngressSecretName}, ingress)).To(Succeed())
+		Expect(string(ingress.Data[credential.IngressDataKey])).To(HavePrefix("ingress-on-agent:{SHA}"))
+
+		httproute := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: enabledHTTPRouteSecretName}, httproute)).To(Succeed())
+		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(HavePrefix("ingress-on-agent:{SHA}"))
 	})
 
 	It("preserves the password across reconciles", func() {
@@ -183,9 +212,9 @@ var _ = Describe("AgentCredential Controller", func() {
 		reconcileTwice(del)
 
 		// Both entries are present in the gateway secret.
-		ingress := &corev1.Secret{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: "tempo-ingress"}, ingress)).To(Succeed())
-		Expect(strings.Count(string(ingress.Data[credential.IngressDataKey]), "\n")).To(Equal(1))
+		httproute := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: "tempo-httproute"}, httproute)).To(Succeed())
+		Expect(strings.Count(string(httproute.Data[credential.HTTPRouteDataKey]), "\n")).To(Equal(1))
 
 		// Delete one credential — the controller's finalizer must rewrite the
 		// gateway secret without the deleted entry.
@@ -193,8 +222,8 @@ var _ = Describe("AgentCredential Controller", func() {
 		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: del}})
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: "tempo-ingress"}, ingress)).To(Succeed())
-		got := string(ingress.Data[credential.IngressDataKey])
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: "tempo-httproute"}, httproute)).To(Succeed())
+		got := string(httproute.Data[credential.HTTPRouteDataKey])
 		Expect(got).To(HavePrefix("keep-agent:{SHA}"))
 		Expect(got).NotTo(ContainSubstring("del-agent"))
 

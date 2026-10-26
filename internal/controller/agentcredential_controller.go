@@ -54,7 +54,7 @@ func SetupAgentCredentialReconciler(mgr manager.Manager, cfg config.Config) erro
 	r := &AgentCredentialReconciler{
 		Client:          mgr.GetClient(),
 		Renderer:        credential.NewRenderer(mgr.GetClient()),
-		Aggregator:      credential.NewAggregator(mgr.GetClient(), gatewayConfigs),
+		Aggregator:      credential.NewAggregator(mgr.GetClient(), gatewayConfigs, credential.WithIngressSecret(cfg.Operator.Controllers.AgentCredential.IngressSecretEnabled)),
 		finalizerHelper: NewFinalizerHelper(mgr.GetClient(), observabilityv1alpha1.AgentCredentialFinalizer),
 	}
 

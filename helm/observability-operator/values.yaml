@@ -264,6 +264,8 @@ operator:
   controllers:
     agentCredential:
       enabled: true
+      # -- Also write the nginx Ingress htpasswd Secret (key `auth`) for each backend. The HTTPRoute Secret is always written.
+      ingressSecretEnabled: false
     alertmanager:
       enabled: true
     cluster:

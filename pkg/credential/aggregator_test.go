@@ -21,14 +21,14 @@ import (
 const (
 	ns1 = "ns1"
 
-	gatewayNamespace   = "mimir"
-	ingressSecretName  = "mimir-gateway-ingress-auth"
-	httprouteSecretKey = "mimir-gateway-httproute-auth"
+	gatewayNamespace    = "mimir"
+	ingressSecretName   = "mimir-gateway-ingress-auth"
+	httprouteSecretName = "mimir-gateway-httproute-auth"
 )
 
 func newGatewayConfigs() GatewayConfigs {
 	return GatewayConfigs{
-		observabilityv1alpha1.CredentialBackendMetrics: NewGatewayConfig(gatewayNamespace, ingressSecretName, httprouteSecretKey),
+		observabilityv1alpha1.CredentialBackendMetrics: NewGatewayConfig(gatewayNamespace, ingressSecretName, httprouteSecretName),
 	}
 }
 
@@ -56,10 +56,10 @@ func TestAggregate_BuildsSortedHtpasswd(t *testing.T) {
 
 	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
 
-	ingress := &corev1.Secret{}
-	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
 
-	got := string(ingress.Data[IngressDataKey])
+	got := string(httproute.Data[HTTPRouteDataKey])
 	expected := strings.Join([]string{"a:{SHA}yy", "b:{SHA}xx"}, "\n")
 	assert.Equal(t, expected, got, "expected entries sorted alphabetically and only metrics-backend entries")
 }
@@ -80,10 +80,10 @@ func TestAggregate_ExcludesDeletingCredentials(t *testing.T) {
 
 	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
 
-	ingress := &corev1.Secret{}
-	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
 
-	got := string(ingress.Data[IngressDataKey])
+	got := string(httproute.Data[HTTPRouteDataKey])
 	assert.Equal(t, "keep:{SHA}yy", got)
 }
 
@@ -96,9 +96,9 @@ func TestAggregate_NoCredentials_WritesEmpty(t *testing.T) {
 
 	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
 
-	ingress := &corev1.Secret{}
-	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
-	assert.Empty(t, string(ingress.Data[IngressDataKey]))
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
+	assert.Empty(t, string(httproute.Data[HTTPRouteDataKey]))
 }
 
 func TestAggregate_MissingNamespace_ReturnsNil(t *testing.T) {
@@ -112,8 +112,8 @@ func TestAggregate_MissingNamespace_ReturnsNil(t *testing.T) {
 
 	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
 
-	ingress := &corev1.Secret{}
-	err := c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress)
+	httproute := &corev1.Secret{}
+	err := c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute)
 	assert.True(t, apierrors.IsNotFound(err), "gateway secret should not have been created in a missing namespace")
 }
 
@@ -152,7 +152,63 @@ func TestAggregate_SkipsCredentialsWithoutSecret(t *testing.T) {
 
 	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
 
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
+	assert.Equal(t, "with:{SHA}xx", string(httproute.Data[HTTPRouteDataKey]))
+}
+
+func TestAggregate_SkipsIngressSecretByDefault(t *testing.T) {
+	scheme := newScheme(t)
+	gwNs := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: gatewayNamespace}}
+	cred, secret := credentialWithSecret("a", ns1, "a", observabilityv1alpha1.CredentialBackendMetrics, "a:{SHA}yy")
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(gwNs, cred, secret).Build()
+	a := NewAggregator(c, newGatewayConfigs())
+
+	require.NoError(t, a.Aggregate(t.Context(), observabilityv1alpha1.CredentialBackendMetrics))
+
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(t.Context(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
+	assert.Equal(t, "a:{SHA}yy", string(httproute.Data[HTTPRouteDataKey]))
+
+	err := c.Get(t.Context(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, &corev1.Secret{})
+	assert.True(t, apierrors.IsNotFound(err), "ingress secret must not be written unless enabled")
+}
+
+func TestAggregate_WritesIngressSecretWhenEnabled(t *testing.T) {
+	scheme := newScheme(t)
+	gwNs := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: gatewayNamespace}}
+	cred, secret := credentialWithSecret("a", ns1, "a", observabilityv1alpha1.CredentialBackendMetrics, "a:{SHA}yy")
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(gwNs, cred, secret).Build()
+	a := NewAggregator(c, newGatewayConfigs(), WithIngressSecret(true))
+
+	require.NoError(t, a.Aggregate(t.Context(), observabilityv1alpha1.CredentialBackendMetrics))
+
 	ingress := &corev1.Secret{}
-	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
-	assert.Equal(t, "with:{SHA}xx", string(ingress.Data[IngressDataKey]))
+	require.NoError(t, c.Get(t.Context(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
+	assert.Equal(t, "a:{SHA}yy", string(ingress.Data[IngressDataKey]))
+
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(t.Context(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
+	assert.Equal(t, "a:{SHA}yy", string(httproute.Data[HTTPRouteDataKey]))
+}
+
+func TestAggregate_LeavesExistingIngressSecretInPlaceWhenDisabled(t *testing.T) {
+	scheme := newScheme(t)
+	gwNs := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: gatewayNamespace}}
+	existing := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: ingressSecretName, Namespace: gatewayNamespace},
+		Data:       map[string][]byte{IngressDataKey: []byte("old:{SHA}zz")},
+	}
+	cred, secret := credentialWithSecret("a", ns1, "a", observabilityv1alpha1.CredentialBackendMetrics, "a:{SHA}yy")
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(gwNs, existing, cred, secret).Build()
+	a := NewAggregator(c, newGatewayConfigs())
+
+	require.NoError(t, a.Aggregate(t.Context(), observabilityv1alpha1.CredentialBackendMetrics))
+
+	ingress := &corev1.Secret{}
+	require.NoError(t, c.Get(t.Context(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
+	assert.Equal(t, "old:{SHA}zz", string(ingress.Data[IngressDataKey]), "existing ingress secret must be left untouched")
 }

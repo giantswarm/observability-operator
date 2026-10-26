@@ -44,12 +44,13 @@ import (
 
 const (
 	// Operator configuration flag names
-	flagOperatorControllersAgentCredentialEnabled     = "controllers-agent-credential-enabled"
-	flagOperatorControllersAlertmanagerEnabled        = "controllers-alertmanager-enabled"
-	flagOperatorControllersClusterEnabled             = "controllers-cluster-enabled"
-	flagOperatorControllersDashboardEnabled           = "controllers-dashboard-enabled"
-	flagOperatorControllersGrafanaOrganizationEnabled = "controllers-grafana-organization-enabled"
-	flagOperatorControllersLogExportEnabled           = "controllers-log-export-enabled"
+	flagOperatorControllersAgentCredentialEnabled              = "controllers-agent-credential-enabled"
+	flagOperatorControllersAgentCredentialIngressSecretEnabled = "controllers-agent-credential-ingress-secret-enabled"
+	flagOperatorControllersAlertmanagerEnabled                 = "controllers-alertmanager-enabled"
+	flagOperatorControllersClusterEnabled                      = "controllers-cluster-enabled"
+	flagOperatorControllersDashboardEnabled                    = "controllers-dashboard-enabled"
+	flagOperatorControllersGrafanaOrganizationEnabled          = "controllers-grafana-organization-enabled"
+	flagOperatorControllersLogExportEnabled                    = "controllers-log-export-enabled"
 
 	flagMetricsBindAddress     = "metrics-bind-address"
 	flagMetricsCertPath        = "metrics-cert-path"
@@ -209,6 +210,8 @@ func parseFlags() (err error) {
 	// Operator configuration flags
 	pflag.BoolVar(&cfg.Operator.Controllers.AgentCredential.Enabled, flagOperatorControllersAgentCredentialEnabled, true,
 		"Enable the agent credential controller. Required by the cluster controller. Disabling this also disables the cluster controller.")
+	pflag.BoolVar(&cfg.Operator.Controllers.AgentCredential.IngressSecretEnabled, flagOperatorControllersAgentCredentialIngressSecretEnabled, false,
+		"Also write the nginx Ingress htpasswd Secret (key \"auth\") for each backend. The HTTPRoute Secret is always written.")
 	pflag.BoolVar(&cfg.Operator.Controllers.Alertmanager.Enabled, flagOperatorControllersAlertmanagerEnabled, true,
 		"Enable the alertmanager controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.Cluster.Enabled, flagOperatorControllersClusterEnabled, true,
