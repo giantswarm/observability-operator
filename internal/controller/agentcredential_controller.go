@@ -168,10 +168,7 @@ func (r *AgentCredentialReconciler) reconcileCreate(ctx context.Context, cred *o
 	if added {
 		return ctrl.Result{}, nil
 	}
-
-	// Ready and GatewaySynced are set on the in-memory object as each step
-	// completes and written together by a single status update at the end (or
-	// on the first failure), so neither write clobbers the other.
+	
 	secret, err := r.Renderer.Render(ctx, cred)
 	if err != nil {
 		operatormetrics.AgentCredentialReconcileErrors.WithLabelValues(string(cred.Spec.Backend), "render").Inc()
