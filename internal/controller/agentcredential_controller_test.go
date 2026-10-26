@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -72,6 +73,76 @@ var _ = Describe("AgentCredential Controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 	}
 
+	newCredential := func(name, agentName string) *observabilityv1alpha1.AgentCredential {
+		return &observabilityv1alpha1.AgentCredential{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: observabilityv1alpha1.AgentCredentialSpec{
+				Backend:   observabilityv1alpha1.CredentialBackendMetrics,
+				AgentName: agentName,
+			},
+		}
+	}
+
+	// gatewayEntries returns the metrics gateway htpasswd lines for the given username.
+	gatewayEntries := func(g Gomega, agentName string) []string {
+		ingress := &corev1.Secret{}
+		g.Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress)).To(Succeed())
+		var entries []string
+		for line := range strings.SplitSeq(string(ingress.Data[credential.IngressDataKey]), "\n") {
+			if strings.HasPrefix(line, agentName+":") {
+				entries = append(entries, line)
+			}
+		}
+		return entries
+	}
+
+	renderedHtpasswd := func(g Gomega, secretName string) string {
+		secret := &corev1.Secret{}
+		g.Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretName}, secret)).To(Succeed())
+		return string(secret.Data[credential.SecretKeyHtpasswd])
+	}
+
+	Context("when two credentials share a backend and agent name", func() {
+		var agentName string
+
+		BeforeEach(func() {
+			// The namespace name is unique per test, so no other test's credential shares this agent name.
+			agentName = ns
+			// dup-a is created first and also wins the name tie-break, so it is the oldest either way.
+			Expect(k8sClient.Create(ctx, newCredential("dup-a", agentName))).To(Succeed())
+			Expect(k8sClient.Create(ctx, newCredential("dup-b", agentName))).To(Succeed())
+			Expect(k8sClient.Create(ctx, newCredential("dup-other", agentName+"-other"))).To(Succeed())
+			reconcileTwice("dup-a")
+			reconcileTwice("dup-b")
+			reconcileTwice("dup-other")
+		})
+
+		It("serves only the oldest credential's entry in the gateway htpasswd", func() {
+			Expect(gatewayEntries(Default, agentName)).To(Equal([]string{renderedHtpasswd(Default, "dup-a")}))
+			Expect(gatewayEntries(Default, agentName+"-other")).To(HaveLen(1))
+
+			winner := &observabilityv1alpha1.AgentCredential{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: "dup-a"}, winner)).To(Succeed())
+			Expect(getConditionStatus(winner, observabilityv1alpha1.AgentCredentialConditionGatewaySynced)).To(Equal(metav1.ConditionTrue))
+		})
+
+		It("renders the loser's Secret and reports it as a duplicate of the winner", func() {
+			loser := &observabilityv1alpha1.AgentCredential{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: ns, Name: "dup-b"}, loser)).To(Succeed())
+
+			Expect(loser.Status.SecretRef).NotTo(BeNil())
+			Expect(loser.Status.SecretRef.Name).To(Equal("dup-b"))
+			Expect(renderedHtpasswd(Default, "dup-b")).To(HavePrefix(agentName + ":{SHA}"))
+			Expect(getConditionStatus(loser, observabilityv1alpha1.AgentCredentialConditionReady)).To(Equal(metav1.ConditionTrue))
+
+			synced := meta.FindStatusCondition(loser.Status.Conditions, observabilityv1alpha1.AgentCredentialConditionGatewaySynced)
+			Expect(synced).NotTo(BeNil())
+			Expect(synced.Status).To(Equal(metav1.ConditionFalse))
+			Expect(synced.Reason).To(Equal("DuplicateAgentName"))
+			Expect(synced.Message).To(ContainSubstring(ns + "/dup-a"))
+		})
+	})
+
 	It("renders a Secret with htpasswd, status, and aggregates the gateway secret", func() {
 		cred := &observabilityv1alpha1.AgentCredential{
 			ObjectMeta: metav1.ObjectMeta{Name: ac1, Namespace: ns},
@@ -105,11 +176,11 @@ var _ = Describe("AgentCredential Controller", func() {
 		By("aggregating the entry into both gateway secrets")
 		ingress := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress)).To(Succeed())
-		Expect(string(ingress.Data[credential.IngressDataKey])).To(HavePrefix("agent-1:{SHA}"))
+		Expect(string(ingress.Data[credential.IngressDataKey])).To(MatchRegexp(`(?m)^agent-1:\{SHA\}`))
 
 		httproute := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute)).To(Succeed())
-		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(HavePrefix("agent-1:{SHA}"))
+		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(MatchRegexp(`(?m)^agent-1:\{SHA\}`))
 	})
 
 	It("preserves the password across reconciles", func() {

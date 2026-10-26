@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -155,4 +156,68 @@ func TestAggregate_SkipsCredentialsWithoutSecret(t *testing.T) {
 	ingress := &corev1.Secret{}
 	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
 	assert.Equal(t, "with:{SHA}xx", string(ingress.Data[IngressDataKey]))
+}
+
+func TestAggregate_DuplicateAgentName_WritesOnlyOldest(t *testing.T) {
+	older := metav1.NewTime(metav1.Now().Add(-time.Hour))
+	newer := metav1.Now()
+
+	tests := []struct {
+		name     string
+		first    *observabilityv1alpha1.AgentCredential
+		second   *observabilityv1alpha1.AgentCredential
+		expected string
+	}{
+		{
+			name:     "older creation timestamp wins",
+			first:    newDuplicate("z-old", "ns2", older, "dup:{SHA}old"),
+			second:   newDuplicate("a-new", ns1, newer, "dup:{SHA}new"),
+			expected: "dup:{SHA}old",
+		},
+		{
+			name:     "same timestamp falls back to namespace",
+			first:    newDuplicate("z", ns1, older, "dup:{SHA}ns1"),
+			second:   newDuplicate("a", "ns2", older, "dup:{SHA}ns2"),
+			expected: "dup:{SHA}ns1",
+		},
+		{
+			name:     "same timestamp and namespace falls back to name",
+			first:    newDuplicate("a", ns1, older, "dup:{SHA}a"),
+			second:   newDuplicate("b", ns1, older, "dup:{SHA}b"),
+			expected: "dup:{SHA}a",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			scheme := newScheme(t)
+			gwNs := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: gatewayNamespace}}
+			other, otherSecret := credentialWithSecret("other", ns1, "other", observabilityv1alpha1.CredentialBackendMetrics, "other:{SHA}zz")
+
+			objs := []client.Object{gwNs, other, otherSecret}
+			for _, cred := range []*observabilityv1alpha1.AgentCredential{tc.first, tc.second} {
+				objs = append(objs, cred, &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: cred.Name, Namespace: cred.Namespace},
+					Data:       map[string][]byte{SecretKeyHtpasswd: []byte(cred.Annotations["htpasswd"])},
+				})
+			}
+			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+			a := NewAggregator(c, newGatewayConfigs())
+
+			require.NoError(t, a.Aggregate(t.Context(), observabilityv1alpha1.CredentialBackendMetrics))
+
+			ingress := &corev1.Secret{}
+			require.NoError(t, c.Get(t.Context(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
+			assert.Equal(t, tc.expected+"\nother:{SHA}zz", string(ingress.Data[IngressDataKey]))
+		})
+	}
+}
+
+// newDuplicate returns a metrics AgentCredential named "dup" whose rendered
+// htpasswd entry is carried in an annotation for the test to write out.
+func newDuplicate(name, namespace string, created metav1.Time, htpasswd string) *observabilityv1alpha1.AgentCredential {
+	cred := newAgentCredential(name, namespace, "dup", observabilityv1alpha1.CredentialBackendMetrics)
+	cred.CreationTimestamp = created
+	cred.Annotations = map[string]string{"htpasswd": htpasswd}
+	return cred
 }

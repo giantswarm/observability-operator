@@ -54,7 +54,9 @@ func (a *Aggregator) Aggregate(ctx context.Context, backend observabilityv1alpha
 
 // buildHtpasswdContent collects every htpasswd entry from AgentCredentials for
 // the given backend and returns the aggregated, deterministic htpasswd content.
-// CRs being deleted are ignored so the gateway drops them immediately.
+// CRs being deleted are ignored so the gateway drops them immediately. When
+// several CRs share an agent name, only the owner's entry is written (see
+// AgentNameOwners).
 func (a *Aggregator) buildHtpasswdContent(ctx context.Context, backend observabilityv1alpha1.CredentialBackend) (string, error) {
 	credentials := &observabilityv1alpha1.AgentCredentialList{}
 	if err := a.Client.List(ctx, credentials); err != nil {
@@ -62,15 +64,7 @@ func (a *Aggregator) buildHtpasswdContent(ctx context.Context, backend observabi
 	}
 
 	var entries []string
-	for i := range credentials.Items {
-		cred := &credentials.Items[i]
-		if cred.Spec.Backend != backend {
-			continue
-		}
-		if !cred.DeletionTimestamp.IsZero() {
-			continue
-		}
-
+	for _, cred := range AgentNameOwners(credentials.Items, backend) {
 		secret := &corev1.Secret{}
 		key := client.ObjectKey{Namespace: cred.Namespace, Name: SecretName(cred)}
 		if err := a.Client.Get(ctx, key, secret); err != nil {

@@ -48,6 +48,8 @@ The validating webhook rejects:
 
 To change any of these fields, delete the CR and create a new one.
 
+Without the webhook, or when two creates race past it, duplicates are resolved by the controller: for each `(backend, agentName)`, only the oldest AgentCredential (by creation timestamp, then namespace/name) has its entry in the gateway htpasswd. The others keep `Ready=True` and a rendered Secret, but report `GatewaySynced=False` with reason `DuplicateAgentName`, naming the credential that owns the name. When that credential is deleted or changes its `agentName`, the oldest remaining duplicate is promoted straight away, with its password unchanged.
+
 ## Cluster-backed AgentCredentials
 
 For every CAPI Cluster with an enabled observability backend, the cluster controller creates one AgentCredential per backend:
