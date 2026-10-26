@@ -105,7 +105,7 @@ var _ = Describe("AgentCredential Controller", func() {
 		By("aggregating the entry into the HTTPRoute gateway secret")
 		httproute := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute)).To(Succeed())
-		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(HavePrefix("agent-1:{SHA}"))
+		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(MatchRegexp(`(?m)^agent-1:\{SHA\}`))
 
 		By("not writing the Ingress gateway secret by default")
 		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: ingressSecretName}, &corev1.Secret{})
@@ -118,6 +118,8 @@ var _ = Describe("AgentCredential Controller", func() {
 			enabledHTTPRouteSecretName = "ingress-enabled-httproute-auth"
 		)
 		// Dedicated secret names so the default-off cases never see this Ingress secret.
+		// The aggregated htpasswd holds every metrics credential in the cluster, sorted, so
+		// with randomized spec order other entries can precede ours: match the line, not the prefix.
 		reconciler.Aggregator = credential.NewAggregator(k8sClient, credential.GatewayConfigs{
 			observabilityv1alpha1.CredentialBackendMetrics: credential.NewGatewayConfig(gatewayNamespace, enabledIngressSecretName, enabledHTTPRouteSecretName),
 		}, credential.WithIngressSecret(true))
@@ -134,11 +136,11 @@ var _ = Describe("AgentCredential Controller", func() {
 
 		ingress := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: enabledIngressSecretName}, ingress)).To(Succeed())
-		Expect(string(ingress.Data[credential.IngressDataKey])).To(HavePrefix("ingress-on-agent:{SHA}"))
+		Expect(string(ingress.Data[credential.IngressDataKey])).To(MatchRegexp(`(?m)^ingress-on-agent:\{SHA\}`))
 
 		httproute := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: enabledHTTPRouteSecretName}, httproute)).To(Succeed())
-		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(HavePrefix("ingress-on-agent:{SHA}"))
+		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(MatchRegexp(`(?m)^ingress-on-agent:\{SHA\}`))
 	})
 
 	It("preserves the password across reconciles", func() {
