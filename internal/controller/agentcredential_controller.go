@@ -168,7 +168,7 @@ func (r *AgentCredentialReconciler) reconcileCreate(ctx context.Context, cred *o
 	if added {
 		return ctrl.Result{}, nil
 	}
-	
+
 	secret, err := r.Renderer.Render(ctx, cred)
 	if err != nil {
 		operatormetrics.AgentCredentialReconcileErrors.WithLabelValues(string(cred.Spec.Backend), "render").Inc()
