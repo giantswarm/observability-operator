@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The `AgentCredential` controller no longer writes the nginx Ingress htpasswd Secret by default; set `operator.controllers.agentCredential.ingressSecretEnabled` to `true` to keep it, and existing Ingress Secrets are left in place.
+- The `AgentCredential` controller no longer writes the nginx Ingress htpasswd Secret by default.
 
 ## [0.86.0] - 2026-10-22
 
