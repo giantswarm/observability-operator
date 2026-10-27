@@ -30,7 +30,6 @@ var _ = Describe("AgentCredential Controller duplicate agent name watch", func()
 		interval         = time.Millisecond * 250
 		watchNamespace   = "default"
 		watchGatewayNs   = "mimir-watch"
-		watchIngress     = "mimir-watch-ingress"
 		watchHTTPRoute   = "mimir-watch-httproute"
 		watchAgentName   = "shared-agent"
 		watchWinnerName  = "dup-a"
@@ -74,7 +73,7 @@ var _ = Describe("AgentCredential Controller duplicate agent name watch", func()
 			Expect(err).NotTo(HaveOccurred())
 
 			gatewayConfigs := credential.GatewayConfigs{
-				observabilityv1alpha1.CredentialBackendMetrics: credential.NewGatewayConfig(watchGatewayNs, watchIngress, watchHTTPRoute),
+				observabilityv1alpha1.CredentialBackendMetrics: credential.NewGatewayConfig(watchGatewayNs, watchHTTPRoute),
 			}
 			reconciler := &AgentCredentialReconciler{
 				Client:          mgr.GetClient(),
@@ -98,10 +97,10 @@ var _ = Describe("AgentCredential Controller duplicate agent name watch", func()
 			}
 
 			gatewayEntries := func(g Gomega) []string {
-				ingress := &corev1.Secret{}
-				g.Expect(watchClient.Get(watchCtx, types.NamespacedName{Namespace: watchGatewayNs, Name: watchIngress}, ingress)).To(Succeed())
+				httproute := &corev1.Secret{}
+				g.Expect(watchClient.Get(watchCtx, types.NamespacedName{Namespace: watchGatewayNs, Name: watchHTTPRoute}, httproute)).To(Succeed())
 				var entries []string
-				for line := range strings.SplitSeq(string(ingress.Data[credential.IngressDataKey]), "\n") {
+				for line := range strings.SplitSeq(string(httproute.Data[credential.HTTPRouteDataKey]), "\n") {
 					if strings.HasPrefix(line, watchAgentName+":") {
 						entries = append(entries, line)
 					}

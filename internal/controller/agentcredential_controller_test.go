@@ -22,7 +22,6 @@ import (
 var _ = Describe("AgentCredential Controller", func() {
 	const (
 		gatewayNamespace    = "mimir-test"
-		ingressSecretName   = "mimir-gateway-ingress-auth"
 		httprouteSecretName = "mimir-gateway-httproute-auth"
 		timeout             = time.Second * 10
 		interval            = time.Millisecond * 250
@@ -47,9 +46,9 @@ var _ = Describe("AgentCredential Controller", func() {
 		}
 
 		gatewayConfigs := credential.GatewayConfigs{
-			observabilityv1alpha1.CredentialBackendMetrics: credential.NewGatewayConfig(gatewayNamespace, ingressSecretName, httprouteSecretName),
-			observabilityv1alpha1.CredentialBackendLogs:    credential.NewGatewayConfig(gatewayNamespace, "loki-ingress", "loki-httproute"),
-			observabilityv1alpha1.CredentialBackendTraces:  credential.NewGatewayConfig(gatewayNamespace, "tempo-ingress", "tempo-httproute"),
+			observabilityv1alpha1.CredentialBackendMetrics: credential.NewGatewayConfig(gatewayNamespace, httprouteSecretName),
+			observabilityv1alpha1.CredentialBackendLogs:    credential.NewGatewayConfig(gatewayNamespace, "loki-httproute"),
+			observabilityv1alpha1.CredentialBackendTraces:  credential.NewGatewayConfig(gatewayNamespace, "tempo-httproute"),
 		}
 
 		reconciler = &AgentCredentialReconciler{
@@ -85,10 +84,10 @@ var _ = Describe("AgentCredential Controller", func() {
 
 	// gatewayEntries returns the metrics gateway htpasswd lines for the given username.
 	gatewayEntries := func(g Gomega, agentName string) []string {
-		ingress := &corev1.Secret{}
-		g.Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress)).To(Succeed())
+		httproute := &corev1.Secret{}
+		g.Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute)).To(Succeed())
 		var entries []string
-		for line := range strings.SplitSeq(string(ingress.Data[credential.IngressDataKey]), "\n") {
+		for line := range strings.SplitSeq(string(httproute.Data[credential.HTTPRouteDataKey]), "\n") {
 			if strings.HasPrefix(line, agentName+":") {
 				entries = append(entries, line)
 			}
@@ -173,11 +172,9 @@ var _ = Describe("AgentCredential Controller", func() {
 		Expect(getConditionStatus(updated, observabilityv1alpha1.AgentCredentialConditionReady)).To(Equal(metav1.ConditionTrue))
 		Expect(getConditionStatus(updated, observabilityv1alpha1.AgentCredentialConditionGatewaySynced)).To(Equal(metav1.ConditionTrue))
 
-		By("aggregating the entry into both gateway secrets")
-		ingress := &corev1.Secret{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress)).To(Succeed())
-		Expect(string(ingress.Data[credential.IngressDataKey])).To(MatchRegexp(`(?m)^agent-1:\{SHA\}`))
-
+		By("aggregating the entry into the HTTPRoute gateway secret")
+		// The aggregated htpasswd holds every metrics credential in the cluster, sorted, so
+		// with randomized spec order other entries can precede ours: match the line, not the prefix.
 		httproute := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute)).To(Succeed())
 		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(MatchRegexp(`(?m)^agent-1:\{SHA\}`))
@@ -254,9 +251,9 @@ var _ = Describe("AgentCredential Controller", func() {
 		reconcileTwice(del)
 
 		// Both entries are present in the gateway secret.
-		ingress := &corev1.Secret{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: "tempo-ingress"}, ingress)).To(Succeed())
-		Expect(strings.Count(string(ingress.Data[credential.IngressDataKey]), "\n")).To(Equal(1))
+		httproute := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: "tempo-httproute"}, httproute)).To(Succeed())
+		Expect(strings.Count(string(httproute.Data[credential.HTTPRouteDataKey]), "\n")).To(Equal(1))
 
 		// Delete one credential — the controller's finalizer must rewrite the
 		// gateway secret without the deleted entry.
@@ -264,8 +261,8 @@ var _ = Describe("AgentCredential Controller", func() {
 		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ns, Name: del}})
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: "tempo-ingress"}, ingress)).To(Succeed())
-		got := string(ingress.Data[credential.IngressDataKey])
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: "tempo-httproute"}, httproute)).To(Succeed())
+		got := string(httproute.Data[credential.HTTPRouteDataKey])
 		Expect(got).To(HavePrefix("keep-agent:{SHA}"))
 		Expect(got).NotTo(ContainSubstring("del-agent"))
 

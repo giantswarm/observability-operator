@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- The `AgentCredential` controller no longer writes the nginx Ingress htpasswd Secret, and the `monitoring`, `logging` and `tracing` `gateway.ingressSecretName` values are removed.
+
 ### Fixed
 
 - When two `AgentCredential`s share a backend and agent name, only the oldest one's password is accepted by the gateway.
+- Fix ARM64 images.
 
 ## [0.86.0] - 2026-10-22
 

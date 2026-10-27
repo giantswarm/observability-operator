@@ -114,13 +114,10 @@ const (
 
 	// Gateway configuration flag names
 	flagMonitoringGatewayNamespace           = "monitoring-gateway-namespace"
-	flagMonitoringGatewayIngressSecretName   = "monitoring-gateway-ingress-secret-name"
 	flagMonitoringGatewayHTTPRouteSecretName = "monitoring-gateway-httproute-secret-name"
 	flagLoggingGatewayNamespace              = "logging-gateway-namespace"
-	flagLoggingGatewayIngressSecretName      = "logging-gateway-ingress-secret-name"
 	flagLoggingGatewayHTTPRouteSecretName    = "logging-gateway-httproute-secret-name"
 	flagTracingGatewayNamespace              = "tracing-gateway-namespace"
-	flagTracingGatewayIngressSecretName      = "tracing-gateway-ingress-secret-name"
 	flagTracingGatewayHTTPRouteSecretName    = "tracing-gateway-httproute-secret-name"
 
 	// Logging configuration flag names
@@ -293,8 +290,6 @@ func parseFlags() (err error) {
 		"Enable/disable network monitoring in Alloy configuration")
 	pflag.StringVar(&cfg.Monitoring.Gateway.Namespace, flagMonitoringGatewayNamespace, "mimir",
 		"Kubernetes namespace where the Mimir gateway secrets reside.")
-	pflag.StringVar(&cfg.Monitoring.Gateway.IngressSecretName, flagMonitoringGatewayIngressSecretName, "mimir-gateway-ingress-auth",
-		"Name of the Ingress auth secret in the Mimir gateway namespace.")
 	pflag.StringVar(&cfg.Monitoring.Gateway.HTTPRouteSecretName, flagMonitoringGatewayHTTPRouteSecretName, "mimir-gateway-httproute-auth",
 		"Name of the HTTPRoute auth secret in the Mimir gateway namespace.")
 
@@ -327,8 +322,6 @@ func parseFlags() (err error) {
 		"Enable distributed tracing at the installation level.")
 	pflag.StringVar(&cfg.Tracing.Gateway.Namespace, flagTracingGatewayNamespace, "tempo",
 		"Kubernetes namespace where the Tempo gateway secrets reside.")
-	pflag.StringVar(&cfg.Tracing.Gateway.IngressSecretName, flagTracingGatewayIngressSecretName, "tempo-gateway-ingress-auth",
-		"Name of the Ingress auth secret in the Tempo gateway namespace.")
 	pflag.StringVar(&cfg.Tracing.Gateway.HTTPRouteSecretName, flagTracingGatewayHTTPRouteSecretName, "tempo-gateway-httproute-auth",
 		"Name of the HTTPRoute auth secret in the Tempo gateway namespace.")
 
@@ -347,8 +340,6 @@ func parseFlags() (err error) {
 		"URL to the Loki ruler API for cleaning up rules on cluster deletion")
 	pflag.StringVar(&cfg.Logging.Gateway.Namespace, flagLoggingGatewayNamespace, "loki",
 		"Kubernetes namespace where the Loki gateway secrets reside.")
-	pflag.StringVar(&cfg.Logging.Gateway.IngressSecretName, flagLoggingGatewayIngressSecretName, "loki-gateway-ingress-auth",
-		"Name of the Ingress auth secret in the Loki gateway namespace.")
 	pflag.StringVar(&cfg.Logging.Gateway.HTTPRouteSecretName, flagLoggingGatewayHTTPRouteSecretName, "loki-gateway-httproute-auth",
 		"Name of the HTTPRoute auth secret in the Loki gateway namespace.")
 

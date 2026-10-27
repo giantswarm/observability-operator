@@ -41,17 +41,14 @@ func SetupAgentCredentialReconciler(mgr manager.Manager, cfg config.Config) erro
 	gatewayConfigs := credential.GatewayConfigs{
 		observabilityv1alpha1.CredentialBackendMetrics: credential.NewGatewayConfig(
 			cfg.Monitoring.Gateway.Namespace,
-			cfg.Monitoring.Gateway.IngressSecretName,
 			cfg.Monitoring.Gateway.HTTPRouteSecretName,
 		),
 		observabilityv1alpha1.CredentialBackendLogs: credential.NewGatewayConfig(
 			cfg.Logging.Gateway.Namespace,
-			cfg.Logging.Gateway.IngressSecretName,
 			cfg.Logging.Gateway.HTTPRouteSecretName,
 		),
 		observabilityv1alpha1.CredentialBackendTraces: credential.NewGatewayConfig(
 			cfg.Tracing.Gateway.Namespace,
-			cfg.Tracing.Gateway.IngressSecretName,
 			cfg.Tracing.Gateway.HTTPRouteSecretName,
 		),
 	}

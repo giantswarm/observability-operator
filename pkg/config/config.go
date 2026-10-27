@@ -78,14 +78,12 @@ type EnvironmentConfig struct {
 	CronitorHeartbeatPingKey       string `env:"CRONITOR_HEARTBEAT_PING_KEY"`
 }
 
-// GatewayConfig holds the namespace and secret names for gateway authentication secrets.
+// GatewayConfig holds the namespace and secret name of a gateway authentication secret.
 // These secrets are read by Alloy agents on workload clusters to authenticate with the
 // observability gateways (Mimir, Loki, Tempo).
 type GatewayConfig struct {
 	// Namespace is the Kubernetes namespace where the gateway secrets reside.
 	Namespace string
-	// IngressSecretName is the name of the secret used for Ingress-based auth.
-	IngressSecretName string
 	// HTTPRouteSecretName is the name of the secret used for HTTPRoute-based auth.
 	HTTPRouteSecretName string
 }
