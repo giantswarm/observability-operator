@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking:** the basic-auth username of an `AgentCredential` is now `<namespace>/<name>`, so per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; passwords are kept and agents reading the username from the Secret follow automatically.
+- **Breaking:** the basic-auth username of an `AgentCredential` is now `<namespace>/<name>`, so per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`.
 - **Breaking:** the `observability_operator_agent_credential_info` metric's `agent_name` label is renamed to `username`.
 
 ### Deprecated
