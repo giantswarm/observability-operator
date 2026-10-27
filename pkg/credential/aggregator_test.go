@@ -21,14 +21,13 @@ import (
 const (
 	ns1 = "ns1"
 
-	gatewayNamespace   = "mimir"
-	ingressSecretName  = "mimir-gateway-ingress-auth"
-	httprouteSecretKey = "mimir-gateway-httproute-auth"
+	gatewayNamespace    = "mimir"
+	httprouteSecretName = "mimir-gateway-httproute-auth"
 )
 
 func newGatewayConfigs() GatewayConfigs {
 	return GatewayConfigs{
-		observabilityv1alpha1.CredentialBackendMetrics: NewGatewayConfig(gatewayNamespace, ingressSecretName, httprouteSecretKey),
+		observabilityv1alpha1.CredentialBackendMetrics: NewGatewayConfig(gatewayNamespace, httprouteSecretName),
 	}
 }
 
@@ -56,12 +55,16 @@ func TestAggregate_BuildsSortedHtpasswd(t *testing.T) {
 
 	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
 
-	ingress := &corev1.Secret{}
-	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
 
-	got := string(ingress.Data[IngressDataKey])
+	got := string(httproute.Data[HTTPRouteDataKey])
 	expected := strings.Join([]string{"a:{SHA}yy", "b:{SHA}xx"}, "\n")
 	assert.Equal(t, expected, got, "expected entries sorted alphabetically and only metrics-backend entries")
+
+	gatewaySecrets := &corev1.SecretList{}
+	require.NoError(t, c.List(context.Background(), gatewaySecrets, client.InNamespace(gatewayNamespace)))
+	assert.Len(t, gatewaySecrets.Items, 1, "only the HTTPRoute gateway secret is written")
 }
 
 func TestAggregate_ExcludesDeletingCredentials(t *testing.T) {
@@ -80,10 +83,10 @@ func TestAggregate_ExcludesDeletingCredentials(t *testing.T) {
 
 	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
 
-	ingress := &corev1.Secret{}
-	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
 
-	got := string(ingress.Data[IngressDataKey])
+	got := string(httproute.Data[HTTPRouteDataKey])
 	assert.Equal(t, "keep:{SHA}yy", got)
 }
 
@@ -96,9 +99,9 @@ func TestAggregate_NoCredentials_WritesEmpty(t *testing.T) {
 
 	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
 
-	ingress := &corev1.Secret{}
-	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
-	assert.Empty(t, string(ingress.Data[IngressDataKey]))
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
+	assert.Empty(t, string(httproute.Data[HTTPRouteDataKey]))
 }
 
 func TestAggregate_MissingNamespace_ReturnsNil(t *testing.T) {
@@ -112,8 +115,8 @@ func TestAggregate_MissingNamespace_ReturnsNil(t *testing.T) {
 
 	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
 
-	ingress := &corev1.Secret{}
-	err := c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress)
+	httproute := &corev1.Secret{}
+	err := c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute)
 	assert.True(t, apierrors.IsNotFound(err), "gateway secret should not have been created in a missing namespace")
 }
 
@@ -152,7 +155,7 @@ func TestAggregate_SkipsCredentialsWithoutSecret(t *testing.T) {
 
 	require.NoError(t, a.Aggregate(context.Background(), observabilityv1alpha1.CredentialBackendMetrics))
 
-	ingress := &corev1.Secret{}
-	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: ingressSecretName}, ingress))
-	assert.Equal(t, "with:{SHA}xx", string(ingress.Data[IngressDataKey]))
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
+	assert.Equal(t, "with:{SHA}xx", string(httproute.Data[HTTPRouteDataKey]))
 }

@@ -28,8 +28,8 @@ func NewAggregator(c client.Client, configs GatewayConfigs) *Aggregator {
 	return &Aggregator{Client: c, GatewayConfigs: configs}
 }
 
-// Aggregate rewrites both gateway secrets (ingress and HTTPRoute) for the given
-// backend to reflect the current set of AgentCredentials.
+// Aggregate rewrites the HTTPRoute gateway secret for the given backend to
+// reflect the current set of AgentCredentials.
 func (a *Aggregator) Aggregate(ctx context.Context, backend observabilityv1alpha1.CredentialBackend) error {
 	cfg, ok := a.GatewayConfigs[backend]
 	if !ok {
@@ -39,10 +39,6 @@ func (a *Aggregator) Aggregate(ctx context.Context, backend observabilityv1alpha
 	content, err := a.buildHtpasswdContent(ctx, backend)
 	if err != nil {
 		return fmt.Errorf("failed to build htpasswd content for backend %q: %w", backend, err)
-	}
-
-	if err := a.writeGatewaySecret(ctx, cfg.Namespace, cfg.IngressSecretName, cfg.IngressDataKey, content); err != nil {
-		return fmt.Errorf("failed to update ingress gateway secret: %w", err)
 	}
 
 	if err := a.writeGatewaySecret(ctx, cfg.Namespace, cfg.HTTPRouteSecretName, cfg.HTTPRouteDataKey, content); err != nil {
