@@ -9,7 +9,7 @@ The `AgentCredential` CRD lets you declare a single basic-auth credential, scope
 When an `AgentCredential` is created:
 
 1. The controller renders a Secret (same namespace as the CR) with keys `username`, `password`, and `htpasswd`. The password is generated once on create and preserved across reconciles.
-2. It aggregates the htpasswd entries of every AgentCredential matching the same `spec.backend` into the per-backend HTTPRoute gateway Secret (key `.htpasswd`). The nginx Ingress gateway Secret (key `auth`) is only written when `--controllers-agent-credential-ingress-secret-enabled` is set (Helm value `operator.controllers.agentCredential.ingressSecretEnabled`, default `false`); an existing Ingress Secret is left in place when it is off.
+2. It aggregates the htpasswd entries of every AgentCredential matching the same `spec.backend` into the per-backend HTTPRoute gateway Secret (key `.htpasswd`).
 3. On deletion, the aggregator rewrites the gateway Secret without the entry before the finalizer is removed.
 
 ## Enabling / disabling the controller

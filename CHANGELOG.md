@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+### Removed
 
-- The `AgentCredential` controller no longer writes the nginx Ingress htpasswd Secret by default.
+- The `AgentCredential` controller no longer writes the nginx Ingress htpasswd Secret, and the `monitoring`, `logging` and `tracing` `gateway.ingressSecretName` values are removed.
 
 ## [0.86.0] - 2026-10-22
 

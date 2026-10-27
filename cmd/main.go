@@ -44,13 +44,12 @@ import (
 
 const (
 	// Operator configuration flag names
-	flagOperatorControllersAgentCredentialEnabled              = "controllers-agent-credential-enabled"
-	flagOperatorControllersAgentCredentialIngressSecretEnabled = "controllers-agent-credential-ingress-secret-enabled"
-	flagOperatorControllersAlertmanagerEnabled                 = "controllers-alertmanager-enabled"
-	flagOperatorControllersClusterEnabled                      = "controllers-cluster-enabled"
-	flagOperatorControllersDashboardEnabled                    = "controllers-dashboard-enabled"
-	flagOperatorControllersGrafanaOrganizationEnabled          = "controllers-grafana-organization-enabled"
-	flagOperatorControllersLogExportEnabled                    = "controllers-log-export-enabled"
+	flagOperatorControllersAgentCredentialEnabled     = "controllers-agent-credential-enabled"
+	flagOperatorControllersAlertmanagerEnabled        = "controllers-alertmanager-enabled"
+	flagOperatorControllersClusterEnabled             = "controllers-cluster-enabled"
+	flagOperatorControllersDashboardEnabled           = "controllers-dashboard-enabled"
+	flagOperatorControllersGrafanaOrganizationEnabled = "controllers-grafana-organization-enabled"
+	flagOperatorControllersLogExportEnabled           = "controllers-log-export-enabled"
 
 	flagMetricsBindAddress     = "metrics-bind-address"
 	flagMetricsCertPath        = "metrics-cert-path"
@@ -115,13 +114,10 @@ const (
 
 	// Gateway configuration flag names
 	flagMonitoringGatewayNamespace           = "monitoring-gateway-namespace"
-	flagMonitoringGatewayIngressSecretName   = "monitoring-gateway-ingress-secret-name"
 	flagMonitoringGatewayHTTPRouteSecretName = "monitoring-gateway-httproute-secret-name"
 	flagLoggingGatewayNamespace              = "logging-gateway-namespace"
-	flagLoggingGatewayIngressSecretName      = "logging-gateway-ingress-secret-name"
 	flagLoggingGatewayHTTPRouteSecretName    = "logging-gateway-httproute-secret-name"
 	flagTracingGatewayNamespace              = "tracing-gateway-namespace"
-	flagTracingGatewayIngressSecretName      = "tracing-gateway-ingress-secret-name"
 	flagTracingGatewayHTTPRouteSecretName    = "tracing-gateway-httproute-secret-name"
 
 	// Logging configuration flag names
@@ -210,8 +206,6 @@ func parseFlags() (err error) {
 	// Operator configuration flags
 	pflag.BoolVar(&cfg.Operator.Controllers.AgentCredential.Enabled, flagOperatorControllersAgentCredentialEnabled, true,
 		"Enable the agent credential controller. Required by the cluster controller. Disabling this also disables the cluster controller.")
-	pflag.BoolVar(&cfg.Operator.Controllers.AgentCredential.IngressSecretEnabled, flagOperatorControllersAgentCredentialIngressSecretEnabled, false,
-		"Also write the nginx Ingress htpasswd Secret (key \"auth\") for each backend. The HTTPRoute Secret is always written.")
 	pflag.BoolVar(&cfg.Operator.Controllers.Alertmanager.Enabled, flagOperatorControllersAlertmanagerEnabled, true,
 		"Enable the alertmanager controller.")
 	pflag.BoolVar(&cfg.Operator.Controllers.Cluster.Enabled, flagOperatorControllersClusterEnabled, true,
@@ -296,8 +290,6 @@ func parseFlags() (err error) {
 		"Enable/disable network monitoring in Alloy configuration")
 	pflag.StringVar(&cfg.Monitoring.Gateway.Namespace, flagMonitoringGatewayNamespace, "mimir",
 		"Kubernetes namespace where the Mimir gateway secrets reside.")
-	pflag.StringVar(&cfg.Monitoring.Gateway.IngressSecretName, flagMonitoringGatewayIngressSecretName, "mimir-gateway-ingress-auth",
-		"Name of the Ingress auth secret in the Mimir gateway namespace.")
 	pflag.StringVar(&cfg.Monitoring.Gateway.HTTPRouteSecretName, flagMonitoringGatewayHTTPRouteSecretName, "mimir-gateway-httproute-auth",
 		"Name of the HTTPRoute auth secret in the Mimir gateway namespace.")
 
@@ -330,8 +322,6 @@ func parseFlags() (err error) {
 		"Enable distributed tracing at the installation level.")
 	pflag.StringVar(&cfg.Tracing.Gateway.Namespace, flagTracingGatewayNamespace, "tempo",
 		"Kubernetes namespace where the Tempo gateway secrets reside.")
-	pflag.StringVar(&cfg.Tracing.Gateway.IngressSecretName, flagTracingGatewayIngressSecretName, "tempo-gateway-ingress-auth",
-		"Name of the Ingress auth secret in the Tempo gateway namespace.")
 	pflag.StringVar(&cfg.Tracing.Gateway.HTTPRouteSecretName, flagTracingGatewayHTTPRouteSecretName, "tempo-gateway-httproute-auth",
 		"Name of the HTTPRoute auth secret in the Tempo gateway namespace.")
 
@@ -350,8 +340,6 @@ func parseFlags() (err error) {
 		"URL to the Loki ruler API for cleaning up rules on cluster deletion")
 	pflag.StringVar(&cfg.Logging.Gateway.Namespace, flagLoggingGatewayNamespace, "loki",
 		"Kubernetes namespace where the Loki gateway secrets reside.")
-	pflag.StringVar(&cfg.Logging.Gateway.IngressSecretName, flagLoggingGatewayIngressSecretName, "loki-gateway-ingress-auth",
-		"Name of the Ingress auth secret in the Loki gateway namespace.")
 	pflag.StringVar(&cfg.Logging.Gateway.HTTPRouteSecretName, flagLoggingGatewayHTTPRouteSecretName, "loki-gateway-httproute-auth",
 		"Name of the HTTPRoute auth secret in the Loki gateway namespace.")
 

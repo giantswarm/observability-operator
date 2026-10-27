@@ -156,8 +156,6 @@ monitoring:
   gateway:
     # -- Kubernetes namespace where the Mimir gateway secrets reside
     namespace: "mimir"
-    # -- Name of the Ingress auth secret in the Mimir gateway namespace
-    ingressSecretName: "mimir-gateway-ingress-auth"
     # -- Name of the HTTPRoute auth secret in the Mimir gateway namespace
     httprouteSecretName: "mimir-gateway-httproute-auth"
 
@@ -169,8 +167,6 @@ tracing:
   gateway:
     # -- Kubernetes namespace where the Tempo gateway secrets reside
     namespace: "tempo"
-    # -- Name of the Ingress auth secret in the Tempo gateway namespace
-    ingressSecretName: "tempo-gateway-ingress-auth"
     # -- Name of the HTTPRoute auth secret in the Tempo gateway namespace
     httprouteSecretName: "tempo-gateway-httproute-auth"
 
@@ -205,8 +201,6 @@ logging:
   gateway:
     # -- Kubernetes namespace where the Loki gateway secrets reside
     namespace: "loki"
-    # -- Name of the Ingress auth secret in the Loki gateway namespace
-    ingressSecretName: "loki-gateway-ingress-auth"
     # -- Name of the HTTPRoute auth secret in the Loki gateway namespace
     httprouteSecretName: "loki-gateway-httproute-auth"
 
@@ -264,8 +258,6 @@ operator:
   controllers:
     agentCredential:
       enabled: true
-      # -- Also write the nginx Ingress htpasswd Secret (key `auth`) for each backend. The HTTPRoute Secret is always written.
-      ingressSecretEnabled: false
     alertmanager:
       enabled: true
     cluster:

@@ -21,7 +21,7 @@ func (c OperatorConfig) Validate() error {
 }
 
 type Controllers struct {
-	AgentCredential     AgentCredentialControllerConfig
+	AgentCredential     ControllerConfig
 	Alertmanager        ControllerConfig
 	Cluster             ControllerConfig
 	Dashboard           ControllerConfig
@@ -31,12 +31,4 @@ type Controllers struct {
 
 type ControllerConfig struct {
 	Enabled bool
-}
-
-// AgentCredentialControllerConfig configures the AgentCredential controller.
-type AgentCredentialControllerConfig struct {
-	Enabled bool
-	// IngressSecretEnabled turns on writing the nginx Ingress htpasswd Secret
-	// (key "auth") for each backend. The HTTPRoute Secret is always written.
-	IngressSecretEnabled bool
 }

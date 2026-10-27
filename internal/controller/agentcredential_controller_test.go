@@ -21,7 +21,6 @@ import (
 var _ = Describe("AgentCredential Controller", func() {
 	const (
 		gatewayNamespace    = "mimir-test"
-		ingressSecretName   = "mimir-gateway-ingress-auth"
 		httprouteSecretName = "mimir-gateway-httproute-auth"
 		timeout             = time.Second * 10
 		interval            = time.Millisecond * 250
@@ -46,9 +45,9 @@ var _ = Describe("AgentCredential Controller", func() {
 		}
 
 		gatewayConfigs := credential.GatewayConfigs{
-			observabilityv1alpha1.CredentialBackendMetrics: credential.NewGatewayConfig(gatewayNamespace, ingressSecretName, httprouteSecretName),
-			observabilityv1alpha1.CredentialBackendLogs:    credential.NewGatewayConfig(gatewayNamespace, "loki-ingress", "loki-httproute"),
-			observabilityv1alpha1.CredentialBackendTraces:  credential.NewGatewayConfig(gatewayNamespace, "tempo-ingress", "tempo-httproute"),
+			observabilityv1alpha1.CredentialBackendMetrics: credential.NewGatewayConfig(gatewayNamespace, httprouteSecretName),
+			observabilityv1alpha1.CredentialBackendLogs:    credential.NewGatewayConfig(gatewayNamespace, "loki-httproute"),
+			observabilityv1alpha1.CredentialBackendTraces:  credential.NewGatewayConfig(gatewayNamespace, "tempo-httproute"),
 		}
 
 		reconciler = &AgentCredentialReconciler{
@@ -103,44 +102,11 @@ var _ = Describe("AgentCredential Controller", func() {
 		Expect(getConditionStatus(updated, observabilityv1alpha1.AgentCredentialConditionGatewaySynced)).To(Equal(metav1.ConditionTrue))
 
 		By("aggregating the entry into the HTTPRoute gateway secret")
+		// The aggregated htpasswd holds every metrics credential in the cluster, sorted, so
+		// with randomized spec order other entries can precede ours: match the line, not the prefix.
 		httproute := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute)).To(Succeed())
 		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(MatchRegexp(`(?m)^agent-1:\{SHA\}`))
-
-		By("not writing the Ingress gateway secret by default")
-		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: ingressSecretName}, &corev1.Secret{})
-		Expect(apierrors.IsNotFound(err)).To(BeTrue(), "expected Ingress secret to be absent, got %v", err)
-	})
-
-	It("also aggregates into the Ingress gateway secret when enabled", func() {
-		const (
-			enabledIngressSecretName   = "ingress-enabled-ingress-auth"
-			enabledHTTPRouteSecretName = "ingress-enabled-httproute-auth"
-		)
-		// Dedicated secret names so the default-off cases never see this Ingress secret.
-		// The aggregated htpasswd holds every metrics credential in the cluster, sorted, so
-		// with randomized spec order other entries can precede ours: match the line, not the prefix.
-		reconciler.Aggregator = credential.NewAggregator(k8sClient, credential.GatewayConfigs{
-			observabilityv1alpha1.CredentialBackendMetrics: credential.NewGatewayConfig(gatewayNamespace, enabledIngressSecretName, enabledHTTPRouteSecretName),
-		}, credential.WithIngressSecret(true))
-
-		cred := &observabilityv1alpha1.AgentCredential{
-			ObjectMeta: metav1.ObjectMeta{Name: "ingress-on", Namespace: ns},
-			Spec: observabilityv1alpha1.AgentCredentialSpec{
-				Backend:   observabilityv1alpha1.CredentialBackendMetrics,
-				AgentName: "ingress-on-agent",
-			},
-		}
-		Expect(k8sClient.Create(ctx, cred)).To(Succeed())
-		reconcileTwice("ingress-on")
-
-		ingress := &corev1.Secret{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: enabledIngressSecretName}, ingress)).To(Succeed())
-		Expect(string(ingress.Data[credential.IngressDataKey])).To(MatchRegexp(`(?m)^ingress-on-agent:\{SHA\}`))
-
-		httproute := &corev1.Secret{}
-		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: enabledHTTPRouteSecretName}, httproute)).To(Succeed())
-		Expect(string(httproute.Data[credential.HTTPRouteDataKey])).To(MatchRegexp(`(?m)^ingress-on-agent:\{SHA\}`))
 	})
 
 	It("preserves the password across reconciles", func() {
