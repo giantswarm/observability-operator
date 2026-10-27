@@ -8,7 +8,7 @@ The `AgentCredential` CRD lets you declare a single basic-auth credential, scope
 
 When an `AgentCredential` is created:
 
-1. The controller renders a Secret (same namespace as the CR) with keys `username`, `password`, and `htpasswd`. The password is generated once on create and preserved across reconciles.
+1. The controller renders a Secret (same namespace as the CR) with keys `username`, `password`, and `htpasswd`. The username is `<namespace>/<name>` of the CR. The password is generated once on create and preserved across reconciles.
 2. It aggregates the htpasswd entries of every AgentCredential matching the same `spec.backend` into the per-backend HTTPRoute gateway Secret (key `.htpasswd`).
 3. On deletion, the aggregator rewrites the gateway Secret without the entry before the finalizer is removed.
 
@@ -25,8 +25,14 @@ The cluster controller depends on the agent-credential controller — it declare
 | Field | Required | Description |
 |---|---|---|
 | `spec.backend` | yes | One of `metrics`, `logs`, `traces`. Determines which gateway's htpasswd Secret this credential is aggregated into. |
-| `spec.agentName` | yes | Basic-auth username. Alphanumeric plus `-` / `_`, max 253 characters. RFC 7617 forbids `:` in basic-auth usernames. |
+| `spec.agentName` | no | **Deprecated and ignored.** Accepted so existing manifests keep applying; it will be removed in a future release. |
 | `spec.secretName` | no | Name of the rendered Secret. Defaults to `metadata.name`. |
+
+### Username
+
+The basic-auth username is always `<namespace>/<name>` of the AgentCredential, for example `monitoring/my-external-collector`. Kubernetes guarantees that namespace/name is unique, so no two credentials can share a username. Read it from the `username` key of the rendered Secret rather than hard-coding it.
+
+When the operator is upgraded from a release that used `spec.agentName` as the username, the next reconcile rewrites the Secret's `username` and `htpasswd` keys with the new username and keeps the existing password.
 
 ### Status
 
@@ -39,14 +45,9 @@ The cluster controller depends on the agent-credential controller — it declare
 
 Passwords are generated once on first reconcile and preserved across subsequent reconciles so existing agents keep working. To rotate a password, delete the rendered `Secret` (the CR keeps its name, status, and owner references). The controller regenerates the `Secret` on the next reconcile and re-aggregates the gateway htpasswd.
 
-## Uniqueness and immutability
+## Immutability
 
-The validating webhook rejects:
-
-- Two AgentCredentials with the same `(backend, agentName)` pair — they would produce conflicting htpasswd entries in the aggregated gateway Secret.
-- Updates to `spec.backend`, `spec.agentName`, or `spec.secretName` — changing these strands the existing Secret.
-
-To change any of these fields, delete the CR and create a new one.
+The validating webhook rejects updates to `spec.backend` or `spec.secretName`, because changing them strands the existing Secret. To change either field, delete the CR and create a new one.
 
 ## Cluster-backed AgentCredentials
 
@@ -54,9 +55,13 @@ For every CAPI Cluster with an enabled observability backend, the cluster contro
 
 - CR name: `<cluster-name>-observability-<backend>` (namespaced to the Cluster's namespace)
 - `spec.backend` matches the backend
-- `spec.agentName` is the Cluster name
+- The username is therefore `<cluster-namespace>/<cluster-name>-observability-<backend>`
 - `spec.secretName` is `<cluster-name>-observability-<backend>-auth` — same name as the pre-CRD legacy Secret, so Alloy collectors pick up the credential without changes.
 - An owner reference to the Cluster cascades deletion when the Cluster is removed.
+
+### Upgrading Giant Swarm installations
+
+Releases before the username was derived from namespace/name used the Cluster name as the username. After the upgrade, per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; passwords are unchanged. Alloy reads the username from the Secret (`remote.kubernetes.secret`, which polls every minute by default), so agents follow automatically. Expect up to about a minute of `401` responses per cluster while the agents pick up the new username.
 
 ## Self-service example
 
@@ -70,7 +75,6 @@ metadata:
   namespace: monitoring
 spec:
   backend: metrics
-  agentName: my-external-collector
 ```
 
-Once reconciled, the Secret `monitoring/my-external-collector` contains the basic-auth material and the Mimir gateway accepts requests authenticated as `my-external-collector`.
+Once reconciled, the Secret `monitoring/my-external-collector` contains the basic-auth material and the Mimir gateway accepts requests authenticated as `monitoring/my-external-collector`.

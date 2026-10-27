@@ -472,7 +472,6 @@ func (r *ClusterReconciler) ensureAgentCredential(ctx context.Context, cluster *
 			return fmt.Errorf("failed to set owner reference: %w", err)
 		}
 		cred.Spec.Backend = backend
-		cred.Spec.AgentName = cluster.Name
 		cred.Spec.SecretName = credential.ClusterSecretName(cluster.Name, backend)
 		return nil
 	})

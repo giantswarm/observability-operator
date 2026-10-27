@@ -46,7 +46,7 @@ func newAgentCredential(name, namespace, agentName string, backend observability
 		},
 		Spec: observabilityv1alpha1.AgentCredentialSpec{
 			Backend:   backend,
-			AgentName: agentName,
+			AgentName: agentName, //nolint:staticcheck // SA1019: the deprecated field is set on purpose to prove it is ignored.
 		},
 	}
 }
@@ -63,9 +63,9 @@ func TestRender_CreatesSecret(t *testing.T) {
 	assert.Equal(t, "c1", secret.Name)
 	assert.Equal(t, ns1, secret.Namespace)
 	assert.Equal(t, corev1.SecretTypeOpaque, secret.Type)
-	assert.Equal(t, "agent-a", string(secret.Data[SecretKeyUsername]))
+	assert.Equal(t, "ns1/c1", string(secret.Data[SecretKeyUsername]))
 	assert.Equal(t, "p1", string(secret.Data[SecretKeyPassword]))
-	assert.Equal(t, "agent-a:{SHA}p1", string(secret.Data[SecretKeyHtpasswd]))
+	assert.Equal(t, "ns1/c1:{SHA}p1", string(secret.Data[SecretKeyHtpasswd]))
 
 	// Owner reference points at the AgentCredential.
 	require.Len(t, secret.OwnerReferences, 1)
@@ -90,7 +90,58 @@ func TestRender_PreservesExistingPassword(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "kept-password", string(secret.Data[SecretKeyPassword]))
-	assert.Equal(t, "agent-a:{SHA}kept-password", string(secret.Data[SecretKeyHtpasswd]))
+	assert.Equal(t, "ns1/c1:{SHA}kept-password", string(secret.Data[SecretKeyHtpasswd]))
+}
+
+// A Secret rendered before the username was derived from namespace/name holds
+// the old spec.agentName username. Re-rendering moves it to the new username
+// but keeps the password, so agents only need to pick up the new username.
+func TestRender_RewritesLegacyUsernameKeepingPassword(t *testing.T) {
+	scheme := newScheme(t)
+	cred := newAgentCredential("c1", ns1, "agent-a", observabilityv1alpha1.CredentialBackendMetrics)
+
+	existing := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: ns1},
+		Data: map[string][]byte{
+			SecretKeyUsername: []byte("agent-a"),
+			SecretKeyPassword: []byte("kept-password"),
+			SecretKeyHtpasswd: []byte("agent-a:{SHA}kept-password"),
+		},
+	}
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cred, existing).Build()
+
+	r := &Renderer{Client: c, PasswordGenerator: &fixedPasswordGenerator{password: "should-not-be-used"}}
+	_, err := r.Render(t.Context(), cred)
+	require.NoError(t, err)
+
+	got := &corev1.Secret{}
+	require.NoError(t, c.Get(t.Context(), client.ObjectKey{Namespace: ns1, Name: "c1"}, got))
+	assert.Equal(t, "ns1/c1", string(got.Data[SecretKeyUsername]))
+	assert.Equal(t, "kept-password", string(got.Data[SecretKeyPassword]))
+	assert.Equal(t, "ns1/c1:{SHA}kept-password", string(got.Data[SecretKeyHtpasswd]))
+}
+
+// Two credentials with the same (deprecated) spec.agentName get distinct
+// usernames, because the username comes from namespace/name.
+func TestRender_IgnoresAgentName(t *testing.T) {
+	scheme := newScheme(t)
+	first := newAgentCredential("c1", ns1, "shared", observabilityv1alpha1.CredentialBackendMetrics)
+	second := newAgentCredential("c1", "ns2", "shared", observabilityv1alpha1.CredentialBackendMetrics)
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(first, second).Build()
+
+	r := &Renderer{Client: c, PasswordGenerator: &fixedPasswordGenerator{password: "p1"}}
+	s1, err := r.Render(t.Context(), first)
+	require.NoError(t, err)
+	s2, err := r.Render(t.Context(), second)
+	require.NoError(t, err)
+
+	assert.Equal(t, "ns1/c1", string(s1.Data[SecretKeyUsername]))
+	assert.Equal(t, "ns2/c1", string(s2.Data[SecretKeyUsername]))
+}
+
+func TestUsername(t *testing.T) {
+	cred := newAgentCredential("my-agent", "team-a", "ignored", observabilityv1alpha1.CredentialBackendLogs)
+	assert.Equal(t, "team-a/my-agent", Username(cred))
 }
 
 func TestRender_UsesSpecSecretName(t *testing.T) {

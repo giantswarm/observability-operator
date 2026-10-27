@@ -44,7 +44,7 @@ var _ = Describe("AgentCredential Validation", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 			Spec: observabilityv1alpha1.AgentCredentialSpec{
 				Backend:   backend,
-				AgentName: agentName,
+				AgentName: agentName, //nolint:staticcheck // SA1019: the deprecated field is set on purpose to prove it is accepted and ignored.
 			},
 		}
 	}
@@ -66,8 +66,7 @@ var _ = Describe("AgentCredential Validation", func() {
 			ac := &observabilityv1alpha1.AgentCredential{
 				ObjectMeta: metav1.ObjectMeta{Name: "bad-backend", Namespace: ns},
 				Spec: observabilityv1alpha1.AgentCredentialSpec{
-					Backend:   observabilityv1alpha1.CredentialBackend("invalid"),
-					AgentName: "agent-a",
+					Backend: observabilityv1alpha1.CredentialBackend("invalid"),
 				},
 			}
 			err := k8sClient.Create(ctx, ac)
@@ -83,15 +82,21 @@ var _ = Describe("AgentCredential Validation", func() {
 			Expect(err.Error()).To(ContainSubstring("should match"))
 		})
 
-		It("rejects an empty agentName", func() {
-			ac := newAC("empty-agent", "", observabilityv1alpha1.CredentialBackendMetrics)
-			err := k8sClient.Create(ctx, ac)
-			Expect(err).To(HaveOccurred())
+		It("accepts an AgentCredential without the deprecated agentName", func() {
+			ac := newAC("no-agent", "", observabilityv1alpha1.CredentialBackendMetrics)
+			Expect(k8sClient.Create(ctx, ac)).To(Succeed())
 		})
 	})
 
-	Context("Create (webhook-level uniqueness)", func() {
-		It("rejects a duplicate (backend, agentName) in a different namespace", func() {
+	Context("Create (no agentName uniqueness)", func() {
+		It("accepts the same (backend, agentName) in the same namespace", func() {
+			first := newAC("first", "shared-agent", observabilityv1alpha1.CredentialBackendMetrics)
+			second := newAC("second", "shared-agent", observabilityv1alpha1.CredentialBackendMetrics)
+			Expect(k8sClient.Create(ctx, first)).To(Succeed())
+			Expect(k8sClient.Create(ctx, second)).To(Succeed())
+		})
+
+		It("accepts the same (backend, agentName) in a different namespace", func() {
 			first := newAC("first", "shared-agent", observabilityv1alpha1.CredentialBackendMetrics)
 			Expect(k8sClient.Create(ctx, first)).To(Succeed())
 
@@ -101,12 +106,10 @@ var _ = Describe("AgentCredential Validation", func() {
 				ObjectMeta: metav1.ObjectMeta{Name: "dup", Namespace: otherNs},
 				Spec: observabilityv1alpha1.AgentCredentialSpec{
 					Backend:   observabilityv1alpha1.CredentialBackendMetrics,
-					AgentName: "shared-agent",
+					AgentName: "shared-agent", //nolint:staticcheck // SA1019: the deprecated field is set on purpose to prove it is no longer unique.
 				},
 			}
-			err := k8sClient.Create(ctx, dup)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("already used"))
+			Expect(k8sClient.Create(ctx, dup)).To(Succeed())
 		})
 
 		It("accepts the same agentName across different backends", func() {
@@ -133,11 +136,9 @@ var _ = Describe("AgentCredential Validation", func() {
 			Expect(err.Error()).To(ContainSubstring("backend is immutable"))
 		})
 
-		It("rejects mutating spec.agentName", func() {
-			ac.Spec.AgentName = "agent-renamed"
-			err := k8sClient.Update(ctx, ac)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("agentName is immutable"))
+		It("accepts mutating the deprecated spec.agentName", func() {
+			ac.Spec.AgentName = "agent-renamed" //nolint:staticcheck // SA1019: the deprecated field is mutated on purpose to prove it is no longer immutable.
+			Expect(k8sClient.Update(ctx, ac)).To(Succeed())
 		})
 
 		It("rejects mutating spec.secretName", func() {
@@ -156,24 +157,9 @@ var _ = Describe("AgentCredential Validation", func() {
 		})
 	})
 
-	Context("Update (uniqueness skips self)", func() {
-		It("accepts updating an AgentCredential in place", func() {
-			ac := newAC("self-update", "self-agent", observabilityv1alpha1.CredentialBackendTraces)
-			Expect(k8sClient.Create(ctx, ac)).To(Succeed())
-
-			// A no-op metadata change — the uniqueness check must skip the same UID.
-			if ac.Annotations == nil {
-				ac.Annotations = map[string]string{}
-			}
-			ac.Annotations["observability.giantswarm.io/note"] = "reconciled"
-			Expect(k8sClient.Update(ctx, ac)).To(Succeed())
-		})
-	})
-
 	AfterEach(func() {
-		// Drop every AC cluster-wide so later tests don't hit uniqueness
-		// collisions on (backend, agentName) against stragglers — including
-		// ACs created in extra namespaces by individual specs.
+		// Drop every AC cluster-wide, including ACs created in extra
+		// namespaces by individual specs.
 		list := &observabilityv1alpha1.AgentCredentialList{}
 		if err := k8sClient.List(ctx, list); err == nil {
 			for i := range list.Items {

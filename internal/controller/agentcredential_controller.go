@@ -125,7 +125,7 @@ func (r *AgentCredentialReconciler) reconcileCreate(ctx context.Context, cred *o
 		return ctrl.Result{}, fmt.Errorf("failed to update agent credential status: %w", err)
 	}
 
-	operatormetrics.AgentCredentialInfo.WithLabelValues(cred.Namespace, cred.Name, string(cred.Spec.Backend), cred.Spec.AgentName).Set(1)
+	operatormetrics.AgentCredentialInfo.WithLabelValues(cred.Namespace, cred.Name, string(cred.Spec.Backend), credential.Username(cred)).Set(1)
 	return ctrl.Result{}, nil
 }
 
@@ -138,7 +138,7 @@ func (r *AgentCredentialReconciler) reconcileDelete(ctx context.Context, cred *o
 		return ctrl.Result{}, fmt.Errorf("failed to aggregate gateway secret on delete: %w", err)
 	}
 
-	operatormetrics.AgentCredentialInfo.DeleteLabelValues(cred.Namespace, cred.Name, string(cred.Spec.Backend), cred.Spec.AgentName)
+	operatormetrics.AgentCredentialInfo.DeleteLabelValues(cred.Namespace, cred.Name, string(cred.Spec.Backend), credential.Username(cred))
 
 	if err := r.finalizerHelper.EnsureRemoved(ctx, cred); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
