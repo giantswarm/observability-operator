@@ -25,7 +25,7 @@ The cluster controller depends on the agent-credential controller — it declare
 | Field | Required | Description |
 |---|---|---|
 | `spec.backend` | yes | One of `metrics`, `logs`, `traces`. Determines which gateway's htpasswd Secret this credential is aggregated into. |
-| `spec.agentName` | no | **Deprecated and ignored.** Accepted so existing manifests keep applying; it will be removed in a future release. |
+| `spec.agentName` | no | **Deprecated.** No longer the username. For one release the gateway also accepts it as a legacy username, with the same password, so agents can switch over; a legacy name shared by several credentials of a backend is not accepted. It will be removed in a future release. |
 | `spec.secretName` | no | Name of the rendered Secret. Defaults to `metadata.name`. |
 
 ### Username
@@ -61,7 +61,9 @@ For every CAPI Cluster with an enabled observability backend, the cluster contro
 
 ### Upgrading Giant Swarm installations
 
-Releases before the username was derived from namespace/name used the Cluster name as the username. After the upgrade, per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; passwords are unchanged. Alloy reads the username from the Secret (`remote.kubernetes.secret`, which polls every minute by default), so agents follow automatically. Expect up to about a minute of `401` responses per cluster while the agents pick up the new username.
+Releases before the username was derived from namespace/name used the Cluster name as the username. After the upgrade, per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; passwords are unchanged. Agents don't see the new username at once: it reaches them when the app platform re-renders their Alloy configuration, which took 10 to 15 minutes on test management clusters. During that window the gateway accepts both the old username (`spec.agentName`) and the new one with the same password, so agents keep authenticating. The legacy username is dropped when `spec.agentName` is removed.
+
+Rolling back to a release before this change after agents have switched reintroduces `401`s, because older releases only accept the old username: roll forward instead, or reconcile every Cluster after the rollback so the agents get the old username back.
 
 ## Self-service example
 

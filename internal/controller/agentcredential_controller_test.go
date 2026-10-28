@@ -179,6 +179,8 @@ var _ = Describe("AgentCredential Controller", func() {
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute)).To(Succeed())
 		aggregated := string(httproute.Data[credential.HTTPRouteDataKey])
 		Expect(aggregated).To(MatchRegexp(`(?m)^` + regexp.QuoteMeta(username+":{SHA}"+shaDigest("legacy-password")) + `$`))
+		By("still accepting the legacy agentName with the same password during the transition")
+		Expect(aggregated).To(MatchRegexp(`(?m)^` + regexp.QuoteMeta("legacy-agent:{SHA}"+shaDigest("legacy-password")) + `$`))
 	})
 
 	It("preserves the password across reconciles", func() {
