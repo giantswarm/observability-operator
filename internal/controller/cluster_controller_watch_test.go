@@ -33,6 +33,14 @@ import (
 
 const watchOrgAdmin = "admin"
 
+// References of the test Clusters' infrastructure and control plane.
+const (
+	testInfrastructureAPIGroup = "infrastructure.cluster.x-k8s.io"
+	testInfrastructureKind     = "AWSCluster"
+	testControlPlaneAPIGroup   = "controlplane.cluster.x-k8s.io"
+	testControlPlaneKind       = "KubeadmControlPlane"
+)
+
 // clusterGetCounter counts the Cluster reads of each reconcile and reports every Cluster as not found,
 // so a reconcile request ends right after it is counted.
 type clusterGetCounter struct {
@@ -189,13 +197,13 @@ var _ = Describe("Cluster Controller GrafanaOrganization watch", func() {
 				ObjectMeta: metav1.ObjectMeta{Name: clusterKey.Name, Namespace: clusterKey.Namespace},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						APIGroup: "infrastructure.cluster.x-k8s.io",
-						Kind:     "AWSCluster",
+						APIGroup: testInfrastructureAPIGroup,
+						Kind:     testInfrastructureKind,
 						Name:     "watch-aws-cluster",
 					},
 					ControlPlaneRef: clusterv1.ContractVersionedObjectReference{
-						APIGroup: "controlplane.cluster.x-k8s.io",
-						Kind:     "KubeadmControlPlane",
+						APIGroup: testControlPlaneAPIGroup,
+						Kind:     testControlPlaneKind,
 						Name:     "watch-control-plane",
 					},
 				},
@@ -228,6 +236,7 @@ var _ = Describe("Cluster Controller AgentCredential Secret watch", func() {
 	)
 
 	It("reconciles the owning Cluster when its AgentCredential Secret changes", func() {
+		const secretWatchNamespace = "default"
 		watchCtx, watchCancel := context.WithCancel(ctx)
 
 		By("starting an API server with the Cluster and AgentCredential CRDs")
@@ -289,18 +298,18 @@ var _ = Describe("Cluster Controller AgentCredential Secret watch", func() {
 		}
 
 		By("creating a Cluster, its AgentCredential and the AgentCredential's Secret")
-		clusterKey := types.NamespacedName{Name: "secret-watch-cluster", Namespace: "default"}
+		clusterKey := types.NamespacedName{Name: "secret-watch-cluster", Namespace: secretWatchNamespace}
 		cluster := &clusterv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{Name: clusterKey.Name, Namespace: clusterKey.Namespace},
 			Spec: clusterv1.ClusterSpec{
 				InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-					APIGroup: "infrastructure.cluster.x-k8s.io",
-					Kind:     "AWSCluster",
+					APIGroup: testInfrastructureAPIGroup,
+					Kind:     testInfrastructureKind,
 					Name:     "secret-watch-aws-cluster",
 				},
 				ControlPlaneRef: clusterv1.ContractVersionedObjectReference{
-					APIGroup: "controlplane.cluster.x-k8s.io",
-					Kind:     "KubeadmControlPlane",
+					APIGroup: testControlPlaneAPIGroup,
+					Kind:     testControlPlaneKind,
 					Name:     "secret-watch-control-plane",
 				},
 			},
