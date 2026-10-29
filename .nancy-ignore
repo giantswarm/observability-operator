@@ -14,3 +14,7 @@ CVE-2026-78660 until=2026-12-20
 CVE-2026-78669 until=2026-12-20
 CVE-2026-97032 until=2026-12-20
 CVE-2026-78663 until=2026-12-20
+
+# pkg:golang/github.com/hashicorp/consul/api@v1.34.4
+# Indirect via grafana/dskit KV (Loki LogQL validation); no Consul client is used at runtime.
+CVE-2026-115804 until=2026-11-27

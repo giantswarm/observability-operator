@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** the basic-auth username of an `AgentCredential` is now `<namespace>/<name>`, so per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; for one release the gateway also accepts the old `spec.agentName` username, so agents switch over without authentication errors.
+- Agents receive a changed `AgentCredential` username or password as soon as its Secret changes, instead of at the next periodic resync.
+- **Breaking:** the `observability_operator_agent_credential_info` metric's `agent_name` label is renamed to `username`.
+
+### Deprecated
+
+- `AgentCredential` `spec.agentName` is now optional and ignored, and will be removed in a future release.
+
 ### Removed
 
 - The `AgentCredential` controller no longer writes the nginx Ingress htpasswd Secret, and the `monitoring`, `logging` and `tracing` `gateway.ingressSecretName` values are removed.
