@@ -21,7 +21,7 @@ import (
 
 const (
 	testCredentialCluster   = "my-cluster"
-	testCredentialNamespace = testCredentialNamespace
+	testCredentialNamespace = "org-test"
 )
 
 // Installed AgentCredential CRDs that predate the agentName deprecation still
