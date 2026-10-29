@@ -61,7 +61,7 @@ For every CAPI Cluster with an enabled observability backend, the cluster contro
 
 ### Upgrading Giant Swarm installations
 
-Releases before the username was derived from namespace/name used the Cluster name as the username. After the upgrade, per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; passwords are unchanged. Agents don't see the new username at once: it reaches them when the app platform re-renders their Alloy configuration, which took 10 to 15 minutes on test management clusters. During that window the gateway accepts both the old username (`spec.agentName`) and the new one with the same password, so agents keep authenticating. The legacy username is dropped when `spec.agentName` is removed.
+Releases before the username was derived from namespace/name used the Cluster name as the username. After the upgrade, per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; passwords are unchanged. Agents don't see the new username at once. The Cluster controller re-renders a cluster's agent configuration as soon as one of its AgentCredential Secrets changes, and the app platform then rolls the configuration out to the Alloy agents. During that window the gateway accepts both the old username (`spec.agentName`) and the new one with the same password, so agents keep authenticating. The legacy username is dropped when `spec.agentName` is removed.
 
 Rolling back to a release before this change after agents have switched reintroduces `401`s, because older releases only accept the old username: roll forward instead, or reconcile every Cluster after the rollback so the agents get the old username back.
 
