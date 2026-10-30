@@ -19,7 +19,7 @@ require (
 	github.com/onsi/gomega v1.44.0
 	github.com/prometheus/alertmanager v0.34.0
 	github.com/prometheus/client_golang v1.24.1
-	github.com/prometheus/common v0.72.1
+	github.com/prometheus/common v0.73.1
 	github.com/prometheus/prometheus v0.315.1
 	github.com/sanity-io/litter v1.5.8
 	github.com/stretchr/testify v1.12.1
@@ -117,6 +117,7 @@ require (
 	github.com/opentracing-contrib/go-grpc v0.1.4 // indirect
 	github.com/opentracing-contrib/go-stdlib v1.1.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
+	github.com/pandatix/go-abnf v0.5.3 // indirect
 	github.com/pires/go-proxyproto v0.8.1 // indirect
 	github.com/prometheus/exporter-toolkit v0.19.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
