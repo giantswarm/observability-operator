@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `make verify-alerting` (`hack/bin/verify-alerting.sh`), which checks one installation's alerting state and exits non-zero on any failure: the configuration Mimir Alertmanager serves matches the Secret on the cluster, exactly one Secret ships it for the tenant, the Cronitor monitor the configuration pings exists and is passing, and the `Heartbeat` resource is Ready where the CRD is registered.
 
+### Changed
+
+- When the Mimir Alertmanager pod becomes ready, every Secret labelled `observability.giantswarm.io/kind: alertmanager-config` is now re-enqueued, instead of a single Secret looked up by name.
+
+### Deprecated
+
+- Deprecate the `--alertmanager-secret-name` flag. The operator ignores it and selects Alertmanager config Secrets by label only.
+
 ## [0.87.0] - 2026-11-02
 
 ### Changed
