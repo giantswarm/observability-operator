@@ -99,13 +99,13 @@ var _ = Describe("Cluster Controller", func() {
 				},
 				Spec: clusterv1.ClusterSpec{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
-						APIGroup: "infrastructure.cluster.x-k8s.io",
-						Kind:     "AWSCluster",
+						APIGroup: testInfrastructureAPIGroup,
+						Kind:     testInfrastructureKind,
 						Name:     "test-aws-cluster",
 					},
 					ControlPlaneRef: clusterv1.ContractVersionedObjectReference{
-						APIGroup: "controlplane.cluster.x-k8s.io",
-						Kind:     "KubeadmControlPlane",
+						APIGroup: testControlPlaneAPIGroup,
+						Kind:     testControlPlaneKind,
 						Name:     "test-control-plane",
 					},
 				},
