@@ -70,6 +70,7 @@ For each ConfigMap event:
 
 1. Get the ConfigMap. A `NotFound` returns cleanly.
 2. Generate a Grafana client and wrap it in a `grafana.Service`.
+   If the ConfigMap is being deleted and the Grafana admin Secret is missing, the controller removes the finalizer and returns. The dashboard stays in Grafana.
 3. Branch on the deletion timestamp:
    - Zero → `reconcileCreate`.
    - Non-zero → `reconcileDelete`.
