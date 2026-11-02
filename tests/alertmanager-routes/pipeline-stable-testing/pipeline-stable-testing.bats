@@ -14,6 +14,11 @@ load ../helper.bash
   assert_line --partial pagerduty-foo
 }
 
+@test "aliased team paging alerts with pipeline=stable-testing are delivered to PagerDuty" {
+  run amtool team=bar severity=page pipeline=stable-testing
+  assert_line --partial pagerduty-foo
+}
+
 # Ignored alerts
 
 @test "workload cluster alerts are dropped" {

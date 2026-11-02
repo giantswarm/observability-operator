@@ -59,6 +59,7 @@ var _ = BeforeSuite(func() {
 			// Register v1alpha1 webhooks (for direct v1alpha1 validation)
 			SetupGrafanaOrganizationWebhookWithManager,
 			SetupAgentCredentialWebhookWithManager,
+			SetupLogExportWebhookWithManager,
 			// Register v1alpha2 webhooks (storage version, handles converted v1alpha1 objects)
 			webhookv1alpha2.SetupGrafanaOrganizationWebhookWithManager,
 		},

@@ -1,6 +1,12 @@
-[![CircleCI](https://dl.circleci.com/status-badge/img/gh/giantswarm/observability-operator/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/giantswarm/observability-operator/tree/main)
+<div align="center">
 
-# observability-operator
+  # observability-operator
+
+  [![Go Reference](https://pkg.go.dev/badge/github.com/giantswarm/observability-operator.svg)](https://pkg.go.dev/github.com/giantswarm/observability-operator)
+  [![CircleCI](https://dl.circleci.com/status-badge/img/gh/giantswarm/observability-operator/tree/main.svg?style=shield)](https://dl.circleci.com/status-badge/redirect/gh/giantswarm/observability-operator/tree/main)
+  [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/giantswarm/observability-operator/badge)](https://scorecard.dev/viewer/?uri=github.com/giantswarm/observability-operator)
+
+</div>
 
 Brain of the Giant Swarm observability platform: provisions and configures the full observability stack (metrics, logs, traces, alerts, dashboards) for every managed cluster.
 
@@ -24,7 +30,8 @@ observability-operator/
 ├── docs/                               # Feature documentation
 ├── helm/
 │   └── observability-operator/         # Helm chart for deployment
-│       └── files/alertmanager/         # Alertmanager config templates
+│       ├── files/alertmanager/         # Alertmanager config templates
+│       └── files/crds/                 # Symlink to config/crd/bases (CRDs installed by the chart)
 ├── internal/
 │   ├── controller/                     # Reconcilers (cluster, dashboard, alertmanager, grafanaorg)
 │   ├── mapper/                         # Watch event mappers (dashboard, organization)
@@ -121,6 +128,12 @@ See [docs/cluster.md](docs/cluster.md) for full details including per-cluster sh
 
 The operator is deployed via the Helm chart in `helm/observability-operator/`.
 
+The chart can install the operator's CRDs with `crds.install: true` (default `true`). They are rendered from the generated CRDs in `config/crd/bases` through the `helm/observability-operator/files/crds` symlink, so `helm upgrade` keeps them current:
+
+- All of the operator's CRDs are installed, whether or not their controller (`operator.controllers.*`) is enabled.
+- With `webhook.enabled: false`, the `GrafanaOrganization` CRD serves only its storage version (`v1alpha2`) and has no conversion webhook. Objects stored as `v1alpha1` must be migrated before turning webhooks off.
+- The CRDs are annotated `helm.sh/resource-policy: keep`, so `helm uninstall` leaves them, and every resource of their kinds, in place. Delete them with `kubectl` once the resources are gone.
+
 For local development and contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Observability
@@ -152,6 +165,8 @@ See [docs/metrics.md](docs/metrics.md) for the full metrics reference.
 | [docs/alertmanager.md](docs/alertmanager.md) | Alertmanager config secret usage and examples |
 | [docs/dashboards.md](docs/dashboards.md) | Dashboard provisioning and folder support |
 | [docs/agent-credential.md](docs/agent-credential.md) | AgentCredential CRD reference and self-service usage |
+| [docs/logexport-tutorial.md](docs/logexport-tutorial.md) | Walkthrough of exporting logs to S3 with a LogExport |
+| [docs/logexport-selectors.md](docs/logexport-selectors.md) | LogExport selector subset and validation error reference |
 | [docs/cluster.md](docs/cluster.md) | Per-cluster observability feature flags and sharding overrides |
 | [docs/metrics.md](docs/metrics.md) | Operator metrics reference and example queries |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, testing, and coding conventions |
