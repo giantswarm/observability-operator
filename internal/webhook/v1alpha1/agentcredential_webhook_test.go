@@ -55,11 +55,9 @@ var _ = Describe("AgentCredential Validation", func() {
 			Expect(k8sClient.Create(ctx, ac)).To(Succeed())
 		})
 
-		It("rejects an agentName containing ':'", func() {
+		It("accepts any agentName value since validation was removed (field is deprecated)", func() {
 			ac := newAC("bad-agent", "bad:agent", observabilityv1alpha1.CredentialBackendMetrics)
-			err := k8sClient.Create(ctx, ac)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("should match"))
+			Expect(k8sClient.Create(ctx, ac)).To(Succeed())
 		})
 
 		It("rejects an unknown backend", func() {

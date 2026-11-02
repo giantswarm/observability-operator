@@ -37,9 +37,6 @@ type AgentCredentialSpec struct {
 	// Deprecated: ignored; the username is <namespace>/<name>. Will be removed in a future release.
 	//
 	// +optional
-	// +kubebuilder:validation:Pattern="^[a-zA-Z0-9][a-zA-Z0-9_-]{0,252}$"
-	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=253
 	AgentName string `json:"agentName,omitempty"`
 
 	// SecretName overrides the generated Secret name. Defaults to metadata.name.
