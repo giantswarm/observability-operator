@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - When the Mimir Alertmanager pod becomes ready, every Secret labelled `observability.giantswarm.io/kind: alertmanager-config` is now re-enqueued, instead of a single Secret looked up by name.
 
-### Removed
+### Deprecated
 
-- Remove the `--alertmanager-secret-name` flag. The Alertmanager controller now selects config Secrets by label only, as its watch and its validating webhook already did.
+- Deprecate the `--alertmanager-secret-name` flag. The operator ignores it and selects Alertmanager config Secrets by label only.
 
 ## [0.87.0] - 2026-11-02
 

@@ -81,6 +81,7 @@ const (
 	flagManagementClusterRegion       = "management-cluster-region"
 
 	// Monitoring configuration flag names
+	flagAlertmanagerSecretName                = "alertmanager-secret-name" // Deprecated: ignored.
 	flagAlertmanagerURL                       = "alertmanager-url"
 	flagMonitoringEnabled                     = "monitoring-enabled"
 	flagMonitoringNetworkEnabled              = "monitoring-enable-network-monitoring"
@@ -265,6 +266,12 @@ func parseFlags() (err error) {
 		"The region of the management cluster.")
 
 	// Monitoring configuration flags
+	pflag.String(flagAlertmanagerSecretName, "",
+		"The name of the secret containing the Alertmanager configuration.")
+	if err := pflag.CommandLine.MarkDeprecated(flagAlertmanagerSecretName,
+		"it is ignored, Alertmanager config Secrets are selected by label"); err != nil {
+		return fmt.Errorf("failed to deprecate flag %s: %w", flagAlertmanagerSecretName, err)
+	}
 	pflag.StringVar(&cfg.Monitoring.AlertmanagerURL, flagAlertmanagerURL, "",
 		"The URL of the Alertmanager API.")
 	pflag.BoolVar(&cfg.Monitoring.Enabled, flagMonitoringEnabled, false,
