@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -185,13 +186,15 @@ func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	err := ctrl.NewControllerManagedBy(mgr).
 		Named("cluster").
 		For(&clusterv1.Cluster{}).
-		// Reconcile all clusters when the CA Secret changes so Alloy picks up CA rotation immediately.
+		// Reconcile all clusters when the CA Secret changes so Alloy picks up CA rotation immediately,
+		// and a cluster when one of its AgentCredential Secrets changes so its agents get the new
+		// username or password without waiting for the periodic resync.
 		Watches(&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
 				if r.Config.Cluster.CASecretName == "" ||
 					object.GetNamespace() != r.Config.Cluster.CASecretNamespace ||
 					object.GetName() != r.Config.Cluster.CASecretName {
-					return nil
+					return mapCredentialSecretToCluster(ctx, mgr.GetClient(), object)
 				}
 				logger := log.FromContext(ctx)
 				var clusters clusterv1.ClusterList
@@ -457,6 +460,38 @@ func (r *ClusterReconciler) reconcileAgentCredentials(ctx context.Context, clust
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// mapCredentialSecretToCluster returns the Cluster owning the AgentCredential that owns the given
+// Secret, or nothing for any other Secret.
+func mapCredentialSecretToCluster(ctx context.Context, c client.Reader, secret client.Object) []reconcile.Request {
+	credRef := metav1.GetControllerOf(secret)
+	if credRef == nil || credRef.Kind != "AgentCredential" || !isGroup(credRef.APIVersion, v1alpha1.GroupVersion.Group) {
+		return nil
+	}
+
+	cred := &v1alpha1.AgentCredential{}
+	if err := c.Get(ctx, client.ObjectKey{Namespace: secret.GetNamespace(), Name: credRef.Name}, cred); err != nil {
+		if !apierrors.IsNotFound(err) {
+			log.FromContext(ctx).Error(err, "failed to get agent credential for secret", "secret", client.ObjectKeyFromObject(secret))
+		}
+		return nil
+	}
+
+	// Compare the API group only: AgentCredentials created by earlier releases may
+	// reference an older Cluster API version.
+	clusterRef := metav1.GetControllerOf(cred)
+	if clusterRef == nil || clusterRef.Kind != "Cluster" || !isGroup(clusterRef.APIVersion, clusterv1.GroupVersion.Group) {
+		return nil
+	}
+
+	return []reconcile.Request{{NamespacedName: types.NamespacedName{Namespace: cred.Namespace, Name: clusterRef.Name}}}
+}
+
+// isGroup reports whether apiVersion belongs to the given API group.
+func isGroup(apiVersion, group string) bool {
+	gv, err := schema.ParseGroupVersion(apiVersion)
+	return err == nil && gv.Group == group
 }
 
 func (r *ClusterReconciler) ensureAgentCredential(ctx context.Context, cluster *clusterv1.Cluster, backend v1alpha1.CredentialBackend) error {
