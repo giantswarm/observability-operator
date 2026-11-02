@@ -16,29 +16,27 @@ Each dashboard `ConfigMap` carries the desired state. Both controllers select Co
 - `observability.giantswarm.io/organization: <org-name>` — required.
 - `observability.giantswarm.io/folder: <path>` — optional, slash-separated nested path.
 
-`mapper.DashboardMapper.FromConfigMap` converts a ConfigMap into one `dashboard.Dashboard` domain object per entry in `.data`, attaching the extracted organization and folder path to each.
+`mapper.DashboardMapper.FromConfigMap` converts a ConfigMap into one `dashboard.Dashboard` domain object per entry in `.data`, attaching the extracted organization and folder path to each. Use one dashboard per ConfigMap.
 
-A ConfigMap holding two dashboards for org `giantswarm` under folder `platform/networking`:
+A ConfigMap holding one dashboard for org `giantswarm` under folder `platform/networking`:
 
 ```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: networking-dashboards
+  name: networking-overview
   labels:
     app.giantswarm.io/kind: dashboard
     observability.giantswarm.io/organization: giantswarm
     observability.giantswarm.io/folder: platform/networking
 data:
   overview.json: '{"uid": "net-overview", "title": "Overview", ...}'
-  latency.json:  '{"uid": "net-latency",  "title": "Latency",  ...}'
 ```
 
-maps to two domain objects:
+maps to one domain object:
 
 ```
 Dashboard{uid: net-overview, organization: giantswarm, folderPath: platform/networking}
-Dashboard{uid: net-latency,  organization: giantswarm, folderPath: platform/networking}
 ```
 
 Folder UIDs are deterministic: `folder.GenerateUID` hashes the full path (SHA-256, first 6 bytes) and prefixes it with `gs-`. A folder whose UID carries the `gs-` prefix is operator-managed. The UID depends only on the path, so the same path always maps to the same folder.
@@ -94,6 +92,8 @@ Both branches route through `processDashboards`, which iterates the parsed dashb
 
 This controller is keyed by organization name rather than by ConfigMap. The organization is carried in the reconcile request `Name`, so cleanup runs once per organization.
 
+An **orphaned folder** is an operator-managed folder (`gs-` prefix) that no dashboard ConfigMap of its organization references anymore. A folder becomes orphaned when the last ConfigMap pointing at its path is deleted or moves to another folder.
+
 ### Watches and debouncing
 
 `DashboardCleanupReconciler.SetupWithManager` watches dashboard `ConfigMaps` (same label selector) through a custom `handler.Funcs`. On create, update, or delete:
@@ -119,7 +119,7 @@ For an organization name:
 - It is not in the required-UID set.
 - It is empty (`GetFolderDescendantCounts` reports zero descendants).
 
-Non-empty orphans are skipped with an info log. Per-folder errors are collected with `errors.Join`.
+An orphaned folder can still hold content the operator does not manage, such as a dashboard saved from the Grafana UI. The controller skips such a folder with an info log. It does not report an error. Per-folder errors are collected with `errors.Join`.
 
 For org `giantswarm` whose only dashboard now lives in `platform/networking`, the required set is `{gs-d294fcce0cc8, gs-ad98d443b621}`. Given these folders in Grafana:
 
@@ -127,7 +127,7 @@ For org `giantswarm` whose only dashboard now lives in `platform/networking`, th
 gs-d294fcce0cc8  platform              required           → keep
 gs-ad98d443b621  platform/networking   required           → keep
 gs-1a2b3c4d5e6f  platform/legacy       orphan, empty      → delete
-gs-7f8e9d0c1b2a  platform/storage      orphan, 1 dashboard → keep (not empty)
+gs-7f8e9d0c1b2a  platform/storage      orphan, 1 UI dashboard → keep (not empty)
 team-a-folder    (manually created)    not gs- prefixed   → keep
 ```
 
