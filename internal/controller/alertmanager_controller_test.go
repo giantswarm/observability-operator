@@ -271,6 +271,54 @@ var _ = Describe("Alertmanager Controller", func() {
 		})
 	})
 
+	Context("Mimir Alertmanager pod event handler", func() {
+		// The handler ignores the pod it is given; the pod predicate is what gates on readiness.
+		readyPod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "mimir-alertmanager-0", Namespace: "mimir"}}
+
+		newLabelledSecret := func(name, tenant string) *v1.Secret {
+			return &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: secretNamespace,
+					Labels: map[string]string{
+						kindLabel:                   alertmanagerConfig,
+						tenancy.TenantSelectorLabel: tenant,
+					},
+				},
+			}
+		}
+
+		requestFor := func(name string) reconcile.Request {
+			return reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: name, Namespace: secretNamespace},
+			}
+		}
+
+		It("should enqueue every Alertmanager config secret, whatever its name", func() {
+			first := newLabelledSecret("first-alertmanager-config", "tenant_one")
+			second := newLabelledSecret("second-alertmanager-config", "tenant_two")
+			Expect(k8sClient.Create(testCtx, first)).To(Succeed())
+			Expect(k8sClient.Create(testCtx, second)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(k8sClient.Delete(testCtx, first)).To(Succeed())
+				Expect(k8sClient.Delete(testCtx, second)).To(Succeed())
+			})
+
+			requests := alertmanagerConfigSecretRequests(k8sClient)(testCtx, readyPod)
+
+			Expect(requests).To(ConsistOf(
+				requestFor("first-alertmanager-config"),
+				requestFor("second-alertmanager-config"),
+			))
+		})
+
+		It("should enqueue nothing when no Alertmanager config secret exists", func() {
+			Eventually(func() []reconcile.Request {
+				return alertmanagerConfigSecretRequests(k8sClient)(testCtx, readyPod)
+			}, timeout, interval).Should(BeEmpty())
+		})
+	})
+
 	Context("Edge cases", func() {
 		It("should return nil for a non-existent secret", func() {
 			reconciler = buildReconciler()

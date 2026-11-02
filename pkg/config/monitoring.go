@@ -34,8 +34,7 @@ type MonitoringConfig struct {
 	// NetworkEnabled controls network monitoring at the installation level
 	NetworkEnabled bool
 
-	AlertmanagerSecretName string
-	AlertmanagerURL        string
+	AlertmanagerURL string
 
 	DefaultShardingStrategy sharding.Strategy
 	// WALTruncateFrequency is the frequency at which the WAL segments should be truncated.
