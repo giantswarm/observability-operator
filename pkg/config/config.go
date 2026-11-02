@@ -16,6 +16,9 @@ type Config struct {
 	Monitoring MonitoringConfig
 	Tracing    TracingConfig
 
+	// LogExport sizes alloy-logexporter, the installation-wide log archiving app
+	LogExport LogExportConfig
+
 	// HTTP client timeouts for external API calls
 	HTTP HTTPConfig
 
@@ -75,14 +78,12 @@ type EnvironmentConfig struct {
 	CronitorHeartbeatPingKey       string `env:"CRONITOR_HEARTBEAT_PING_KEY"`
 }
 
-// GatewayConfig holds the namespace and secret names for gateway authentication secrets.
+// GatewayConfig holds the namespace and secret name of a gateway authentication secret.
 // These secrets are read by Alloy agents on workload clusters to authenticate with the
 // observability gateways (Mimir, Loki, Tempo).
 type GatewayConfig struct {
 	// Namespace is the Kubernetes namespace where the gateway secrets reside.
 	Namespace string
-	// IngressSecretName is the name of the secret used for Ingress-based auth.
-	IngressSecretName string
 	// HTTPRouteSecretName is the name of the secret used for HTTPRoute-based auth.
 	HTTPRouteSecretName string
 }
@@ -106,6 +107,9 @@ func (c Config) Validate() error {
 	}
 	if err := c.Cluster.Validate(); err != nil {
 		return fmt.Errorf("cluster config validation failed: %w", err)
+	}
+	if err := c.LogExport.Validate(); err != nil {
+		return fmt.Errorf("log export config validation failed: %w", err)
 	}
 	return nil
 }

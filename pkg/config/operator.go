@@ -26,6 +26,7 @@ type Controllers struct {
 	Cluster             ControllerConfig
 	Dashboard           ControllerConfig
 	GrafanaOrganization ControllerConfig
+	LogExport           ControllerConfig
 }
 
 type ControllerConfig struct {

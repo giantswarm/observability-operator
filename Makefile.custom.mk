@@ -36,7 +36,7 @@ KIND_CLUSTER_NAME = alertmanager-integration
 INTEGRATION_TEST_FLAGS = -count=1 -v -p 1 -test.timeout 30m -tags=integration -args \
 												 -alertmanager-config-dir $(ALERTMANAGER_TEST_CONFIG_DIR)
 MIMIR_CHART = oci://gsoci.azurecr.io/charts/giantswarm/mimir
-MIMIR_CHART_VERSION = 0.30.0
+MIMIR_CHART_VERSION = 0.30.1
 
 ###############################################################################
 # Testing & Coverage
@@ -62,6 +62,14 @@ manual-testing: ## Run manual end-to-end testing script
 		exit 1; \
 	fi
 	@./hack/bin/manual-testing.sh $(INSTALLATION)
+
+# Extra flags for verify-alerting, e.g. VERIFY_ARGS="--context glean --tenant giantswarm"
+VERIFY_ARGS =
+
+.PHONY: verify-alerting
+verify-alerting: $(YQ_BIN) ## Verify one installation's alerting state (Alertmanager config in Mimir, Cronitor heartbeat)
+	@$(log_build) "Verifying alerting state"
+	@YQ=$(abspath $(YQ_BIN)) ./hack/bin/verify-alerting.sh $(VERIFY_ARGS)
 
 ###############################################################################
 # Alertmanager unit Tests

@@ -49,6 +49,10 @@ type MonitoringConfig struct {
 	// Uses opt-out model: enabled by default.
 	ExemplarsEnabled bool
 
+	// VCenterEnabled controls whether vCenter resource metrics are collected on vSphere and
+	// Cloud Director installations. Uses opt-in model: disabled by default.
+	VCenterEnabled bool
+
 	// Gateway holds the namespace and secret names for the Mimir gateway authentication secrets.
 	Gateway GatewayConfig
 

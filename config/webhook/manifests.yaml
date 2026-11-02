@@ -90,6 +90,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-v1alpha1-log-export
+  failurePolicy: Fail
+  name: logexportv1alpha1.observability.giantswarm.io
+  rules:
+  - apiGroups:
+    - observability.giantswarm.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - logexports
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-v1alpha2-grafana-organization
   failurePolicy: Fail
   name: grafanaorganizationv1alpha2.observability.giantswarm.io

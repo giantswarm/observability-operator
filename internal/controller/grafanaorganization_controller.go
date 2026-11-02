@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -86,6 +87,14 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	grafanaAPI, err := r.grafanaClientGen.GenerateGrafanaClient(ctx, r.Client, r.grafanaURL)
 	if err != nil {
+		// Without its admin Secret, Grafana is gone, and the organization with it.
+		if !grafanaOrganization.DeletionTimestamp.IsZero() && apierrors.IsNotFound(err) {
+			logger.Info("Grafana admin secret not found, releasing the finalizer without deleting the organization from Grafana", "error", err.Error())
+			if err := r.finalizerHelper.EnsureRemoved(ctx, grafanaOrganization); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
+			}
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, fmt.Errorf("failed to generate Grafana client: %w", err)
 	}
 
@@ -301,8 +310,14 @@ func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx conte
 	return organizations, nil
 }
 
-// configureGrafanaSSOSettings configures Grafana SSO settings based on all active GrafanaOrganizations
+// configureGrafanaSSOSettings configures Grafana SSO settings based on all active GrafanaOrganizations.
+// It is a no-op when SSO org mapping is disabled, so the SSO provider settings are never read nor written.
 func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.Context, grafanaService *grafana.Service) error {
+	if !r.cfg.Grafana.SSOOrgMappingEnabled {
+		log.FromContext(ctx).V(1).Info("skipping SSO configuration, SSO org mapping is disabled")
+		return nil
+	}
+
 	allOrganizations, err := r.listActiveGrafanaOrganizations(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get all organizations for SSO configuration: %w", err)

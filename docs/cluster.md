@@ -53,6 +53,25 @@ metadata:
     observability.giantswarm.io/network-monitoring: "true"
 ```
 
+## vCenter metrics
+
+On vSphere and Cloud Director installations, the management cluster Alloy agent collects provider metrics from vCenter with `otelcol.receiver.vcenter`. The metrics go to the default tenant through `otelcol.exporter.prometheus`. Workload cluster agents do not collect these metrics.
+
+Collection is disabled by default. Set `monitoring.vcenter.enabled` to `true` in the operator Helm values to enable it. Enable it only on installations that provide the credentials described below.
+
+The operator does not create the credentials. Provide a Secret named `alloy-vcenter-credentials` in the `kube-system` namespace of the management cluster, with these keys:
+
+| Key | Description |
+|---|---|
+| `vcenter-endpoint` | URL of the vCenter API endpoint. The `http://` or `https://` scheme is mandatory, for example `https://vcenter.example.com` |
+| `vcenter-username` | Username for vCenter authentication |
+| `vcenter-password` | Password for vCenter authentication |
+| `vcenter-insecure-skip-verify` | `"true"` to skip TLS verification, any other value to verify |
+
+All keys are mandatory. Alloy fails to load its configuration if a key is absent.
+
+Alloy removes leading and trailing whitespace from all values except the password, which stays a secret. Make sure the password has no trailing newline. Use `stringData` in the Secret manifest, or `kubectl create secret generic --from-literal`, to prevent this.
+
 ## KEDA namespace
 
 When KEDA authentication is enabled, the operator creates a `ClusterTriggerAuthentication` resource so KEDA `ScaledObjects` can authenticate with Mimir. By default it targets the `keda` namespace. Override it per cluster:
@@ -82,3 +101,16 @@ metadata:
     observability.giantswarm.io/monitoring-agent-scale-up-series-count: "500000"
     observability.giantswarm.io/monitoring-agent-scale-down-percentage: "0.15"
 ```
+
+## Remote write queue tuning
+
+The Alloy-Metrics remote write queue (`prometheus.remote_write`'s `queue_config`) is **installation-level only** — there is no per-cluster annotation for it. Set it via `monitoring.queueConfig` in the operator's Helm values, or via the matching `--monitoring-queue-config-*` CLI flags when running the binary directly.
+
+Note that shards come in two independent flavours:
+
+| Concept | Scope | Controlled by |
+|---|---|---|
+| Alloy-Metrics replicas | Pods in the StatefulSet, computed from head series | `monitoring.sharding` + the annotations above |
+| `max_shards` / `min_shards` | Remote write concurrency *inside each pod*, autoscaled by Alloy | `monitoring.queueConfig` |
+
+The defaults match upstream Prometheus/Alloy (`capacity: 10000`, `maxSamplesPerSend: 2000`, `maxShards: 50`), with `sampleAgeLimit: 30m` as a Giant Swarm addition. When tuning, keep `capacity` well above `maxSamplesPerSend` — if `capacity` is the smaller of the two, Prometheus gives each shard a single-batch channel and the queue loses its buffer.
