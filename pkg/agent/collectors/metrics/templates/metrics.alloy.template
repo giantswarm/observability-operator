@@ -266,3 +266,35 @@ prometheus.remote_write "{{ . }}" {
 }
 
 {{ end }}
+
+{{- if $.VCenterEnabled }}
+// vCenter credentials for vsphere and cloud-director installations.
+// This secret is not created by the operator, it is provided externally.
+remote.kubernetes.secret "vcenter_credentials" {
+  name      = "{{ $.VCenterSecretName }}"
+  namespace = "{{ $.AlloySecretNamespace }}"
+}
+
+// Collect provider metrics from vCenter
+// string.trim_space removes the trailing newline that base64 encoding of the secret can add.
+// The password keeps the Alloy secret type, which string.trim_space does not accept.
+otelcol.receiver.vcenter "default" {
+  endpoint = string.trim_space(convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["{{ $.VCenterEndpointKey }}"]))
+  username = string.trim_space(convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["{{ $.VCenterUsernameKey }}"]))
+  password = remote.kubernetes.secret.vcenter_credentials.data["{{ $.VCenterPasswordKey }}"]
+
+  tls {
+    // The secret value is a string, the comparison gives the boolean Alloy expects.
+    insecure_skip_verify = string.trim_space(convert.nonsensitive(remote.kubernetes.secret.vcenter_credentials.data["{{ $.VCenterInsecureSkipVerifyKey }}"])) == "true"
+  }
+
+  output {
+    metrics = [otelcol.exporter.prometheus.vcenter.input]
+  }
+}
+
+// Convert the vCenter metrics to the Prometheus format and send them to the default tenant
+otelcol.exporter.prometheus "vcenter" {
+  forward_to = [prometheus.remote_write.{{ $.DefaultTenantID }}.receiver]
+}
+{{- end }}

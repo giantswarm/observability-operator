@@ -29,12 +29,14 @@ spec:
         - --controllers-cluster-enabled={{ $.Values.operator.controllers.cluster.enabled }}
         - --controllers-dashboard-enabled={{ $.Values.operator.controllers.dashboard.enabled }}
         - --controllers-grafana-organization-enabled={{ $.Values.operator.controllers.grafanaOrganization.enabled }}
+        - --controllers-log-export-enabled={{ $.Values.operator.controllers.logExport.enabled }}
         - --grafana-url={{ $.Values.grafana.url }}
         - --grafana-client-retries={{ $.Values.grafana.clientRetries }}
         - --grafana-admin-secret-namespace={{ $.Values.grafana.adminSecretNamespace }}
         - --grafana-admin-secret-name={{ $.Values.grafana.adminSecretName }}
         - --grafana-gateway-tls-secret-namespace={{ $.Values.grafana.gatewayTLSSecretNamespace }}
         - --grafana-gateway-tls-secret-name={{ $.Values.grafana.gatewayTLSSecretName }}
+        - --grafana-sso-org-mapping-enabled={{ $.Values.grafana.ssoOrgMapping.enabled }}
         - --grafana-datasource-loki-url={{ $.Values.grafana.datasources.lokiURL }}
         - --grafana-datasource-mimir-url={{ $.Values.grafana.datasources.mimirURL }}
         - --grafana-datasource-mimir-alertmanager-url={{ $.Values.grafana.datasources.mimirAlertmanagerURL }}
@@ -107,20 +109,21 @@ spec:
         {{- with .exemplars }}
         - --monitoring-exemplars-enabled={{ .enabled }}
         {{- end }}
+        {{- with .vcenter }}
+        - --monitoring-vcenter-enabled={{ .enabled }}
+        {{- end }}
         - --monitoring-mimir-remote-write-timeout={{ .mimirRemoteWriteTimeout }}
         {{- with .ruler }}
         - --monitoring-ruler-url={{ .url }}
         {{- end }}
         {{- with .gateway }}
         - --monitoring-gateway-namespace={{ .namespace }}
-        - --monitoring-gateway-ingress-secret-name={{ .ingressSecretName }}
         - --monitoring-gateway-httproute-secret-name={{ .httprouteSecretName }}
         {{- end }}
         {{- end }}
         - --tracing-enabled={{ $.Values.tracing.enabled }}
         {{- with $.Values.tracing.gateway }}
         - --tracing-gateway-namespace={{ .namespace }}
-        - --tracing-gateway-ingress-secret-name={{ .ingressSecretName }}
         - --tracing-gateway-httproute-secret-name={{ .httprouteSecretName }}
         {{- end }}
         # Logging configuration
@@ -145,8 +148,21 @@ spec:
         {{- end }}
         {{- with .gateway }}
         - --logging-gateway-namespace={{ .namespace }}
-        - --logging-gateway-ingress-secret-name={{ .ingressSecretName }}
         - --logging-gateway-httproute-secret-name={{ .httprouteSecretName }}
+        {{- end }}
+        {{- end }}
+        # Log export sizing
+        {{- with .Values.logExport }}
+        - --logexport-namespace={{ .target.namespace }}
+        - --logexport-configmap-name={{ .target.configMapName }}
+        - --logexport-secret-name={{ .target.secretName }}
+        - --logexport-replicas={{ .replicas }}
+        - --logexport-wal-size={{ .wal.size }}
+        - --logexport-export-timeout={{ .exportTimeout }}
+        {{- if .resources }}
+        # Quote the whole argument: the JSON contains characters YAML would otherwise
+        # take as structure.
+        - {{ printf "--logexport-resources=%s" (.resources | toJson) | quote }}
         {{- end }}
         {{- end }}
         # Cronitor heartbeat monitor configuration

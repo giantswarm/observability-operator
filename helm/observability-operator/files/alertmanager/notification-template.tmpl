@@ -24,28 +24,38 @@
 {{- end }}
 {{ end }}
 
-{{ define "pagerduty.default.message" }}{{ .GroupLabels.installation }}{{ if not (eq .GroupLabels.cluster_id .GroupLabels.installation) }}-{{ .GroupLabels.cluster_id }}{{ end }} - {{ .GroupLabels.alertname }}{{ end }}
-{{ define "pagerduty.default.source" }}{{ template "__alertmanager" . }}{{ end }}
-{{ define "pagerduty.default.description" -}}
-{{ if (index .Alerts 0).Annotations.runbook_url -}}
-📗 Runbook: {{ template "__runbook_url" . }}
-{{ else -}}
-📗 Runbook: ⚠️ There is no **runbook** for this alert, time to get your pen.
+{{/*
+  pagerduty.default.message is the Events API v2 summary and becomes the PagerDuty incident title:
+  the only alert content PagerDuty shows on its Slack incident card and in push notifications.
+  It keeps the "<cluster> - <AlertName>" prefix that tooling filters on and appends the
+  description of the first firing alert on a single line, plus the number of firing alerts when
+  there is more than one. Alertmanager truncates the summary to 1024 runes.
+*/}}
+{{ define "pagerduty.default.message" -}}
+{{ .GroupLabels.installation }}{{ if not (eq .GroupLabels.cluster_id .GroupLabels.installation) }}-{{ .GroupLabels.cluster_id }}{{ end }} - {{ .GroupLabels.alertname }}
+{{- with .Alerts.Firing }}
+{{- with (index . 0).Annotations.description }}: {{ reReplaceAll "\\s+" " " . | reReplaceAll "^ | $" "" }}{{ end }}
+{{- if gt (len .) 1 }} ({{ len . }} firing){{ end }}
 {{- end }}
-{{ if or ((index .Alerts 0).Annotations.__dashboardUid__) ((index .Alerts 0).Annotations.dashboardExternalUrl) -}}
-📈 Dashboard: {{ template "__dashboard_url" . }}
-{{ else -}}
-📈 Dashboard: {{ template "__grafana_url" . }} (⚠️ There is no **dashboard** for this alert, time to sketch.)
+{{- end }}
+{{ define "pagerduty.default.source" }}{{ template "__alertmanager" . }}{{ end }}
+{{/*
+  Alertmanager >= v0.30 parses each rendered detail as YAML and sends it as structured
+  JSON unless the parse fails. We want the parse to fail, so this block is sent verbatim.
+  Things to avoid:
+  - Using a colon in the header (e.g. "Alerts:") because it will be interpreted as a key/value pair.
+  - Using '---' because it will be interpreted as a YAML document separator.
+*/}}
+{{ define "pagerduty.default.description" -}}
+Alerts 🔥
+{{ range .Alerts.Firing }}  {{ if .Labels.instance }}{{ .Labels.instance }}: {{ end }}{{ .Annotations.description }}
+{{ end }}
+{{- if not (index .Alerts 0).Annotations.runbook_url -}}
+📗 Runbook: ⚠️ There is no **runbook** for this alert, time to get your pen.
 {{ end -}}
-👀 Explore: {{ template "__alert_url" . }}
-🔔 Silence: {{ template "__alert_silence_link" . }}
-
----
-
-* Team: {{ (index .Alerts 0).Labels.team }}
-* Area: {{ (index .Alerts 0).Labels.area }} / {{ (index .Alerts 0).Labels.topic }}
-* Instances:{{ range .Alerts.Firing }}
-🔥 {{ if .Labels.instance }}{{ .Labels.instance }}: {{ end }}{{ .Annotations.description }}{{ end }}
+{{ if not (or ((index .Alerts 0).Annotations.__dashboardUid__) ((index .Alerts 0).Annotations.dashboardExternalUrl)) -}}
+📊 Dashboard: ⚠️ There is no **dashboard** for this alert, time to sketch.
+{{ end -}}
 {{- end }}
 
 # Link to the silence repository where silences should be created

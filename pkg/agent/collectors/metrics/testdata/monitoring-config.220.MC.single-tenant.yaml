@@ -42,6 +42,9 @@ networkPolicy:
       - ports:
         - port: "12345"
           protocol: TCP
+# Token Secret the kube-prometheus-stack control-plane ServiceMonitors authenticate with.
+serviceAccountTokenSecret:
+  enabled: true
 alloy:
   alloy:
     clustering:
@@ -180,9 +183,9 @@ alloy:
               "X-Scope-OrgID" = "tenant1",
             }
             queue_config {
-              capacity             = 30000
-              max_samples_per_send = 150000
-              max_shards           = 10
+              capacity             = 10000
+              max_samples_per_send = 2000
+              max_shards           = 50
               sample_age_limit     = "30m"
             }
           }

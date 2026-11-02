@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	// Gateway secret data keys (supporting migration from Ingress to Gateway API).
-	IngressDataKey   = "auth"
+	// HTTPRouteDataKey is the data key of the gateway secret consumed by the
+	// Gateway API HTTPRoute.
 	HTTPRouteDataKey = ".htpasswd"
 
 	// SecretKeyUsername, SecretKeyPassword and SecretKeyHtpasswd are the keys
@@ -17,16 +17,11 @@ const (
 	SecretKeyHtpasswd = "htpasswd"
 )
 
-// GatewayConfig holds the namespace and secret names for a single backend's gateway
-// authentication secrets.
+// GatewayConfig holds the namespace and secret name for a single backend's gateway
+// authentication secret.
 type GatewayConfig struct {
-	// Namespace is the Kubernetes namespace where the gateway secrets reside.
+	// Namespace is the Kubernetes namespace where the gateway secret resides.
 	Namespace string
-
-	// IngressSecretName is the name of the auth secret consumed by Ingress.
-	IngressSecretName string
-	// IngressDataKey is the data key within the ingress secret.
-	IngressDataKey string
 
 	// HTTPRouteSecretName is the name of the auth secret consumed by the
 	// Gateway API HTTPRoute.
@@ -36,11 +31,9 @@ type GatewayConfig struct {
 }
 
 // NewGatewayConfig builds a GatewayConfig with the standard data keys.
-func NewGatewayConfig(namespace, ingressSecretName, httprouteSecretName string) GatewayConfig {
+func NewGatewayConfig(namespace, httprouteSecretName string) GatewayConfig {
 	return GatewayConfig{
 		Namespace:           namespace,
-		IngressSecretName:   ingressSecretName,
-		IngressDataKey:      IngressDataKey,
 		HTTPRouteSecretName: httprouteSecretName,
 		HTTPRouteDataKey:    HTTPRouteDataKey,
 	}

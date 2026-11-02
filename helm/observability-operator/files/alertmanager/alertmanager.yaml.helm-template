@@ -70,6 +70,16 @@ route:
     - alertname=~"Falco.*"
     continue: false
 
+  # app-to-hr migration tracking Slack
+  # Matched ahead of the per-team routes below so it claims the alert
+  # regardless of which team's `team` label the underlying HelmRelease
+  # carries.
+  - receiver: helmrelease_migration_slack
+    matchers:
+    - alertname="HelmReleaseAppToHrMigrationFailed"
+    - migration="app-to-hr"
+    continue: false
+
 {{- range $.Values.alerting.teams }}
 
   {{- if not .name }}
@@ -77,6 +87,13 @@ route:
   {{- end }}
 
   {{- if .pagerdutyToken }}
+  {{- $team := .name }}
+  {{- $pagerdutyTeams := list $team }}
+  {{- range $alias, $target := $.Values.alerting.pagerdutyTeamAliases }}
+  {{- if eq $target $team }}
+  {{- $pagerdutyTeams = append $pagerdutyTeams $alias }}
+  {{- end }}
+  {{- end }}
 
   {{- if eq $.Values.managementCluster.pipeline "stable" }}
   # PagerDuty pipeline=stable anytime
@@ -85,7 +102,7 @@ route:
     - severity="page"
     - pipeline="stable"
     - all_pipelines!="true"
-    - team="{{ .name }}"
+    - team=~"{{ join "|" $pagerdutyTeams }}"
     - cancel_if_outside_working_hours!="true"
     continue: true
 
@@ -95,7 +112,7 @@ route:
     - severity="page"
     - pipeline="stable"
     - all_pipelines!="true"
-    - team="{{ .name }}"
+    - team=~"{{ join "|" $pagerdutyTeams }}"
     - cancel_if_outside_working_hours="true"
     active_time_intervals:
     - business-hours
@@ -109,7 +126,7 @@ route:
     - severity="page"
     - pipeline="stable-testing"
     - all_pipelines!="true"
-    - team="{{ .name }}"
+    - team=~"{{ join "|" $pagerdutyTeams }}"
     active_time_intervals:
     - business-hours
     continue: true
@@ -119,7 +136,7 @@ route:
   - receiver: pagerduty-{{ .name }}
     matchers:
     - all_pipelines="true"
-    - team="{{ .name }}"
+    - team=~"{{ join "|" $pagerdutyTeams }}"
     - cancel_if_outside_working_hours!="true"
     continue: true
 
@@ -127,7 +144,7 @@ route:
   - receiver: pagerduty-{{ .name }}
     matchers:
     - all_pipelines="true"
-    - team="{{ .name }}"
+    - team=~"{{ join "|" $pagerdutyTeams }}"
     - cancel_if_outside_working_hours="true"
     active_time_intervals:
     - business-hours
@@ -153,6 +170,11 @@ route:
     - team="atlas"
     - alertname!~"Inhibition.*"
     - alertname!="Heartbeat"
+    {{- if has .Values.managementCluster.pipeline (list "testing" "stable-testing") }}
+    # Test installations: no Slack notifications outside business hours.
+    active_time_intervals:
+    - business-hours
+    {{- end }}
     continue: false
 
   # Team Bumblebee Slack
@@ -164,6 +186,18 @@ route:
     - severity=~"page|notify"
     {{- end }}
     - team="bumblebee"
+    - alertname!~"Inhibition.*"
+    continue: false
+
+  # Team Planeteers Slack
+  - receiver: team_planeteers_slack
+    matchers:
+    {{- if eq .Values.managementCluster.pipeline "stable" }}
+    - severity="notify"
+    {{- else }}
+    - severity=~"page|notify"
+    {{- end }}
+    - team="planeteers"
     - alertname!~"Inhibition.*"
     continue: false
 
@@ -247,6 +281,17 @@ receivers:
       url: '{{`{{ template "__alert_silence_link" .}}`}}'
       style: '{{`{{ if eq .Status "firing" }}danger{{ else }}default{{ end }}`}}'
 
+- name: helmrelease_migration_slack
+  slack_configs:
+  - channel: 'C0C3RGNHVNY'
+    http_config:
+      authorization:
+        type: Bearer
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      proxy_from_environment: true
+    send_resolved: true
+    actions: *slack-actions
+
 - name: team_atlas_slack
   slack_configs:
   {{- if eq .Values.managementCluster.pipeline "stable" }}
@@ -268,6 +313,21 @@ receivers:
   - channel: '#alert-bumblebee'
   {{- else }}
   - channel: '#alert-bumblebee-test'
+  {{- end }}
+    http_config:
+      authorization:
+        type: Bearer
+        credentials: {{ .Values.alerting.slackAPIToken }}
+      proxy_from_environment: true
+    send_resolved: true
+    actions: *slack-actions
+
+- name: team_planeteers_slack
+  slack_configs:
+  {{- if eq .Values.managementCluster.pipeline "stable" }}
+  - channel: '#alert-planeteers'
+  {{- else }}
+  - channel: '#alert-planeteers-test'
   {{- end }}
     http_config:
       authorization:
@@ -349,6 +409,21 @@ receivers:
   - routing_key: {{ .pagerdutyToken }}
     source: '{{`{{ template "pagerduty.default.source" . }}`}}'
     description: '{{`{{ template "pagerduty.default.message" . }}`}}'
+    # "Triggered via" on the PagerDuty Slack card: the default client_url is Alertmanager's
+    # relative external URL, which Slack cannot link. Point it at the alert in Grafana instead.
+    client: 'Grafana'
+    client_url: '{{`{{ template "__alert_url" . }}`}}'
+    # PagerDuty renders these as buttons in the incident and the mobile app, and drops
+    # any link whose href is empty.
+    links:
+    - href: '{{`{{ template "__runbook_url" . }}`}}'
+      text: '📗 Runbook'
+    - href: '{{`{{ template "__dashboard_url_or_empty" . }}`}}'
+      text: '📊 Dashboard'
+    - href: '{{`{{ template "__alert_url" . }}`}}'
+      text: '👀 Explore'
+    - href: '{{`{{ template "__alert_silence_link" . }}`}}'
+      text: '🔔 Silence'
     # There is currently no way to send all alerts labels to PagerDuty as details.
     # See https://github.com/prometheus/alertmanager/issues/3218
     details: {

@@ -14,6 +14,23 @@ load ../helper.bash
   assert_line --partial pagerduty-foo
 }
 
+# Aliased team paging alerts go to the target team PagerDuty receiver
+
+@test "aliased team paging alerts with pipeline=stable are delivered to PagerDuty" {
+  run amtool team=bar severity=page pipeline=stable
+  assert_line --partial pagerduty-foo
+}
+
+@test "aliased team paging alerts with all_pipelines are delivered to PagerDuty" {
+  run amtool team=bar severity=page all_pipelines=true
+  assert_line --partial pagerduty-foo
+}
+
+@test "non-aliased team paging alerts are NOT delivered to PagerDuty" {
+  run amtool team=baz severity=page pipeline=stable
+  refute_line --partial pagerduty-foo
+}
+
 # Specific Atlas slack conditions
 
 @test "atlas paging alerts are NOT delivered to Slack" {
@@ -24,4 +41,16 @@ load ../helper.bash
 @test "atlas notify alerts are delivered to Slack" {
   run amtool team=atlas severity=notify
   assert_line --partial team_atlas_slack
+}
+
+# Specific Planeteers slack conditions (Slack-only team, same shape as Atlas)
+
+@test "planeteers paging alerts are NOT delivered to Slack" {
+  run amtool team=planeteers severity=page
+  refute_line team_planeteers_slack
+}
+
+@test "planeteers notify alerts are delivered to Slack" {
+  run amtool team=planeteers severity=notify
+  assert_line team_planeteers_slack
 }

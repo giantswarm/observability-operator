@@ -85,4 +85,17 @@ const (
 	// TLS connections to Loki, Mimir, and Tempo on private-CA installations.
 	// Absent on public-CA installations; Alloy falls back to the system trust store.
 	CABundleKey = "ca-bundle"
+
+	// --- vCenter Configuration ---
+	// Configuration for the vCenter receiver, used for both vCenter and Cloud Director environments
+
+	// VCenterSecretName is the secret holding the vCenter credentials. The operator does not
+	// create this secret: it is provided externally in the Alloy namespace.
+	VCenterSecretName = "alloy-vcenter-credentials" // #nosec G101
+
+	// vCenter secret keys for authentication and endpoint configuration
+	VCenterUsernameKey           = "vcenter-username"             // Username for vCenter authentication
+	VCenterPasswordKey           = "vcenter-password"             // Password for vCenter authentication
+	VCenterEndpointKey           = "vcenter-endpoint"             // URL for vCenter API endpoint
+	VCenterInsecureSkipVerifyKey = "vcenter-insecure-skip-verify" // Whether to skip TLS verification for vCenter API (true/false)
 )

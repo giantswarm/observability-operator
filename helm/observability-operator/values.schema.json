@@ -57,6 +57,12 @@
                 "grafanaAddress": {
                     "type": "string"
                 },
+                "pagerdutyTeamAliases": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "slackAPIToken": {
                     "type": "string"
                 }
@@ -101,6 +107,16 @@
                 "gatewayTLSSecretName": {
                     "type": "string",
                     "description": "Name of the Kubernetes secret containing the Grafana Gateway TLS certificate"
+                },
+                "ssoOrgMapping": {
+                    "type": "object",
+                    "description": "Grafana SSO organization mapping. When enabled, the operator writes the org_mapping of Grafana's generic_oauth SSO provider from the spec.rbac of every GrafanaOrganization. When disabled, SSO settings are left untouched and spec.rbac is ignored.",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enable the Grafana SSO organization mapping"
+                        }
+                    }
                 },
                 "datasources": {
                     "type": "object",
@@ -251,6 +267,15 @@
                         }
                     }
                 },
+                "vcenter": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enable vCenter resource metrics collection on vSphere and Cloud Director installations. Requires an externally-provided alloy-vcenter-credentials Secret."
+                        }
+                    }
+                },
                 "mimirRemoteWriteTimeout": {
                     "type": "string",
                     "description": "Timeout for Alloy Mimir remote write operations"
@@ -268,9 +293,17 @@
                     "type": "object",
                     "properties": {
                         "namespace": { "type": "string" },
-                        "ingressSecretName": { "type": "string" },
                         "httprouteSecretName": { "type": "string" }
                     }
+                }
+            }
+        },
+        "crds": {
+            "type": "object",
+            "properties": {
+                "install": {
+                    "type": "boolean",
+                    "description": "Install all of the operator's CRDs with the chart, whether or not their controller is enabled."
                 }
             }
         },
@@ -313,6 +346,14 @@
                             }
                         },
                         "grafanaOrganization": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "logExport": {
                             "type": "object",
                             "properties": {
                                 "enabled": {
@@ -423,7 +464,6 @@
                     "type": "object",
                     "properties": {
                         "namespace": { "type": "string" },
-                        "ingressSecretName": { "type": "string" },
                         "httprouteSecretName": { "type": "string" }
                     }
                 }
@@ -482,9 +522,43 @@
                     "type": "object",
                     "properties": {
                         "namespace": { "type": "string" },
-                        "ingressSecretName": { "type": "string" },
                         "httprouteSecretName": { "type": "string" }
                     }
+                }
+            }
+        },
+        "logExport": {
+            "type": "object",
+            "description": "Configuration for alloy-logexporter, the installation-wide log export app",
+            "properties": {
+                "target": {
+                    "type": "object",
+                    "description": "Where the operator writes alloy-logexporter's Helm values; must match what its Helm release reads",
+                    "properties": {
+                        "namespace": { "type": "string", "description": "Namespace the values are written to, which is not necessarily the namespace alloy-logexporter runs in" },
+                        "configMapName": { "type": "string", "description": "Name of the ConfigMap holding the alloy-logexporter Helm values" },
+                        "secretName": { "type": "string", "description": "Name of the Secret holding the alloy-logexporter credentials" }
+                    }
+                },
+                "replicas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of alloy-logexporter replicas"
+                },
+                "wal": {
+                    "type": "object",
+                    "description": "Write-ahead log holding the sending queue",
+                    "properties": {
+                        "size": { "type": "string", "description": "Size of the per-replica WAL volume (e.g., '10Gi')" }
+                    }
+                },
+                "exportTimeout": {
+                    "type": "string",
+                    "description": "Durability window for uploads; a destination outage longer than this loses data (e.g., '5m')"
+                },
+                "resources": {
+                    "type": "object",
+                    "description": "Container resources for alloy-logexporter"
                 }
             }
         },
@@ -534,8 +608,27 @@
                                     "type": "boolean"
                                 }
                             }
+                        },
+                        "logExport": {
+                            "type": "object",
+                            "description": "Enable LogExport validation webhook",
+                            "properties": {
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
                     }
+                }
+            }
+        },
+        "podMonitor": {
+            "type": "object",
+            "description": "PodMonitor for scraping the operator's own metrics",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Render the PodMonitor. Requires the Prometheus Operator CRDs."
                 }
             }
         },

@@ -67,6 +67,23 @@ load ../helper.bash
   assert_line team_honeybadger_slack
 }
 
+# Slack for Team Planeteers
+
+@test "planeteers page alerts are delivered to slack" {
+  run amtool team=planeteers severity=page
+  assert_line team_planeteers_slack
+}
+
+@test "planeteers notify alerts are delivered to slack" {
+  run amtool team=planeteers severity=notify
+  assert_line team_planeteers_slack
+}
+
+@test "planeteers inhibition are not delivered to slack" {
+  run amtool team=planeteers severity=notify alertname=Inhibition
+  assert_line root
+}
+
 # Slack for Team Tenet
 
 @test "tenet notify alerts are delivered to slack" {

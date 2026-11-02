@@ -6,7 +6,7 @@ The operator watches for Kubernetes `ConfigMaps` containing Grafana dashboard JS
 
 1. Create a `ConfigMap` with the required labels and your dashboard JSON as the data
 2. The operator detects the ConfigMap, determines the target organization and folder, and provisions the dashboard via the Grafana API
-3. On deletion, the operator removes the dashboard from Grafana and cleans up any empty operator-managed folders
+3. On deletion, the operator removes the dashboard from Grafana and cleans up any empty operator-managed folders. If the Grafana admin Secret no longer exists, it removes the finalizer without contacting Grafana
 
 ## Required labels
 

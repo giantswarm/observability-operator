@@ -122,6 +122,9 @@ spec:
                           The Secret is read from THIS resource's namespace; cross-namespace
                           references are not possible. Omit it to authenticate by workload identity
                           (IRSA) instead, optionally combined with RoleARN.
+
+                          Static credentials apply to every export and override workload identity,
+                          so the two cannot be mixed.
                         properties:
                           name:
                             default: ""
@@ -145,6 +148,19 @@ spec:
                           ForcePathStyle addresses the bucket as a path rather than a subdomain.
                           S3-compatible stores generally require this; AWS generally does not.
                         type: boolean
+                      format:
+                        default: otlp
+                        description: |-
+                          Format selects how each record is written into AWS S3 object storage.
+
+                          "otlp" wraps each batch in an OTLP document, keeping the labels as record attributes.
+                          "raw" writes the log lines alone, newline-delimited and unaltered: smaller and
+                          directly queryable, but with no labels and so no way to tell which cluster or pod a
+                          line came from.
+                        enum:
+                        - raw
+                        - otlp
+                        type: string
                       prefix:
                         description: |-
                           Prefix is the key prefix objects are written under. Object keys are
@@ -162,8 +178,11 @@ spec:
                       roleARN:
                         description: |-
                           RoleARN is an IAM role to assume before writing, for cross-account delivery.
-                          When set, CredentialsRef is usually unnecessary: the exporter authenticates
-                          with its own ServiceAccount identity and assumes this role.
+                          The exporter authenticates with its own workload identity, the role
+                          giantswarm-<installation>-alloy-logexporter in the management cluster's
+                          account, and assumes this one. It may only assume roles whose name starts
+                          with giantswarm-logexport-, so this role must be named that way and trust
+                          the exporter's role. Leave CredentialsRef unset.
                         maxLength: 2048
                         pattern: ^$|^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+$
                         type: string
@@ -193,10 +212,13 @@ spec:
                 description: |-
                   Selector chooses which log lines are exported, using LogQL syntax.
 
-                  Only a subset of LogQL is supported: a stream selector, optional line
-                  filters, and an optional parse-and-filter clause. Aggregations and time
-                  ranges are rejected -- an export is a continuous tee, not a query, so it has
-                  no start or end.
+                  Only a subset the exporter can render is accepted: a stream selector, optional
+                  line filters, an optional "| json", and optional label filters comparing a single
+                  label to a string. Aggregations and time ranges are rejected -- an export is a
+                  continuous tee, not a query, so it has no start or end.
+
+                  As in Loki, the stream selector must name at least one label it can match on, so
+                  {job=~".*"} is rejected while {job=~".+"} is accepted.
 
                   The same expression can be pasted into Grafana Explore to see exactly which
                   lines it matches before committing it.
