@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.87.0] - 2026-11-02
+
 ### Changed
 
 - **Breaking:** the basic-auth username of an `AgentCredential` is now `<namespace>/<name>`, so per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; for one release the gateway also accepts the old `spec.agentName` username, so agents switch over without authentication errors.
@@ -1350,7 +1352,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.86.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.87.0...HEAD
+[0.87.0]: https://github.com/giantswarm/observability-operator/compare/v0.86.0...v0.87.0
 [0.86.0]: https://github.com/giantswarm/observability-operator/compare/v0.85.0...v0.86.0
 [0.85.0]: https://github.com/giantswarm/observability-operator/compare/v0.84.1...v0.85.0
 [0.84.1]: https://github.com/giantswarm/observability-operator/compare/v0.84.0...v0.84.1
