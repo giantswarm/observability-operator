@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
-- `AgentCredential` `spec.agentName` is now optional and ignored, and will be removed in a future release.
+- `AgentCredential` `spec.agentName` is now deprecated and optional. It is still supported for migration purposes until next release.
 
 ### Removed
 
