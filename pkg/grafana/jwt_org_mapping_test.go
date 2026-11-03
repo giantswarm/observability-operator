@@ -16,6 +16,8 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/domain/organization"
 )
 
+const jwtTestAdminsGroup = "admins"
+
 var jwtOrgMappingSecretKey = types.NamespacedName{Name: JWTOrgMappingSecretName, Namespace: JWTOrgMappingSecretNamespace}
 
 func newJWTTestScheme(t *testing.T) *runtime.Scheme {
@@ -28,7 +30,7 @@ func newJWTTestScheme(t *testing.T) *runtime.Scheme {
 func TestConfigureJWTOrgMappingSecret_CreatesSecret(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(newJWTTestScheme(t)).Build()
 	organizations := []*organization.Organization{
-		organization.New(1, "Shared Org", nil, []string{"admins"}, []string{"editors"}, []string{"viewers"}),
+		organization.New(1, "Shared Org", nil, []string{jwtTestAdminsGroup}, []string{"editors"}, []string{"viewers"}),
 		organization.New(2, "Giant Swarm", nil, []string{"giantswarm-admins"}, nil, nil),
 	}
 
@@ -62,7 +64,7 @@ func TestConfigureJWTOrgMappingSecret_UpdatesSecretInPlace(t *testing.T) {
 	}
 	c := fake.NewClientBuilder().WithScheme(newJWTTestScheme(t)).WithObjects(existing).Build()
 	organizations := []*organization.Organization{
-		organization.New(1, "Shared Org", nil, []string{"admins"}, nil, nil),
+		organization.New(1, "Shared Org", nil, []string{jwtTestAdminsGroup}, nil, nil),
 	}
 
 	require.NoError(t, ConfigureJWTOrgMappingSecret(context.Background(), c, organizations))
@@ -77,10 +79,32 @@ func TestConfigureJWTOrgMappingSecret_UpdatesSecretInPlace(t *testing.T) {
 	assert.Equal(t, "observability-operator", secret.Labels["app.kubernetes.io/managed-by"])
 }
 
+func TestConfigureJWTOrgMappingSecret_OrderDoesNotChangeSecret(t *testing.T) {
+	c := fake.NewClientBuilder().WithScheme(newJWTTestScheme(t)).Build()
+	sharedOrg := organization.New(1, "Shared Org", nil, []string{jwtTestAdminsGroup}, nil, nil)
+	giantSwarmOrg := organization.New(2, "Giant Swarm", nil, []string{"giantswarm-admins"}, nil, nil)
+	pendingOrg := organization.New(0, "Pending Org", nil, []string{"pending-admins"}, nil, nil)
+
+	require.NoError(t, ConfigureJWTOrgMappingSecret(context.Background(), c, []*organization.Organization{sharedOrg, giantSwarmOrg, pendingOrg}))
+
+	secret := &corev1.Secret{}
+	require.NoError(t, c.Get(context.Background(), jwtOrgMappingSecretKey, secret))
+	resourceVersion := secret.ResourceVersion
+
+	shuffled := []*organization.Organization{giantSwarmOrg, pendingOrg, sharedOrg}
+	require.NoError(t, ConfigureJWTOrgMappingSecret(context.Background(), c, shuffled))
+
+	require.NoError(t, c.Get(context.Background(), jwtOrgMappingSecretKey, secret))
+	assert.Equal(t, resourceVersion, secret.ResourceVersion)
+	assert.Equal(t, `"pending-admins:Pending Org:Admin" "admins:Shared Org:Admin" "giantswarm-admins:Giant Swarm:Admin"`, string(secret.Data[JWTOrgMappingSecretKey]))
+	// The caller's slice is left untouched.
+	assert.Equal(t, []*organization.Organization{giantSwarmOrg, pendingOrg, sharedOrg}, shuffled)
+}
+
 func TestConfigureJWTOrgMappingSecret_InvalidOrganization(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(newJWTTestScheme(t)).Build()
 	organizations := []*organization.Organization{
-		organization.New(1, "", nil, []string{"admins"}, nil, nil),
+		organization.New(1, "", nil, []string{jwtTestAdminsGroup}, nil, nil),
 	}
 
 	require.Error(t, ConfigureJWTOrgMappingSecret(context.Background(), c, organizations))

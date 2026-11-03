@@ -1,8 +1,10 @@
 package grafana
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +26,8 @@ const (
 
 // ConfigureJWTOrgMappingSecret creates or updates the Secret holding the Grafana org mapping
 // derived from the provided organizations. The mapping is the same string as the org_mapping
-// written to the generic_oauth SSO settings.
+// written to the generic_oauth SSO settings. The organizations are sorted by ID, then name, so
+// the Secret only changes when the mapping does.
 //
 // The grafana-mcp Grafana instance reads it as GF_AUTH_JWT_ORG_MAPPING. Grafana reads that
 // value at startup only, so the consumer is responsible for rolling its pods when the Secret
@@ -32,7 +35,12 @@ const (
 func ConfigureJWTOrgMappingSecret(ctx context.Context, c client.Client, organizations []*organization.Organization) error {
 	logger := log.FromContext(ctx).WithValues("secret", JWTOrgMappingSecretNamespace+"/"+JWTOrgMappingSecretName, "organizations_count", len(organizations))
 
-	orgsMapping, err := generateGrafanaOrgsMapping(organizations)
+	sorted := slices.Clone(organizations)
+	slices.SortStableFunc(sorted, func(a, b *organization.Organization) int {
+		return cmp.Or(cmp.Compare(a.ID(), b.ID()), cmp.Compare(a.Name(), b.Name()))
+	})
+
+	orgsMapping, err := generateGrafanaOrgsMapping(sorted)
 	if err != nil {
 		return fmt.Errorf("failed to generate organization mappings for JWT: %w", err)
 	}
@@ -62,6 +70,8 @@ func ConfigureJWTOrgMappingSecret(ctx context.Context, c client.Client, organiza
 		return fmt.Errorf("failed to create or update JWT org mapping secret: %w", err)
 	}
 
-	logger.Info("configured JWT org mapping secret", "result", result)
+	if result != controllerutil.OperationResultNone {
+		logger.Info("configured JWT org mapping secret", "result", result)
+	}
 	return nil
 }
