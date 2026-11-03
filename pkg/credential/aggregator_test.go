@@ -159,3 +159,40 @@ func TestAggregate_SkipsCredentialsWithoutSecret(t *testing.T) {
 	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
 	assert.Equal(t, "with:{SHA}xx", string(httproute.Data[HTTPRouteDataKey]))
 }
+
+// During the move to "<namespace>/<name>" usernames, agents may still send
+// their legacy spec.agentName until their config is rolled out, so the
+// gateway accepts both names with the same password hash.
+func TestAggregate_AddsLegacyAgentNameLine(t *testing.T) {
+	scheme := newScheme(t)
+	gwNs := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: gatewayNamespace}}
+	cred, secret := credentialWithSecret("a", ns1, "legacy-a", observabilityv1alpha1.CredentialBackendMetrics, "ns1/a:{SHA}xx")
+	noLegacy, noLegacySecret := credentialWithSecret("b", ns1, "", observabilityv1alpha1.CredentialBackendMetrics, "ns1/b:{SHA}yy")
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(gwNs, cred, secret, noLegacy, noLegacySecret).Build()
+	a := NewAggregator(c, newGatewayConfigs())
+
+	require.NoError(t, a.Aggregate(t.Context(), observabilityv1alpha1.CredentialBackendMetrics))
+
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(t.Context(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
+	assert.Equal(t, strings.Join([]string{"legacy-a:{SHA}xx", "ns1/a:{SHA}xx", "ns1/b:{SHA}yy"}, "\n"), string(httproute.Data[HTTPRouteDataKey]))
+}
+
+// A legacy name shared by several credentials is ambiguous, so it is left out
+// rather than resolved; their "<namespace>/<name>" usernames still work.
+func TestAggregate_SkipsAmbiguousLegacyNames(t *testing.T) {
+	scheme := newScheme(t)
+	gwNs := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: gatewayNamespace}}
+	credA, secA := credentialWithSecret("a", ns1, "shared", observabilityv1alpha1.CredentialBackendMetrics, "ns1/a:{SHA}xx")
+	credB, secB := credentialWithSecret("b", "ns2", "shared", observabilityv1alpha1.CredentialBackendMetrics, "ns2/b:{SHA}yy")
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(gwNs, credA, secA, credB, secB).Build()
+	a := NewAggregator(c, newGatewayConfigs())
+
+	require.NoError(t, a.Aggregate(t.Context(), observabilityv1alpha1.CredentialBackendMetrics))
+
+	httproute := &corev1.Secret{}
+	require.NoError(t, c.Get(t.Context(), client.ObjectKey{Namespace: gatewayNamespace, Name: httprouteSecretName}, httproute))
+	assert.Equal(t, strings.Join([]string{"ns1/a:{SHA}xx", "ns2/b:{SHA}yy"}, "\n"), string(httproute.Data[HTTPRouteDataKey]))
+}

@@ -318,10 +318,7 @@ var _ = Describe("Cluster Controller AgentCredential Secret watch", func() {
 
 		cred := &observabilityv1alpha1.AgentCredential{
 			ObjectMeta: metav1.ObjectMeta{Name: "secret-watch-cluster-observability-metrics", Namespace: clusterKey.Namespace},
-			Spec: observabilityv1alpha1.AgentCredentialSpec{
-				Backend:   observabilityv1alpha1.CredentialBackendMetrics,
-				AgentName: clusterKey.Name,
-			},
+			Spec:       observabilityv1alpha1.AgentCredentialSpec{Backend: observabilityv1alpha1.CredentialBackendMetrics},
 		}
 		Expect(controllerutil.SetControllerReference(cluster, cred, watchScheme)).To(Succeed())
 		Expect(watchClient.Create(watchCtx, cred)).To(Succeed())

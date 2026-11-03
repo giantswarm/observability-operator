@@ -7,17 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.88.0] - 2026-11-03
+
 ### Added
 
 - Add `make verify-alerting` (`hack/bin/verify-alerting.sh`), which checks one installation's alerting state and exits non-zero on any failure: the configuration Mimir Alertmanager serves matches the Secret on the cluster, exactly one Secret ships it for the tenant, the Cronitor monitor the configuration pings exists and is passing, and the `Heartbeat` resource is Ready where the CRD is registered.
 
 ### Changed
 
+- **Breaking:** the basic-auth username of an `AgentCredential` is now `<namespace>/<name>`, so per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; for one release the gateway also accepts the old `spec.agentName` username, so agents switch over without authentication errors.
+- **Breaking:** the `observability_operator_agent_credential_info` metric's `agent_name` label is renamed to `username`.
 - When the Mimir Alertmanager pod becomes ready, every Secret labelled `observability.giantswarm.io/kind: alertmanager-config` is now re-enqueued, instead of a single Secret looked up by name.
 
 ### Deprecated
 
-- Deprecate the `--alertmanager-secret-name` flag. The operator ignores it and selects Alertmanager config Secrets by label only.
+- `AgentCredential` `spec.agentName` is now deprecated and optional. It is still supported for migration purposes until next release.
 
 ## [0.87.0] - 2026-11-02
 
@@ -1358,7 +1362,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.87.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.88.0...HEAD
+[0.88.0]: https://github.com/giantswarm/observability-operator/compare/v0.87.0...v0.88.0
 [0.87.0]: https://github.com/giantswarm/observability-operator/compare/v0.86.0...v0.87.0
 [0.86.0]: https://github.com/giantswarm/observability-operator/compare/v0.85.0...v0.86.0
 [0.85.0]: https://github.com/giantswarm/observability-operator/compare/v0.84.1...v0.85.0

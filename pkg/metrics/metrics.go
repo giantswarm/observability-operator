@@ -71,7 +71,7 @@ var (
 	AgentCredentialInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "observability_operator_agent_credential_info",
 		Help: "Info gauge for AgentCredential resources; one series per active credential",
-	}, []string{"namespace", nameKey, "backend", "agent_name"})
+	}, []string{"namespace", nameKey, "backend", "username"})
 
 	// AgentCredentialReconcileErrors counts reconcile errors from the AgentCredential
 	// controller, labelled by backend and reconcile step (render, aggregate).

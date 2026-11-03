@@ -32,13 +32,15 @@ type AgentCredentialSpec struct {
 	// htpasswd Secret this credential is aggregated into.
 	Backend CredentialBackend `json:"backend"`
 
-	// AgentName identifies the telemetry agent this credential belongs to.
-	// Used as the basic-auth username in the generated Secret and htpasswd entry.
-	// RFC 7617 forbids ':' in basic-auth usernames.
+	// AgentName formerly set the basic-auth username.
+	//
+	// Deprecated: ignored; the username is <namespace>/<name>. Will be removed in a future release.
+	//
+	// +optional
 	// +kubebuilder:validation:Pattern="^[a-zA-Z0-9][a-zA-Z0-9_-]{0,252}$"
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=253
-	AgentName string `json:"agentName"`
+	AgentName string `json:"agentName,omitempty"`
 
 	// SecretName overrides the generated Secret name. Defaults to metadata.name.
 	// Must be a valid DNS-1123 subdomain.
@@ -67,13 +69,12 @@ type AgentCredentialStatus struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:storageversion
 //+kubebuilder:printcolumn:JSONPath=".spec.backend",name=Backend,type=string
-//+kubebuilder:printcolumn:JSONPath=".spec.agentName",name=Agent,type=string
 //+kubebuilder:printcolumn:JSONPath=".status.conditions[?(@.type=='Ready')].status",name=Ready,type=string
 //+kubebuilder:printcolumn:JSONPath=".metadata.creationTimestamp",name=Age,type=date
 
 // AgentCredential represents a single basic-auth credential scoped to one
-// telemetry agent and one observability backend. Its lifecycle is managed
-// by the observability-operator.
+// telemetry agent and one observability backend. Its basic-auth username is
+// "<namespace>/<name>". Its lifecycle is managed by the observability-operator.
 type AgentCredential struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

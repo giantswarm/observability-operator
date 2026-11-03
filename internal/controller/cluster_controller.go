@@ -507,7 +507,10 @@ func (r *ClusterReconciler) ensureAgentCredential(ctx context.Context, cluster *
 			return fmt.Errorf("failed to set owner reference: %w", err)
 		}
 		cred.Spec.Backend = backend
-		cred.Spec.AgentName = cluster.Name
+		// The username is derived from namespace/name and agentName is ignored,
+		// but installed CRDs predating the deprecation still require it, so keep
+		// setting it until the field is removed from the schema.
+		cred.Spec.AgentName = cluster.Name //nolint:staticcheck // SA1019: still required by older installed CRDs
 		cred.Spec.SecretName = credential.ClusterSecretName(cluster.Name, backend)
 		return nil
 	})
