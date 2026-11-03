@@ -15,23 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** the basic-auth username of an `AgentCredential` is now `<namespace>/<name>`, so per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; for one release the gateway also accepts the old `spec.agentName` username, so agents switch over without authentication errors.
+- **Breaking:** the `observability_operator_agent_credential_info` metric's `agent_name` label is renamed to `username`.
 - When the Mimir Alertmanager pod becomes ready, every Secret labelled `observability.giantswarm.io/kind: alertmanager-config` is now re-enqueued, instead of a single Secret looked up by name.
 
 ### Deprecated
 
 - Deprecate the `--alertmanager-secret-name` flag. The operator ignores it and selects Alertmanager config Secrets by label only.
+- `AgentCredential` `spec.agentName` is now deprecated and optional. It is still supported for migration purposes until next release.
 
 ## [0.87.0] - 2026-11-02
 
 ### Changed
 
-- **Breaking:** the basic-auth username of an `AgentCredential` is now `<namespace>/<name>`, so per-cluster usernames become `<org-namespace>/<cluster>-observability-<backend>`; for one release the gateway also accepts the old `spec.agentName` username, so agents switch over without authentication errors.
 - Agents receive a changed `AgentCredential` username or password as soon as its Secret changes, instead of at the next periodic resync.
-- **Breaking:** the `observability_operator_agent_credential_info` metric's `agent_name` label is renamed to `username`.
-
-### Deprecated
-
-- `AgentCredential` `spec.agentName` is now deprecated and optional. It is still supported for migration purposes until next release.
 
 ### Removed
 
