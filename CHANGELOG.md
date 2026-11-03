@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Document a Loki bug that makes some regex label filters in Explore match more than a `LogExport` exports.
+
 ## [0.88.0] - 2026-11-03
 
 ### Added
