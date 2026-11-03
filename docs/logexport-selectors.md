@@ -44,6 +44,9 @@ A label filter before the parser matches a stream label; after `| json` it match
 {cluster_id="wc01", scrape_job="audit-logs"} |= "delete" | json | verb!="get"
 ```
 
+> [!WARNING]
+> A [bug in Loki](https://github.com/grafana/loki/issues/23892) makes some regex label filters match part of the value, while the export matches the whole value. For `=~"sshd|sudo|su"`, Explore also shows `systemd-sysupdate`, which is not exported. Anchor the regex to preview it in Explore: `=~"^(?:sshd|sudo|su)$"`.
+
 ## Why the subset is narrow
 
 Selection is rendered as a **drop of the opposite** of what you wrote, never as a keep. Sequential drops then compose as an AND of keeps.
