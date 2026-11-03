@@ -3,7 +3,7 @@ package credential
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -58,6 +58,10 @@ func (a *Aggregator) buildHtpasswdContent(ctx context.Context, backend observabi
 	}
 
 	var entries []string
+	// legacy maps a deprecated spec.agentName to the htpasswd lines that would
+	// accept it, so agents still sending their old username keep working while
+	// their config moves to "<namespace>/<name>".
+	legacy := map[string][]string{}
 	for i := range credentials.Items {
 		cred := &credentials.Items[i]
 		if cred.Spec.Backend != backend {
@@ -83,9 +87,24 @@ func (a *Aggregator) buildHtpasswdContent(ctx context.Context, backend observabi
 			continue
 		}
 		entries = append(entries, string(htpasswd))
+
+		agentName := cred.Spec.AgentName //nolint:staticcheck // SA1019: accepted as a legacy username until the field is removed
+		if _, hash, found := strings.Cut(string(htpasswd), ":"); found && agentName != "" {
+			legacy[agentName] = append(legacy[agentName], agentName+":"+hash)
+		}
 	}
 
-	sort.Strings(entries)
+	// A legacy name shared by several credentials is ambiguous: leave it out.
+	// It can't collide with a "<namespace>/<name>" username, since agentName
+	// can't contain "/".
+	for _, lines := range legacy {
+		if len(lines) == 1 {
+			entries = append(entries, lines[0])
+		}
+	}
+
+	// A Secret rendered before the upgrade still holds the legacy line itself.
+	entries = slices.Compact(slices.Sorted(slices.Values(entries)))
 	return strings.Join(entries, "\n"), nil
 }
 
