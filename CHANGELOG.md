@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `grafana-mcp-org-mapping` Secret with the Grafana organization mapping, behind the `grafana.jwtOrgMappingSecret.enabled` value.
+
 ## [0.88.0] - 2026-11-03
 
 ### Added

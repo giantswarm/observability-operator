@@ -23,6 +23,7 @@ import (
 	"github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/internal/mapper"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
@@ -249,6 +250,39 @@ var _ = Describe("Grafana Organization Controller", func() {
 			mockSsoSettings.AssertNumberOfCalls(GinkgoT(), "UpdateProviderSettings", 1)
 
 			deleteAndReconcile()
+		})
+
+		It("should write the JWT org mapping secret when the JWT org mapping secret is enabled", func() {
+			orgName = "jwt-enabled-org"
+			orgDisplayName = "JWT Enabled Organization"
+			reconciler = newReconcilerWithSSO(false)
+			reconciler.cfg.Grafana.JWTOrgMappingSecretEnabled = true
+
+			namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: grafana.JWTOrgMappingSecretNamespace}}
+			if err := k8sClient.Create(ctx, namespace); err != nil {
+				Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+			}
+			secretKey := types.NamespacedName{Name: grafana.JWTOrgMappingSecretName, Namespace: grafana.JWTOrgMappingSecretNamespace}
+
+			createAndReconcile()
+
+			By("Checking that the JWT org mapping secret contains the organization")
+			secret := &corev1.Secret{}
+			Expect(k8sClient.Get(ctx, secretKey, secret)).To(Succeed())
+			// Other GrafanaOrganizations may exist in the test environment, so only require
+			// that this organization's admin group is part of the mapping.
+			Expect(string(secret.Data[grafana.JWTOrgMappingSecretKey])).To(ContainSubstring(ssoAdminsGroup + ":" + orgDisplayName + ":Admin"))
+			secretUID := secret.UID
+
+			deleteAndReconcile()
+
+			By("Checking that the JWT org mapping secret no longer contains the organization")
+			Expect(k8sClient.Get(ctx, secretKey, secret)).To(Succeed())
+			Expect(secret.UID).To(Equal(secretUID))
+			Expect(string(secret.Data[grafana.JWTOrgMappingSecretKey])).NotTo(ContainSubstring(orgDisplayName))
+
+			By("Checking that the SSO settings were never touched")
+			mockGrafanaClient.AssertNotCalled(GinkgoT(), "SsoSettings")
 		})
 	})
 
