@@ -21,7 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
-- Deprecate the `--alertmanager-secret-name` flag. The operator ignores it and selects Alertmanager config Secrets by label only.
 - `AgentCredential` `spec.agentName` is now deprecated and optional. It is still supported for migration purposes until next release.
 
 ## [0.87.0] - 2026-11-02
