@@ -23,6 +23,13 @@ func SecretName(cred *observabilityv1alpha1.AgentCredential) string {
 	return cred.Name
 }
 
+// Username returns the basic-auth username of the given AgentCredential:
+// "<namespace>/<name>". Kubernetes guarantees namespace/name is unique, so no
+// two credentials can share a username. spec.agentName is ignored.
+func Username(cred *observabilityv1alpha1.AgentCredential) string {
+	return cred.Namespace + "/" + cred.Name
+}
+
 // Renderer creates or updates the per-credential basic-auth Secret backing
 // an AgentCredential.
 type Renderer struct {
@@ -82,7 +89,10 @@ func (r *Renderer) Render(ctx context.Context, cred *observabilityv1alpha1.Agent
 
 		// Preserve existing password across reconciles; only generate a new
 		// one when missing. This also adopts Secrets pre-existing from the
-		// old auth manager without rotating the password.
+		// old auth manager without rotating the password. The username and
+		// htpasswd entry are always rewritten from Username, so Secrets
+		// rendered under an older username move to the current one while
+		// keeping their password.
 		password := string(secret.Data[SecretKeyPassword])
 		if password == "" {
 			newPassword, err := r.PasswordGenerator.GeneratePassword(32)
@@ -92,12 +102,12 @@ func (r *Renderer) Render(ctx context.Context, cred *observabilityv1alpha1.Agent
 			password = newPassword
 		}
 
-		htpasswdEntry, err := r.PasswordGenerator.GenerateHtpasswd(cred.Spec.AgentName, password)
+		htpasswdEntry, err := r.PasswordGenerator.GenerateHtpasswd(Username(cred), password)
 		if err != nil {
 			return fmt.Errorf("failed to generate htpasswd: %w", err)
 		}
 
-		secret.Data[SecretKeyUsername] = []byte(cred.Spec.AgentName)
+		secret.Data[SecretKeyUsername] = []byte(Username(cred))
 		secret.Data[SecretKeyPassword] = []byte(password)
 		secret.Data[SecretKeyHtpasswd] = []byte(htpasswdEntry)
 		return nil
