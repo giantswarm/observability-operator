@@ -91,6 +91,9 @@ func (r *GrafanaOrganizationReconciler) Reconcile(ctx context.Context, req ctrl.
 		// Without its admin Secret, Grafana is gone, and the organization with it.
 		if !grafanaOrganization.DeletionTimestamp.IsZero() && apierrors.IsNotFound(err) {
 			logger.Info("Grafana admin secret not found, releasing the finalizer without deleting the organization from Grafana", "error", err.Error())
+			if err := r.configureJWTOrgMappingSecret(ctx); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to configure JWT org mapping secret: %w", err)
+			}
 			if err := r.finalizerHelper.EnsureRemoved(ctx, grafanaOrganization); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 			}
