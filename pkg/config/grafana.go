@@ -24,6 +24,10 @@ type GrafanaConfig struct {
 	// generic_oauth SSO provider from the GrafanaOrganization RBAC settings. When disabled,
 	// the SSO provider settings are neither read nor written and spec.rbac is ignored.
 	SSOOrgMappingEnabled bool
+	// JWTOrgMappingSecretEnabled controls whether the operator writes the org mapping derived
+	// from the GrafanaOrganization RBAC settings to the grafana-mcp-org-mapping Secret, consumed
+	// by Grafana's JWT authentication.
+	JWTOrgMappingSecretEnabled bool
 }
 
 // DatasourcesConfig holds the service URLs for the Grafana datasources provisioned by the operator.

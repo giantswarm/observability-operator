@@ -62,6 +62,7 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, 
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch
 
 // Reconcile is part of the main Kubernetes reconciliation loop which aims to
 // move the current state of the GrafanaOrganization closer to the desired state.
@@ -268,6 +269,12 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 		errs = append(errs, fmt.Errorf("configure SSO settings: %w", err))
 	}
 
+	err = r.configureJWTOrgMappingSecret(ctx)
+	if err != nil {
+		logger.Error(err, "failed to configure JWT org mapping secret")
+		errs = append(errs, fmt.Errorf("configure JWT org mapping secret: %w", err))
+	}
+
 	// If any errors occurred, combine them and return
 	if len(errs) > 0 {
 		orgStatus = metrics.OrgStatusError
@@ -330,6 +337,26 @@ func (r GrafanaOrganizationReconciler) configureGrafanaSSOSettings(ctx context.C
 	return nil
 }
 
+// configureJWTOrgMappingSecret writes the org mapping of all active GrafanaOrganizations to the
+// Secret consumed by Grafana's JWT authentication. It is a no-op when the JWT org mapping Secret is disabled.
+func (r GrafanaOrganizationReconciler) configureJWTOrgMappingSecret(ctx context.Context) error {
+	if !r.cfg.Grafana.JWTOrgMappingSecretEnabled {
+		log.FromContext(ctx).V(1).Info("skipping JWT org mapping secret, JWT org mapping secret is disabled")
+		return nil
+	}
+
+	allOrganizations, err := r.listActiveGrafanaOrganizations(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get all organizations for JWT org mapping secret: %w", err)
+	}
+
+	err = grafana.ConfigureJWTOrgMappingSecret(ctx, r.Client, allOrganizations)
+	if err != nil {
+		return fmt.Errorf("failed to configure JWT org mapping secret: %w", err)
+	}
+	return nil
+}
+
 // reconcileDelete deletes the grafana organization.
 func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, grafanaService *grafana.Service, grafanaOrganization *v1alpha2.GrafanaOrganization) error {
 	logger := log.FromContext(ctx)
@@ -365,6 +392,12 @@ func (r GrafanaOrganizationReconciler) reconcileDelete(ctx context.Context, graf
 	if err != nil {
 		logger.Error(err, "failed to configure SSO settings after deletion")
 		errs = append(errs, fmt.Errorf("configure SSO settings: %w", err))
+	}
+
+	err = r.configureJWTOrgMappingSecret(ctx)
+	if err != nil {
+		logger.Error(err, "failed to configure JWT org mapping secret after deletion")
+		errs = append(errs, fmt.Errorf("configure JWT org mapping secret: %w", err))
 	}
 
 	// Clean up metrics - delete metric series for this organization
