@@ -56,6 +56,11 @@ func (m *MockGrafanaClient) SsoSettings() sso_settings.ClientService {
 	return args.Get(0).(sso_settings.ClientService)
 }
 
+func (m *MockGrafanaClient) DashboardAPI() grafanaclient.DashboardAPIClient {
+	args := m.Called()
+	return args.Get(0).(grafanaclient.DashboardAPIClient)
+}
+
 // MockGrafanaClientGenerator is a testify mock for the GrafanaClientGenerator interface
 type MockGrafanaClientGenerator struct {
 	mock.Mock

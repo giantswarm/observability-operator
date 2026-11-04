@@ -9,19 +9,22 @@ import (
 	"github.com/grafana/grafana-openapi-client-go/client/sso_settings"
 )
 
-// grafanaHTTPClient adapts the upstream GrafanaHTTPAPI to the GrafanaClient interface.
+// grafanaHTTPClient adapts the upstream GrafanaHTTPAPI and the app-platform
+// dashboard API client to the GrafanaClient interface.
 type grafanaHTTPClient struct {
-	api *grafana.GrafanaHTTPAPI
+	api          *grafana.GrafanaHTTPAPI
+	dashboardAPI *dashboardAPIClient
 }
 
-// NewGrafanaClient creates a new GrafanaClient implementation wrapping the provided GrafanaHTTPAPI
-func NewGrafanaClient(api *grafana.GrafanaHTTPAPI) GrafanaClient {
-	return &grafanaHTTPClient{api: api}
+// NewGrafanaClient creates a new GrafanaClient implementation wrapping the provided
+// GrafanaHTTPAPI and app-platform dashboard API client.
+func NewGrafanaClient(api *grafana.GrafanaHTTPAPI, dashboardAPI *dashboardAPIClient) GrafanaClient {
+	return &grafanaHTTPClient{api: api, dashboardAPI: dashboardAPI}
 }
 
 // WithOrgID returns a new GrafanaClient scoped to orgID. The receiver is not modified.
 func (g *grafanaHTTPClient) WithOrgID(orgID int64) GrafanaClient {
-	return &grafanaHTTPClient{api: g.api.WithOrgID(orgID)}
+	return &grafanaHTTPClient{api: g.api.WithOrgID(orgID), dashboardAPI: g.dashboardAPI.withOrgID(orgID)}
 }
 
 func (g *grafanaHTTPClient) Datasources() datasources.ClientService {
@@ -42,4 +45,8 @@ func (g *grafanaHTTPClient) Folders() folders.ClientService {
 
 func (g *grafanaHTTPClient) SsoSettings() sso_settings.ClientService {
 	return g.api.SsoSettings
+}
+
+func (g *grafanaHTTPClient) DashboardAPI() DashboardAPIClient {
+	return g.dashboardAPI
 }
