@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- CI: architect orb 10.16.7, which pushes the chart to the git app catalogs with the architect GitHub App instead of the `catalogbot` account (giantswarm/giantswarm#34786).
+
 ### Fixed
 
 - List tenants from `v1alpha2` `GrafanaOrganization` resources. Without the conversion webhook, the CRD serves `v1alpha2` only, and the Alertmanager controller failed to list tenants.
