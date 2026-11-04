@@ -42,6 +42,9 @@ func OrgNamespace(orgID int64) string {
 }
 
 // dashboardAPIClient is the HTTP implementation of DashboardAPIClient.
+//
+// It is hand-written because grafana-openapi-client-go is generated from the
+// classic /api swagger and does not cover the app-platform /apis groups.
 type dashboardAPIClient struct {
 	httpClient *http.Client
 	baseURL    *url.URL
