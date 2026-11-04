@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Document a Loki bug that makes some regex label filters in Explore match more than a `LogExport` exports.
+- Document the Shared Org roles and the role a user gets when matching several groups.
 
 ## [0.88.0] - 2026-11-03
 
