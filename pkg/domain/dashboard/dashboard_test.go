@@ -71,6 +71,52 @@ func TestValidate(t *testing.T) {
 			expectedErrs: nil,
 		},
 		{
+			name:         "valid v2alpha1 dashboard",
+			organization: testOrg,
+			content: map[string]any{
+				apiVersionKey: "dashboard.grafana.app/v2alpha1",
+				"kind":        dashboardKind,
+				metadataKey:   map[string]any{nameKey: gsClusterOverview},
+				"spec":        map[string]any{titleKey: "Cluster Overview"},
+			},
+			expectedErrs: nil,
+		},
+		{
+			name:         "valid v2beta1 dashboard",
+			organization: testOrg,
+			content: map[string]any{
+				apiVersionKey: "dashboard.grafana.app/v2beta1",
+				"kind":        dashboardKind,
+				metadataKey:   map[string]any{nameKey: gsClusterOverview},
+				"spec":        map[string]any{titleKey: "Cluster Overview"},
+			},
+			expectedErrs: nil,
+		},
+		{
+			name:         "valid classic dashboard with empty apiVersion",
+			organization: testOrg,
+			content:      map[string]any{apiVersionKey: "", uidKey: testUID},
+			expectedErrs: nil,
+		},
+		{
+			name:         "unsupported apiVersion",
+			organization: testOrg,
+			content:      map[string]any{apiVersionKey: "dashboard.grafana.app/v1", uidKey: testUID},
+			expectedErrs: []error{dashboard.ErrUnsupportedAPIVersion},
+		},
+		{
+			name:         "garbage apiVersion",
+			organization: testOrg,
+			content:      map[string]any{apiVersionKey: "not-a-version", uidKey: testUID},
+			expectedErrs: []error{dashboard.ErrUnsupportedAPIVersion},
+		},
+		{
+			name:         "non-string apiVersion",
+			organization: testOrg,
+			content:      map[string]any{apiVersionKey: 2.0, uidKey: testUID},
+			expectedErrs: []error{dashboard.ErrUnsupportedAPIVersion},
+		},
+		{
 			name:         "missing UID",
 			organization: testOrg,
 			content:      map[string]any{keyName: valueKey}, // No UID in content
@@ -109,6 +155,51 @@ func TestValidate(t *testing.T) {
 				if !errors.Is(errs[i], expectedErr) {
 					t.Errorf("Expected error %v, got %v", expectedErr, errs[i])
 				}
+			}
+		})
+	}
+}
+
+func TestUnsupportedAPIVersionMessage(t *testing.T) {
+	d := dashboard.New(testOrg, "", "", "", map[string]any{apiVersionKey: "dashboard.grafana.app/v3", uidKey: testUID})
+	errs := d.Validate()
+	if len(errs) != 1 {
+		t.Fatalf("Expected 1 error, got %d: %v", len(errs), errs)
+	}
+
+	want := `unsupported dashboard apiVersion "dashboard.grafana.app/v3": accepted values are dashboard.grafana.app/v2, dashboard.grafana.app/v2beta1, dashboard.grafana.app/v2alpha1, or no apiVersion for a classic dashboard`
+	if errs[0].Error() != want {
+		t.Errorf("Expected error %q, got %q", want, errs[0].Error())
+	}
+}
+
+func TestIsV2(t *testing.T) {
+	tests := []struct {
+		name        string
+		content     map[string]any
+		wantV2      bool
+		wantVersion string
+	}{
+		{name: "v2", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v2"}, wantV2: true, wantVersion: "v2"},
+		{name: "v2alpha1", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v2alpha1"}, wantV2: true, wantVersion: "v2alpha1"},
+		{name: "v2beta1", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v2beta1"}, wantV2: true, wantVersion: "v2beta1"},
+		{name: "absent apiVersion", content: map[string]any{uidKey: testUID}},
+		{name: "nil content", content: nil},
+		{name: "v1", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v1"}},
+		{name: "v20", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v20"}},
+		{name: "v2 with unknown suffix", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v2gamma1"}},
+		{name: "v2alpha without number", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v2alpha"}},
+		{name: "other group", content: map[string]any{apiVersionKey: "example.com/v2"}},
+		{name: "garbage", content: map[string]any{apiVersionKey: "not-a-version"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := dashboard.IsV2(tt.content); got != tt.wantV2 {
+				t.Errorf("Expected IsV2 %v, got %v", tt.wantV2, got)
+			}
+			if got := dashboard.V2Version(tt.content); got != tt.wantVersion {
+				t.Errorf("Expected V2Version %q, got %q", tt.wantVersion, got)
 			}
 		})
 	}

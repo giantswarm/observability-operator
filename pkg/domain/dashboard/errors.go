@@ -11,4 +11,7 @@ var (
 
 	// ErrMissingOrganization is returned when organization is not specified
 	ErrMissingOrganization = errors.New("dashboard organization is missing")
+
+	// ErrUnsupportedAPIVersion is returned when the dashboard apiVersion is not supported
+	ErrUnsupportedAPIVersion = errors.New("unsupported dashboard apiVersion")
 )
