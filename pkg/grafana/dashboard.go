@@ -61,6 +61,12 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 	return err
 }
 
+// DeleteDashboard deletes through the legacy API: it still accepts deletes on
+// managed dashboards (verified on Grafana 13.2.4).
+//
+// TODO: move to the app-platform API if Grafana starts enforcing the manager
+// identity on legacy deletes. The check is an open TODO in Grafana:
+// https://github.com/grafana/grafana/blob/v13.2.4/pkg/storage/unified/apistore/managed.go#L242
 func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
 	logger := log.FromContext(ctx)
 
