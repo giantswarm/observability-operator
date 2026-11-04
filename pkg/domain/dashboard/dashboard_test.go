@@ -13,9 +13,11 @@ const (
 	dashboardAPIVersionV2 = "dashboard.grafana.app/v2"
 	gsClusterOverview     = "gs_cluster-overview"
 	keyName               = "key"
+	kindKey               = "kind"
 	metadataKey           = "metadata"
 	nameKey               = "name"
 	testOrg               = "test-org"
+	testTitle             = "Cluster Overview"
 	testUID               = "test-uid"
 	titleKey              = "title"
 	uidKey                = "uid"
@@ -64,9 +66,9 @@ func TestValidate(t *testing.T) {
 			organization: testOrg,
 			content: map[string]any{
 				apiVersionKey: dashboardAPIVersionV2,
-				"kind":        dashboardKind,
+				kindKey:       dashboardKind,
 				metadataKey:   map[string]any{nameKey: gsClusterOverview},
-				"spec":        map[string]any{titleKey: "Cluster Overview"},
+				"spec":        map[string]any{titleKey: testTitle},
 			},
 			expectedErrs: nil,
 		},
@@ -75,9 +77,9 @@ func TestValidate(t *testing.T) {
 			organization: testOrg,
 			content: map[string]any{
 				apiVersionKey: "dashboard.grafana.app/v2alpha1",
-				"kind":        dashboardKind,
+				kindKey:       dashboardKind,
 				metadataKey:   map[string]any{nameKey: gsClusterOverview},
-				"spec":        map[string]any{titleKey: "Cluster Overview"},
+				"spec":        map[string]any{titleKey: testTitle},
 			},
 			expectedErrs: nil,
 		},
@@ -86,9 +88,9 @@ func TestValidate(t *testing.T) {
 			organization: testOrg,
 			content: map[string]any{
 				apiVersionKey: "dashboard.grafana.app/v2beta1",
-				"kind":        dashboardKind,
+				kindKey:       dashboardKind,
 				metadataKey:   map[string]any{nameKey: gsClusterOverview},
-				"spec":        map[string]any{titleKey: "Cluster Overview"},
+				"spec":        map[string]any{titleKey: testTitle},
 			},
 			expectedErrs: nil,
 		},
@@ -252,9 +254,9 @@ func TestUIDExtraction(t *testing.T) {
 			name: "v2 schema reads UID from metadata.name",
 			content: map[string]any{
 				apiVersionKey: dashboardAPIVersionV2,
-				"kind":        dashboardKind,
+				kindKey:       dashboardKind,
 				metadataKey:   map[string]any{nameKey: gsClusterOverview},
-				"spec":        map[string]any{titleKey: "Cluster Overview"},
+				"spec":        map[string]any{titleKey: testTitle},
 			},
 			expectedUID: gsClusterOverview,
 		},
