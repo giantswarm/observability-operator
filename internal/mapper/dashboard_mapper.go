@@ -28,12 +28,12 @@ func (m *DashboardMapper) FromConfigMap(cm *v1.ConfigMap) []*dashboard.Dashboard
 		var content map[string]any
 		if err := json.Unmarshal([]byte(dashboardString), &content); err != nil {
 			// Create a dashboard with nil content for invalid JSON - let service layer handle validation
-			dash := dashboard.New(org, folderPath, nil)
+			dash := dashboard.New(org, folderPath, cm.GetNamespace(), cm.GetName(), nil)
 			dashboards = append(dashboards, dash)
 			continue
 		}
 
-		dash := dashboard.New(org, folderPath, content)
+		dash := dashboard.New(org, folderPath, cm.GetNamespace(), cm.GetName(), content)
 		dashboards = append(dashboards, dash)
 	}
 
