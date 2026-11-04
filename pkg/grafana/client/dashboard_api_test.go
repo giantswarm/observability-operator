@@ -176,3 +176,20 @@ func TestDashboardAPIClient(t *testing.T) {
 		})
 	}
 }
+
+func TestOrgNamespace(t *testing.T) {
+	tests := []struct {
+		name  string
+		orgID int64
+		want  string
+	}{
+		{name: "org 1", orgID: 1, want: "default"},
+		{name: "org 5", orgID: 5, want: "org-5"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, OrgNamespace(tt.orgID))
+		})
+	}
+}

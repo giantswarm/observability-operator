@@ -32,6 +32,15 @@ type DashboardAPIClient interface {
 	Update(ctx context.Context, version, namespace, uid string, dashboard json.RawMessage) error
 }
 
+// OrgNamespace returns the app-platform namespace of a Grafana organization:
+// "default" for org 1, "org-<id>" for every other org.
+func OrgNamespace(orgID int64) string {
+	if orgID == 1 {
+		return "default"
+	}
+	return "org-" + strconv.FormatInt(orgID, 10)
+}
+
 // dashboardAPIClient is the HTTP implementation of DashboardAPIClient.
 type dashboardAPIClient struct {
 	httpClient *http.Client
