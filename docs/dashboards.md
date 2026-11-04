@@ -76,3 +76,4 @@ The operator detects the schema automatically and extracts the UID from the appr
 - The folder path must use `/` as a separator. Each segment becomes a nested Grafana folder.
 - Operator-managed folders are tracked by UID. If a folder is renamed manually in Grafana, the operator will rename it back to match the path.
 - Empty operator-managed folders are deleted when no dashboard references them.
+- Dashboards saved from the Grafana UI persist in Grafana's database. The operator never deletes dashboards it did not provision.

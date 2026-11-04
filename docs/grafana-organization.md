@@ -30,6 +30,10 @@ Maps identity provider groups to Grafana roles. The operator reads the `org_attr
 | `rbac.editors` | no | Groups granted Editor role |
 | `rbac.viewers` | no | Groups granted Viewer role |
 
+A group entry of `"*"` matches every user.
+
+A user can match several groups across `admins`, `editors` and `viewers`. Grafana evaluates the `"*"` entries first, then the group entries. It keeps the highest role per organization. For example, a user in a `"*"` viewer entry and in an editor group gets the Editor role.
+
 ### `spec.tenants`
 
 Each tenant entry grants the organization access to data for that tenant in Mimir/Loki/Tempo.
@@ -55,6 +59,21 @@ It is controlled by the `grafana.ssoOrgMapping.enabled` Helm value, which defaul
 - the operator neither reads nor writes Grafana's SSO provider settings
 - organizations and their datasources are still reconciled as usual
 - `spec.rbac` is still required by the API, but its contents are ignored
+
+## Shared Org
+
+The `shared-org` `GrafanaOrganization` backs the `Shared Org` Grafana organization.
+
+The grafana-organization-app renders this CR from the shared-configs values: https://github.com/giantswarm/shared-configs/blob/main/default/apps/grafana-organization-shared-org/configmap-values.yaml.template
+
+Two config keys set its editor and viewer groups:
+
+| Config key | Feeds | Default |
+|---|---|---|
+| `oidc.customer.grafana.sharedOrg.editor_groups` | `rbac.editors` | no editors |
+| `oidc.customer.grafana.sharedOrg.viewer_groups` | `rbac.viewers` | `"*"` |
+
+Installations override `editor_groups` and `viewer_groups` in their config.
 
 ## Example
 
