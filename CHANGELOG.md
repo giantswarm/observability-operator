@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- CI: architect orb 10.16.7, which pushes the chart to the git app catalogs with the architect GitHub App instead of the `catalogbot` account (giantswarm/giantswarm#34786).
 - Document `roleARN` delivery through the exporter's IRSA role.
 - Mute Team Atlas Slack notifications outside business hours on `testing` and `stable-testing` installations.
 - Run the chart tests with app-test-suite 1.1.0 and install the charts with Helm.
