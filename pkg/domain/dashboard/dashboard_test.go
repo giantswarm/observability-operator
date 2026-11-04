@@ -13,6 +13,7 @@ const (
 	dashboardAPIVersionV2 = "dashboard.grafana.app/v2"
 	gsClusterOverview     = "gs_cluster-overview"
 	keyName               = "key"
+	specKey               = "spec"
 	kindKey               = "kind"
 	metadataKey           = "metadata"
 	nameKey               = "name"
@@ -68,7 +69,7 @@ func TestValidate(t *testing.T) {
 				apiVersionKey: dashboardAPIVersionV2,
 				kindKey:       dashboardKind,
 				metadataKey:   map[string]any{nameKey: gsClusterOverview},
-				"spec":        map[string]any{titleKey: testTitle},
+				specKey:       map[string]any{titleKey: testTitle},
 			},
 			expectedErrs: nil,
 		},
@@ -79,7 +80,7 @@ func TestValidate(t *testing.T) {
 				apiVersionKey: "dashboard.grafana.app/v2alpha1",
 				kindKey:       dashboardKind,
 				metadataKey:   map[string]any{nameKey: gsClusterOverview},
-				"spec":        map[string]any{titleKey: testTitle},
+				specKey:       map[string]any{titleKey: testTitle},
 			},
 			expectedErrs: nil,
 		},
@@ -90,7 +91,7 @@ func TestValidate(t *testing.T) {
 				apiVersionKey: "dashboard.grafana.app/v2beta1",
 				kindKey:       dashboardKind,
 				metadataKey:   map[string]any{nameKey: gsClusterOverview},
-				"spec":        map[string]any{titleKey: testTitle},
+				specKey:       map[string]any{titleKey: testTitle},
 			},
 			expectedErrs: nil,
 		},
@@ -256,7 +257,7 @@ func TestUIDExtraction(t *testing.T) {
 				apiVersionKey: dashboardAPIVersionV2,
 				kindKey:       dashboardKind,
 				metadataKey:   map[string]any{nameKey: gsClusterOverview},
-				"spec":        map[string]any{titleKey: testTitle},
+				specKey:       map[string]any{titleKey: testTitle},
 			},
 			expectedUID: gsClusterOverview,
 		},
