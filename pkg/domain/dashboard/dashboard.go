@@ -16,16 +16,22 @@ type Dashboard struct {
 	uid          string
 	organization string
 	folderPath   string
-	content      map[string]any
+	// sourceNamespace and sourceName identify the ConfigMap the dashboard comes from.
+	sourceNamespace string
+	sourceName      string
+	content         map[string]any
 }
 
-// New creates a new Dashboard domain object, extracting the UID from the content
-func New(organization string, folderPath string, content map[string]any) *Dashboard {
+// New creates a new Dashboard domain object, extracting the UID from the content.
+// sourceNamespace and sourceName identify the ConfigMap the dashboard comes from.
+func New(organization string, folderPath string, sourceNamespace string, sourceName string, content map[string]any) *Dashboard {
 	return &Dashboard{
-		uid:          extractUID(content),
-		organization: organization,
-		folderPath:   folderPath,
-		content:      content,
+		uid:             extractUID(content),
+		organization:    organization,
+		folderPath:      folderPath,
+		sourceNamespace: sourceNamespace,
+		sourceName:      sourceName,
+		content:         content,
 	}
 }
 
@@ -61,6 +67,12 @@ func extractUID(content map[string]any) string {
 func (d *Dashboard) UID() string          { return d.uid }
 func (d *Dashboard) Organization() string { return d.organization }
 func (d *Dashboard) FolderPath() string   { return d.folderPath }
+
+// SourcePath returns the source ConfigMap reference, formatted as
+// "configmap <namespace>/<name>".
+func (d *Dashboard) SourcePath() string {
+	return fmt.Sprintf("configmap %s/%s", d.sourceNamespace, d.sourceName)
+}
 
 // Content returns a copy of the content to prevent external mutation
 func (d *Dashboard) Content() map[string]any {

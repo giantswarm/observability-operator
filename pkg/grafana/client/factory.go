@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/go-logr/logr"
 	grafana "github.com/grafana/grafana-openapi-client-go/client"
@@ -25,6 +27,8 @@ const (
 
 	grafanaTLSSecretCertKey = "tls.crt"
 	grafanaTLSSecretKeyKey  = "tls.key"
+
+	dashboardAPITimeout = 30 * time.Second
 )
 
 // GrafanaClientGenerator defines the interface for generating Grafana clients
@@ -76,6 +80,8 @@ func (g *DefaultGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Contex
 		return nil, err
 	}
 
+	basicAuth := url.UserPassword(string(adminUsernameBytes), string(adminPasswordBytes))
+
 	transportCfg := &grafana.TransportConfig{
 		Schemes:  []string{grafanaURL.Scheme},
 		BasePath: "/api",
@@ -88,12 +94,21 @@ func (g *DefaultGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Contex
 		OrgID: 1,
 		Host:  grafanaURL.Host,
 		// TODO using a serviceaccount later would be better as they are scoped to an organization
-		BasicAuth:  url.UserPassword(string(adminUsernameBytes), string(adminPasswordBytes)),
+		BasicAuth:  basicAuth,
 		NumRetries: g.cfg.ClientRetries,
 		TLSConfig:  clientTLSConfig,
 	}
 
-	return NewGrafanaClient(grafana.NewHTTPClientWithConfig(nil, transportCfg)), nil
+	dashboardAPITransport := http.DefaultTransport.(*http.Transport).Clone()
+	dashboardAPITransport.TLSClientConfig = clientTLSConfig
+	dashboardAPI := newDashboardAPIClient(
+		&http.Client{Transport: dashboardAPITransport, Timeout: dashboardAPITimeout},
+		&url.URL{Scheme: grafanaURL.Scheme, Host: grafanaURL.Host},
+		basicAuth,
+		transportCfg.OrgID,
+	)
+
+	return NewGrafanaClient(grafana.NewHTTPClientWithConfig(nil, transportCfg), dashboardAPI), nil
 }
 
 // clientTLSConfig returns the TLS client configuration for the Grafana client.
