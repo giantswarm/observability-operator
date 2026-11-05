@@ -29,7 +29,7 @@ func TestNew(t *testing.T) {
 		keyName: valueKey,
 	}
 
-	d := dashboard.New(org, "", content)
+	d := dashboard.New(org, "", "", "", content)
 
 	if d.UID() != testUID {
 		t.Errorf("Expected UID %s, got %s", testUID, d.UID())
@@ -98,7 +98,7 @@ func TestValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := dashboard.New(tt.organization, "", tt.content)
+			d := dashboard.New(tt.organization, "", "", "", tt.content)
 			errs := d.Validate()
 
 			if len(errs) != len(tt.expectedErrs) {
@@ -119,7 +119,7 @@ func TestString(t *testing.T) {
 		uidKey:  testUID,
 		keyName: valueKey,
 	}
-	d := dashboard.New(testOrg, "", content)
+	d := dashboard.New(testOrg, "", "", "", content)
 	expected := "Dashboard{uid: test-uid, organization: test-org}"
 	if d.String() != expected {
 		t.Errorf("Expected String() to return %s, got %s", expected, d.String())
@@ -188,7 +188,7 @@ func TestUIDExtraction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := dashboard.New(testOrg, "", tt.content)
+			d := dashboard.New(testOrg, "", "", "", tt.content)
 			if d.UID() != tt.expectedUID {
 				t.Errorf("Expected UID %s, got %s", tt.expectedUID, d.UID())
 			}
@@ -198,21 +198,21 @@ func TestUIDExtraction(t *testing.T) {
 
 func TestFolderPath(t *testing.T) {
 	t.Run("empty folder path", func(t *testing.T) {
-		d := dashboard.New(testOrg, "", map[string]any{uidKey: testUID})
+		d := dashboard.New(testOrg, "", "", "", map[string]any{uidKey: testUID})
 		if d.FolderPath() != "" {
 			t.Errorf("Expected empty folder path, got %q", d.FolderPath())
 		}
 	})
 
 	t.Run("folder path is stored and returned", func(t *testing.T) {
-		d := dashboard.New(testOrg, "team-a/networking", map[string]any{uidKey: testUID})
+		d := dashboard.New(testOrg, "team-a/networking", "", "", map[string]any{uidKey: testUID})
 		if d.FolderPath() != "team-a/networking" {
 			t.Errorf("Expected folder path %q, got %q", "team-a/networking", d.FolderPath())
 		}
 	})
 
 	t.Run("invalid folder path fails validation", func(t *testing.T) {
-		d := dashboard.New(testOrg, "/leading-slash", map[string]any{uidKey: testUID})
+		d := dashboard.New(testOrg, "/leading-slash", "", "", map[string]any{uidKey: testUID})
 		errs := d.Validate()
 		if len(errs) == 0 {
 			t.Error("Expected validation error for invalid folder path")
@@ -220,10 +220,41 @@ func TestFolderPath(t *testing.T) {
 	})
 
 	t.Run("valid folder path passes validation", func(t *testing.T) {
-		d := dashboard.New(testOrg, "team-a/networking/alerts", map[string]any{uidKey: testUID})
+		d := dashboard.New(testOrg, "team-a/networking/alerts", "", "", map[string]any{uidKey: testUID})
 		errs := d.Validate()
 		if len(errs) != 0 {
 			t.Errorf("Expected no validation errors, got %v", errs)
 		}
 	})
+}
+
+func TestSourcePath(t *testing.T) {
+	tests := []struct {
+		name            string
+		sourceNamespace string
+		sourceName      string
+		expected        string
+	}{
+		{
+			name:            "namespace and name",
+			sourceNamespace: "monitoring",
+			sourceName:      "cluster-overview",
+			expected:        "configmap monitoring/cluster-overview",
+		},
+		{
+			name:            "empty source",
+			sourceNamespace: "",
+			sourceName:      "",
+			expected:        "configmap /",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := dashboard.New(testOrg, "", tt.sourceNamespace, tt.sourceName, map[string]any{uidKey: testUID})
+			if d.SourcePath() != tt.expected {
+				t.Errorf("Expected source path %q, got %q", tt.expected, d.SourcePath())
+			}
+		})
+	}
 }

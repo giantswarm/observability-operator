@@ -195,3 +195,31 @@ func TestFromConfigMapEdgeCases(t *testing.T) {
 		}
 	})
 }
+
+func TestFromConfigMapSourcePath(t *testing.T) {
+	cm := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testDashboard,
+			Namespace: defaultNamespace,
+			Labels: map[string]string{
+				labels.GrafanaOrganizationKey: testOrg,
+			},
+		},
+		Data: map[string]string{
+			"dashboard1.json": `{"uid": "test-uid-1", "title": "Test Dashboard 1"}`,
+			"dashboard2.json": `invalid json`,
+		},
+	}
+
+	dashboards := New().FromConfigMap(cm)
+	if len(dashboards) != 2 {
+		t.Fatalf("Expected 2 dashboards, got %d", len(dashboards))
+	}
+
+	expected := "configmap default/test-dashboard"
+	for i, dash := range dashboards {
+		if dash.SourcePath() != expected {
+			t.Errorf("Dashboard %d: expected source path %q, got %q", i, expected, dash.SourcePath())
+		}
+	}
+}
