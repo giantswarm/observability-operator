@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"encoding/json"
 	"net/url"
 
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
@@ -56,6 +57,34 @@ func (m *MockGrafanaClient) SsoSettings() sso_settings.ClientService {
 	return args.Get(0).(sso_settings.ClientService)
 }
 
+func (m *MockGrafanaClient) DashboardAPI() grafanaclient.DashboardAPIClient {
+	args := m.Called()
+	return args.Get(0).(grafanaclient.DashboardAPIClient)
+}
+
+// MockDashboardAPIClient is a testify mock for the DashboardAPIClient interface
+type MockDashboardAPIClient struct {
+	mock.Mock
+}
+
+func (m *MockDashboardAPIClient) Get(ctx context.Context, version, namespace, uid string) (json.RawMessage, error) {
+	args := m.Called(ctx, version, namespace, uid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(json.RawMessage), args.Error(1)
+}
+
+func (m *MockDashboardAPIClient) Create(ctx context.Context, version, namespace string, dashboard json.RawMessage) error {
+	args := m.Called(ctx, version, namespace, dashboard)
+	return args.Error(0)
+}
+
+func (m *MockDashboardAPIClient) Update(ctx context.Context, version, namespace, uid string, dashboard json.RawMessage) error {
+	args := m.Called(ctx, version, namespace, uid, dashboard)
+	return args.Error(0)
+}
+
 // MockGrafanaClientGenerator is a testify mock for the GrafanaClientGenerator interface
 type MockGrafanaClientGenerator struct {
 	mock.Mock
@@ -72,3 +101,4 @@ func (m *MockGrafanaClientGenerator) GenerateGrafanaClient(ctx context.Context, 
 // Ensure mock implementations comply with their interfaces
 var _ grafanaclient.GrafanaClient = (*MockGrafanaClient)(nil)
 var _ grafanaclient.GrafanaClientGenerator = (*MockGrafanaClientGenerator)(nil)
+var _ grafanaclient.DashboardAPIClient = (*MockDashboardAPIClient)(nil)

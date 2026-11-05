@@ -21,4 +21,5 @@ type GrafanaClient interface {
 	Dashboards() dashboards.ClientService
 	Folders() folders.ClientService
 	SsoSettings() sso_settings.ClientService
+	DashboardAPI() DashboardAPIClient
 }
