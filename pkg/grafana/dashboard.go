@@ -15,7 +15,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 )
 
-// ConfigureDashboard configures a dashboard, ensuring folder hierarchy exists and injecting managed tag and source link
+// ConfigureDashboard configures a dashboard, ensuring folder hierarchy exists and injecting managed tag
 func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
 	org, err := s.FindOrgByName(dashboard.Organization())
 	if err != nil {
@@ -37,11 +37,6 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 		// Inject the managed tag so operator dashboards are distinguishable
 		if err := injectManagedTag(dashboardContent); err != nil {
 			return fmt.Errorf("failed to inject managed tag: %w", err)
-		}
-
-		// Link the dashboard to the repository holding its source of truth
-		if err := injectSourceLink(dashboardContent); err != nil {
-			return fmt.Errorf("failed to inject source link: %w", err)
 		}
 
 		version, resource, err := buildDashboardResource(dashboard.UID(), dashboardContent, folderUID, dashboard.SourcePath())
@@ -125,56 +120,6 @@ func injectManagedTag(content map[string]any) error {
 	}
 
 	tagsHolder[tagsKey] = append(tags, managedDashboardTag)
-	return nil
-}
-
-// Dashboard links pointing to the repository that holds the source of truth of the dashboards.
-const (
-	linksKey            = "links"
-	linkURLKey          = "url"
-	linkTargetBlankKey  = "targetBlank"
-	sourceRepositoryURL = "https://github.com/giantswarm/dashboards"
-)
-
-// injectSourceLink ensures the dashboard links to the giantswarm/dashboards repository.
-// It creates the links array when missing, keeps existing links, and does nothing
-// when a link with the same url already exists.
-//
-// The links live at the top level for the classic flat schema and under "spec" for
-// the Grafana Dashboard schema (dashboard.grafana.app/v2).
-func injectSourceLink(content map[string]any) error {
-	linksHolder := content
-	if dashboard.IsV2(content) {
-		spec, ok := content["spec"].(map[string]any)
-		if !ok {
-			return fmt.Errorf("malformed v2 dashboard: missing spec")
-		}
-		linksHolder = spec
-	}
-
-	links, ok := linksHolder[linksKey].([]any)
-	if !ok {
-		links = []any{}
-	}
-
-	for _, link := range links {
-		if l, ok := link.(map[string]any); ok && l[linkURLKey] == sourceRepositoryURL {
-			return nil
-		}
-	}
-
-	linksHolder[linksKey] = append(links, map[string]any{
-		titleKey:           "giantswarm/dashboards",
-		"type":             "link",
-		linkURLKey:         sourceRepositoryURL,
-		"tooltip":          "Source of truth for this dashboard",
-		"icon":             "external link",
-		linkTargetBlankKey: true,
-		tagsKey:            []any{},
-		"asDropdown":       false,
-		"includeVars":      false,
-		"keepTime":         false,
-	})
 	return nil
 }
 

@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Each operator dashboard links to the giantswarm/dashboards repository.
-
 ### Changed
 
 - Document a Loki bug that makes some regex label filters in Explore match more than a `LogExport` exports.

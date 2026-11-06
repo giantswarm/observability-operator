@@ -68,13 +68,11 @@ Both Grafana dashboard schemas are supported:
 - **Classic flat JSON** — the top-level `uid` field identifies the dashboard.
 - **App Platform schema** (`apiVersion: dashboard.grafana.app/v2`) — a Kubernetes-style envelope where the dashboard is identified by `metadata.name` and its body lives under `spec`.
 
-The operator detects the schema automatically and extracts the UID from the appropriate field (`uid` for the flat schema, `metadata.name` for v2). The `managed-by: observability-operator` tag is injected at the correct location for each schema (top-level `tags` for the flat schema, `spec.tags` for v2). The link to the dashboards repository follows the same rule (top-level `links` for the flat schema, `spec.links` for v2).
+The operator detects the schema automatically and extracts the UID from the appropriate field (`uid` for the flat schema, `metadata.name` for v2). The `managed-by: observability-operator` tag is injected at the correct location for each schema (top-level `tags` for the flat schema, `spec.tags` for v2).
 
 ## Managed dashboards in Grafana
 
 Grafana shows every operator dashboard as managed. The right sidebar shows a "Managed by: Kubectl" badge. Grafana blocks Save on these dashboards.
-
-Each dashboard links to https://github.com/giantswarm/dashboards. The link shows as a `giantswarm/dashboards` button in the dashboard controls. The operator keeps existing dashboard links and adds this link only when no link to that URL exists.
 
 To change a dashboard:
 
