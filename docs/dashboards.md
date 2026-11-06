@@ -66,9 +66,11 @@ data:
 Both Grafana dashboard schemas are supported:
 
 - **Classic flat JSON** — the top-level `uid` field identifies the dashboard.
-- **App Platform schema** (`apiVersion: dashboard.grafana.app/v2`) — a Kubernetes-style envelope where the dashboard is identified by `metadata.name` and its body lives under `spec`.
+- **App Platform schema** (`apiVersion: dashboard.grafana.app/v2`, `v2beta1` or `v2alpha1`) — a Kubernetes-style envelope where the dashboard is identified by `metadata.name` and its body lives under `spec`.
 
 The operator detects the schema automatically and extracts the UID from the appropriate field (`uid` for the flat schema, `metadata.name` for v2). The `managed-by: observability-operator` tag is injected at the correct location for each schema (top-level `tags` for the flat schema, `spec.tags` for v2).
+
+The operator writes a v2 dashboard to the API version it declares. Grafana converts `v2alpha1` and `v2beta1` dashboards. The ConfigMap webhook rejects any other `apiVersion` value.
 
 ## Managed dashboards in Grafana
 

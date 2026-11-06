@@ -134,8 +134,9 @@ const (
 )
 
 // buildDashboardResource builds the app-platform Dashboard resource for the dashboard content.
-// It returns the API version to write it with: "v1" for the classic flat schema, "v2" for
-// the Grafana Dashboard schema (dashboard.grafana.app/v2).
+// It returns the API version to write it with: "v1" for the classic flat schema, and the
+// declared version (such as "v2" or "v2alpha1") for the Grafana Dashboard schema. Grafana
+// converts the older v2 versions itself.
 // folderUID specifies the target folder; empty string means the General folder.
 func buildDashboardResource(uid string, content map[string]any, folderUID string, sourcePath string) (string, json.RawMessage, error) {
 	annotations := map[string]any{
@@ -162,7 +163,7 @@ func buildDashboardResource(uid string, content map[string]any, folderUID string
 		"spec":       content,
 	}
 	if dashboard.IsV2(content) {
-		version = "v2"
+		version = dashboard.V2Version(content)
 		resource["apiVersion"] = content["apiVersion"]
 		resource["kind"] = content["kind"]
 		resource["spec"] = content["spec"]

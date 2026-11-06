@@ -335,6 +335,42 @@ func TestBuildDashboardResource(t *testing.T) {
 				"spec": {"title": "Test Dashboard"}
 			}`,
 		},
+		{
+			name:        "v2alpha1 keeps the declared version",
+			content:     `{"apiVersion": "dashboard.grafana.app/v2alpha1", "kind": "Dashboard", "metadata": {"name": "test-uid"}, "spec": {"title": "Test Dashboard"}}`,
+			wantVersion: "v2alpha1",
+			want: `{
+				"apiVersion": "dashboard.grafana.app/v2alpha1",
+				"kind": "Dashboard",
+				"metadata": {
+					"name": "test-uid",
+					"annotations": {
+						"grafana.app/managedBy": "kubectl",
+						"grafana.app/managerId": "observability-operator",
+						"grafana.app/sourcePath": "configmap monitoring/test-dashboard"
+					}
+				},
+				"spec": {"title": "Test Dashboard"}
+			}`,
+		},
+		{
+			name:        "v2beta1 keeps the declared version",
+			content:     `{"apiVersion": "dashboard.grafana.app/v2beta1", "kind": "Dashboard", "metadata": {"name": "test-uid"}, "spec": {"title": "Test Dashboard"}}`,
+			wantVersion: "v2beta1",
+			want: `{
+				"apiVersion": "dashboard.grafana.app/v2beta1",
+				"kind": "Dashboard",
+				"metadata": {
+					"name": "test-uid",
+					"annotations": {
+						"grafana.app/managedBy": "kubectl",
+						"grafana.app/managerId": "observability-operator",
+						"grafana.app/sourcePath": "configmap monitoring/test-dashboard"
+					}
+				},
+				"spec": {"title": "Test Dashboard"}
+			}`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -439,6 +475,20 @@ func TestConfigureDashboard(t *testing.T) {
 			content:       `{"apiVersion": "dashboard.grafana.app/v2", "kind": "Dashboard", "metadata": {"name": "test-uid"}, "spec": {"title": "Test Dashboard"}}`,
 			wantVersion:   "v2",
 			wantNamespace: "org-5",
+		},
+		{
+			name:          "v2alpha1 dashboard in another org",
+			orgID:         5,
+			content:       `{"apiVersion": "dashboard.grafana.app/v2alpha1", "kind": "Dashboard", "metadata": {"name": "test-uid"}, "spec": {"title": "Test Dashboard"}}`,
+			wantVersion:   "v2alpha1",
+			wantNamespace: "org-5",
+		},
+		{
+			name:          "v2beta1 dashboard in org 1",
+			orgID:         1,
+			content:       `{"apiVersion": "dashboard.grafana.app/v2beta1", "kind": "Dashboard", "metadata": {"name": "test-uid"}, "spec": {"title": "Test Dashboard"}}`,
+			wantVersion:   "v2beta1",
+			wantNamespace: "default",
 		},
 	}
 

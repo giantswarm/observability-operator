@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** the operator now requires a Grafana version that serves the `dashboard.grafana.app` `v1` and `v2` APIs. Tested on Grafana 13.2.4.
 - **Breaking:** this rollout is one-way. After the operator writes a dashboard through the app-platform API, an older operator version gets HTTP 400 "Cannot save provisioned dashboard" on every managed dashboard. Rolling back the operator breaks dashboard updates. Recovery is a manual API write per dashboard.
 
+### Fixed
+
+- Dashboards exported as `dashboard.grafana.app/v2alpha1` or `dashboard.grafana.app/v2beta1` are provisioned correctly. They were written as classic dashboards and broken.
+- The dashboard ConfigMap webhook rejects any other dashboard `apiVersion`. The error names the rejected value and the accepted values.
+
 ## [0.88.0] - 2026-11-03
 
 ### Added
