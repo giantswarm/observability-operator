@@ -2,11 +2,11 @@ package grafana
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
-	"github.com/grafana/grafana-openapi-client-go/models"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/dashboard"
@@ -39,7 +39,12 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 			return fmt.Errorf("failed to inject managed tag: %w", err)
 		}
 
-		if err := publishDashboard(client, dashboardContent, folderUID); err != nil {
+		version, resource, err := buildDashboardResource(dashboard.UID(), dashboardContent, folderUID, dashboard.SourcePath())
+		if err != nil {
+			return fmt.Errorf("failed to build dashboard resource: %w", err)
+		}
+
+		if err := publishDashboard(ctx, client.DashboardAPI(), version, grafanaclient.OrgNamespace(org.ID()), dashboard.UID(), resource); err != nil {
 			return fmt.Errorf("failed to update dashboard: %w", err)
 		}
 
@@ -51,6 +56,12 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 	return err
 }
 
+// DeleteDashboard deletes through the legacy API: it still accepts deletes on
+// managed dashboards (verified on Grafana 13.2.4).
+//
+// TODO: move to the app-platform API if Grafana starts enforcing the manager
+// identity on legacy deletes. The check is an open TODO in Grafana:
+// https://github.com/grafana/grafana/blob/v13.2.4/pkg/storage/unified/apistore/managed.go#L242
 func (s *Service) DeleteDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
 	logger := log.FromContext(ctx)
 
@@ -112,17 +123,74 @@ func injectManagedTag(content map[string]any) error {
 	return nil
 }
 
-// publishDashboard creates or updates a dashboard in Grafana.
+// Annotations marking a dashboard as managed by the operator in Grafana.
+const (
+	managedByAnnotation  = "grafana.app/managedBy"
+	managerIDAnnotation  = "grafana.app/managerId"
+	sourcePathAnnotation = "grafana.app/sourcePath"
+	folderAnnotation     = "grafana.app/folder"
+	managerKind          = "kubectl"
+	managerID            = "observability-operator"
+)
+
+// buildDashboardResource builds the app-platform Dashboard resource for the dashboard content.
+// It returns the API version to write it with: "v1" for the classic flat schema, "v2" for
+// the Grafana Dashboard schema (dashboard.grafana.app/v2).
 // folderUID specifies the target folder; empty string means the General folder.
-func publishDashboard(client grafanaclient.GrafanaClient, dashboard map[string]any, folderUID string) error {
-	_, err := client.Dashboards().PostDashboard(&models.SaveDashboardCommand{
-		Dashboard: any(dashboard),
-		FolderUID: folderUID,
-		Message:   "Added by observability-operator",
-		Overwrite: true, // allows dashboard to be updated by the same UID
-	})
+func buildDashboardResource(uid string, content map[string]any, folderUID string, sourcePath string) (string, json.RawMessage, error) {
+	annotations := map[string]any{
+		managedByAnnotation:  managerKind,
+		managerIDAnnotation:  managerID,
+		sourcePathAnnotation: sourcePath,
+	}
+	if folderUID != "" {
+		annotations[folderAnnotation] = folderUID
+	}
+
+	// Only metadata.name is kept: server metadata from a copied v2 dashboard
+	// (resourceVersion, generation, uid, labels, ...) is dropped.
+	metadata := map[string]any{
+		nameKey:       uid,
+		"annotations": annotations,
+	}
+
+	version := "v1"
+	resource := map[string]any{
+		"apiVersion": "dashboard.grafana.app/v1",
+		"kind":       "Dashboard",
+		"metadata":   metadata,
+		"spec":       content,
+	}
+	if dashboard.IsV2(content) {
+		version = "v2"
+		resource["apiVersion"] = content["apiVersion"]
+		resource["kind"] = content["kind"]
+		resource["spec"] = content["spec"]
+	}
+
+	body, err := json.Marshal(resource)
 	if err != nil {
-		return fmt.Errorf("failed to publish dashboard: %w", err)
+		return "", nil, fmt.Errorf("failed to marshal dashboard resource: %w", err)
+	}
+	return version, body, nil
+}
+
+// publishDashboard creates or updates a dashboard through the Grafana app-platform API.
+// The update omits resourceVersion so it overwrites the stored dashboard unconditionally.
+func publishDashboard(ctx context.Context, client grafanaclient.DashboardAPIClient, version, namespace, uid string, resource json.RawMessage) error {
+	_, err := client.Get(ctx, version, namespace, uid)
+	if errors.Is(err, grafanaclient.ErrDashboardNotFound) {
+		if err := client.Create(ctx, version, namespace, resource); err != nil {
+			return fmt.Errorf("failed to create dashboard: %w", err)
+		}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get dashboard: %w", err)
+	}
+
+	if err := client.Update(ctx, version, namespace, uid, resource); err != nil {
+		return fmt.Errorf("failed to update dashboard: %w", err)
 	}
 	return nil
 }
