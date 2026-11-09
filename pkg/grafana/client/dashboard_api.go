@@ -69,37 +69,40 @@ func (c *dashboardAPIClient) withOrgID(orgID int64) *dashboardAPIClient {
 }
 
 func (c *dashboardAPIClient) Get(ctx context.Context, version, namespace, uid string) (json.RawMessage, error) {
-	body, status, err := c.do(ctx, http.MethodGet, c.dashboardsPath(version, namespace, uid), nil)
+	path := c.dashboardsPath(version, namespace, uid)
+	body, status, err := c.do(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
 	if status == http.StatusNotFound {
-		return nil, fmt.Errorf("failed to get dashboard %q in namespace %q: %w", uid, namespace, ErrDashboardNotFound)
+		return nil, fmt.Errorf("failed to get dashboard: %s %s: %w", http.MethodGet, path, ErrDashboardNotFound)
 	}
 	if status != http.StatusOK {
-		return nil, fmt.Errorf("failed to get dashboard %q in namespace %q: status %d: %s", uid, namespace, status, body)
+		return nil, fmt.Errorf("failed to get dashboard: %s %s: status %d: %s", http.MethodGet, path, status, body)
 	}
 	return body, nil
 }
 
 func (c *dashboardAPIClient) Create(ctx context.Context, version, namespace string, dashboard json.RawMessage) error {
-	body, status, err := c.do(ctx, http.MethodPost, c.dashboardsPath(version, namespace, ""), dashboard)
+	path := c.dashboardsPath(version, namespace, "")
+	body, status, err := c.do(ctx, http.MethodPost, path, dashboard)
 	if err != nil {
 		return err
 	}
 	if status != http.StatusOK && status != http.StatusCreated {
-		return fmt.Errorf("failed to create dashboard in namespace %q: status %d: %s", namespace, status, body)
+		return fmt.Errorf("failed to create dashboard: %s %s: status %d: %s", http.MethodPost, path, status, body)
 	}
 	return nil
 }
 
 func (c *dashboardAPIClient) Update(ctx context.Context, version, namespace, uid string, dashboard json.RawMessage) error {
-	body, status, err := c.do(ctx, http.MethodPut, c.dashboardsPath(version, namespace, uid), dashboard)
+	path := c.dashboardsPath(version, namespace, uid)
+	body, status, err := c.do(ctx, http.MethodPut, path, dashboard)
 	if err != nil {
 		return err
 	}
 	if status != http.StatusOK && status != http.StatusCreated {
-		return fmt.Errorf("failed to update dashboard %q in namespace %q: status %d: %s", uid, namespace, status, body)
+		return fmt.Errorf("failed to update dashboard: %s %s: status %d: %s", http.MethodPut, path, status, body)
 	}
 	return nil
 }

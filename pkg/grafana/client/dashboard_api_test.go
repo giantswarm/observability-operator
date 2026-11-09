@@ -176,6 +176,7 @@ func TestDashboardAPIClient(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantMethod+" "+tt.wantPath)
 				assert.Equal(t, tt.wantNotFound, errors.Is(err, ErrDashboardNotFound))
 				return
 			}

@@ -49,11 +49,7 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 			return fmt.Errorf("failed to build dashboard resource: %w", err)
 		}
 
-		if err := publishDashboard(ctx, client.DashboardAPI(), version, grafanaclient.OrgNamespace(org.ID()), dashboard.UID(), resource); err != nil {
-			return fmt.Errorf("failed to update dashboard: %w", err)
-		}
-
-		return nil
+		return publishDashboard(ctx, client.DashboardAPI(), version, grafanaclient.OrgNamespace(org.ID()), dashboard.UID(), resource)
 	})
 	if err != nil {
 		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpConfigureDashboard).Inc()
@@ -233,22 +229,18 @@ func buildDashboardResource(uid string, content map[string]any, folderUID string
 
 // publishDashboard creates or updates a dashboard through the Grafana app-platform API.
 // The update omits resourceVersion so it overwrites the stored dashboard unconditionally.
+// The client errors already name the operation, the request path and the
+// response, so they are returned unwrapped.
 func publishDashboard(ctx context.Context, client grafanaclient.DashboardAPIClient, version, namespace, uid string, resource json.RawMessage) error {
 	_, err := client.Get(ctx, version, namespace, uid)
 	if errors.Is(err, grafanaclient.ErrDashboardNotFound) {
-		if err := client.Create(ctx, version, namespace, resource); err != nil {
-			return fmt.Errorf("failed to create dashboard: %w", err)
-		}
-		return nil
+		return client.Create(ctx, version, namespace, resource)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get dashboard: %w", err)
+		return err
 	}
 
-	if err := client.Update(ctx, version, namespace, uid, resource); err != nil {
-		return fmt.Errorf("failed to update dashboard: %w", err)
-	}
-	return nil
+	return client.Update(ctx, version, namespace, uid, resource)
 }
 
 // withinOrganization runs fn against a Grafana client scoped to org. The cloned
