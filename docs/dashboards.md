@@ -88,6 +88,20 @@ The copied JSON uses the v2 schema. It contains server metadata such as `resourc
 
 UI saves are blocked. Dashboard changes go through the ConfigMap. Exiting edit mode discards the changes without a prompt.
 
+## Managed dashboards in Grafana
+
+Grafana shows every operator dashboard as managed. The right sidebar shows a "Managed by: Kubectl" badge. Grafana blocks Save on these dashboards.
+
+To change a dashboard:
+
+1. Edit the dashboard in Grafana.
+2. Click Save, then "Copy JSON to clipboard".
+3. Paste the JSON into the ConfigMap.
+
+The copied JSON uses the v2 schema. It contains server metadata such as `resourceVersion` and `generation`. The operator keeps only `metadata.name` and drops the other metadata fields.
+
+UI saves are blocked. Dashboard changes go through the ConfigMap. Exiting edit mode discards the changes without a prompt.
+
 ## Notes
 
 - A ConfigMap targets exactly one `GrafanaOrganization`. You can have multiple ConfigMaps per org.
