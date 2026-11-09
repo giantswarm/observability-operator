@@ -213,6 +213,23 @@ func TestInjectManagedTag(t *testing.T) {
 	})
 }
 
+// sourceLinkJSON is the dashboard link injectSourceLink appends.
+const sourceLinkJSON = `{
+	"title": "giantswarm/dashboards",
+	"type": "link",
+	"url": "https://github.com/giantswarm/dashboards",
+	"tooltip": "Source of truth for this dashboard",
+	"icon": "external link",
+	"targetBlank": true,
+	"tags": [],
+	"asDropdown": false,
+	"includeVars": false,
+	"keepTime": false
+}`
+
+// otherLinkJSON is a dashboard link unrelated to the source repository.
+const otherLinkJSON = `{"title": "Runbook", "type": "link", "url": "https://example.com/runbook"}`
+
 // mustUnmarshal decodes a JSON document into a generic value.
 func mustUnmarshal(t *testing.T, data []byte) any {
 	t.Helper()
@@ -228,6 +245,74 @@ func assertJSONEqual(t *testing.T, got []byte, want string) {
 	t.Helper()
 	if !reflect.DeepEqual(mustUnmarshal(t, got), mustUnmarshal(t, []byte(want))) {
 		t.Errorf("JSON mismatch\ngot:  %s\nwant: %s", got, want)
+	}
+}
+
+func TestInjectSourceLink(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "classic without links creates links",
+			content: `{"uid": "test-uid"}`,
+			want:    `{"uid": "test-uid", "links": [` + sourceLinkJSON + `]}`,
+		},
+		{
+			name:    "classic with other links appends the link",
+			content: `{"uid": "test-uid", "links": [` + otherLinkJSON + `]}`,
+			want:    `{"uid": "test-uid", "links": [` + otherLinkJSON + `, ` + sourceLinkJSON + `]}`,
+		},
+		{
+			name:    "classic with the repository link keeps links unchanged",
+			content: `{"uid": "test-uid", "links": [{"title": "custom", "url": "https://github.com/giantswarm/dashboards"}]}`,
+			want:    `{"uid": "test-uid", "links": [{"title": "custom", "url": "https://github.com/giantswarm/dashboards"}]}`,
+		},
+		{
+			name:    "v2 without links creates spec.links",
+			content: `{"apiVersion": "dashboard.grafana.app/v2", "metadata": {"name": "test-uid"}, "spec": {}}`,
+			want:    `{"apiVersion": "dashboard.grafana.app/v2", "metadata": {"name": "test-uid"}, "spec": {"links": [` + sourceLinkJSON + `]}}`,
+		},
+		{
+			name:    "v2 with other links appends the link to spec.links",
+			content: `{"apiVersion": "dashboard.grafana.app/v2", "metadata": {"name": "test-uid"}, "spec": {"links": [` + otherLinkJSON + `]}}`,
+			want:    `{"apiVersion": "dashboard.grafana.app/v2", "metadata": {"name": "test-uid"}, "spec": {"links": [` + otherLinkJSON + `, ` + sourceLinkJSON + `]}}`,
+		},
+		{
+			name:    "v2 with the repository link keeps spec.links unchanged",
+			content: `{"apiVersion": "dashboard.grafana.app/v2", "metadata": {"name": "test-uid"}, "spec": {"links": [` + sourceLinkJSON + `]}}`,
+			want:    `{"apiVersion": "dashboard.grafana.app/v2", "metadata": {"name": "test-uid"}, "spec": {"links": [` + sourceLinkJSON + `]}}`,
+		},
+		{
+			name:    "v2 without spec returns an error",
+			content: `{"apiVersion": "dashboard.grafana.app/v2", "metadata": {"name": "test-uid"}}`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			content := mustUnmarshal(t, []byte(tt.content)).(map[string]any)
+
+			err := injectSourceLink(content)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected an error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			got, err := json.Marshal(content)
+			if err != nil {
+				t.Fatalf("failed to marshal content: %v", err)
+			}
+			assertJSONEqual(t, got, tt.want)
+		})
 	}
 }
 
@@ -323,6 +408,42 @@ func TestBuildDashboardResource(t *testing.T) {
 			wantVersion: "v2",
 			want: `{
 				"apiVersion": "dashboard.grafana.app/v2",
+				"kind": "Dashboard",
+				"metadata": {
+					"name": "test-uid",
+					"annotations": {
+						"grafana.app/managedBy": "kubectl",
+						"grafana.app/managerId": "observability-operator",
+						"grafana.app/sourcePath": "configmap monitoring/test-dashboard"
+					}
+				},
+				"spec": {"title": "Test Dashboard"}
+			}`,
+		},
+		{
+			name:        "v2alpha1 keeps the declared version",
+			content:     `{"apiVersion": "dashboard.grafana.app/v2alpha1", "kind": "Dashboard", "metadata": {"name": "test-uid"}, "spec": {"title": "Test Dashboard"}}`,
+			wantVersion: "v2alpha1",
+			want: `{
+				"apiVersion": "dashboard.grafana.app/v2alpha1",
+				"kind": "Dashboard",
+				"metadata": {
+					"name": "test-uid",
+					"annotations": {
+						"grafana.app/managedBy": "kubectl",
+						"grafana.app/managerId": "observability-operator",
+						"grafana.app/sourcePath": "configmap monitoring/test-dashboard"
+					}
+				},
+				"spec": {"title": "Test Dashboard"}
+			}`,
+		},
+		{
+			name:        "v2beta1 keeps the declared version",
+			content:     `{"apiVersion": "dashboard.grafana.app/v2beta1", "kind": "Dashboard", "metadata": {"name": "test-uid"}, "spec": {"title": "Test Dashboard"}}`,
+			wantVersion: "v2beta1",
+			want: `{
+				"apiVersion": "dashboard.grafana.app/v2beta1",
 				"kind": "Dashboard",
 				"metadata": {
 					"name": "test-uid",
@@ -440,6 +561,20 @@ func TestConfigureDashboard(t *testing.T) {
 			wantVersion:   "v2",
 			wantNamespace: "org-5",
 		},
+		{
+			name:          "v2alpha1 dashboard in another org",
+			orgID:         5,
+			content:       `{"apiVersion": "dashboard.grafana.app/v2alpha1", "kind": "Dashboard", "metadata": {"name": "test-uid"}, "spec": {"title": "Test Dashboard"}}`,
+			wantVersion:   "v2alpha1",
+			wantNamespace: "org-5",
+		},
+		{
+			name:          "v2beta1 dashboard in org 1",
+			orgID:         1,
+			content:       `{"apiVersion": "dashboard.grafana.app/v2beta1", "kind": "Dashboard", "metadata": {"name": "test-uid"}, "spec": {"title": "Test Dashboard"}}`,
+			wantVersion:   "v2beta1",
+			wantNamespace: "default",
+		},
 	}
 
 	for _, tt := range tests {
@@ -484,6 +619,9 @@ func TestConfigureDashboard(t *testing.T) {
 			}
 			if tags := spec[tagsKey].([]any); len(tags) != 1 || tags[0] != managedDashboardTag {
 				t.Errorf("expected the managed tag, got %v", tags)
+			}
+			if links := spec[linksKey].([]any); len(links) != 1 {
+				t.Errorf("expected the source link, got %v", links)
 			}
 		})
 	}

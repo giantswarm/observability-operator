@@ -15,7 +15,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 )
 
-// ConfigureDashboard configures a dashboard, ensuring folder hierarchy exists and injecting managed tag
+// ConfigureDashboard configures a dashboard, ensuring folder hierarchy exists and injecting managed tag and source link
 func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.Dashboard) error {
 	org, err := s.FindOrgByName(dashboard.Organization())
 	if err != nil {
@@ -39,16 +39,17 @@ func (s *Service) ConfigureDashboard(ctx context.Context, dashboard *dashboard.D
 			return fmt.Errorf("failed to inject managed tag: %w", err)
 		}
 
+		// Link the dashboard to the repository holding its source of truth
+		if err := injectSourceLink(dashboardContent); err != nil {
+			return fmt.Errorf("failed to inject source link: %w", err)
+		}
+
 		version, resource, err := buildDashboardResource(dashboard.UID(), dashboardContent, folderUID, dashboard.SourcePath())
 		if err != nil {
 			return fmt.Errorf("failed to build dashboard resource: %w", err)
 		}
 
-		if err := publishDashboard(ctx, client.DashboardAPI(), version, grafanaclient.OrgNamespace(org.ID()), dashboard.UID(), resource); err != nil {
-			return fmt.Errorf("failed to update dashboard: %w", err)
-		}
-
-		return nil
+		return publishDashboard(ctx, client.DashboardAPI(), version, grafanaclient.OrgNamespace(org.ID()), dashboard.UID(), resource)
 	})
 	if err != nil {
 		metrics.GrafanaAPIErrors.WithLabelValues(metrics.OpConfigureDashboard).Inc()
@@ -123,6 +124,56 @@ func injectManagedTag(content map[string]any) error {
 	return nil
 }
 
+// Dashboard links pointing to the repository that holds the source of truth of the dashboards.
+const (
+	linksKey            = "links"
+	linkURLKey          = "url"
+	linkTargetBlankKey  = "targetBlank"
+	sourceRepositoryURL = "https://github.com/giantswarm/dashboards"
+)
+
+// injectSourceLink ensures the dashboard links to the giantswarm/dashboards repository.
+// It creates the links array when missing, keeps existing links, and does nothing
+// when a link with the same url already exists.
+//
+// The links live at the top level for the classic flat schema and under "spec" for
+// the Grafana Dashboard schema (dashboard.grafana.app/v2).
+func injectSourceLink(content map[string]any) error {
+	linksHolder := content
+	if dashboard.IsV2(content) {
+		spec, ok := content["spec"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("malformed v2 dashboard: missing spec")
+		}
+		linksHolder = spec
+	}
+
+	links, ok := linksHolder[linksKey].([]any)
+	if !ok {
+		links = []any{}
+	}
+
+	for _, link := range links {
+		if l, ok := link.(map[string]any); ok && l[linkURLKey] == sourceRepositoryURL {
+			return nil
+		}
+	}
+
+	linksHolder[linksKey] = append(links, map[string]any{
+		titleKey:           "giantswarm/dashboards",
+		"type":             "link",
+		linkURLKey:         sourceRepositoryURL,
+		"tooltip":          "Source of truth for this dashboard",
+		"icon":             "external link",
+		linkTargetBlankKey: true,
+		tagsKey:            []any{},
+		"asDropdown":       false,
+		"includeVars":      false,
+		"keepTime":         false,
+	})
+	return nil
+}
+
 // Annotations marking a dashboard as managed by the operator in Grafana.
 const (
 	managedByAnnotation  = "grafana.app/managedBy"
@@ -134,8 +185,9 @@ const (
 )
 
 // buildDashboardResource builds the app-platform Dashboard resource for the dashboard content.
-// It returns the API version to write it with: "v1" for the classic flat schema, "v2" for
-// the Grafana Dashboard schema (dashboard.grafana.app/v2).
+// It returns the API version to write it with: "v1" for the classic flat schema, and the
+// declared version (such as "v2" or "v2alpha1") for the Grafana Dashboard schema. Grafana
+// converts the older v2 versions itself.
 // folderUID specifies the target folder; empty string means the General folder.
 func buildDashboardResource(uid string, content map[string]any, folderUID string, sourcePath string) (string, json.RawMessage, error) {
 	annotations := map[string]any{
@@ -162,7 +214,7 @@ func buildDashboardResource(uid string, content map[string]any, folderUID string
 		"spec":       content,
 	}
 	if dashboard.IsV2(content) {
-		version = "v2"
+		version = dashboard.V2Version(content)
 		resource["apiVersion"] = content["apiVersion"]
 		resource["kind"] = content["kind"]
 		resource["spec"] = content["spec"]
@@ -177,22 +229,18 @@ func buildDashboardResource(uid string, content map[string]any, folderUID string
 
 // publishDashboard creates or updates a dashboard through the Grafana app-platform API.
 // The update omits resourceVersion so it overwrites the stored dashboard unconditionally.
+// The client errors already name the operation, the request path and the
+// response, so they are returned unwrapped.
 func publishDashboard(ctx context.Context, client grafanaclient.DashboardAPIClient, version, namespace, uid string, resource json.RawMessage) error {
 	_, err := client.Get(ctx, version, namespace, uid)
 	if errors.Is(err, grafanaclient.ErrDashboardNotFound) {
-		if err := client.Create(ctx, version, namespace, resource); err != nil {
-			return fmt.Errorf("failed to create dashboard: %w", err)
-		}
-		return nil
+		return client.Create(ctx, version, namespace, resource)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get dashboard: %w", err)
+		return err
 	}
 
-	if err := client.Update(ctx, version, namespace, uid, resource); err != nil {
-		return fmt.Errorf("failed to update dashboard: %w", err)
-	}
-	return nil
+	return client.Update(ctx, version, namespace, uid, resource)
 }
 
 // withinOrganization runs fn against a Grafana client scoped to org. The cloned

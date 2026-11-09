@@ -115,6 +115,16 @@ func TestDashboardAPIClient(t *testing.T) {
 			wantReqBody: string(dashboard),
 		},
 		{
+			name:   "create with a pre-release version",
+			status: http.StatusCreated,
+			call: func(c DashboardAPIClient) (json.RawMessage, error) {
+				return nil, c.Create(context.Background(), "v2alpha1", "default", dashboard)
+			},
+			wantMethod:  http.MethodPost,
+			wantPath:    "/apis/dashboard.grafana.app/v2alpha1/namespaces/default/dashboards",
+			wantReqBody: string(dashboard),
+		},
+		{
 			name:     "create conflict",
 			status:   http.StatusConflict,
 			respBody: `already exists`,
@@ -166,6 +176,7 @@ func TestDashboardAPIClient(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantMethod+" "+tt.wantPath)
 				assert.Equal(t, tt.wantNotFound, errors.Is(err, ErrDashboardNotFound))
 				return
 			}
