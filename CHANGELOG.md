@@ -20,8 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Dashboards exported as `dashboard.grafana.app/v2alpha1` or `dashboard.grafana.app/v2beta1` are provisioned correctly. They were written as classic dashboards and broken.
-- The dashboard ConfigMap webhook rejects any other dashboard `apiVersion`. The error names the rejected value and the accepted values.
+- Provision dashboards exported as `dashboard.grafana.app/v2alpha1` or `dashboard.grafana.app/v2beta1`.
+- The dashboard ConfigMap webhook names the unsupported `apiVersion` in its error.
 
 ## [0.88.0] - 2026-11-03
 
