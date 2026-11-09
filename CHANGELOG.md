@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Document a Loki bug that makes some regex label filters in Explore match more than a `LogExport` exports.
+- Update github.com/spf13/pflag to v1.1.0 (giantswarm/observability-operator#1123)
 
 ## [0.88.0] - 2026-11-03
 
