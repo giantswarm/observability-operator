@@ -244,6 +244,7 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			},
 			Entry("v1 envelope", "dashboard.grafana.app/v1"),
 			Entry("v20", "dashboard.grafana.app/v20"),
+			Entry("v2alpha2 not served by Grafana", "dashboard.grafana.app/v2alpha2"),
 			Entry("garbage", "not-a-version"),
 		)
 

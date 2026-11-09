@@ -3,7 +3,7 @@ package dashboard
 import (
 	"fmt"
 	"maps"
-	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
@@ -12,12 +12,10 @@ import (
 // apiGroup is the API group of the Grafana Dashboard schema.
 const apiGroup = "dashboard.grafana.app"
 
-// v2APIVersionPattern matches the v2 family of the Grafana Dashboard schema:
-// "dashboard.grafana.app/v2" and its pre-releases, such as "v2alpha1" and "v2beta1".
-var v2APIVersionPattern = regexp.MustCompile(`^dashboard\.grafana\.app/v2((alpha|beta)[1-9][0-9]*)?$`)
-
 // SupportedAPIVersions lists the apiVersion values accepted for Grafana Dashboard
-// schema dashboards. Classic dashboards have no apiVersion.
+// schema dashboards. The versions are pinned: Grafana 13.2.4 serves exactly these,
+// and the v2 API is stable, so no new alpha or beta version will appear.
+// Classic dashboards have no apiVersion.
 var SupportedAPIVersions = []string{
 	apiGroup + "/v2",
 	apiGroup + "/v2beta1",
@@ -50,10 +48,10 @@ func New(organization string, folderPath string, sourceNamespace string, sourceN
 
 // IsV2 reports whether the dashboard content uses the Grafana Dashboard schema
 // (apiVersion "dashboard.grafana.app/v2" or one of its pre-releases), as opposed
-// to the classic flat schema.
+// to the classic flat schema. Only the versions in SupportedAPIVersions match.
 func IsV2(content map[string]any) bool {
 	apiVersion, _ := content["apiVersion"].(string)
-	return v2APIVersionPattern.MatchString(apiVersion)
+	return slices.Contains(SupportedAPIVersions, apiVersion)
 }
 
 // V2Version returns the version part of a Grafana Dashboard schema apiVersion,

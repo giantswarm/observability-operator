@@ -192,6 +192,7 @@ func TestIsV2(t *testing.T) {
 		{name: "v20", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v20"}},
 		{name: "v2 with unknown suffix", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v2gamma1"}},
 		{name: "v2alpha without number", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v2alpha"}},
+		{name: "v2alpha2 not served by Grafana", content: map[string]any{apiVersionKey: "dashboard.grafana.app/v2alpha2"}},
 		{name: "other group", content: map[string]any{apiVersionKey: "example.com/v2"}},
 		{name: "garbage", content: map[string]any{apiVersionKey: "not-a-version"}},
 	}
