@@ -17,6 +17,7 @@ import (
 type recordedRequest struct {
 	method    string
 	path      string
+	query     string
 	body      string
 	user      string
 	password  string
@@ -35,6 +36,7 @@ func newTestDashboardAPIClient(t *testing.T, status int, respBody string) (*dash
 		*recorded = recordedRequest{
 			method:    r.Method,
 			path:      r.URL.Path,
+			query:     r.URL.RawQuery,
 			body:      string(body),
 			user:      user,
 			password:  password,
@@ -53,7 +55,10 @@ func newTestDashboardAPIClient(t *testing.T, status int, respBody string) (*dash
 	return c.withOrgID(5), recorded
 }
 
-const org5DashboardPath = "/apis/dashboard.grafana.app/v1/namespaces/org-5/dashboards/abc"
+const (
+	org5DashboardPath          = "/apis/dashboard.grafana.app/v1/namespaces/org-5/dashboards/abc"
+	ignoreFieldValidationQuery = "fieldValidation=Ignore"
+)
 
 func TestDashboardAPIClient(t *testing.T) {
 	dashboard := json.RawMessage(`{"apiVersion":"dashboard.grafana.app/v1","kind":"Dashboard","metadata":{"name":"abc"},"spec":{"title":"Test"}}`)
@@ -65,6 +70,7 @@ func TestDashboardAPIClient(t *testing.T) {
 		call         func(c DashboardAPIClient) (json.RawMessage, error)
 		wantMethod   string
 		wantPath     string
+		wantQuery    string
 		wantReqBody  string
 		wantRespBody string
 		wantErr      bool
@@ -103,6 +109,17 @@ func TestDashboardAPIClient(t *testing.T) {
 			wantMethod: http.MethodGet,
 			wantPath:   org5DashboardPath,
 			wantErr:    true,
+		},
+		{
+			name:   "create v1 ignores field validation",
+			status: http.StatusCreated,
+			call: func(c DashboardAPIClient) (json.RawMessage, error) {
+				return nil, c.Create(context.Background(), "v1", "default", dashboard)
+			},
+			wantMethod:  http.MethodPost,
+			wantPath:    "/apis/dashboard.grafana.app/v1/namespaces/default/dashboards",
+			wantQuery:   ignoreFieldValidationQuery,
+			wantReqBody: string(dashboard),
 		},
 		{
 			name:   "create",
@@ -144,6 +161,17 @@ func TestDashboardAPIClient(t *testing.T) {
 			},
 			wantMethod:  http.MethodPut,
 			wantPath:    org5DashboardPath,
+			wantQuery:   ignoreFieldValidationQuery,
+			wantReqBody: string(dashboard),
+		},
+		{
+			name:   "update v2 keeps strict field validation",
+			status: http.StatusOK,
+			call: func(c DashboardAPIClient) (json.RawMessage, error) {
+				return nil, c.Update(context.Background(), "v2", "org-5", "abc", dashboard)
+			},
+			wantMethod:  http.MethodPut,
+			wantPath:    "/apis/dashboard.grafana.app/v2/namespaces/org-5/dashboards/abc",
 			wantReqBody: string(dashboard),
 		},
 		{
@@ -155,6 +183,7 @@ func TestDashboardAPIClient(t *testing.T) {
 			},
 			wantMethod:  http.MethodPut,
 			wantPath:    org5DashboardPath,
+			wantQuery:   ignoreFieldValidationQuery,
 			wantReqBody: string(dashboard),
 			wantErr:     true,
 		},
@@ -168,6 +197,7 @@ func TestDashboardAPIClient(t *testing.T) {
 
 			assert.Equal(t, tt.wantMethod, recorded.method)
 			assert.Equal(t, tt.wantPath, recorded.path)
+			assert.Equal(t, tt.wantQuery, recorded.query)
 			assert.Equal(t, tt.wantReqBody, recorded.body)
 			assert.Equal(t, "admin", recorded.user)
 			assert.Equal(t, "secret", recorded.password)
