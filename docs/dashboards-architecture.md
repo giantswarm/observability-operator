@@ -85,7 +85,7 @@ Both branches route through `processDashboards`, which iterates the parsed dashb
 
 `grafana.Service` scopes every call to the target organization via `withinOrganization`, which clones the Grafana client with the org ID.
 
-- `ConfigureDashboard` ensures the folder hierarchy exists (`ensureFolderHierarchy`), strips the `id` field, injects the `managed-by: observability-operator` tag and the https://github.com/giantswarm/dashboards link at the schema-appropriate location, and publishes the dashboard through the Grafana app-platform API (`/apis/dashboard.grafana.app`). See [Managed dashboards](#managed-dashboards).
+- `ConfigureDashboard` ensures the folder hierarchy exists (`ensureFolderHierarchy`), strips the `id` field, injects the `managed-by: observability-operator` tag at the schema-appropriate location, and publishes the dashboard through the Grafana app-platform API (`/apis/dashboard.grafana.app`). See [Managed dashboards](#managed-dashboards).
 - `ensureFolderHierarchy` walks the path segment by segment: it creates each missing folder with its deterministic UID and parent UID, and renames any folder whose title drifted from the path. It caches the resolved leaf UID per `(orgID, path)`.
 - `DeleteDashboard` deletes the dashboard by UID through the legacy API (`DELETE /api/dashboards/uid/<uid>`) and treats a `NotFound` response as success.
 
@@ -107,7 +107,7 @@ Both schemas carry these annotations:
 
 The write targets the organization namespace: `default` for org 1, `org-<id>` for every other org. It uses API version `v1` for classic input and `v2` for v2 input. `publishDashboard` gets the dashboard first. A `404` creates it with `POST`. Otherwise, a `PUT` without `resourceVersion` replaces it. The first `PUT` on a dashboard written by an older operator adds the annotations.
 
-Grafana shows the dashboards as managed and blocks Save in the UI. Users edit a dashboard, use "Copy JSON to clipboard" and paste the JSON into the ConfigMap. The copied JSON uses the v2 schema. Each dashboard links to https://github.com/giantswarm/dashboards, the source of truth for the dashboards.
+Grafana shows the dashboards as managed and blocks Save in the UI. Users edit a dashboard, use "Copy JSON to clipboard" and paste the JSON into the ConfigMap. The copied JSON uses the v2 schema.
 
 ## Dashboard cleanup controller
 

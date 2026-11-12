@@ -68,25 +68,9 @@ Both Grafana dashboard schemas are supported:
 - **Classic flat JSON** — the top-level `uid` field identifies the dashboard.
 - **App Platform schema** (`apiVersion: dashboard.grafana.app/v2`, `v2beta1` or `v2alpha1`) — a Kubernetes-style envelope where the dashboard is identified by `metadata.name` and its body lives under `spec`.
 
-The operator detects the schema automatically and extracts the UID from the appropriate field (`uid` for the flat schema, `metadata.name` for v2). The `managed-by: observability-operator` tag is injected at the correct location for each schema (top-level `tags` for the flat schema, `spec.tags` for v2). The link to the dashboards repository follows the same rule (top-level `links` for the flat schema, `spec.links` for v2).
+The operator detects the schema automatically and extracts the UID from the appropriate field (`uid` for the flat schema, `metadata.name` for v2). The `managed-by: observability-operator` tag is injected at the correct location for each schema (top-level `tags` for the flat schema, `spec.tags` for v2).
 
 The operator writes a v2 dashboard to the API version it declares. Grafana converts `v2alpha1` and `v2beta1` dashboards. The ConfigMap webhook rejects any other `apiVersion` value.
-
-## Managed dashboards in Grafana
-
-Grafana shows every operator dashboard as managed. The right sidebar shows a "Managed by: Kubectl" badge. Grafana blocks Save on these dashboards.
-
-Each dashboard links to https://github.com/giantswarm/dashboards. The link shows as a `giantswarm/dashboards` button in the dashboard controls. The operator keeps existing dashboard links and adds this link only when no link to that URL exists.
-
-To change a dashboard:
-
-1. Edit the dashboard in Grafana.
-2. Click Save, then "Copy JSON to clipboard".
-3. Paste the JSON into the ConfigMap.
-
-The copied JSON uses the v2 schema. It contains server metadata such as `resourceVersion` and `generation`. The operator keeps only `metadata.name` and drops the other metadata fields.
-
-UI saves are blocked. Dashboard changes go through the ConfigMap. Exiting edit mode discards the changes without a prompt.
 
 ## Managed dashboards in Grafana
 
