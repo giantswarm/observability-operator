@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** the operator now requires a Grafana version that serves the `dashboard.grafana.app` `v1` and `v2` APIs. Tested on Grafana 13.2.4.
 - **Breaking:** this rollout is one-way. After the operator writes a dashboard through the app-platform API, an older operator version gets HTTP 400 "Cannot save provisioned dashboard" on every managed dashboard. Rolling back the operator breaks dashboard updates. Recovery is a manual API write per dashboard.
 - Update github.com/spf13/pflag to v1.1.0 (giantswarm/observability-operator#1123)
+- The `Mimir Cardinality` datasource goes to Grafana's default organization (org 1), whatever its name.
 
 ### Fixed
 

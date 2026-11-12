@@ -119,7 +119,7 @@ func TestGenerateDatasources(t *testing.T) {
 	}{
 		{
 			name: "regular organization with data-only tenants and tracing enabled",
-			organization: organization.New(1, "test-org", []organization.TenantConfig{
+			organization: organization.New(2, "test-org", []organization.TenantConfig{
 				{Name: tenant1, Types: []string{dataKey}},
 				{Name: tenant2, Types: []string{dataKey}},
 			}, nil, nil, nil),
@@ -132,7 +132,7 @@ func TestGenerateDatasources(t *testing.T) {
 		},
 		{
 			name: "regular organization with data-only tenants and tracing disabled",
-			organization: organization.New(1, "test-org", []organization.TenantConfig{
+			organization: organization.New(2, "test-org", []organization.TenantConfig{
 				{Name: tenant1, Types: []string{dataKey}},
 				{Name: tenant2, Types: []string{dataKey}},
 			}, nil, nil, nil),
@@ -145,7 +145,7 @@ func TestGenerateDatasources(t *testing.T) {
 		},
 		{
 			name: "organization with alerting-enabled tenant and tracing enabled",
-			organization: organization.New(1, "test-org", []organization.TenantConfig{
+			organization: organization.New(2, "test-org", []organization.TenantConfig{
 				{Name: tenant1, Types: []string{dataKey, alerting}},
 				{Name: tenant2, Types: []string{dataKey}},
 			}, nil, nil, nil),
@@ -158,7 +158,7 @@ func TestGenerateDatasources(t *testing.T) {
 		},
 		{
 			name: "organization with alerting-enabled tenant and tracing disabled",
-			organization: organization.New(1, "test-org", []organization.TenantConfig{
+			organization: organization.New(2, "test-org", []organization.TenantConfig{
 				{Name: tenant1, Types: []string{dataKey, alerting}},
 				{Name: tenant2, Types: []string{dataKey}},
 			}, nil, nil, nil),
@@ -171,7 +171,7 @@ func TestGenerateDatasources(t *testing.T) {
 		},
 		{
 			name: "mono-tenant organization with alerting",
-			organization: organization.New(1, "test-org", []organization.TenantConfig{
+			organization: organization.New(2, "test-org", []organization.TenantConfig{
 				{Name: tenant1, Types: []string{dataKey, alerting}},
 			}, nil, nil, nil),
 			tracingEnabled:   true,
@@ -183,7 +183,7 @@ func TestGenerateDatasources(t *testing.T) {
 		},
 		{
 			name: "multi-tenant organization with multiple alerting tenants and tracing enabled",
-			organization: organization.New(1, "test-org", []organization.TenantConfig{
+			organization: organization.New(2, "test-org", []organization.TenantConfig{
 				{Name: tenant1, Types: []string{dataKey, alerting}},
 				{Name: tenant2, Types: []string{dataKey, alerting}},
 				{Name: "tenant3", Types: []string{dataKey}},
@@ -197,7 +197,7 @@ func TestGenerateDatasources(t *testing.T) {
 		},
 		{
 			name: "multi-tenant organization with multiple alerting tenants and tracing disabled",
-			organization: organization.New(1, "test-org", []organization.TenantConfig{
+			organization: organization.New(2, "test-org", []organization.TenantConfig{
 				{Name: tenant1, Types: []string{dataKey, alerting}},
 				{Name: tenant2, Types: []string{dataKey, alerting}},
 				{Name: "tenant3", Types: []string{dataKey}},
@@ -228,6 +228,18 @@ func TestGenerateDatasources(t *testing.T) {
 			}, nil, nil, nil),
 			tracingEnabled:   false,
 			expectedLen:      3, // Loki, Mimir, Cardinality (no Tempo, no Alertmanager)
+			checkTempo:       false,
+			checkShared:      true,
+			checkAlerting:    false,
+			perTenantDSCount: 0,
+		},
+		{
+			name: "standalone default organization with data-only tenant",
+			organization: organization.New(1, "Main Org.", []organization.TenantConfig{
+				{Name: tenant1, Types: []string{dataKey}},
+			}, nil, nil, nil),
+			tracingEnabled:   false,
+			expectedLen:      3, // Loki, Mimir, Cardinality: org 1 gets the cardinality datasource whatever its name
 			checkTempo:       false,
 			checkShared:      true,
 			checkAlerting:    false,
