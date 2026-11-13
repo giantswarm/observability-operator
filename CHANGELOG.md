@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.89.1] - 2026-11-13
+
 ### Fixed
 
 - Provision classic dashboards that still use older JSON, such as string datasource references. Grafana rejected their updates with HTTP 422.
@@ -1383,7 +1385,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.89.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.89.1...HEAD
+[0.89.1]: https://github.com/giantswarm/observability-operator/compare/v0.89.0...v0.89.1
 [0.89.0]: https://github.com/giantswarm/observability-operator/compare/v0.88.0...v0.89.0
 [0.88.0]: https://github.com/giantswarm/observability-operator/compare/v0.87.0...v0.88.0
 [0.87.0]: https://github.com/giantswarm/observability-operator/compare/v0.86.0...v0.87.0
