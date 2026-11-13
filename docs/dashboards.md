@@ -72,6 +72,8 @@ The operator detects the schema automatically and extracts the UID from the appr
 
 The operator writes a v2 dashboard to the API version it declares. Grafana converts `v2alpha1` and `v2beta1` dashboards. The ConfigMap webhook rejects any other `apiVersion` value.
 
+The operator writes a classic dashboard to the `v1` API with `fieldValidation=Ignore`. Grafana migrates the dashboard to the latest schema version and accepts older JSON, such as string datasource references. Grafana validates v2 dashboards strictly.
+
 ## Managed dashboards in Grafana
 
 Grafana shows every operator dashboard as managed. The right sidebar shows a "Managed by: Kubectl" badge. Grafana blocks Save on these dashboards.

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Provision classic dashboards that still use older JSON, such as string datasource references. Grafana rejected their updates with HTTP 422.
+
 ## [0.89.0] - 2026-11-12
 
 ### Changed
