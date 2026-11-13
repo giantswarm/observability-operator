@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- CI: run the Go tests once, in `go-build`, and run the Alertmanager integration tests only when Alertmanager files change.
+
 ## [0.89.1] - 2026-11-13
 
 ### Fixed

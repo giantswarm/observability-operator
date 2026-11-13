@@ -4,14 +4,6 @@ orbs:
   architect: giantswarm/architect@10.17.4
 
 jobs:
-  go-tests:
-    executor: architect/architect
-    resource_class: large
-    steps:
-    - checkout
-    - run:
-        name: Run unit and integration tests
-        command: CGO_ENABLED=0 GINKGO_NODES=2 make test
   template-chart:
     docker:
     - image: giantswarm/helm-chart-testing:v3.14.0
@@ -28,35 +20,6 @@ jobs:
     - run:
         name: Validate Alertmanager Config
         command: make validate-alertmanager-config
-  validate-alertmanager-routes:
-    executor: architect/architect
-    steps:
-    - checkout
-    - run:
-        name: Validate Alertmanager routes
-        command: make tests-alertmanager-routes
-  tests-alertmanager-integrations:
-    machine:
-      image: ubuntu-2404:current
-    resource_class: large
-    steps:
-    - checkout
-    - run:
-        name: Install kubectl
-        command: |
-          curl -sSLo kubectl "https://dl.k8s.io/release/$(curl -sSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-    - run:
-        name: Install Helm
-        command: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-    - run:
-        name: Install kind
-        command: |
-          curl -sSLo kind "https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64"
-          chmod +x kind && sudo mv kind /usr/local/bin/
-    - run:
-        name: Run Alertmanager integration tests
-        command: make tests-alertmanager-integrations
   verify-generate:
     executor: architect/architect
     steps:
@@ -86,21 +49,6 @@ workflows:
           tags:
             only: /^v.*/
 
-    # This job verifies that alerts route to the expected receivers.
-    - validate-alertmanager-routes:
-        name: validate-alertmanager-routes
-        filters:
-          tags:
-            only: /^v.*/
-
-    # This job verifies end-to-end that alerts are delivered to the expected
-    # receivers. It is slow, so it is intentionally not required by any other job.
-    - tests-alertmanager-integrations:
-        name: tests-alertmanager-integrations
-        filters:
-          tags:
-            only: /^v.*/
-
     # This job validates that generated files (CRDs, RBAC, deepcopy, etc.) are up to date.
     - verify-generate:
         name: verify-generate
@@ -108,21 +56,12 @@ workflows:
           tags:
             only: /^v.*/
 
-    # This job is used to run go unit and integration tests.
-    - go-tests:
-        filters:
-          tags:
-            only: /^v.*/
-
-    # Build the observability-operator binary.
+    # Run the unit and envtest suites, then build the observability-operator binary.
     - architect/go-build:
         context: architect
         name: go-build
-        requires:
-        - go-tests
-        - validate-alertmanager-config
-        - validate-alertmanager-routes
-        - verify-generate
+        resource_class: large
+        test_target: test GINKGO_NODES=2
         path: ./cmd
         binary: observability-operator
         filters:
@@ -138,6 +77,8 @@ workflows:
         split-china-push: true
         requires:
         - go-build
+        - validate-alertmanager-config
+        - verify-generate
         filters:
           tags:
             only: /^v.*/
