@@ -61,7 +61,7 @@ workflows:
         context: architect
         name: go-build
         resource_class: large
-        test_target: test GINKGO_NODES=2
+        test_target: test GINKGO_NODES=1
         path: ./cmd
         binary: observability-operator
         filters:
