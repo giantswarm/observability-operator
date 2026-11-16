@@ -35,7 +35,7 @@ repos:
           - -E=goconst
           - -E=govet
           # timeout is needed for CI
-          - --timeout=600s
+          - --timeout=300s
           # List all issues found
           - --max-same-issues=0
           - --max-issues-per-linter=0
