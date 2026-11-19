@@ -10,7 +10,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/giantswarm/apiextensions-application v0.6.2
 	github.com/go-logr/logr v1.4.4
-	github.com/go-openapi/runtime v0.33.4
+	github.com/go-openapi/runtime v0.33.5
 	github.com/goccy/go-yaml v1.19.2
 	github.com/grafana/grafana-openapi-client-go v0.0.0-20261015192556-fcf0a80b71e9
 	github.com/grafana/loki/v3 v3.7.9
@@ -64,7 +64,7 @@ require (
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.1 // indirect
-	github.com/go-openapi/runtime/server-middleware v0.33.4 // indirect
+	github.com/go-openapi/runtime/server-middleware v0.33.5 // indirect
 	github.com/go-openapi/swag/cmdutils v0.28.0 // indirect
 	github.com/go-openapi/swag/conv v0.29.2 // indirect
 	github.com/go-openapi/swag/fileutils v0.29.2 // indirect
@@ -165,7 +165,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.5 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	go4.org/netipx v0.0.0-20260823151212-3075585bcbeb // indirect
 	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e // indirect
 	golang.org/x/mod v0.42.0 // indirect
