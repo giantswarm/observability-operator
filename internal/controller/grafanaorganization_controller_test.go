@@ -17,12 +17,14 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	observabilityv1alpha1 "github.com/giantswarm/observability-operator/api/v1alpha1"
 	"github.com/giantswarm/observability-operator/api/v1alpha2"
 	"github.com/giantswarm/observability-operator/internal/mapper"
 	"github.com/giantswarm/observability-operator/pkg/config"
+	"github.com/giantswarm/observability-operator/pkg/grafana"
 	grafanaclient "github.com/giantswarm/observability-operator/pkg/grafana/client"
 	"github.com/giantswarm/observability-operator/pkg/grafana/client/mocks"
 )
@@ -196,6 +198,14 @@ var _ = Describe("Grafana Organization Controller", func() {
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		}
 
+		// expectNoJWTOrgMappingSecret checks that the JWT org mapping Secret was never written.
+		expectNoJWTOrgMappingSecret := func() {
+			By("Checking that the JWT org mapping secret was not written")
+			secretKey := types.NamespacedName{Name: grafana.JWTOrgMappingSecretName, Namespace: grafana.JWTOrgMappingSecretNamespace}
+			err := k8sClient.Get(ctx, secretKey, &corev1.Secret{})
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+		}
+
 		AfterEach(func() {
 			// Release the finalizer and delete the organization if a spec failed halfway.
 			leftover := &v1alpha2.GrafanaOrganization{}
@@ -216,6 +226,7 @@ var _ = Describe("Grafana Organization Controller", func() {
 
 			By("Checking that the SSO settings were never touched")
 			mockGrafanaClient.AssertNotCalled(GinkgoT(), "SsoSettings")
+			expectNoJWTOrgMappingSecret()
 		})
 
 		It("should write the SSO org mapping when SSO org mapping is enabled", func() {
@@ -249,6 +260,43 @@ var _ = Describe("Grafana Organization Controller", func() {
 			mockSsoSettings.AssertNumberOfCalls(GinkgoT(), "UpdateProviderSettings", 1)
 
 			deleteAndReconcile()
+			expectNoJWTOrgMappingSecret()
+		})
+
+		It("should write the JWT org mapping secret when the JWT org mapping secret is enabled", func() {
+			orgName = "jwt-enabled-org"
+			orgDisplayName = "JWT Enabled Organization"
+			reconciler = newReconcilerWithSSO(false)
+			reconciler.cfg.Grafana.JWTOrgMappingSecretEnabled = true
+
+			namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: grafana.JWTOrgMappingSecretNamespace}}
+			if err := k8sClient.Create(ctx, namespace); err != nil {
+				Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+			}
+			secretKey := types.NamespacedName{Name: grafana.JWTOrgMappingSecretName, Namespace: grafana.JWTOrgMappingSecretNamespace}
+			DeferCleanup(func() {
+				_ = k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretKey.Name, Namespace: secretKey.Namespace}})
+			})
+
+			createAndReconcile()
+
+			By("Checking that the JWT org mapping secret contains the organization")
+			secret := &corev1.Secret{}
+			Expect(k8sClient.Get(ctx, secretKey, secret)).To(Succeed())
+			// Other GrafanaOrganizations may exist in the test environment, so only require
+			// that this organization's admin group is part of the mapping.
+			Expect(string(secret.Data[grafana.JWTOrgMappingSecretKey])).To(ContainSubstring(ssoAdminsGroup + ":" + orgDisplayName + ":Admin"))
+			secretUID := secret.UID
+
+			deleteAndReconcile()
+
+			By("Checking that the JWT org mapping secret no longer contains the organization")
+			Expect(k8sClient.Get(ctx, secretKey, secret)).To(Succeed())
+			Expect(secret.UID).To(Equal(secretUID))
+			Expect(string(secret.Data[grafana.JWTOrgMappingSecretKey])).NotTo(ContainSubstring(orgDisplayName))
+
+			By("Checking that the SSO settings were never touched")
+			mockGrafanaClient.AssertNotCalled(GinkgoT(), "SsoSettings")
 		})
 	})
 
@@ -316,6 +364,31 @@ var _ = Describe("Grafana Organization Controller", func() {
 
 			err = k8sClient.Get(ctx, request.NamespacedName, &v1alpha2.GrafanaOrganization{})
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+		})
+
+		It("should update the JWT org mapping secret when the Grafana admin Secret no longer exists", func() {
+			reconciler.cfg.Grafana.JWTOrgMappingSecretEnabled = true
+
+			namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: grafana.JWTOrgMappingSecretNamespace}}
+			if err := k8sClient.Create(ctx, namespace); err != nil {
+				Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+			}
+			stale := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: grafana.JWTOrgMappingSecretName, Namespace: grafana.JWTOrgMappingSecretNamespace},
+				Data:       map[string][]byte{grafana.JWTOrgMappingSecretKey: []byte(`"admins:Main Org.:Admin"`)},
+			}
+			Expect(k8sClient.Create(ctx, stale)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, stale) })
+
+			_, err := reconciler.Reconcile(ctx, request)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = k8sClient.Get(ctx, request.NamespacedName, &v1alpha2.GrafanaOrganization{})
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+
+			secret := &corev1.Secret{}
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(stale), secret)).To(Succeed())
+			Expect(string(secret.Data[grafana.JWTOrgMappingSecretKey])).NotTo(ContainSubstring("Main Org."))
 		})
 
 		It("should keep the finalizer when the Grafana admin Secret exists but is unusable", func() {

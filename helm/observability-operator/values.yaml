@@ -345,6 +345,12 @@ grafana:
   ssoOrgMapping:
     # -- Enable the Grafana SSO organization mapping
     enabled: false
+  # -- Grafana JWT organization mapping Secret. When enabled, the operator writes the organization
+  # mapping derived from the `spec.rbac` of every GrafanaOrganization to the `grafana-mcp-org-mapping`
+  # Secret in the `monitoring` namespace, under the `orgMapping` key.
+  jwtOrgMappingSecret:
+    # -- Enable the Grafana JWT organization mapping Secret
+    enabled: false
   # -- Service URLs for Grafana datasources provisioned by the operator.
   # Override these if your stack uses non-standard namespaces or service names.
   datasources:

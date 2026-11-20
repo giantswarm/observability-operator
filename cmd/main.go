@@ -134,12 +134,13 @@ const (
 	flagMimirQueryTimeout       = "mimir-query-timeout"
 
 	// Grafana client flag names
-	flagGrafanaClientRetries             = "grafana-client-retries"
-	flagGrafanaAdminSecretNamespace      = "grafana-admin-secret-namespace" // nolint:gosec // G101: CLI flag name, not a credential
-	flagGrafanaAdminSecretName           = "grafana-admin-secret-name"      // nolint:gosec // G101: CLI flag name, not a credential
-	flagGrafanaGatewayTLSSecretNamespace = "grafana-gateway-tls-secret-namespace"
-	flagGrafanaGatewayTLSSecretName      = "grafana-gateway-tls-secret-name"
-	flagGrafanaSSOOrgMappingEnabled      = "grafana-sso-org-mapping-enabled"
+	flagGrafanaClientRetries              = "grafana-client-retries"
+	flagGrafanaAdminSecretNamespace       = "grafana-admin-secret-namespace" // nolint:gosec // G101: CLI flag name, not a credential
+	flagGrafanaAdminSecretName            = "grafana-admin-secret-name"      // nolint:gosec // G101: CLI flag name, not a credential
+	flagGrafanaGatewayTLSSecretNamespace  = "grafana-gateway-tls-secret-namespace"
+	flagGrafanaGatewayTLSSecretName       = "grafana-gateway-tls-secret-name"
+	flagGrafanaSSOOrgMappingEnabled       = "grafana-sso-org-mapping-enabled"
+	flagGrafanaJWTOrgMappingSecretEnabled = "grafana-jwt-org-mapping-secret-enabled" // nolint:gosec // G101: CLI flag name, not a credential
 
 	// Default tenant flag name
 	flagDefaultTenant = "default-tenant"
@@ -368,6 +369,8 @@ func parseFlags() (err error) {
 		"Name of the Kubernetes secret containing the Grafana Gateway TLS certificate.")
 	pflag.BoolVar(&cfg.Grafana.SSOOrgMappingEnabled, flagGrafanaSSOOrgMappingEnabled, true,
 		"Write the Grafana generic_oauth org_mapping from GrafanaOrganization RBAC settings. When disabled, SSO settings are left untouched and spec.rbac is ignored.")
+	pflag.BoolVar(&cfg.Grafana.JWTOrgMappingSecretEnabled, flagGrafanaJWTOrgMappingSecretEnabled, false,
+		"Write the Grafana org mapping from GrafanaOrganization RBAC settings to the grafana-mcp-org-mapping Secret, for Grafana JWT authentication.")
 
 	// Default tenant flag
 	pflag.StringVar(&cfg.DefaultTenant, flagDefaultTenant, "giantswarm",
