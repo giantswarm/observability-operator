@@ -280,6 +280,35 @@
                     "type": "string",
                     "description": "Timeout for Alloy Mimir remote write operations"
                 },
+                "metricsDrop": {
+                    "type": "object",
+                    "description": "Named rules for series Alloy drops before remote write. A null rule or enabled: false turns an inherited rule off.",
+                    "additionalProperties": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean",
+                                "description": "Set to false to turn the rule off. Unset means enabled."
+                            },
+                            "job": {
+                                "type": "string",
+                                "description": "Only drop series with exactly this job label."
+                            },
+                            "metricsPath": {
+                                "type": "string",
+                                "description": "Only drop series with exactly this metrics_path label."
+                            },
+                            "regex": {
+                                "type": "string",
+                                "description": "Regex fully matched against the metric name."
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                },
                 "ruler": {
                     "type": "object",
                     "properties": {

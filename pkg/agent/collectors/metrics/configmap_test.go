@@ -110,6 +110,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 		monitoringEnabled          bool
 		exemplarsEnabled           bool
 		vcenterEnabled             bool
+		metricsDrop                map[string]*config.MetricsDropRule
 	}{
 		// Version 2.0.0+ tests (with extra query matchers, without scrape configs)
 		{
@@ -401,6 +402,31 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			exemplarsEnabled:           false,
 		},
 		{
+			name: "WorkloadCluster_TwoTenants_MetricsDrop_v220",
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testCluster,
+					Namespace: defaultNamespace,
+				},
+				Spec: clusterv1.ClusterSpec{
+					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
+						Kind: awsClusterKind,
+					},
+				},
+			},
+			tenants:                    []string{tenant1, tenant2},
+			goldenPath:                 filepath.Join("testdata", "monitoring-config.220.WC.metrics-drop.yaml"),
+			observabilityBundleVersion: semver.MustParse("2.2.0"),
+			monitoringEnabled:          true,
+			exemplarsEnabled:           true,
+			metricsDrop: map[string]*config.MetricsDropRule{
+				"kubelet-go-runtime": {Job: "kubelet", MetricsPath: "/metrics", Regex: `go_(gc|memstats)_.+|go_info`},
+				"cadvisor-pressure":  {Regex: `container_pressure_.+`},
+				"switched-off":       {Regex: `kube_secret_owner`, Enabled: &[]bool{false}[0]},
+				"removed-by-layer":   nil,
+			},
+		},
+		{
 			name: "MonitoringDisabled",
 			cluster: &clusterv1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -424,6 +450,7 @@ func TestGenerateMonitoringConfig(t *testing.T) {
 			ctx := context.Background()
 
 			service := newTestService(tt.monitoringEnabled, tt.exemplarsEnabled, tt.vcenterEnabled)
+			service.Config.Monitoring.MetricsDrop = tt.metricsDrop
 
 			resultMap, err := service.GenerateAlloyMonitoringConfigMapData(
 				ctx,

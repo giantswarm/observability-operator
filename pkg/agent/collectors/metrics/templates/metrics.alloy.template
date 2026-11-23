@@ -223,6 +223,14 @@ prometheus.remote_write "{{ . }}" {
       ca_pem = convert.nonsensitive(remote.kubernetes.secret.credentials.data["ca-bundle"])
     }
     {{- end }}
+    {{- range $.MetricsDropRules }}
+    // Metrics drop rule {{ .Name }}
+    write_relabel_config {
+      source_labels = {{ .SourceLabels }}
+      regex         = {{ .Regex }}
+      action        = "drop"
+    }
+    {{- end }}
     {{- if or $.QueueConfigBatchSendDeadline $.QueueConfigCapacity $.QueueConfigMaxBackoff $.QueueConfigMaxSamplesPerSend $.QueueConfigMaxShards $.QueueConfigMinBackoff $.QueueConfigMinShards $.QueueConfigRetryOnHttp429 $.QueueConfigSampleAgeLimit }}
     queue_config {
       {{- if $.QueueConfigBatchSendDeadline }}

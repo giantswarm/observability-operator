@@ -149,6 +149,20 @@ monitoring:
   # -- Timeout for Alloy Mimir remote write operations
   mimirRemoteWriteTimeout: "60s"
 
+  # -- Named rules for series Alloy drops before remote-writing them to Mimir.
+  # Each rule drops the series whose metric name fully matches `regex`; `job` and `metricsPath`,
+  # when set, restrict it to series with exactly that `job` / `metrics_path` label.
+  # Rules are keyed by name so a configuration layer (shared-configs, then an installation's
+  # configs repo) can add or replace one rule, or turn an inherited one off with
+  # `enabled: false` or `null`, without restating the others. Empty drops nothing.
+  # Example:
+  #   metricsDrop:
+  #     kubelet-go-runtime:
+  #       job: kubelet
+  #       metricsPath: /metrics
+  #       regex: go_(gc|memstats)_.+|go_info
+  metricsDrop: {}
+
   ruler:
     # -- URL to the Mimir ruler API for deleting rules when a cluster is deleted.
     url: "http://mimir-gateway.mimir.svc"

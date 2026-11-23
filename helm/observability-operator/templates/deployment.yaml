@@ -112,6 +112,9 @@ spec:
         - --monitoring-vcenter-enabled={{ .enabled }}
         {{- end }}
         - --monitoring-mimir-remote-write-timeout={{ .mimirRemoteWriteTimeout }}
+        {{- with .metricsDrop }}
+        - {{ printf "--monitoring-metrics-drop=%s" (toJson .) | quote }}
+        {{- end }}
         {{- with .ruler }}
         - --monitoring-ruler-url={{ .url }}
         {{- end }}

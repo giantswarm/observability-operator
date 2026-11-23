@@ -6,6 +6,8 @@ import (
 	_ "embed"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 	"text/template"
 
 	v1 "k8s.io/api/core/v1"
@@ -21,6 +23,7 @@ import (
 	"github.com/giantswarm/observability-operator/pkg/common/apps"
 	"github.com/giantswarm/observability-operator/pkg/common/labels"
 	"github.com/giantswarm/observability-operator/pkg/common/monitoring"
+	"github.com/giantswarm/observability-operator/pkg/config"
 	"github.com/giantswarm/observability-operator/pkg/metrics"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/mimir/querier"
 	"github.com/giantswarm/observability-operator/pkg/monitoring/sharding"
@@ -174,6 +177,8 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		VCenterUsernameKey           string
 		VCenterPasswordKey           string
 		VCenterInsecureSkipVerifyKey string
+
+		MetricsDropRules []alloyDropRule
 	}{
 		AlloySecretName:      apps.AlloyMetricsAppName,
 		AlloySecretNamespace: apps.AlloyNamespace,
@@ -225,6 +230,8 @@ func (s *Service) generateAlloyConfig(ctx context.Context, cluster *clusterv1.Cl
 		VCenterUsernameKey:           common.VCenterUsernameKey,
 		VCenterPasswordKey:           common.VCenterPasswordKey,
 		VCenterInsecureSkipVerifyKey: common.VCenterInsecureSkipVerifyKey,
+
+		MetricsDropRules: alloyDropRules(s.Config.Monitoring),
 	}
 
 	err = alloyConfigTemplate.Execute(&values, data)
@@ -245,4 +252,29 @@ func ConfigMap(cluster *clusterv1.Cluster) *v1.ConfigMap {
 	}
 
 	return configmap
+}
+
+// alloyDropRule is a metrics drop rule rendered as Alloy syntax: SourceLabels is an Alloy list
+// literal and Regex an Alloy string literal, both ready to be placed in the template.
+type alloyDropRule struct {
+	Name         string
+	SourceLabels string
+	Regex        string
+}
+
+func alloyDropRules(c config.MonitoringConfig) []alloyDropRule {
+	rules := []alloyDropRule{}
+	for _, name := range c.EnabledMetricsDropRuleNames() {
+		rule := c.MetricsDrop[name]
+		labels := []string{}
+		for _, l := range rule.SourceLabels() {
+			labels = append(labels, strconv.Quote(l))
+		}
+		rules = append(rules, alloyDropRule{
+			Name:         name,
+			SourceLabels: "[" + strings.Join(labels, ", ") + "]",
+			Regex:        strconv.Quote(rule.RelabelRegex()),
+		})
+	}
+	return rules
 }
