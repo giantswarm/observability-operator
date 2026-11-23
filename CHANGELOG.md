@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `monitoring.metricsDrop`: named rules for metrics Alloy drops before remote-writing them to Mimir, set per management cluster in its configuration and reverted the same way, without an app or cluster release.
+- `monitoring.metricsDrop`: named rules for metrics Alloy drops before remote-writing them to Mimir, set per management cluster in its configuration and reverted the same way, without an app or cluster release. See `docs/cluster.md`.
 
 ### Changed
 
