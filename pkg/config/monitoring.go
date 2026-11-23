@@ -30,6 +30,13 @@ type QueueConfig struct {
 	SampleAgeLimit    *string
 }
 
+// Labels a metrics drop rule matches on.
+const (
+	jobLabel         = "job"
+	metricsPathLabel = "metrics_path"
+	metricNameLabel  = "__name__"
+)
+
 // MetricsDropRule drops matching series in Alloy before they are remote-written to Mimir.
 // Job and MetricsPath, when set, restrict the rule to series with that exact job and
 // metrics_path label, so a metric name can be dropped for one exporter only.
@@ -53,12 +60,12 @@ func (r *MetricsDropRule) IsEnabled() bool {
 func (r *MetricsDropRule) SourceLabels() []string {
 	labels := []string{}
 	if r.Job != "" {
-		labels = append(labels, "job")
+		labels = append(labels, jobLabel)
 	}
 	if r.MetricsPath != "" {
-		labels = append(labels, "metrics_path")
+		labels = append(labels, metricsPathLabel)
 	}
-	return append(labels, "__name__")
+	return append(labels, metricNameLabel)
 }
 
 // RelabelRegex returns the regex matched against SourceLabels joined with ";".

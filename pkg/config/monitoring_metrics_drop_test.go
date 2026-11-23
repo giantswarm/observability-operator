@@ -22,7 +22,7 @@ func TestMetricsDropRuleRelabel(t *testing.T) {
 		{
 			name:       "name only",
 			rule:       MetricsDropRule{Regex: "container_pressure_.+"},
-			wantLabels: []string{"__name__"},
+			wantLabels: []string{metricNameLabel},
 			wantRegex:  "(?:container_pressure_.+)",
 			drops:      []string{"container_pressure_cpu_stalled_seconds_total"},
 			keeps:      []string{"container_cpu_usage_seconds_total"},
@@ -30,7 +30,7 @@ func TestMetricsDropRuleRelabel(t *testing.T) {
 		{
 			name:       "job and metrics path",
 			rule:       MetricsDropRule{Job: "kubelet", MetricsPath: "/metrics", Regex: "go_(gc|memstats)_.+|go_info"},
-			wantLabels: []string{"job", "metrics_path", "__name__"},
+			wantLabels: []string{jobLabel, metricsPathLabel, metricNameLabel},
 			wantRegex:  "kubelet;/metrics;(?:go_(gc|memstats)_.+|go_info)",
 			drops:      []string{"kubelet;/metrics;go_info", "kubelet;/metrics;go_gc_duration_seconds"},
 			keeps: []string{
@@ -42,7 +42,7 @@ func TestMetricsDropRuleRelabel(t *testing.T) {
 		{
 			name:       "job values are matched literally",
 			rule:       MetricsDropRule{Job: "kube-system/cilium-agent", Regex: "cilium_hive_jobs_.+"},
-			wantLabels: []string{"job", "__name__"},
+			wantLabels: []string{jobLabel, metricNameLabel},
 			wantRegex:  "kube-system/cilium-agent;(?:cilium_hive_jobs_.+)",
 			drops:      []string{"kube-system/cilium-agent;cilium_hive_jobs_runs_total"},
 			keeps:      []string{"kube-system-cilium-agent;cilium_hive_jobs_runs_total"},
