@@ -40,7 +40,7 @@ var helmReleaseGVK = schema.GroupVersionKind{
 
 var ociRepositoryGVK = schema.GroupVersionKind{
 	Group:   "source.toolkit.fluxcd.io",
-	Version: "v1beta2",
+	Version: "v1",
 	Kind:    "OCIRepository",
 }
 
