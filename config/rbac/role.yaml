@@ -150,3 +150,18 @@ rules:
   - patch
   - update
   - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: manager-role
+  namespace: monitoring
+rules:
+- apiGroups:
+  - apps
+  resourceNames:
+  - grafana-mcp
+  resources:
+  - deployments
+  verbs:
+  - patch

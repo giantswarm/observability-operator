@@ -62,6 +62,14 @@ The operator writes the organization mapping from the `spec.rbac` of all `Grafan
 
 It is controlled by the `grafana.jwtOrgMappingSecret.enabled` Helm value, which defaults to `true`, and the `--grafana-jwt-org-mapping-secret-enabled` flag. Turn it off when the installation runs no `grafana-mcp`.
 
+Grafana reads `GF_AUTH_JWT_ORG_MAPPING` only at start-up. After it writes the Secret, the operator sets the `observability.giantswarm.io/org-mapping-checksum` annotation on the pod template of the `grafana-mcp` Deployment in the `monitoring` namespace to the sha256 of the mapping:
+
+- a changed mapping rolls the `grafana-mcp` pods
+- an unchanged mapping leaves the Deployment as it is
+- the operator skips the annotation when the Deployment does not exist
+
+The operator sends a merge patch without reading the Deployment first. The chart grants it only `patch` on the `grafana-mcp` Deployment, with a Role and a RoleBinding in the `monitoring` namespace.
+
 ## Example
 
 ```yaml

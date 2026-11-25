@@ -63,6 +63,7 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, 
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=patch,namespace=monitoring,resourceNames=grafana-mcp
 
 // Reconcile is part of the main Kubernetes reconciliation loop which aims to
 // move the current state of the GrafanaOrganization closer to the desired state.
