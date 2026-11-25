@@ -369,7 +369,7 @@ func parseFlags() (err error) {
 		"Name of the Kubernetes secret containing the Grafana Gateway TLS certificate.")
 	pflag.BoolVar(&cfg.Grafana.SSOOrgMappingEnabled, flagGrafanaSSOOrgMappingEnabled, true,
 		"Write the Grafana generic_oauth org_mapping from GrafanaOrganization RBAC settings. When disabled, SSO settings are left untouched and spec.rbac is ignored.")
-	pflag.BoolVar(&cfg.Grafana.JWTOrgMappingSecretEnabled, flagGrafanaJWTOrgMappingSecretEnabled, false,
+	pflag.BoolVar(&cfg.Grafana.JWTOrgMappingSecretEnabled, flagGrafanaJWTOrgMappingSecretEnabled, true,
 		"Write the Grafana org mapping from GrafanaOrganization RBAC settings to the grafana-mcp-org-mapping Secret, for Grafana JWT authentication.")
 
 	// Default tenant flag

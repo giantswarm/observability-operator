@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add the `grafana-mcp-org-mapping` Secret with the Grafana organization mapping, behind the `grafana.jwtOrgMappingSecret.enabled` value.
+- Write the Grafana organization mapping to the `grafana-mcp-org-mapping` Secret in the `monitoring` namespace, enabled by default and turned off with `grafana.jwtOrgMappingSecret.enabled: false`.
 
 ### Changed
 
