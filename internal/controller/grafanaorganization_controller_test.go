@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/url"
 	"strings"
 	"time"
@@ -13,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -297,6 +300,78 @@ var _ = Describe("Grafana Organization Controller", func() {
 
 			By("Checking that the SSO settings were never touched")
 			mockGrafanaClient.AssertNotCalled(GinkgoT(), "SsoSettings")
+		})
+
+		It("should roll the grafana-mcp Deployment only when the JWT org mapping changes", func() {
+			orgName = "jwt-restart-org"
+			orgDisplayName = "JWT Restart Organization"
+			reconciler = newReconcilerWithSSO(false)
+			reconciler.cfg.Grafana.JWTOrgMappingSecretEnabled = true
+
+			namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: grafana.JWTOrgMappingSecretNamespace}}
+			if err := k8sClient.Create(ctx, namespace); err != nil {
+				Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+			}
+			secretKey := types.NamespacedName{Name: grafana.JWTOrgMappingSecretName, Namespace: grafana.JWTOrgMappingSecretNamespace}
+			DeferCleanup(func() {
+				_ = k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretKey.Name, Namespace: secretKey.Namespace}})
+			})
+
+			By("Creating the grafana-mcp Deployment")
+			podLabels := map[string]string{"app.kubernetes.io/name": grafana.JWTOrgMappingDeploymentName}
+			deployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: grafana.JWTOrgMappingDeploymentName, Namespace: grafana.JWTOrgMappingSecretNamespace},
+				Spec: appsv1.DeploymentSpec{
+					Selector: &metav1.LabelSelector{MatchLabels: podLabels},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{Labels: podLabels},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{Name: "grafana", Image: "grafana/grafana"}},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, deployment)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, deployment) })
+			deploymentKey := client.ObjectKeyFromObject(deployment)
+
+			checksumOfSecret := func() string {
+				secret := &corev1.Secret{}
+				Expect(k8sClient.Get(ctx, secretKey, secret)).To(Succeed())
+				sum := sha256.Sum256(secret.Data[grafana.JWTOrgMappingSecretKey])
+				return hex.EncodeToString(sum[:])
+			}
+
+			createAndReconcile()
+
+			By("Checking that the checksum of the mapping is set on the pod template")
+			Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
+			firstChecksum := deployment.Spec.Template.Annotations[grafana.JWTOrgMappingChecksumAnnotation]
+			Expect(firstChecksum).To(Equal(checksumOfSecret()))
+			generation := deployment.Generation
+			resourceVersion := deployment.ResourceVersion
+
+			By("Reconciling an unchanged mapping")
+			_, err := reconciler.Reconcile(ctx, request)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
+			Expect(deployment.Generation).To(Equal(generation))
+			Expect(deployment.ResourceVersion).To(Equal(resourceVersion))
+
+			By("Reconciling a changed mapping")
+			updated := &v1alpha2.GrafanaOrganization{}
+			Expect(k8sClient.Get(ctx, request.NamespacedName, updated)).To(Succeed())
+			updated.Spec.RBAC.Viewers = []string{"jwt-restart-viewers"}
+			Expect(k8sClient.Update(ctx, updated)).To(Succeed())
+			_, err = reconciler.Reconcile(ctx, request)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
+			Expect(deployment.Spec.Template.Annotations[grafana.JWTOrgMappingChecksumAnnotation]).NotTo(Equal(firstChecksum))
+			Expect(deployment.Spec.Template.Annotations[grafana.JWTOrgMappingChecksumAnnotation]).To(Equal(checksumOfSecret()))
+			Expect(deployment.Generation).To(Equal(generation + 1))
+
+			grafanaOrg = updated
+			deleteAndReconcile()
 		})
 	})
 

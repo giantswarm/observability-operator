@@ -347,7 +347,8 @@ grafana:
     enabled: false
   # -- Grafana JWT organization mapping Secret. When enabled, the operator writes the organization
   # mapping derived from the `spec.rbac` of every GrafanaOrganization to the `grafana-mcp-org-mapping`
-  # Secret in the `monitoring` namespace, under the `orgMapping` key.
+  # Secret in the `monitoring` namespace, under the `orgMapping` key, and rolls the `grafana-mcp`
+  # Deployment of that namespace when the mapping changes.
   jwtOrgMappingSecret:
     # -- Enable the Grafana JWT organization mapping Secret
     enabled: false

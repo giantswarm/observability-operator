@@ -120,7 +120,7 @@
                 },
                 "jwtOrgMappingSecret": {
                     "type": "object",
-                    "description": "Grafana JWT organization mapping Secret. When enabled, the operator writes the organization mapping derived from the spec.rbac of every GrafanaOrganization to the grafana-mcp-org-mapping Secret in the monitoring namespace, under the orgMapping key.",
+                    "description": "Grafana JWT organization mapping Secret. When enabled, the operator writes the organization mapping derived from the spec.rbac of every GrafanaOrganization to the grafana-mcp-org-mapping Secret in the monitoring namespace, under the orgMapping key, and rolls the grafana-mcp Deployment of that namespace when the mapping changes.",
                     "properties": {
                         "enabled": {
                             "type": "boolean",
