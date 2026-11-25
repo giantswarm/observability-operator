@@ -265,9 +265,10 @@ func (s *Service) generateDatasources(org *organization.Organization) (datasourc
 		}))
 	}
 
-	// 3. Add special datasources for Shared Org
-	if org.Name() == organization.SharedOrg.Name() {
-		// Add Mimir Cardinality datasources to the "Shared Org"
+	// 3. Add special datasources to Grafana's default organization (org 1): "Shared Org"
+	// on management clusters, the Default organization on a standalone install.
+	if org.ID() == organization.SharedOrg.ID() {
+		// Add Mimir Cardinality datasources to the default organization
 		datasources = append(datasources, DatasourceMimirCardinality().Merge(Datasource{
 			URL: s.cfg.Grafana.Datasources.MimirCardinalityURL,
 			JSONData: map[string]any{

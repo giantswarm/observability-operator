@@ -212,6 +212,42 @@ var _ = Describe("Dashboard ConfigMap Webhook", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		DescribeTable("Should accept v2 dashboard pre-release versions exported by Grafana 12",
+			func(apiVersion string) {
+				configMap := v2Obj.DeepCopy()
+				configMap.Data[dashboardJSONKey] = `{
+					"apiVersion": "` + apiVersion + `",
+					"kind": "Dashboard",
+					"metadata": {"name": "gs_cluster-overview"},
+					"spec": {"title": "Cluster Overview"}
+				}`
+				_, err := validator.ValidateCreate(ctx, configMap)
+				Expect(err).NotTo(HaveOccurred())
+			},
+			Entry("v2alpha1", "dashboard.grafana.app/v2alpha1"),
+			Entry("v2beta1", "dashboard.grafana.app/v2beta1"),
+		)
+
+		DescribeTable("Should reject dashboards with an unsupported apiVersion",
+			func(apiVersion string) {
+				configMap := v2Obj.DeepCopy()
+				configMap.Data[dashboardJSONKey] = `{
+					"apiVersion": "` + apiVersion + `",
+					"kind": "Dashboard",
+					"metadata": {"name": "gs_cluster-overview"},
+					"spec": {"title": "Cluster Overview"}
+				}`
+				_, err := validator.ValidateCreate(ctx, configMap)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(`unsupported dashboard apiVersion "` + apiVersion + `"`))
+				Expect(err.Error()).To(ContainSubstring("dashboard.grafana.app/v2, dashboard.grafana.app/v2beta1, dashboard.grafana.app/v2alpha1"))
+			},
+			Entry("v1 envelope", "dashboard.grafana.app/v1"),
+			Entry("v20", "dashboard.grafana.app/v20"),
+			Entry("v2alpha2 not served by Grafana", "dashboard.grafana.app/v2alpha2"),
+			Entry("garbage", "not-a-version"),
+		)
+
 		It("Should reject dashboard ConfigMaps with missing UID", func() {
 			By("Creating ConfigMap with dashboard missing UID")
 			invalidConfigMap := obj.DeepCopy()

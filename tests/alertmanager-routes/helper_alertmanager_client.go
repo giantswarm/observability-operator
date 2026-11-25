@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/alertmanager/api/v2/client/alert"
 	"github.com/prometheus/alertmanager/api/v2/models"
 	"github.com/prometheus/alertmanager/config"
+	amcommonconfig "github.com/prometheus/alertmanager/config/common"
 	commonconfig "github.com/prometheus/common/config"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -321,17 +322,17 @@ func (a alertmanagerClient) UnConfigure() error {
 	return a.alertmanagerService.DeleteForTenant(a.t.Context(), a.TenantID)
 }
 
-func noSecretHiding(c config.Secret) ([]byte, error) {
+func noSecretHiding(c commonconfig.Secret) ([]byte, error) {
 	s := fmt.Sprintf("%v", c)
 	return []byte(s), nil
 }
 
-func noSecretURLHiding(c *config.SecretURL) ([]byte, error) {
+func noSecretURLHiding(c *amcommonconfig.SecretURL) ([]byte, error) {
 	return []byte(c.String()), nil
 }
 
-// Webhook URLs use config.SecretTemplateURL, which redacts itself like the types above.
-func noSecretTemplateURLHiding(c config.SecretTemplateURL) ([]byte, error) {
+// Webhook URLs use amcommonconfig.SecretTemplateURL, which redacts itself like the types above.
+func noSecretTemplateURLHiding(c amcommonconfig.SecretTemplateURL) ([]byte, error) {
 	return []byte(c), nil
 }
 

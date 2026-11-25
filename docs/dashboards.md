@@ -5,7 +5,7 @@ The operator watches for Kubernetes `ConfigMaps` containing Grafana dashboard JS
 ## How it works
 
 1. Create a `ConfigMap` with the required labels and your dashboard JSON as the data
-2. The operator detects the ConfigMap, determines the target organization and folder, and provisions the dashboard via the Grafana API
+2. The operator detects the ConfigMap, determines the target organization and folder, and provisions the dashboard via the Grafana app-platform API (`/apis/dashboard.grafana.app`)
 3. On deletion, the operator removes the dashboard from Grafana and cleans up any empty operator-managed folders. If the Grafana admin Secret no longer exists, it removes the finalizer without contacting Grafana
 
 ## Required labels
@@ -66,9 +66,27 @@ data:
 Both Grafana dashboard schemas are supported:
 
 - **Classic flat JSON** — the top-level `uid` field identifies the dashboard.
-- **App Platform schema** (`apiVersion: dashboard.grafana.app/v2`) — a Kubernetes-style envelope where the dashboard is identified by `metadata.name` and its body lives under `spec`.
+- **App Platform schema** (`apiVersion: dashboard.grafana.app/v2`, `v2beta1` or `v2alpha1`) — a Kubernetes-style envelope where the dashboard is identified by `metadata.name` and its body lives under `spec`.
 
 The operator detects the schema automatically and extracts the UID from the appropriate field (`uid` for the flat schema, `metadata.name` for v2). The `managed-by: observability-operator` tag is injected at the correct location for each schema (top-level `tags` for the flat schema, `spec.tags` for v2).
+
+The operator writes a v2 dashboard to the API version it declares. Grafana converts `v2alpha1` and `v2beta1` dashboards. The ConfigMap webhook rejects any other `apiVersion` value.
+
+The operator writes a classic dashboard to the `v1` API with `fieldValidation=Ignore`. Grafana migrates the dashboard to the latest schema version and accepts older JSON, such as string datasource references. Grafana validates v2 dashboards strictly.
+
+## Managed dashboards in Grafana
+
+Grafana shows every operator dashboard as managed. The right sidebar shows a "Managed by: Kubectl" badge. Grafana blocks Save on these dashboards.
+
+To change a dashboard:
+
+1. Edit the dashboard in Grafana.
+2. Click Save, then "Copy JSON to clipboard".
+3. Paste the JSON into the ConfigMap.
+
+The copied JSON uses the v2 schema. It contains server metadata such as `resourceVersion` and `generation`. The operator keeps only `metadata.name` and drops the other metadata fields.
+
+UI saves are blocked. Dashboard changes go through the ConfigMap. Exiting edit mode discards the changes without a prompt.
 
 ## Notes
 
@@ -76,3 +94,4 @@ The operator detects the schema automatically and extracts the UID from the appr
 - The folder path must use `/` as a separator. Each segment becomes a nested Grafana folder.
 - Operator-managed folders are tracked by UID. If a folder is renamed manually in Grafana, the operator will rename it back to match the path.
 - Empty operator-managed folders are deleted when no dashboard references them.
+- Each dashboard carries the annotations `grafana.app/managedBy: kubectl`, `grafana.app/managerId: observability-operator` and `grafana.app/sourcePath: configmap <namespace>/<name>`.

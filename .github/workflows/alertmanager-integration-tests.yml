@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - helm/observability-operator/files/alertmanager/**
+      - tests/alertmanager-routes/**
+      - pkg/alerting/alertmanager/**
+      - go.mod
 jobs:
   test-alertmanager-integrations:
     name: Test Alertmanager integrations

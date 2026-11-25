@@ -3,13 +3,24 @@ package dashboard
 import (
 	"fmt"
 	"maps"
+	"slices"
+	"strings"
 
 	"github.com/giantswarm/observability-operator/pkg/domain/folder"
 )
 
-// v2APIVersion identifies dashboards using the Grafana Dashboard schema
-// ("dashboard.grafana.app/v2"), as opposed to the classic flat schema.
-const v2APIVersion = "dashboard.grafana.app/v2"
+// apiGroup is the API group of the Grafana Dashboard schema.
+const apiGroup = "dashboard.grafana.app"
+
+// SupportedAPIVersions lists the apiVersion values accepted for Grafana Dashboard
+// schema dashboards. The versions are pinned: Grafana 13.2.4 serves exactly these,
+// and the v2 API is stable, so no new alpha or beta version will appear.
+// Classic dashboards have no apiVersion.
+var SupportedAPIVersions = []string{
+	apiGroup + "/v2",
+	apiGroup + "/v2beta1",
+	apiGroup + "/v2alpha1",
+}
 
 // Dashboard represents a Grafana dashboard domain object
 type Dashboard struct {
@@ -36,10 +47,21 @@ func New(organization string, folderPath string, sourceNamespace string, sourceN
 }
 
 // IsV2 reports whether the dashboard content uses the Grafana Dashboard schema
-// (apiVersion "dashboard.grafana.app/v2"), as opposed to the classic flat schema.
+// (apiVersion "dashboard.grafana.app/v2" or one of its pre-releases), as opposed
+// to the classic flat schema. Only the versions in SupportedAPIVersions match.
 func IsV2(content map[string]any) bool {
 	apiVersion, _ := content["apiVersion"].(string)
-	return apiVersion == v2APIVersion
+	return slices.Contains(SupportedAPIVersions, apiVersion)
+}
+
+// V2Version returns the version part of a Grafana Dashboard schema apiVersion,
+// such as "v2" or "v2alpha1". It returns an empty string for classic dashboards.
+func V2Version(content map[string]any) string {
+	if !IsV2(content) {
+		return ""
+	}
+	apiVersion, _ := content["apiVersion"].(string)
+	return strings.TrimPrefix(apiVersion, apiGroup+"/")
 }
 
 // extractUID reads the dashboard UID, supporting both the classic flat schema
@@ -98,6 +120,12 @@ func (d *Dashboard) Validate() []error {
 	// Validate content is not nil (though empty content might be valid)
 	if d.content == nil {
 		errors = append(errors, ErrInvalidJSON)
+	}
+
+	// Validate apiVersion: classic dashboards have none, v2 dashboards use the v2 family
+	if apiVersion, ok := d.content["apiVersion"]; ok && apiVersion != "" && !IsV2(d.content) {
+		errors = append(errors, fmt.Errorf("%w %q: accepted values are %s, or no apiVersion for a classic dashboard",
+			ErrUnsupportedAPIVersion, fmt.Sprint(apiVersion), strings.Join(SupportedAPIVersions, ", ")))
 	}
 
 	// Validate folder path if present

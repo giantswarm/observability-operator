@@ -13,8 +13,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- CI: run the Go tests once, in `go-build`, and run the Alertmanager integration tests only when Alertmanager files change.
+- The `Mimir Cardinality` datasource goes to Grafana's default organization (org 1), whatever its name.
+- Update github.com/go-openapi/runtime to v0.33.5 (giantswarm/observability-operator#1153)
+
+## [0.89.1] - 2026-11-13
+
+### Fixed
+
+- Provision classic dashboards that still use older JSON, such as string datasource references. Grafana rejected their updates with HTTP 422.
+
+## [0.89.0] - 2026-11-12
+
+### Changed
+
+- The alloy-logs DaemonSet rolls out with `maxUnavailable: 10%`.
 - Document a Loki bug that makes some regex label filters in Explore match more than a `LogExport` exports.
+- Grafana marks operator dashboards as managed and blocks saving them from the UI.
+- **Breaking:** the operator now requires a Grafana version that serves the `dashboard.grafana.app` `v1` and `v2` APIs. Tested on Grafana 13.2.4.
+- **Breaking:** this rollout is one-way. After the operator writes a dashboard through the app-platform API, an older operator version gets HTTP 400 "Cannot save provisioned dashboard" on every managed dashboard. Rolling back the operator breaks dashboard updates. Recovery is a manual API write per dashboard.
 - Update github.com/spf13/pflag to v1.1.0 (giantswarm/observability-operator#1123)
+- Update github.com/prometheus/alertmanager to v0.33.1, the version Mimir 3.2.4 uses.
+
+### Fixed
+
+- Provision dashboards exported as `dashboard.grafana.app/v2alpha1` or `dashboard.grafana.app/v2beta1`.
+- The dashboard ConfigMap webhook names the unsupported `apiVersion` in its error.
 
 ## [0.88.0] - 2026-11-03
 
@@ -1371,7 +1395,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initialize project and create heartbeat for the installation.
 
-[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.88.0...HEAD
+[Unreleased]: https://github.com/giantswarm/observability-operator/compare/v0.89.1...HEAD
+[0.89.1]: https://github.com/giantswarm/observability-operator/compare/v0.89.0...v0.89.1
+[0.89.0]: https://github.com/giantswarm/observability-operator/compare/v0.88.0...v0.89.0
 [0.88.0]: https://github.com/giantswarm/observability-operator/compare/v0.87.0...v0.88.0
 [0.87.0]: https://github.com/giantswarm/observability-operator/compare/v0.86.0...v0.87.0
 [0.86.0]: https://github.com/giantswarm/observability-operator/compare/v0.85.0...v0.86.0

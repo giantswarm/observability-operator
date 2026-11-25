@@ -21,3 +21,6 @@ CVE-2026-115804 until=2026-12-20
 # pkg:golang/github.com/prometheus/prometheus@v0.315.1
 # No fixed release exists yet (v0.315.1 is the latest module version).
 CVE-2026-119566 until=2026-12-31
+
+# pkg:golang/go.opentelemetry.io/otel/sdk/log@v0.21.0
+CVE-2026-128085 until=2026-12-31

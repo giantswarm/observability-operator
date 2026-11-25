@@ -36,7 +36,7 @@ KIND_CLUSTER_NAME = alertmanager-integration
 INTEGRATION_TEST_FLAGS = -count=1 -v -p 1 -test.timeout 30m -tags=integration -args \
 												 -alertmanager-config-dir $(ALERTMANAGER_TEST_CONFIG_DIR)
 MIMIR_CHART = oci://gsoci.azurecr.io/charts/giantswarm/mimir
-MIMIR_CHART_VERSION = 0.30.1
+MIMIR_CHART_VERSION = 0.31.0
 
 ###############################################################################
 # Testing & Coverage
@@ -113,8 +113,10 @@ tests-alertmanager-routes-%: tests-alertmanager-routes-%-alertmanager-config $(A
 		AMTOOL_BIN=$(AMTOOL_BIN) \
 		$(BATS_BIN) $(BATS_ARGS) tests/alertmanager-routes/$*
 
+ALERTMANAGER_ROUTES_TESTS = $(subst /,-, $(shell find tests/alertmanager-routes -mindepth 1 -maxdepth 1 -type d -print|sort))
+
 .PHONY: tests-alertmanager-routes
-tests-alertmanager-routes: $(subst /,-, $(shell find tests/alertmanager-routes -mindepth 1 -maxdepth 1 -type d -print|sort)) ## Run all Alertmanager routes tests
+tests-alertmanager-routes: $(ALERTMANAGER_ROUTES_TESTS) ## Run all Alertmanager routes tests
 
 .PHONY: tests-alertmanager-routes-clean
 tests-alertmanager-routes-clean:
@@ -154,7 +156,7 @@ tests-alertmanager-integration-%: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertm
 	go test ./tests/alertmanager-routes/$* $(INTEGRATION_TEST_FLAGS)
 
 .PHONY: tests-alertmanager-integrations
-tests-alertmanager-integrations: $(ALERTMANAGER_INTEGRATION_SETUP) tests-alertmanager-routes ## Run all Alertmanager integration tests
+tests-alertmanager-integrations: $(ALERTMANAGER_INTEGRATION_SETUP) $(addsuffix -alertmanager-config,$(ALERTMANAGER_ROUTES_TESTS)) ## Run all Alertmanager integration tests
 	go test ./tests/alertmanager-routes/... $(INTEGRATION_TEST_FLAGS)
 
 .PHONY: tests-alertmanager-integration-clean

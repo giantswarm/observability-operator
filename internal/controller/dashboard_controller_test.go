@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/url"
 	"time"
@@ -209,15 +210,11 @@ var _ = Describe("Dashboard Controller", func() {
 						},
 					}, nil)
 
-				// Mock the Dashboards service
-				mockDashboardsClient := &mocks.MockDashboardsClient{}
-				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
-				mockDashboardsClient.On("PostDashboard", mock.AnythingOfType("*models.SaveDashboardCommand")).Return(
-					&dashboards.PostDashboardOK{
-						Payload: &models.PostDashboardOKBody{
-							UID: func() *string { s := testDashboardUID; return &s }(),
-						},
-					}, nil)
+				// Mock the app-platform dashboard API
+				mockDashboardAPI := &mocks.MockDashboardAPIClient{}
+				mockGrafanaClient.On("DashboardAPI").Return(mockDashboardAPI)
+				mockDashboardAPI.On("Get", mock.Anything, "v1", "default", testDashboardUID).Return(nil, grafanaclient.ErrDashboardNotFound)
+				mockDashboardAPI.On("Create", mock.Anything, "v1", "default", mock.Anything).Return(nil)
 			})
 
 			AfterEach(func() {
@@ -332,28 +329,25 @@ var _ = Describe("Dashboard Controller", func() {
 				}
 				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(orgResponse, nil)
 
-				// Mock the Dashboards service
-				mockDashboardsClient := &mocks.MockDashboardsClient{}
-				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
+				// Mock the app-platform dashboard API
+				mockDashboardAPI := &mocks.MockDashboardAPIClient{}
+				mockGrafanaClient.On("DashboardAPI").Return(mockDashboardAPI)
 
-				// Mock the dashboard creation to succeed
-				dashboardID := int64(123)
-				dashboardUID := testDashboardUID
-				dashboardURL := "/d/test-dashboard-uid/test-dashboard"
-				dashboardResponse := &dashboards.PostDashboardOK{
-					Payload: &models.PostDashboardOKBody{
-						ID:  &dashboardID,
-						UID: &dashboardUID,
-						URL: &dashboardURL,
-					},
-				}
-				mockDashboardsClient.On("PostDashboard", mock.MatchedBy(func(cmd interface{}) bool {
-					// Verify the dashboard command contains the expected data
-					if saveCmd, ok := cmd.(*models.SaveDashboardCommand); ok {
-						return saveCmd.Dashboard != nil && saveCmd.Overwrite == true
+				// Mock the dashboard update to succeed in the org-2 namespace
+				mockDashboardAPI.On("Get", mock.Anything, "v1", "org-2", testDashboardUID).Return(json.RawMessage(`{}`), nil)
+				mockDashboardAPI.On("Update", mock.Anything, "v1", "org-2", testDashboardUID, mock.MatchedBy(func(body json.RawMessage) bool {
+					// Verify the request marks the dashboard as managed by the operator
+					var resource struct {
+						Metadata struct {
+							Annotations map[string]string `json:"annotations"`
+						} `json:"metadata"`
 					}
-					return false
-				})).Return(dashboardResponse, nil)
+					if err := json.Unmarshal(body, &resource); err != nil {
+						return false
+					}
+					return resource.Metadata.Annotations["grafana.app/managerId"] == "observability-operator" &&
+						resource.Metadata.Annotations["grafana.app/sourcePath"] == "configmap "+dashboardNamespace+"/"+dashboardName
+				})).Return(nil)
 
 				By("Creating a dashboard ConfigMap")
 				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
@@ -404,12 +398,13 @@ var _ = Describe("Dashboard Controller", func() {
 				}
 				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(orgResponse, nil)
 
-				// Mock the Dashboards service
-				mockDashboardsClient := &mocks.MockDashboardsClient{}
-				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
+				// Mock the app-platform dashboard API
+				mockDashboardAPI := &mocks.MockDashboardAPIClient{}
+				mockGrafanaClient.On("DashboardAPI").Return(mockDashboardAPI)
 
 				// Mock the dashboard creation to fail
-				mockDashboardsClient.On("PostDashboard", mock.Anything).Return(nil, errors.New("dashboard creation failed"))
+				mockDashboardAPI.On("Get", mock.Anything, "v1", "org-2", testDashboardUID).Return(nil, grafanaclient.ErrDashboardNotFound)
+				mockDashboardAPI.On("Create", mock.Anything, "v1", "org-2", mock.Anything).Return(errors.New("dashboard creation failed"))
 
 				By("Creating a dashboard ConfigMap")
 				Expect(k8sClient.Create(ctx, dashboardConfigMap)).To(Succeed())
@@ -716,15 +711,13 @@ var _ = Describe("Dashboard Controller", func() {
 				}
 				mockOrgsClient.On("GetOrgByName", testDashboardOrg).Return(orgResponse, nil)
 
-				// Mock the Dashboards service
-				mockDashboardsClient := &mocks.MockDashboardsClient{}
-				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
+				// Mock the app-platform dashboard API
+				mockDashboardAPI := &mocks.MockDashboardAPIClient{}
+				mockGrafanaClient.On("DashboardAPI").Return(mockDashboardAPI)
 
 				// Mock the dashboard creation to succeed
-				dashboardResponse := &dashboards.PostDashboardOK{
-					Payload: &models.PostDashboardOKBody{},
-				}
-				mockDashboardsClient.On("PostDashboard", mock.Anything).Return(dashboardResponse, nil)
+				mockDashboardAPI.On("Get", mock.Anything, "v1", "org-2", testDashboardUID).Return(nil, grafanaclient.ErrDashboardNotFound)
+				mockDashboardAPI.On("Create", mock.Anything, "v1", "org-2", mock.Anything).Return(nil)
 
 				// Test ConfigMap with organization in labels instead of annotations
 				// Note: Using a valid Kubernetes label value (no spaces, alphanumeric + dashes/dots/underscores)
@@ -876,9 +869,9 @@ var _ = Describe("Dashboard Controller", func() {
 				mockOrgsClient := &mocks.MockOrgsClient{}
 				mockGrafanaClient.On("Orgs").Return(mockOrgsClient)
 
-				// Mock the Dashboards service
-				mockDashboardsClient := &mocks.MockDashboardsClient{}
-				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
+				// Mock the app-platform dashboard API
+				mockDashboardAPI := &mocks.MockDashboardAPIClient{}
+				mockGrafanaClient.On("DashboardAPI").Return(mockDashboardAPI)
 
 				configMapWithID := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -910,20 +903,18 @@ var _ = Describe("Dashboard Controller", func() {
 				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(orgResponse, nil)
 
 				// Mock the dashboard creation to succeed
-				dashboardResponse := &dashboards.PostDashboardOK{
-					Payload: &models.PostDashboardOKBody{},
-				}
-				mockDashboardsClient.On("PostDashboard", mock.MatchedBy(func(cmd interface{}) bool {
+				mockDashboardAPI.On("Get", mock.Anything, "v1", "org-2", testDashboardUID).Return(nil, grafanaclient.ErrDashboardNotFound)
+				mockDashboardAPI.On("Create", mock.Anything, "v1", "org-2", mock.MatchedBy(func(body json.RawMessage) bool {
 					// Verify that the dashboard ID was cleaned (removed)
-					if saveCmd, ok := cmd.(*models.SaveDashboardCommand); ok {
-						if dashboard, ok := saveCmd.Dashboard.(map[string]interface{}); ok {
-							// ID should be cleaned/removed
-							_, hasID := dashboard["id"]
-							return !hasID // Should not have ID after cleaning
-						}
+					var resource struct {
+						Spec map[string]any `json:"spec"`
 					}
-					return false
-				})).Return(dashboardResponse, nil)
+					if err := json.Unmarshal(body, &resource); err != nil {
+						return false
+					}
+					_, hasID := resource.Spec["id"]
+					return !hasID // Should not have ID after cleaning
+				})).Return(nil)
 
 				By("Creating a dashboard ConfigMap with existing ID")
 				Expect(k8sClient.Create(ctx, configMapWithID)).To(Succeed())
@@ -1011,9 +1002,9 @@ var _ = Describe("Dashboard Controller", func() {
 				mockOrgsClient := &mocks.MockOrgsClient{}
 				mockGrafanaClient.On("Orgs").Return(mockOrgsClient)
 
-				// Mock the Dashboards service
-				mockDashboardsClient := &mocks.MockDashboardsClient{}
-				mockGrafanaClient.On("Dashboards").Return(mockDashboardsClient)
+				// Mock the app-platform dashboard API
+				mockDashboardAPI := &mocks.MockDashboardAPIClient{}
+				mockGrafanaClient.On("DashboardAPI").Return(mockDashboardAPI)
 
 				// Mock the organization lookup to succeed
 				orgResponse := &orgs.GetOrgByNameOK{
@@ -1025,10 +1016,8 @@ var _ = Describe("Dashboard Controller", func() {
 				mockOrgsClient.On("GetOrgByName", testDashboardOrganization).Return(orgResponse, nil)
 
 				// Mock dashboard creation for all three dashboards
-				dashboardResponse := &dashboards.PostDashboardOK{
-					Payload: &models.PostDashboardOKBody{},
-				}
-				mockDashboardsClient.On("PostDashboard", mock.Anything).Return(dashboardResponse, nil).Times(3)
+				mockDashboardAPI.On("Get", mock.Anything, "v1", "org-2", mock.Anything).Return(nil, grafanaclient.ErrDashboardNotFound).Times(3)
+				mockDashboardAPI.On("Create", mock.Anything, "v1", "org-2", mock.Anything).Return(nil).Times(3)
 
 				configMapWithMultipleDashboards := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
