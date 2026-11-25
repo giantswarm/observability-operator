@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/url"
@@ -146,6 +147,7 @@ const (
 
 	// Alloy pipeline knob flag names
 	flagMonitoringMimirRemoteWriteTimeout = "monitoring-mimir-remote-write-timeout"
+	flagMonitoringMetricsDrop             = "monitoring-metrics-drop"
 	flagLoggingLokiMaxBackoffPeriod       = "logging-loki-max-backoff-period"
 	flagLoggingLokiRemoteTimeout          = "logging-loki-remote-timeout"
 	flagOTLPBatchSendBatchSize            = "otlp-batch-send-batch-size"
@@ -376,6 +378,9 @@ func parseFlags() (err error) {
 	// Alloy pipeline knob flags
 	pflag.StringVar(&cfg.Monitoring.MimirRemoteWriteTimeout, flagMonitoringMimirRemoteWriteTimeout, "60s",
 		"Timeout for Alloy Mimir remote write operations.")
+	var metricsDrop string
+	pflag.StringVar(&metricsDrop, flagMonitoringMetricsDrop, "",
+		"JSON object of named rules for series Alloy drops before remote write: {\"<name>\": {\"job\": \"\", \"metricsPath\": \"\", \"regex\": \"\", \"enabled\": true}}. Empty drops nothing.")
 	pflag.StringVar(&cfg.Logging.LokiMaxBackoffPeriod, flagLoggingLokiMaxBackoffPeriod, "10m",
 		"Maximum backoff period for Alloy Loki remote write retries.")
 	pflag.StringVar(&cfg.Logging.LokiRemoteTimeout, flagLoggingLokiRemoteTimeout, "60s",
@@ -428,6 +433,12 @@ func parseFlags() (err error) {
 	cfg.Grafana.URL, err = url.Parse(grafanaURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse grafana URL: %w", err)
+	}
+
+	if metricsDrop != "" {
+		if err := json.Unmarshal([]byte(metricsDrop), &cfg.Monitoring.MetricsDrop); err != nil {
+			return fmt.Errorf("failed to parse --%s: %w", flagMonitoringMetricsDrop, err)
+		}
 	}
 
 	// Soft dependency: the cluster controller declares AgentCredential CRs and

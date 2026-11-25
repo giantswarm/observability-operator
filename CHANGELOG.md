@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `monitoring.metricsDrop` field in values: named rules for metrics Alloy drops before remote-writing them to Mimir.
+
 ### Changed
 
 - CI: run the Go tests once, in `go-build`, and run the Alertmanager integration tests only when Alertmanager files change.

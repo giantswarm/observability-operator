@@ -114,3 +114,24 @@ Note that shards come in two independent flavours:
 | `max_shards` / `min_shards` | Remote write concurrency *inside each pod*, autoscaled by Alloy | `monitoring.queueConfig` |
 
 The defaults match upstream Prometheus/Alloy (`capacity: 10000`, `maxSamplesPerSend: 2000`, `maxShards: 50`), with `sampleAgeLimit: 30m` as a Giant Swarm addition. When tuning, keep `capacity` well above `maxSamplesPerSend` — if `capacity` is the smaller of the two, Prometheus gives each shard a single-batch channel and the queue loses its buffer.
+
+## Dropping metrics before remote write
+
+`monitoring.metricsDrop` holds named rules for series Alloy-Metrics drops before sending them to Mimir. Like the queue settings it is **installation-level only**: set it in the operator's Helm values (`shared-configs` for the fleet default, an installation's configs repo for overrides), or with `--monitoring-metrics-drop` (a JSON object of the same shape) when running the binary directly.
+
+Each rule drops the series whose metric name fully matches `regex`. `job` and `metricsPath`, when set, restrict the rule to series with exactly that `job` / `metrics_path` label, so a name can be dropped for one exporter and kept for the others:
+
+```yaml
+monitoring:
+  metricsDrop:
+    kubelet-go-runtime:
+      job: kubelet
+      metricsPath: /metrics
+      regex: go_(cgo|cpu_classes|gc|godebug|memory_classes|memstats|sched|sync)_.+|go_(info|threads)
+    cadvisor-pressure:
+      regex: container_pressure_.+
+```
+
+The rules are rendered as `write_relabel_config` drop rules on every tenant's `prometheus.remote_write` endpoint, in rule-name order. They are keyed by name so a configuration layer can add or replace one rule, or turn an inherited one off with `enabled: false` (or by setting it to `null`), without restating the others. A list would be replaced as a whole by the layer above it.
+
+Changing or reverting a rule is a configuration change on the management cluster: the operator regenerates every cluster's Alloy-Metrics configuration, with no app or cluster release. The operator refuses to start on an empty or invalid regex.

@@ -1,6 +1,10 @@
 package config
 
 import (
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
 	"time"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -24,6 +28,69 @@ type QueueConfig struct {
 	MinShards         *int
 	RetryOnHttp429    *bool
 	SampleAgeLimit    *string
+}
+
+// Labels a metrics drop rule matches on.
+const (
+	jobLabel         = "job"
+	metricsPathLabel = "metrics_path"
+	metricNameLabel  = "__name__"
+)
+
+// MetricsDropRule drops matching series in Alloy before they are remote-written to Mimir.
+// Job and MetricsPath, when set, restrict the rule to series with that exact job and
+// metrics_path label, so a metric name can be dropped for one exporter only.
+type MetricsDropRule struct {
+	// Enabled set to false turns the rule off, so a configuration layer can disable a
+	// rule it inherits without restating the others. Unset means enabled.
+	Enabled     *bool  `json:"enabled,omitempty"`
+	Job         string `json:"job,omitempty"`
+	MetricsPath string `json:"metricsPath,omitempty"`
+	// Regex is matched against the metric name, fully anchored like any Prometheus relabel regex.
+	Regex string `json:"regex"`
+}
+
+// IsEnabled reports whether the rule applies. A nil rule is how a configuration layer
+// removes an inherited rule, so it counts as disabled.
+func (r *MetricsDropRule) IsEnabled() bool {
+	return r != nil && (r.Enabled == nil || *r.Enabled)
+}
+
+// SourceLabels returns the relabel source labels, in the order RelabelRegex expects.
+func (r *MetricsDropRule) SourceLabels() []string {
+	labels := []string{}
+	if r.Job != "" {
+		labels = append(labels, jobLabel)
+	}
+	if r.MetricsPath != "" {
+		labels = append(labels, metricsPathLabel)
+	}
+	return append(labels, metricNameLabel)
+}
+
+// RelabelRegex returns the regex matched against SourceLabels joined with ";".
+func (r *MetricsDropRule) RelabelRegex() string {
+	parts := []string{}
+	if r.Job != "" {
+		parts = append(parts, regexp.QuoteMeta(r.Job))
+	}
+	if r.MetricsPath != "" {
+		parts = append(parts, regexp.QuoteMeta(r.MetricsPath))
+	}
+	return strings.Join(append(parts, "(?:"+r.Regex+")"), ";")
+}
+
+// EnabledMetricsDropRuleNames returns the names of the enabled rules, sorted so the rendered
+// Alloy configuration is stable.
+func (c MonitoringConfig) EnabledMetricsDropRuleNames() []string {
+	names := []string{}
+	for name, rule := range c.MetricsDrop {
+		if rule.IsEnabled() {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 // MonitoringConfig represents the configuration used by the monitoring package.
@@ -58,12 +125,23 @@ type MonitoringConfig struct {
 	// MimirRemoteWriteTimeout is the remote_timeout for the Mimir remote write endpoint in Alloy
 	// agent ConfigMaps (e.g. "60s").
 	MimirRemoteWriteTimeout string
+
+	// MetricsDrop holds named rules for series Alloy drops before remote write. Rules are keyed
+	// by name so each configuration layer can add, replace or disable one of them.
+	MetricsDrop map[string]*MetricsDropRule
 }
 
 // Validate validates the monitoring configuration
 func (c MonitoringConfig) Validate() error {
-	// Add validation logic here if needed
-	// For now, monitoring config is always valid
+	for _, name := range c.EnabledMetricsDropRuleNames() {
+		rule := c.MetricsDrop[name]
+		if rule.Regex == "" {
+			return fmt.Errorf("metrics drop rule %q: regex is empty", name)
+		}
+		if _, err := regexp.Compile("^(?:" + rule.RelabelRegex() + ")$"); err != nil {
+			return fmt.Errorf("metrics drop rule %q: invalid regex: %w", name, err)
+		}
+	}
 	return nil
 }
 
