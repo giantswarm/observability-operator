@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `Mimir Cardinality` datasource goes to Grafana's default organization (org 1), whatever its name.
 - Update github.com/go-openapi/runtime to v0.33.5 (giantswarm/observability-operator#1153)
 
+### Fixed
+
+- Keep the Grafana SSO organization roles of all users while a `GrafanaOrganization` waits for its organization in Grafana.
+
 ## [0.89.1] - 2026-11-13
 
 ### Fixed

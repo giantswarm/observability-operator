@@ -289,7 +289,9 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	return ctrl.Result{}, nil
 }
 
-// listActiveGrafanaOrganizations retrieves all GrafanaOrganization CRs and converts them to domain objects
+// listActiveGrafanaOrganizations retrieves the GrafanaOrganization CRs whose organization exists in
+// Grafana and converts them to domain objects. Grafana's strict role mapping drops the whole SSO
+// org mapping when one org name does not exist.
 func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx context.Context) ([]*organization.Organization, error) {
 	organizationList := &v1alpha2.GrafanaOrganizationList{}
 	err := r.List(ctx, organizationList)
@@ -302,6 +304,10 @@ func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx conte
 		if !org.GetDeletionTimestamp().IsZero() {
 			// Skip organizations that are being deleted
 			// see https://github.com/giantswarm/observability-operator/pull/525
+			continue
+		}
+		if org.Status.OrgID == 0 {
+			// Skip organizations that were not created in Grafana yet
 			continue
 		}
 		organizations = append(organizations, r.organizationMapper.FromGrafanaOrganization(&org))

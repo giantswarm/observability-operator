@@ -218,6 +218,48 @@ var _ = Describe("Grafana Organization Controller", func() {
 			mockGrafanaClient.AssertNotCalled(GinkgoT(), "SsoSettings")
 		})
 
+		It("should leave organizations missing from Grafana out of the SSO org mapping", func() {
+			orgName = "pending-sso-org"
+			orgDisplayName = "Pending SSO Parent Organization"
+			reconciler = newReconcilerWithSSO(true)
+
+			By("Creating a GrafanaOrganization whose organization does not exist in Grafana yet")
+			pendingOrg := &v1alpha2.GrafanaOrganization{
+				ObjectMeta: metav1.ObjectMeta{Name: "sso-pending-org"},
+				Spec: v1alpha2.GrafanaOrganizationSpec{
+					DisplayName: "SSO Pending Organization",
+					Tenants:     []v1alpha2.TenantConfig{{Name: "pendingtenant"}},
+					RBAC:        &v1alpha2.RBAC{Admins: []string{"pending-admins"}},
+				},
+			}
+			Expect(k8sClient.Create(ctx, pendingOrg)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pendingOrg) })
+
+			var ssoOrgMapping string
+			mockSsoSettings := &mocks.MockSsoSettingsClient{}
+			mockGrafanaClient.On("SsoSettings").Return(mockSsoSettings)
+			mockSsoSettings.On("GetProviderSettings", ssoProvider).Return(&sso_settings.GetProviderSettingsOK{
+				Payload: &models.GetProviderSettingsOKBody{
+					ID:       "1",
+					Provider: ssoProvider,
+					Settings: map[string]any{},
+				},
+			}, nil)
+			mockSsoSettings.On("UpdateProviderSettings", ssoProvider, mock.Anything).
+				Run(func(args mock.Arguments) {
+					body := args.Get(1).(*models.UpdateProviderSettingsParamsBody)
+					ssoOrgMapping, _ = body.Settings["org_mapping"].(string)
+				}).
+				Return(&sso_settings.UpdateProviderSettingsNoContent{}, nil)
+
+			createAndReconcile()
+
+			Expect(ssoOrgMapping).To(ContainSubstring(ssoAdminsGroup + ":" + orgDisplayName + ":Admin"))
+			Expect(ssoOrgMapping).NotTo(ContainSubstring(pendingOrg.Spec.DisplayName))
+
+			deleteAndReconcile()
+		})
+
 		It("should write the SSO org mapping when SSO org mapping is enabled", func() {
 			orgName = "sso-enabled-org"
 			orgDisplayName = "SSO Enabled Organization"

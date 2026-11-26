@@ -48,7 +48,7 @@ Each tenant entry grants the organization access to data for that tenant in Mimi
 
 ## SSO organization mapping
 
-When enabled, the operator writes the `org_mapping` setting of Grafana's `generic_oauth` SSO provider from the `spec.rbac` of all `GrafanaOrganization` resources.
+When enabled, the operator writes the `org_mapping` setting of Grafana's `generic_oauth` SSO provider from the `spec.rbac` of all `GrafanaOrganization` resources. The mapping lists only the organizations that exist in Grafana, those with a `status.orgID`: with strict role mapping, Grafana drops the whole mapping when one organization name does not exist.
 
 It is controlled by the `grafana.ssoOrgMapping.enabled` Helm value, which defaults to `false`, and the `--grafana-sso-org-mapping-enabled` flag. Keep it off when Grafana has no generic OAuth provider configured. When it is off:
 
