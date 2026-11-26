@@ -10,12 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Write the Grafana organization mapping to the `grafana-mcp-org-mapping` Secret in the `monitoring` namespace, off by default and enabled with `grafana.jwtOrgMappingSecret.enabled: true`.
+- Restart the `grafana-mcp` Deployment in the `monitoring` namespace when the Grafana organization mapping changes.
 
 ### Changed
 
 - CI: run the Go tests once, in `go-build`, and run the Alertmanager integration tests only when Alertmanager files change.
 - The `Mimir Cardinality` datasource goes to Grafana's default organization (org 1), whatever its name.
 - Update github.com/go-openapi/runtime to v0.33.5 (giantswarm/observability-operator#1153)
+- Write the Grafana organization mapping to the `grafana-mcp-org-mapping` Secret by default, turned off with `grafana.jwtOrgMappingSecret.enabled: false`.
+
+### Fixed
+
+- Keep the Grafana SSO organization roles of all users while a `GrafanaOrganization` waits for its organization in Grafana.
 
 ## [0.89.1] - 2026-11-13
 

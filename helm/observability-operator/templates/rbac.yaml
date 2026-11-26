@@ -207,3 +207,38 @@ roleRef:
   kind: ClusterRole
   name: {{ include "resource.default.name" . }}
   apiGroup: rbac.authorization.k8s.io
+{{- if .Values.grafana.jwtOrgMappingSecret.enabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  name: {{ include "resource.default.name" . }}-grafana-mcp
+  namespace: monitoring
+rules:
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    resourceNames:
+      - grafana-mcp
+    verbs:
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  name: {{ include "resource.default.name" . }}-grafana-mcp
+  namespace: monitoring
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "resource.default.name" . }}
+    namespace: {{ include "resource.default.namespace" . }}
+roleRef:
+  kind: Role
+  name: {{ include "resource.default.name" . }}-grafana-mcp
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

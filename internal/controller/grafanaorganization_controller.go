@@ -63,6 +63,7 @@ func SetupGrafanaOrganizationReconciler(mgr manager.Manager, cfg config.Config, 
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=observability.giantswarm.io,resources=grafanaorganizations/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=patch,namespace=monitoring,resourceNames=grafana-mcp
 
 // Reconcile is part of the main Kubernetes reconciliation loop which aims to
 // move the current state of the GrafanaOrganization closer to the desired state.
@@ -299,7 +300,9 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 	return ctrl.Result{}, nil
 }
 
-// listActiveGrafanaOrganizations retrieves all GrafanaOrganization CRs and converts them to domain objects
+// listActiveGrafanaOrganizations retrieves the GrafanaOrganization CRs whose organization exists in
+// Grafana and converts them to domain objects. Both the SSO and the JWT org mappings are built from
+// this list: Grafana's strict role mapping drops the whole mapping when one org name does not exist.
 func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx context.Context) ([]*organization.Organization, error) {
 	organizationList := &v1alpha2.GrafanaOrganizationList{}
 	err := r.List(ctx, organizationList)
@@ -314,6 +317,19 @@ func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx conte
 			// see https://github.com/giantswarm/observability-operator/pull/525
 			continue
 		}
+		if org.Status.OrgID == 0 {
+			// Skip organizations that were not created in Grafana yet
+			continue
+		}
+		// Known limitation, accepted: the rename window. The mapping uses spec.displayName.
+		// After a displayName edit, the reconcile of another GrafanaOrganization can write
+		// the new name before this CR's own reconcile renames the org in Grafana, or while
+		// Grafana rejects the rename. Under strict role mapping, Grafana then drops the
+		// whole mapping and every user loses their org roles until the rename succeeds.
+		// Skipping CRs where status.displayName != spec.displayName closes the window, but
+		// costs two grafana-mcp restarts per rename (org removed, then re-added).
+		// The list also comes from the informer cache, so a just-created org can join the
+		// mapping one reconcile late.
 		organizations = append(organizations, r.organizationMapper.FromGrafanaOrganization(&org))
 	}
 
