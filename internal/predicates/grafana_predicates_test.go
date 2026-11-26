@@ -11,6 +11,8 @@ import (
 const (
 	defaultNamespace = "default"
 	grafanaPod       = "grafana-pod"
+	grafanaMCPPod    = "grafana-mcp-pod"
+	grafanaMCPName   = "grafanaMcp"
 	nonGrafanaPod    = "non-grafana-pod"
 )
 
@@ -43,6 +45,7 @@ func TestIsGrafanaPod(t *testing.T) {
 					Namespace: monitoring,
 					Labels: map[string]string{
 						instanceLabel: grafana,
+						nameLabel:     grafana,
 					},
 				},
 			},
@@ -54,6 +57,34 @@ func TestIsGrafanaPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      grafanaPod,
 					Namespace: defaultNamespace,
+					Labels: map[string]string{
+						instanceLabel: grafana,
+						nameLabel:     grafana,
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "grafana-mcp pod of the Grafana release",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      grafanaMCPPod,
+					Namespace: monitoring,
+					Labels: map[string]string{
+						instanceLabel: grafana,
+						nameLabel:     grafanaMCPName,
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Grafana pod without name label",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      grafanaPod,
+					Namespace: monitoring,
 					Labels: map[string]string{
 						instanceLabel: grafana,
 					},
@@ -129,6 +160,7 @@ func TestGrafanaPodRecreatedPredicate_Update(t *testing.T) {
 					Namespace: monitoring,
 					Labels: map[string]string{
 						instanceLabel: grafana,
+						nameLabel:     grafana,
 					},
 				},
 				Status: corev1.PodStatus{
@@ -146,6 +178,7 @@ func TestGrafanaPodRecreatedPredicate_Update(t *testing.T) {
 					Namespace: monitoring,
 					Labels: map[string]string{
 						instanceLabel: grafana,
+						nameLabel:     grafana,
 					},
 				},
 				Status: corev1.PodStatus{
@@ -160,6 +193,46 @@ func TestGrafanaPodRecreatedPredicate_Update(t *testing.T) {
 			expected: true,
 		},
 		{
+			name: "grafana-mcp pod not ready to ready",
+			oldPod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      grafanaMCPPod,
+					Namespace: monitoring,
+					Labels: map[string]string{
+						instanceLabel: grafana,
+						nameLabel:     grafanaMCPName,
+					},
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: corev1.ConditionFalse,
+						},
+					},
+				},
+			},
+			newPod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      grafanaMCPPod,
+					Namespace: monitoring,
+					Labels: map[string]string{
+						instanceLabel: grafana,
+						nameLabel:     grafanaMCPName,
+					},
+				},
+				Status: corev1.PodStatus{
+					Conditions: []corev1.PodCondition{
+						{
+							Type:   corev1.PodReady,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			},
+			expected: false,
+		},
+		{
 			name: "Grafana pod ready to not ready",
 			oldPod: &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -167,6 +240,7 @@ func TestGrafanaPodRecreatedPredicate_Update(t *testing.T) {
 					Namespace: monitoring,
 					Labels: map[string]string{
 						instanceLabel: grafana,
+						nameLabel:     grafana,
 					},
 				},
 				Status: corev1.PodStatus{
@@ -184,6 +258,7 @@ func TestGrafanaPodRecreatedPredicate_Update(t *testing.T) {
 					Namespace: monitoring,
 					Labels: map[string]string{
 						instanceLabel: grafana,
+						nameLabel:     grafana,
 					},
 				},
 				Status: corev1.PodStatus{
