@@ -310,6 +310,13 @@ func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx conte
 			// Skip organizations that were not created in Grafana yet
 			continue
 		}
+		// Known limitation, accepted: the rename window. The mapping uses spec.displayName.
+		// After a displayName edit, the reconcile of another GrafanaOrganization can write
+		// the new name before this CR's own reconcile renames the org in Grafana, or while
+		// Grafana rejects the rename. Under strict role mapping, Grafana then drops the
+		// whole mapping and every user loses their org roles until the rename succeeds.
+		// The list also comes from the informer cache, so a just-created org can join the
+		// mapping one reconcile late.
 		organizations = append(organizations, r.organizationMapper.FromGrafanaOrganization(&org))
 	}
 
