@@ -48,13 +48,18 @@ Each tenant entry grants the organization access to data for that tenant in Mimi
 
 ## SSO organization mapping
 
-When enabled, the operator writes the `org_mapping` setting of Grafana's `generic_oauth` SSO provider from the `spec.rbac` of all `GrafanaOrganization` resources.
+When enabled, the operator writes the `org_mapping` setting of Grafana's `generic_oauth` SSO provider from the `spec.rbac` of all `GrafanaOrganization` resources. The mapping lists only the organizations that exist in Grafana, those with a `status.orgID`: with strict role mapping, Grafana drops the whole mapping when one organization name does not exist.
 
 It is controlled by the `grafana.ssoOrgMapping.enabled` Helm value, which defaults to `false`, and the `--grafana-sso-org-mapping-enabled` flag. Keep it off when Grafana has no generic OAuth provider configured. When it is off:
 
 - the operator neither reads nor writes Grafana's SSO provider settings
 - organizations and their datasources are still reconciled as usual
 - `spec.rbac` is still required by the API, but its contents are ignored
+
+Known limitations:
+
+- The mapping uses `spec.displayName`. After a `displayName` change, the reconcile of another `GrafanaOrganization` can write the new name before Grafana has the renamed organization, or while Grafana rejects the rename. With strict role mapping, Grafana then drops the whole mapping and every user loses their organization roles until the rename succeeds.
+- A new organization can join the mapping one reconcile late, because the operator lists `GrafanaOrganization` resources from its cache.
 
 ## Example
 
