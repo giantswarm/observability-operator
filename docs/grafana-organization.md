@@ -72,7 +72,7 @@ The operator sends a merge patch without reading the Deployment first. The chart
 
 Known limitations:
 
-- The mapping uses `spec.displayName`. After a `displayName` change, the reconcile of another `GrafanaOrganization` can write the new name before Grafana has the renamed organization, or while Grafana rejects the rename. With strict role mapping, Grafana then drops the whole mapping and every user loses their organization roles until the rename succeeds.
+- The mapping uses `spec.displayName`. After a `displayName` change, the reconcile of another `GrafanaOrganization` can write the new name before Grafana has the renamed organization, or while Grafana rejects the rename. With strict role mapping, Grafana then drops the whole mapping and every user loses their organization roles until the rename succeeds. Both the SSO and the JWT organization mappings are affected.
 - A new organization can join the mapping one reconcile late, because the operator lists `GrafanaOrganization` resources from its cache.
 
 ## Example

@@ -301,8 +301,8 @@ func (r GrafanaOrganizationReconciler) reconcileCreate(ctx context.Context, graf
 }
 
 // listActiveGrafanaOrganizations retrieves the GrafanaOrganization CRs whose organization exists in
-// Grafana and converts them to domain objects. Grafana's strict role mapping drops the whole SSO
-// org mapping when one org name does not exist.
+// Grafana and converts them to domain objects. Both the SSO and the JWT org mappings are built from
+// this list: Grafana's strict role mapping drops the whole mapping when one org name does not exist.
 func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx context.Context) ([]*organization.Organization, error) {
 	organizationList := &v1alpha2.GrafanaOrganizationList{}
 	err := r.List(ctx, organizationList)
@@ -326,6 +326,8 @@ func (r *GrafanaOrganizationReconciler) listActiveGrafanaOrganizations(ctx conte
 		// the new name before this CR's own reconcile renames the org in Grafana, or while
 		// Grafana rejects the rename. Under strict role mapping, Grafana then drops the
 		// whole mapping and every user loses their org roles until the rename succeeds.
+		// Skipping CRs where status.displayName != spec.displayName closes the window, but
+		// costs two grafana-mcp restarts per rename (org removed, then re-added).
 		// The list also comes from the informer cache, so a just-created org can join the
 		// mapping one reconcile late.
 		organizations = append(organizations, r.organizationMapper.FromGrafanaOrganization(&org))
