@@ -10,6 +10,7 @@ import (
 
 const (
 	instanceLabel = "app.kubernetes.io/instance"
+	nameLabel     = "app.kubernetes.io/name"
 	grafana       = "grafana"
 	monitoring    = "monitoring"
 )
@@ -52,13 +53,15 @@ func (GrafanaPodRecreatedPredicate) Update(e event.UpdateEvent) bool {
 	return isGrafanaPod(newPod) && isPodReady(newPod)
 }
 
-// isGrafanaPod checks if the object is a Grafana pod.
+// isGrafanaPod checks if the object is a pod of the main Grafana instance. The name label
+// excludes the grafana-mcp pods of the same release, labelled app.kubernetes.io/name: grafanaMcp.
 func isGrafanaPod(pod *corev1.Pod) bool {
 	return pod != nil &&
 		strings.HasPrefix(pod.GetName(), grafana) &&
 		pod.GetNamespace() == monitoring &&
 		pod.GetLabels() != nil &&
-		pod.GetLabels()[instanceLabel] == grafana
+		pod.GetLabels()[instanceLabel] == grafana &&
+		pod.GetLabels()[nameLabel] == grafana
 }
 
 // isPodReady checks if the pod is ready by inspecting its conditions.
