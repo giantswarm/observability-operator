@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -342,6 +343,70 @@ var _ = Describe("Grafana Organization Controller", func() {
 
 			By("Checking that the SSO settings were never touched")
 			mockGrafanaClient.AssertNotCalled(GinkgoT(), "SsoSettings")
+		})
+
+		It("should write the same entries to the SSO and JWT org mappings, without organizations missing from Grafana", func() {
+			orgName = "parity-org"
+			orgDisplayName = "Parity Organization"
+			reconciler = newReconcilerWithSSO(true)
+			reconciler.cfg.Grafana.JWTOrgMappingSecretEnabled = true
+
+			namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: grafana.JWTOrgMappingSecretNamespace}}
+			if err := k8sClient.Create(ctx, namespace); err != nil {
+				Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+			}
+			secretKey := types.NamespacedName{Name: grafana.JWTOrgMappingSecretName, Namespace: grafana.JWTOrgMappingSecretNamespace}
+			DeferCleanup(func() {
+				_ = k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretKey.Name, Namespace: secretKey.Namespace}})
+			})
+
+			By("Creating a GrafanaOrganization whose organization does not exist in Grafana yet")
+			pendingOrg := &v1alpha2.GrafanaOrganization{
+				ObjectMeta: metav1.ObjectMeta{Name: "parity-pending-org"},
+				Spec: v1alpha2.GrafanaOrganizationSpec{
+					DisplayName: "Parity Pending Organization",
+					Tenants:     []v1alpha2.TenantConfig{{Name: "pendingtenant"}},
+					RBAC:        &v1alpha2.RBAC{Admins: []string{"pending-admins"}},
+				},
+			}
+			Expect(k8sClient.Create(ctx, pendingOrg)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pendingOrg) })
+
+			var ssoOrgMapping string
+			mockSsoSettings := &mocks.MockSsoSettingsClient{}
+			mockGrafanaClient.On("SsoSettings").Return(mockSsoSettings)
+			mockSsoSettings.On("GetProviderSettings", ssoProvider).Return(&sso_settings.GetProviderSettingsOK{
+				Payload: &models.GetProviderSettingsOKBody{
+					ID:       "1",
+					Provider: ssoProvider,
+					Settings: map[string]any{},
+				},
+			}, nil)
+			mockSsoSettings.On("UpdateProviderSettings", ssoProvider, mock.Anything).
+				Run(func(args mock.Arguments) {
+					body := args.Get(1).(*models.UpdateProviderSettingsParamsBody)
+					ssoOrgMapping, _ = body.Settings["org_mapping"].(string)
+				}).
+				Return(&sso_settings.UpdateProviderSettingsNoContent{}, nil)
+
+			createAndReconcile()
+
+			secret := &corev1.Secret{}
+			Expect(k8sClient.Get(ctx, secretKey, secret)).To(Succeed())
+			jwtOrgMapping := string(secret.Data[grafana.JWTOrgMappingSecretKey])
+
+			By("Checking that both mappings have the same entries")
+			orgMappingEntry := regexp.MustCompile(`"[^"]*"`)
+			ssoEntries := orgMappingEntry.FindAllString(ssoOrgMapping, -1)
+			jwtEntries := orgMappingEntry.FindAllString(jwtOrgMapping, -1)
+			Expect(ssoEntries).To(ContainElement(`"` + ssoAdminsGroup + ":" + orgDisplayName + `:Admin"`))
+			Expect(jwtEntries).To(ConsistOf(ssoEntries))
+
+			By("Checking that neither mapping lists the organization missing from Grafana")
+			Expect(ssoOrgMapping).NotTo(ContainSubstring(pendingOrg.Spec.DisplayName))
+			Expect(jwtOrgMapping).NotTo(ContainSubstring(pendingOrg.Spec.DisplayName))
+
+			deleteAndReconcile()
 		})
 
 		It("should roll the grafana-mcp Deployment only when the JWT org mapping changes", func() {
