@@ -60,7 +60,7 @@ It is controlled by the `grafana.ssoOrgMapping.enabled` Helm value, which defaul
 
 The operator writes the organization mapping from the `spec.rbac` of all `GrafanaOrganization` resources to the `orgMapping` key of the `grafana-mcp-org-mapping` Secret in the `monitoring` namespace. The `grafana-mcp` Grafana instance reads it as `GF_AUTH_JWT_ORG_MAPPING`. The mapping has the same entries as the SSO organization mapping.
 
-It is controlled by the `grafana.jwtOrgMappingSecret.enabled` Helm value, which defaults to `false`, and the `--grafana-jwt-org-mapping-secret-enabled` flag. Turn it on when the installation runs `grafana-mcp`.
+It is controlled by the `grafana.jwtOrgMappingSecret.enabled` Helm value, which defaults to `true`, and the `--grafana-jwt-org-mapping-secret-enabled` flag. Turn it off when the installation runs no `grafana-mcp`.
 
 Grafana reads `GF_AUTH_JWT_ORG_MAPPING` only at start-up. After it writes the Secret, the operator sets the `observability.giantswarm.io/org-mapping-checksum` annotation on the pod template of the `grafana-mcp` Deployment in the `monitoring` namespace to the sha256 of the mapping:
 

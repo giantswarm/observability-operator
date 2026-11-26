@@ -351,7 +351,7 @@ grafana:
   # Deployment of that namespace when the mapping changes.
   jwtOrgMappingSecret:
     # -- Enable the Grafana JWT organization mapping Secret
-    enabled: false
+    enabled: true
   # -- Service URLs for Grafana datasources provisioned by the operator.
   # Override these if your stack uses non-standard namespaces or service names.
   datasources:
