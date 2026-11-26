@@ -137,6 +137,33 @@ func TestConfigureJWTOrgMappingSecret_OrderDoesNotChangeSecret(t *testing.T) {
 	assert.Equal(t, []*organization.Organization{giantSwarmOrg, pendingOrg, sharedOrg}, shuffled)
 }
 
+func TestConfigureJWTOrgMappingSecret_OrderDoesNotChangeChecksum(t *testing.T) {
+	c := fake.NewClientBuilder().WithScheme(newJWTTestScheme(t)).WithObjects(newJWTTestDeployment()).Build()
+	sharedOrg := organization.New(1, "Shared Org", nil, []string{jwtTestAdminsGroup}, []string{"editors"}, nil)
+	giantSwarmOrg := organization.New(2, "Giant Swarm", nil, []string{jwtTestGiantSwarmAdminsGroup}, nil, []string{"viewers"})
+	teamOrg := organization.New(3, "Team Org", nil, []string{"team-admins"}, nil, nil)
+
+	permutations := [][]*organization.Organization{
+		{sharedOrg, giantSwarmOrg, teamOrg},
+		{teamOrg, sharedOrg, giantSwarmOrg},
+		{giantSwarmOrg, teamOrg, sharedOrg},
+	}
+
+	var checksum string
+	for _, organizations := range permutations {
+		require.NoError(t, ConfigureJWTOrgMappingSecret(context.Background(), c, organizations))
+
+		deployment := &appsv1.Deployment{}
+		require.NoError(t, c.Get(context.Background(), jwtOrgMappingDeploymentKey, deployment))
+		got := deployment.Spec.Template.Annotations[JWTOrgMappingChecksumAnnotation]
+		require.NotEmpty(t, got)
+		if checksum == "" {
+			checksum = got
+		}
+		assert.Equal(t, checksum, got)
+	}
+}
+
 func TestConfigureJWTOrgMappingSecret_InvalidOrganization(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(newJWTTestScheme(t)).Build()
 	organizations := []*organization.Organization{
