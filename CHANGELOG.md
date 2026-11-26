@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Write the Grafana organization mapping to the `grafana-mcp-org-mapping` Secret in the `monitoring` namespace, off by default and enabled with `grafana.jwtOrgMappingSecret.enabled: true`.
+
 ### Changed
 
 - CI: run the Go tests once, in `go-build`, and run the Alertmanager integration tests only when Alertmanager files change.

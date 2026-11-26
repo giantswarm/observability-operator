@@ -56,6 +56,12 @@ It is controlled by the `grafana.ssoOrgMapping.enabled` Helm value, which defaul
 - organizations and their datasources are still reconciled as usual
 - `spec.rbac` is still required by the API, but its contents are ignored
 
+## JWT organization mapping
+
+The operator writes the organization mapping from the `spec.rbac` of all `GrafanaOrganization` resources to the `orgMapping` key of the `grafana-mcp-org-mapping` Secret in the `monitoring` namespace. The `grafana-mcp` Grafana instance reads it as `GF_AUTH_JWT_ORG_MAPPING`. The mapping has the same entries as the SSO organization mapping.
+
+It is controlled by the `grafana.jwtOrgMappingSecret.enabled` Helm value, which defaults to `false`, and the `--grafana-jwt-org-mapping-secret-enabled` flag. Turn it on when the installation runs `grafana-mcp`.
+
 ## Example
 
 ```yaml

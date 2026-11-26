@@ -37,6 +37,7 @@ spec:
         - --grafana-gateway-tls-secret-namespace={{ $.Values.grafana.gatewayTLSSecretNamespace }}
         - --grafana-gateway-tls-secret-name={{ $.Values.grafana.gatewayTLSSecretName }}
         - --grafana-sso-org-mapping-enabled={{ $.Values.grafana.ssoOrgMapping.enabled }}
+        - --grafana-jwt-org-mapping-secret-enabled={{ $.Values.grafana.jwtOrgMappingSecret.enabled }}
         - --grafana-datasource-loki-url={{ $.Values.grafana.datasources.lokiURL }}
         - --grafana-datasource-mimir-url={{ $.Values.grafana.datasources.mimirURL }}
         - --grafana-datasource-mimir-alertmanager-url={{ $.Values.grafana.datasources.mimirAlertmanagerURL }}
